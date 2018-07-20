@@ -7,7 +7,8 @@ Menkar is (will be) a dependently typed programming language supporting the foll
 * support for context exponentiation (for working with [tiny](https://ncatlab.org/nlab/show/tiny+object) objects),
 * internal presheaf operators,
 * erasure of irrelevant subterms,
-* subtyping (very long term),
-* pseudopolymorphism for universe levels, modes and modalities (pseudoparameters must be instantiated before type checking).
+* internal shape-irrelevant universe polymorphism,
+* pseudopolymorphism for modes and modalities (pseudoparameters must be instantiated before type checking),
+* subtyping (very long term - even for universes we can use a lift function).
 
 It is named after the star Alpha Ceti, which is nicknamed Menkar.
