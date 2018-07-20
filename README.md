@@ -1,4 +1,4 @@
-# menkar
+# Menkar
 Menkar is (will be) a dependently typed programming language supporting the following features:
 
 * implicit arguments in the sense of Agda,
@@ -10,3 +10,4 @@ Menkar is (will be) a dependently typed programming language supporting the foll
 * subtyping (very long term),
 * pseudopolymorphism for universe levels, modes and modalities (pseudoparameters must be instantiated before type checking).
 
+It is named after the star Alpha Ceti, which is nicknamed Menkar.
