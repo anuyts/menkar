@@ -1,0 +1,5 @@
+@depth[d + 1]
+InitialOfFunctor
+	[d : Depth]
+	(F : (@irr l : Nat) -> Uni l -> Uni l)
+	(@str F' : )
