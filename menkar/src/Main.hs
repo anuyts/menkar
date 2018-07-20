@@ -4,14 +4,16 @@ import qualified System.Environment
 import Control.Monad
 import System.IO
 
+{-| Repeats 'action' until it returns 'False' -}
 doUntilFail :: Monad m => m Bool -> m ()
 doUntilFail action = do
   succes <- action
   when succes $ doUntilFail action
 
+{-| prints 'prefix' as a sign that the user should provide input; then returns the input. -}
 prompt :: String -> IO String
-prompt text = do
-  putStr text
+prompt prefix = do
+  putStr prefix
   hFlush stdout
   getLine
 
