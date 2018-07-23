@@ -1,3 +1,14 @@
+{-
+	Idee:
+	* argumenten hebben geen context
+	* elk argument apart gewrapt
+	* definities gescheiden door komma's
+	Evaluatie:
+	- geen implicits op assumpties argumenten, want dat is geen type
+	+ vlot leesbaar
+	- kommaverplichting is irritant
+-}
+
 @[depth $ d + 1]
 InitialOfFunctor
 	[d :: Depth]
@@ -9,28 +20,44 @@ InitialOfFunctor
 		{f : A -> B} -> F l A -> F l B
 	}
 	...
-	= module {
-		...
-	}
+= module {
+	...
+},
 
 -----------------------------------------
+
+{-
+	Idee:
+	* assumpties gescheiden door komma's -> raar
+	* definities gescheiden door komma's
+	Evaluatie:
+	- argumenten moeilijk leesbaar
+	- dubbele indentatie voor module
+	- kommaverplichting is irritant
+-}
 
 @[depth $ d + 1]
 InitialOfFunctor {
-		[d :: Depth];
-		F {
-				@im @irr l : Nat;
-				_ : Uni [d] l
-			} : Uni [d] l;
+		[d :: Depth],
+		F {@im @irr l : Nat, _ : Uni [d] l} : Uni [d] l,
 		@str F' {
-				@irr lA lB : Nat;
-				@par A : Uni [d] lA;
-				@par B : Uni [d] lB;
-				f : A -> B;
-			} : F A -> F B;
+				@irr lA lB : Nat,
+				@par A : Uni [d] lA,
+				@par B : Uni [d] lB,
+				f : A -> B,
+			} : F A -> F B,
 	}
 
 -----------------------------------------
+
+{-
+	Idee:
+	* elk argument apart gewrapt
+	* elke definitie apart gewrapt -> raar
+	Evaluatie:
+	+ vlot leesbaar
+	- bizar dat elke definitie in accolades moet gewrapt worden
+-}
 
 {@[depth $ d + 1]
 	InitialOfFunctor
@@ -61,7 +88,200 @@ InitialOfFunctor {
 		{fa : F A}
 		-> F' g (F' f fa) := F' (a . g (f a)) fa
 	}
-	: module
+	: module where
 
-	
+	{  IsAlg {@irr @im l : Nat} {A : Uni [d] l} : Uni [d] l = F A -> A  }
+	{
+		IsMph
+		{@irr @im lA lB : Nat}
+		{@im A : Uni [d] lA}
+		{@im B : Uni [d] lB}
+		{@str mkA : IsAlg A}
+		{@str mkB : IsAlg B}
+		{@str f : A -> B}
+		: Uni [d] (max lA lB)
+		= f after mkA == mkB after f
+	}
 }
+
+-----------------------------------------
+
+{-
+	Idee:
+	* elk argument apart gewrapt
+	* definities gescheiden door komma's
+	Evaluatie:
+	+ vlot leesbaar
+	- kommaverplichting is irritant
+-}
+
+@[depth $ d + 1]
+InitialOfFunctor
+	[d :: Depth]
+	{F {@irr @im l : Nat} : Uni [d] l -> Uni [d] l}
+	{@str
+		F'
+		{@im @irr lA lB : Nat}
+		{@im @par A : Uni [d] lA}
+		{@im @par B : Uni [d] lB}
+		{f : A -> B}
+		: F l A -> F l B
+	}
+	{@str /*preferrably use extension types instead of rewrite rules*/
+		-:
+		{@irr lA : Nat}
+		{@par A : Uni [d] lA}
+		-> F' ({a : A} . a) := ({fa : F A} . fa)
+	}
+	{@str
+		-:
+		{@irr lA lB lC : Nat}
+		{@par A : Uni [d] lA}
+		{@par B : Uni [d] lB}
+		{@par C : Uni [d] lC}
+		{f : A -> B}
+		{g : B -> C}
+		{fa : F A}
+		-> F' g (F' f fa) := F' (a . g (f a)) fa
+	}
+= module {
+
+	IsAlg {@irr @im l : Nat} {A : Uni [d] l} : Uni [d] l = F A -> A,
+
+	IsMph {@irr @im lA lB : Nat}
+		{@im A : Uni [d] lA}
+		{@im B : Uni [d] lB}
+		{@str mkA : IsAlg A}
+		{@str mkB : IsAlg B}
+		{@str f : A -> B}
+		: Uni [d] (max lA lB)
+		= f after mkA == mkB after F' f,
+
+	Mu {@irr l : Nat} : Set [d] (suc l) = {@par X : Set [d] l} {mkX : IsAlg X} -> X,
+
+	@str fold {@irr @im l : Nat}
+		{@par X : Uni [d] l}
+		{mkX : IsAlg X}
+		: Mu l -> X
+		= m . m X mkX,
+
+	@str mkMu {@irr @im l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm),
+
+	@str mfold {@irr @im l : Nat} {@par X : Uni [d] l}
+	: IsMph mkMu mkX (fold mkX)
+	= refl,
+
+	Mu' {@irr l : Nat} : Set [d] (suc l) = data {
+		mkMu' : F Mu' -> Mu'
+	},
+
+	@str fold' {@irr @im l : Nat}
+		{@par X : Uni [d] l}
+		{mkX : IsAlg X}
+		: Mu' l -> X
+		= m . match m {
+			/*Of course this is nonsense: F is not recognized as covariant*/
+			mkMu' (fm >> fx) >> mkX fx
+		}
+
+	@str mfold' {@irr @im l : Nat} {@par X : Uni [d] l}
+	: IsMph mkMu' mkX (fold' mkX)
+	= refl,
+
+}
+
+
+{- How do Sigma-types look? -}
+Str {A : Uni [d] l} : Uni [d] l
+= {@par State : Uni [d] l} {hd : State -> A} {tl : State -> State} >< State
+
+zeroes : Str Nat = Unit & u . 0 & u . u & unit 
+
+-----------------------------------------
+
+{-
+	Idee:
+	* andere syntax voor annotations
+	Evaluatie:
+	+ vlot leesbaar
+	- kommaverplichting is irritant
+-}
+
+
+
+[depth $ d + 1] |
+InitialOfFunctor
+	[d :: Depth]
+	{F {~ irr | l : Nat} : Uni [d] l -> Uni [d] l}
+	{str |
+		F'
+		{~ irr | lA lB : Nat}
+		{~ par | A : Uni [d] lA}
+		{~ par | B : Uni [d] lB}
+		{f : A -> B}
+		: F l A -> F l B
+	}
+	{str | /*preferrably use extension types instead of rewrite rules*/
+		-:
+		{irr | lA : Nat}
+		{par | A : Uni [d] lA}
+		-> F' ({a : A} . a) := ({fa : F A} . fa)
+	}
+	{str |
+		-:
+		{irr | lA lB lC : Nat}
+		{par | A : Uni [d] lA}
+		{par | B : Uni [d] lB}
+		{par | C : Uni [d] lC}
+		{f : A -> B}
+		{g : B -> C}
+		{fa : F A}
+		-> F' g (F' f fa) := F' (a . g (f a)) fa
+	}
+= module {
+
+	IsAlg {~ irr | l : Nat} {A : Uni [d] l} : Uni [d] l = F A -> A,
+
+	IsMph {~ irr | lA lB : Nat}
+		{~| A : Uni [d] lA}
+		{~| B : Uni [d] lB}
+		{str | mkA : IsAlg A}
+		{str | mkB : IsAlg B}
+		{str | f : A -> B}
+		: Uni [d] (max lA lB)
+		= f after mkA == mkB after F' f,
+
+	Mu {irr | l : Nat} : Set [d] (suc l) = {@par X : Set [d] l} {mkX : IsAlg X} -> X,
+
+	str | fold {~ irr | l : Nat}
+		{par | X : Uni [d] l}
+		{mkX : IsAlg X}
+		: Mu l -> X
+		= m . m X mkX,
+
+	str | mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm),
+
+	str | mfold {~ irr | l : Nat} {par | X : Uni [d] l}
+	: IsMph mkMu mkX (fold mkX)
+	= refl,
+
+	Mu' {irr | l : Nat} : Set [d] (suc l) = data {
+		mkMu' : F Mu' -> Mu'
+	},
+
+	str | fold' {~ irr | l : Nat}
+		{par | X : Uni [d] l}
+		{mkX : IsAlg X}
+		: Mu' l -> X
+		= m . match m {
+			/*Of course this is nonsense: F is not recognized as covariant*/
+			mkMu' (fm >> fx) >> mkX fx
+		}
+
+	str | mfold' {~ irr | l : Nat} {par | X : Uni [d] l}
+	: IsMph mkMu' mkX (fold' mkX)
+	= refl,
+}
+
+~ [~ | d :: Depth] {~ irr | l : Nat} {~ par | X : Uni [d] l} {~| x : X} : X = x
+* [~ | d :: Depth] {~ irr | l : Nat} {* par | X : Uni [d] l} {*| x : X} : X = x
