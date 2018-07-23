@@ -36,7 +36,11 @@ consumeCommand = do
 main :: IO ()
 main = do
   args <- (System.Environment.getArgs :: IO [String])
-  print args
-  putStrLn "Type 'quit' to quit, 'help' for help."
-  doUntilFail consumeCommand
-  return ()
+  case args of
+    [arg0] -> do
+      code <- readFile arg0
+      putStrLn "Type 'quit' to quit, 'help' for help."
+      doUntilFail consumeCommand
+      return ()
+    xs -> do
+      putStrLn "This program should be given a file path as its sole argument."
