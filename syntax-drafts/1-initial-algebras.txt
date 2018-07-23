@@ -209,8 +209,7 @@ zeroes : Str Nat = Unit & u . 0 & u . u & unit
 
 
 
-[depth $ d + 1] |
-InitialOfFunctor
+[depth $ d + 1] | InitialOfFunctor
 	[d :: Depth]
 	{F {~ irr | l : Nat} : Uni [d] l -> Uni [d] l}
 	{str |
@@ -285,3 +284,27 @@ InitialOfFunctor
 
 ~ [~ | d :: Depth] {~ irr | l : Nat} {~ par | X : Uni [d] l} {~| x : X} : X = x
 * [~ | d :: Depth] {~ irr | l : Nat} {* par | X : Uni [d] l} {*| x : X} : X = x
+
+-----------------------------------------
+
+{-Comparison for Agda-}
+
+IsMph : (@irr @~ lA lB : Nat)
+	-> (@~ A : Set lA)
+	-> (@~ B : Set lB)
+	-> (@str mkA : IsAlg A)
+	-> (@str mkB : IsAlg B)
+	-> (@str f : A -> B)
+	-> Set (max lA lB)
+
+@str mkMu : (@~ @irr l : Nat) -> IsAlg (Mu l)
+
+IsMph : (~ irr | lA lB : Nat)
+	-> (~| A : Set lA)
+	-> (~| B : Set lB)
+	-> (str | mkA : IsAlg A)
+	-> (str | mkB : IsAlg B)
+	-> (str | f : A -> B)
+	-> Set (max lA lB)
+
+str | mkMu : (~ irr | l : Nat) -> IsAlg (Mu l)
