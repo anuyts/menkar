@@ -1,4 +1,4 @@
-module Main where
+module Menkar.Main where
 
 import qualified System.Environment
 import Control.Monad
