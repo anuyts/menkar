@@ -1,3 +1,9 @@
-module Parser where
+module Menkar.Parser where
 
-import Text.Megaparsec
+import qualified Text.Megaparsec as MP
+
+type ParseError = Void
+
+class (MP.MonadParsec ParseError String m) => MonadParser m
+
+
