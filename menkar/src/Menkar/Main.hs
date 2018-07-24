@@ -3,6 +3,7 @@ module Menkar.Main where
 import qualified System.Environment
 import Control.Monad
 import System.IO
+import Menkar.Parser
 
 {-| Repeats 'action' until it returns 'False' -}
 doUntilFail :: Monad m => m Bool -> m ()
