@@ -97,7 +97,7 @@ keywords = [ "_"     -- omission / implicit term
            , "open"
            ]
 
--- subparsers ----------------------------------------------
+-- basic subparsers ----------------------------------------
 
 {-| Consumes zero or more whitespace characters, line or block comments -}
 manySpace :: CanParse m => m ()
@@ -114,6 +114,9 @@ lexeme = MPL.lexeme manySpace
     DO NOT USE THIS FOR KEYWORDS, lest "ifbla" will be parsed as "if bla". -}
 symbol :: CanParse m => String -> m String
 symbol = MPL.symbol manySpace
+
+pipe :: CanParse m => m ()
+pipe = (\ x -> ()) <$> symbol "|"
 
 parens :: CanParse m => m a -> m a
 parens = MP.between (symbol "(") (symbol ")")
@@ -163,5 +166,41 @@ qIdentifier = MP.label "qualified identifier" $ lexeme $ do
     identifierString <|> fail "Another identifier is expected after '.', with no space in between."
   return $ head : tail
 
---parse :: MonadParser m => m Raw.Module
---parse = _
+-- high-level subparsers -----------------------------------
+
+annotation :: CanParse m => m Raw.Annotation
+annotation = fail "Annotations are not supported yet." --TODO
+
+annotationClause :: CanParse m => m [Raw.Annotation]
+annotationClause = many annotation <* pipe
+
+entryLHS :: CanParse m => m ()
+entryLHS = do
+  an <- optional annotationClause
+  return ()
+
+moduleRHS :: CanParse m => m ()
+moduleRHS = return ()
+
+entry :: CanParse m => m Raw.Entry
+entry = do
+  lhs <- entryLHS
+  keyword "="
+  rhs <- moduleRHS
+  return $ Raw.ModuleEntry $ Raw.Module [] -- TODO
+
+modul :: CanParse m => m Raw.Module
+modul = do
+  anEntry <- entry
+  case anEntry of
+    Raw.ModuleEntry aModule -> return aModule
+    _ -> fail "Expected a module" -- TODO
+
+pseudo :: CanParse m => m Raw.Pseudo
+pseudo = fail "Pseudos are not supported yet." --TODO
+
+file :: CanParse m => m Raw.File
+file = MP.between manySpace MP.eof $ do
+  pseudos <- many pseudo
+  themodule <- modul
+  return $ Raw.File pseudos themodule
