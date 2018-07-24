@@ -272,7 +272,7 @@ zeroes : Str Nat = Unit & u . 0 & u . u & unit
 		{par | X : Uni [d] l}
 		{mkX : IsAlg X}
 		: Mu' l -> X
-		= m . match m {
+		= m . case m {
 			/*Of course this is nonsense: F is not recognized as covariant*/
 			mkMu' (fm >> fx) >> mkX fx
 		}
