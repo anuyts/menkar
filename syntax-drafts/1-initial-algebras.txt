@@ -210,7 +210,7 @@ zeroes : Str Nat = Unit & u . 0 & u . u & unit
 
 
 [depth $ d + 1] | InitialOfFunctor
-	[d :: Depth]
+	{[d :: Depth]}
 	{F {~ irr | l : Nat} : Uni [d] l -> Uni [d] l}
 	{str |
 		F'

@@ -1,0 +1,4 @@
+[depth $ d + 1] | myMod
+= module {
+	str | submod = module {},
+}

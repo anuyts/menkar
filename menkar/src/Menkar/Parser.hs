@@ -11,7 +11,22 @@ import Control.Monad.Identity
 import Control.Applicative
 import Data.Char
 import Data.Number.Nat
+import Data.Maybe
 --import Data.Ord
+
+-- Testing -------------------------------------------------
+
+type TestParser = MP.Parsec ParseError String
+instance CanParse (MP.ParsecT ParseError String Identity)
+
+(<?>) :: CanParse m => m a -> String -> m a
+(<?>) = (MP.<?>)
+
+testparse :: String -> IO (Either (MP.ParseError Char ParseError) Raw.File)
+testparse filename = do
+  let path = "Menkar/code-examples/" ++ filename
+  code <- readFile path
+  return $ MP.parse file path code
 
 -- ParseError ----------------------------------------------
 
@@ -26,12 +41,6 @@ instance Show ParseError where
 -- CanParse ------------------------------------------------
 
 class (MP.MonadParsec ParseError String m) => CanParse m
-
-type TestParser = MP.Parsec ParseError String
-instance CanParse (MP.ParsecT ParseError String Identity)
-
-(<?>) :: CanParse m => m a -> String -> m a
-(<?>) = (MP.<?>)
 
 -- characters ----------------------------------------------
 
@@ -166,41 +175,93 @@ qIdentifier = MP.label "qualified identifier" $ lexeme $ do
     identifierString <|> fail "Another identifier is expected after '.', with no space in between."
   return $ head : tail
 
+{-
+haskellCharLiteral :: CanParse m => m String
+haskellCharLiteral = MP.label "Haskell character literal" $ do
+  "'" <- MP.string "'"
+  content <- many $ (MP.label "any character other than (') or (\\)" $
+                      return <$> MP.satisfy (\ c . not $ c `elem` ['\'', '\\']))
+                    <|> MP.string "\\'"
+                    <|> (MP.string "\\" <* MP.notFollowedBy (MP.String "\'"))
+  "'" <- MP.string "'"
+  return $ "'" ++ concat content ++ "'"
+-}
+
+{-| Parses any rubbish, including what would otherwise be a comment,
+    until a parenthesis closes that was never opened. Parentheses need not match.
+    This parser is unaware of quotes. Don't use strings containing parentheses in Menkar
+    pseudocode. -}
+haskellCode :: CanParse m => m String
+haskellCode = MP.label "Haskell code" $ fmap concat $ many $
+  ((\ c -> [c]) <$> MP.satisfy (\ c -> not $ charType c `elem` [OpenChar, CloseChar]))
+  <|> do
+        openChar <- MP.satisfy (\ c -> charType c == OpenChar)
+        contents <- haskellCode
+        closeChar <- MP.satisfy (\ c -> charType c == CloseChar)
+        return $ [openChar] ++ contents ++ [closeChar]
+
+optionalEntrySep :: CanParse m => m ()
+optionalEntrySep = void (symbol ",") <|> return ()
+
+requiredEntrySep :: CanParse m => m ()
+requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
+
 -- high-level subparsers -----------------------------------
 
+haskellAnnotation :: CanParse m => m Raw.Annotation
+haskellAnnotation = fmap Raw.AnnotationHaskell $ lexeme $
+  MP.between (MP.string "[") (MP.string "]") haskellCode
+
+atomicAnnotation :: CanParse m => m Raw.Annotation
+atomicAnnotation = Raw.AnnotationAtomic <$> unqIdentifier
+
 annotation :: CanParse m => m Raw.Annotation
-annotation = fail "Annotations are not supported yet." --TODO
+annotation = atomicAnnotation <|> haskellAnnotation
 
 annotationClause :: CanParse m => m [Raw.Annotation]
 annotationClause = many annotation <* pipe
 
-entryLHS :: CanParse m => m ()
-entryLHS = do
-  an <- optional annotationClause
-  return ()
+lhs :: CanParse m => m Raw.LHS
+lhs = MP.label "LHS" $ do
+  annots <- fromMaybe [] <$> optional annotationClause
+  name <- unqIdentifier
+  --TODO arguments!
+  return $ Raw.LHS annots name
 
-moduleRHS :: CanParse m => m ()
-moduleRHS = return ()
+moduleRHS :: CanParse m => m Raw.RHS
+moduleRHS = MP.label "module RHS" $ do
+  keyword "module"
+  entries <- accols $ many entry
+  return $ Raw.RHSModule entries
 
-entry :: CanParse m => m Raw.Entry
-entry = do
-  lhs <- entryLHS
+rhs :: CanParse m => m Raw.RHS
+rhs = moduleRHS
+
+genuineEntry :: CanParse m => m Raw.GenuineEntry
+genuineEntry = MP.label "module entry" $ do
+  anLHS <- lhs
   keyword "="
-  rhs <- moduleRHS
-  return $ Raw.ModuleEntry $ Raw.Module [] -- TODO
+  anRHS <- moduleRHS -- todo
+  optionalEntrySep
+  return $ Raw.GenuineEntry anLHS anRHS
 
+{-
 modul :: CanParse m => m Raw.Module
 modul = do
   anEntry <- entry
   case anEntry of
-    Raw.ModuleEntry aModule -> return aModule
+    Raw.EntryModule aModule -> return aModule
     _ -> fail "Expected a module" -- TODO
+-}
 
-pseudo :: CanParse m => m Raw.Pseudo
-pseudo = fail "Pseudos are not supported yet." --TODO
+pseudoEntry :: CanParse m => m Raw.PseudoEntry
+pseudoEntry = fail "Pseudos are not supported yet." --TODO
+
+entry :: CanParse m => m Raw.Entry
+entry = (Raw.EntryGenuine <$> genuineEntry) <|> (Raw.EntryPseudo <$>pseudoEntry)
 
 file :: CanParse m => m Raw.File
 file = MP.between manySpace MP.eof $ do
-  pseudos <- many pseudo
-  themodule <- modul
+  pseudos <- many pseudoEntry
+  themodule <- genuineEntry
   return $ Raw.File pseudos themodule
