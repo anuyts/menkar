@@ -308,3 +308,8 @@ IsMph : (~ irr | lA lB : Nat)
 	-> Set (max lA lB)
 
 str | mkMu : (~ irr | l : Nat) -> IsAlg (Mu l)
+
+-----------------------------------------
+
+IX (A -> {-: P}.(T , f))
+FX (A <- {-: P}.(T , f))
