@@ -6,7 +6,7 @@ Menkar is (will be) a dependently typed programming language supporting the foll
 * support for multimode modality systems with type/term differentiation,
 * support for context exponentiation (for working with [tiny](https://ncatlab.org/nlab/show/tiny+object) objects),
 * internal presheaf operators,
-* the possibility to implement co-inductive types using unsafe coercion (which is about as unsafe as omitting the strict positivity check),
+* the possibility to implement inductive and co-inductive types from scratch by unsafely resizing their Church encoding (which is about as unsafe as omitting the strict positivity check),
 * erasure of irrelevant subterms,
 * non-unique resolution of irrelevant metavariables,
 * internal shape-irrelevant universe polymorphism,
