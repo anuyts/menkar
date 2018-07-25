@@ -31,8 +31,7 @@ data Segment = Segment LHS -- | SegmentPseudo PseudoLHS
 data Telescope = Telescope [Segment] deriving (Show)
 
 data LHSNames =
-  OneNameForEntry String |
-  ManyNamesForVariables [String] |
+  SomeNames [String] |
   NoNameForConstraint
   deriving (Show)
 {-| The left hand side of a genuine entry, or the content of a cell of a telescope.

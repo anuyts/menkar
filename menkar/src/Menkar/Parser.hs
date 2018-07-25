@@ -221,7 +221,7 @@ atom :: CanParse m => m Raw.Atom
 atom = (Raw.AtomQName <$> qIdentifier)
   <|> (Raw.AtomParens <$> parens expr)
   <|> (Raw.AtomDot <$ dot)
-  <|> (Raw.AtomTelescope <$> telescope)
+  <|> (Raw.AtomTelescope <$> telescopeSome)
   <|> (Raw.AtomPseudoArg <$> haskellCodeBracketed)
 
 expr :: CanParse m => m Raw.Expr
@@ -245,21 +245,24 @@ segment :: CanParse m => m Raw.Segment
 segment = Raw.Segment <$> accols lhs
   -- or a constraint, or a pseudoLHS
 
-telescope :: CanParse m => m Raw.Telescope
-telescope = MP.label "telescope" $ Raw.Telescope <$> many segment
+telescopeMany :: CanParse m => m Raw.Telescope
+telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segment
+
+telescopeSome :: CanParse m => m Raw.Telescope
+telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segment
 
 lhs :: CanParse m => m Raw.LHS
 lhs = MP.label "LHS" $ do
   annots <- fromMaybe [] <$> optional annotationClause
-  name <- unqIdentifier
-  context <- telescope
+  names <- some unqIdentifier
+  context <- telescopeMany
   --TODO arguments!
   maybeType <- optional $ do
     keyword ":"
     expr
   return $ Raw.LHS {
     Raw.annotationsLHS = annots,
-    Raw.namesLHS = (Raw.OneNameForEntry name),
+    Raw.namesLHS = (Raw.SomeNames names),
     Raw.contextLHS = context,
     Raw.typeLHS = maybeType
     }
