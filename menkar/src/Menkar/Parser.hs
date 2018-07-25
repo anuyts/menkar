@@ -205,6 +205,10 @@ haskellCode = MP.label "Haskell code" $ fmap concat $ many $
         closeChar <- MP.satisfy (\ c -> charType c == CloseChar)
         return $ [openChar] ++ contents ++ [closeChar]
 
+haskellCodeBracketed :: CanParse m => m String
+haskellCodeBracketed = lexeme $
+  MP.between (MP.string "[") (MP.string "]") haskellCode
+
 optionalEntrySep :: CanParse m => m ()
 optionalEntrySep = void (symbol ",") <|> return ()
 
@@ -213,30 +217,36 @@ requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
 
 -- expression subparsers -----------------------------------
 
+atom :: CanParse m => m Raw.Atom
+atom = (Raw.AtomQName <$> qIdentifier)
+  <|> (Raw.AtomParens <$> parens expr)
+  <|> (Raw.AtomDot <$ dot)
+  <|> (Raw.AtomTelescope <$> telescope)
+  <|> (Raw.AtomPseudoArg <$> haskellCodeBracketed)
+
 expr :: CanParse m => m Raw.Expr
-expr = fail $ "Expressions are not yet supported"
+expr = Raw.Expr <$> many atom
 
 -- high-level subparsers -----------------------------------
 
 haskellAnnotation :: CanParse m => m Raw.Annotation
-haskellAnnotation = fmap Raw.AnnotationHaskell $ lexeme $
-  MP.between (MP.string "[") (MP.string "]") haskellCode
+haskellAnnotation = Raw.AnnotationHaskell <$> haskellCodeBracketed
 
 atomicAnnotation :: CanParse m => m Raw.Annotation
 atomicAnnotation = Raw.AnnotationAtomic <$> unqIdentifier
 
 annotation :: CanParse m => m Raw.Annotation
-annotation = atomicAnnotation <|> haskellAnnotation
+annotation = MP.label "annotation" $ atomicAnnotation <|> haskellAnnotation
 
 annotationClause :: CanParse m => m [Raw.Annotation]
-annotationClause = many annotation <* pipe
+annotationClause = MP.label "annotation clause" $ MP.try $ many annotation <* pipe
 
 segment :: CanParse m => m Raw.Segment
 segment = Raw.Segment <$> accols lhs
   -- or a constraint, or a pseudoLHS
 
 telescope :: CanParse m => m Raw.Telescope
-telescope = Raw.Telescope <$> many segment
+telescope = MP.label "telescope" $ Raw.Telescope <$> many segment
 
 lhs :: CanParse m => m Raw.LHS
 lhs = MP.label "LHS" $ do

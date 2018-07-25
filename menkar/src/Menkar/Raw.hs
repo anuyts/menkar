@@ -2,12 +2,15 @@ module Menkar.Raw where
 
 --data Module = Module [Entry] deriving (Show)
 
-data Expr =
-  ExprParens [Expr] |
-  ExprDot |
-  ExprTelescope Telescope |
-  ExprPseudoArg String
+data Atom =
+  AtomQName [String] |
+  AtomParens Expr |
+  AtomDot |
+  AtomTelescope Telescope |
+  AtomPseudoArg String
   deriving (Show)
+
+data Expr = Expr [Atom] deriving (Show)
 
 -----------------------------------------------------------
 
