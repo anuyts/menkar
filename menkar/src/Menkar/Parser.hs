@@ -93,11 +93,11 @@ keywords = [ "_"     -- omission / implicit term
            , ":"     -- typing
            , "-:"    -- typing propositions
            , "="     -- assignment
-           , "->"    -- function type
-           , "><"    -- sigma type
-           , "Uni"   -- universe
+           --, "->"    -- function type
+           --, "><"    -- sigma type
+           --, "Uni"   -- universe
+           --, "?"     -- for Glue etc.
            , ">>"    -- mapsto
-           , "?"     -- for Glue etc.
            , "module"
            , "data"
            , "codata"
@@ -120,12 +120,17 @@ lexeme :: CanParse m => m a -> m a
 lexeme = MPL.lexeme manySpace
 
 {-| Cconsumes and returns the specified string.
-    DO NOT USE THIS FOR KEYWORDS, lest "ifbla" will be parsed as "if bla". -}
+    DO NOT USE THIS FOR KEYWORDS, lest "ifbla" will be parsed as "if bla".
+    Use for "|", ",". -}
 symbol :: CanParse m => String -> m String
 symbol = MPL.symbol manySpace
 
 pipe :: CanParse m => m ()
-pipe = (\ x -> ()) <$> symbol "|"
+pipe = void $ symbol "|"
+comma :: CanParse m => m ()
+comma = void $ symbol ","
+dot :: CanParse m => m ()
+dot = void $ lexeme $ MP.char '.' <* MP.notFollowedBy nameStickyChar
 
 parens :: CanParse m => m a -> m a
 parens = MP.between (symbol "(") (symbol ")")
@@ -206,6 +211,11 @@ optionalEntrySep = void (symbol ",") <|> return ()
 requiredEntrySep :: CanParse m => m ()
 requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
 
+-- expression subparsers -----------------------------------
+
+expr :: CanParse m => m Raw.Expr
+expr = fail $ "Expressions are not yet supported"
+
 -- high-level subparsers -----------------------------------
 
 haskellAnnotation :: CanParse m => m Raw.Annotation
@@ -221,12 +231,28 @@ annotation = atomicAnnotation <|> haskellAnnotation
 annotationClause :: CanParse m => m [Raw.Annotation]
 annotationClause = many annotation <* pipe
 
+segment :: CanParse m => m Raw.Segment
+segment = Raw.Segment <$> accols lhs
+  -- or a constraint, or a pseudoLHS
+
+telescope :: CanParse m => m Raw.Telescope
+telescope = Raw.Telescope <$> many segment
+
 lhs :: CanParse m => m Raw.LHS
 lhs = MP.label "LHS" $ do
   annots <- fromMaybe [] <$> optional annotationClause
   name <- unqIdentifier
+  context <- telescope
   --TODO arguments!
-  return $ Raw.LHS annots name
+  maybeType <- optional $ do
+    keyword ":"
+    expr
+  return $ Raw.LHS {
+    Raw.annotationsLHS = annots,
+    Raw.namesLHS = (Raw.OneNameForEntry name),
+    Raw.contextLHS = context,
+    Raw.typeLHS = maybeType
+    }
 
 moduleRHS :: CanParse m => m Raw.RHS
 moduleRHS = MP.label "module RHS" $ do
