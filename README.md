@@ -3,6 +3,7 @@ Menkar is (will be) a dependently typed programming language supporting the foll
 
 * implicit arguments in the sense of Agda,
 * minion arguments - a feature analogous to Agda's [instance arguments](https://doi.org/10.1145/2034574.2034796) and Haskell's typeclasses.
+
 A summoning is a user-defined open ad-hoc function mapping some object (typically a type) to another object (called the minion, typically a set of operations over the type) which takes the role of Agda's and Haskell's instance resolution. Minion arguments are arguments annotated with a summoning; there values need not be actively passed, as they can be summoned.
 * support for multimode modality systems with type/term differentiation,
 * support for context exponentiation (for working with [tiny](https://ncatlab.org/nlab/show/tiny+object) objects),
