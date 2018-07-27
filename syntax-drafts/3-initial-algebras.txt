@@ -5,7 +5,7 @@
 		-it looks like an annotation
 */
 
-module (depth (dsuc d)) | InitialOfFunctor
+module (depth dsuc d) | InitialOfFunctor
 	{pseudo | d : Depth}
 	{F {~ irr | l : Nat} : Uni d l -> Uni d l}
 	{str |
@@ -35,7 +35,7 @@ module (depth (dsuc d)) | InitialOfFunctor
 	}
 where {
 
-	val IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A,
+	val IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A
 
 	val IsMph {~ irr | lA lB : Nat}
 		{~| A : Uni d lA}
@@ -44,25 +44,25 @@ where {
 		{str | mkB : IsAlg B}
 		{str | f : A -> B}
 		: Uni d (max lA lB)
-		= f after mkA == mkB after F' f,
+		= f after mkA == mkB after F' f
 
-	val Mu {irr | l : Nat} : Uni d (suc l) = {@par X : Set [d] l} {mkX : IsAlg X} -> X,
+	val Mu {irr | l : Nat} : Uni d (suc l) = {@par X : Set [d] l} {mkX : IsAlg X} -> X
 
 	val str | fold {~ irr | l : Nat}
 		{par | X : Uni d l}
 		{mkX : IsAlg X}
 		: Mu l -> X
-		= m . m X mkX,
+		= m . m X mkX
 
-	val str | mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm),
+	val str | mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm)
 
 	val str | mfold {~ irr | l : Nat} {par | X : Uni [d] l}
 	: IsMph mkMu mkX (fold mkX)
-	= refl,
+	= refl
 
 	val Mu' {irr | l : Nat} : Uni d (suc l) = data {
 		mkMu' : F Mu' -> Mu'
-	},
+	}
 
 	val str | fold' {~ irr | l : Nat}
 		{par | X : Uni d l}
@@ -75,19 +75,19 @@ where {
 
 	val str | mfold' {~ irr | l : Nat} {par | X : Uni d l}
 	: IsMph mkMu' mkX (fold' mkX)
-	= refl,
+	= refl
 }
 
 //-----------------------------------------
 
 val _ {~ pseudo | d : Depth} {~ irr | l : Nat} {~ par | X : Uni d l} {~| x : X} : X = x
 
-//maybe pseudos cannot be implicit, except for primitives
+//maybe pseudos cannot be implicit except for primitives
 
 //-----------------------------------------
 
 val (depth 1) (resolution eq) |
-Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool,
+Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool
 
 // eq {~ irr | l : Nat} {par | X : Uni 0 l} {(~ eq) | eq' : Eq X} : Eq X
 // i.e. eq X is the instance for X.
@@ -95,7 +95,7 @@ Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool,
 val (syntax (x == y)) |
 _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
 
-val (Depth 0) (resolves eq (Bool -> X)) |
+val (depth 0) (resolves eq (Bool -> X)) |
 eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Bool -> X)
 	= \f \g (f true == g true) && (f false == g false)
 
@@ -121,9 +121,11 @@ val str | count {n : Nat} : Uni 0 0
 		+thus, they need not end in a comma
 		-this is nearly always val
 	*annotations are between [...] instead of before a |
+	*first word of annotation is always applied to all the rest
+		*hence new annotations should be defined using 'annotation' keyword
 */
 
-module [depth (dsuc d)] InitialOfFunctor
+module [depth dsuc d] InitialOfFunctor
 	{[pseudo] d : Depth}
 	{F {~ [irr] l : Nat} : Uni d l -> Uni d l}
 	{[str]
@@ -153,7 +155,7 @@ module [depth (dsuc d)] InitialOfFunctor
 	}
 where {
 
-	val IsAlg {~ [irr] l : Nat} {A : Uni d l} : Uni d l = F A -> A,
+	val IsAlg {~ [irr] l : Nat} {A : Uni d l} : Uni d l = F A -> A
 
 	val IsMph {~ [irr] lA lB : Nat}
 		{~ A : Uni d lA}
@@ -162,25 +164,25 @@ where {
 		{[str] mkB : IsAlg B}
 		{[str] f : A -> B}
 		: Uni d (max lA lB)
-		= f after mkA == mkB after F' f,
+		= f after mkA == mkB after F' f
 
-	val Mu {[irr] l : Nat} : Uni d (suc l) = {[par] X : Set d l} {mkX : IsAlg X} -> X,
+	val Mu {[irr] l : Nat} : Uni d (suc l) = {[par] X : Set d l} {mkX : IsAlg X} -> X
 
 	val [str] fold {~ [irr] l : Nat}
 		{[par] X : Uni d l}
 		{mkX : IsAlg X}
 		: Mu l -> X
-		= m . m X mkX,
+		= m . m X mkX
 
-	val [str] mkMu {~ [irr] l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm),
+	val [str] mkMu {~ [irr] l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm)
 
 	val [str] mfold {~ [irr] l : Nat} {[par] X : Uni d l}
 	: IsMph mkMu mkX (fold mkX)
-	= refl,
+	= refl
 
 	data Mu' {[irr] l : Nat} : Uni d (suc l) where {
 		mkMu' : F Mu' -> Mu'
-	},
+	}
 
 	val [str] fold' {~ [irr] l : Nat}
 		{[par] X : Uni d l}
@@ -193,7 +195,7 @@ where {
 
 	val [str] mfold' {~ [irr] l : Nat} {par | X : Uni d l}
 	: IsMph mkMu' mkX (fold' mkX)
-	= refl,
+	= refl
 }
 
 //-----------------------------------------
@@ -204,17 +206,18 @@ val _ {~ [pseudo] d : Depth} {~ [irr] l : Nat} {~ [par] X : Uni d l} {~ x : X} :
 
 //-----------------------------------------
 
-val [depth 1] [resolution eq]
-Eq {~ [irr] l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool,
+val Eq {~ [irr] l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool
 
-// eq {~ [irr] l : Nat} {[par] X : Uni 0 l} {~eq~ eq' : Eq X} : Eq X
+resolution [str] eq {~ [irr] l : Nat} {[par] X : Uni 0 l} : Eq X
+
+// eq {~ [irr] l : Nat} {[par] X : Uni 0 l} {~ [resolves eq X] eqX : Eq X} : Eq X
 // i.e. eq X is the instance for X.
 
 val [syntax (x == y)]
-_== {~ [irr] l : Nat} {~ [par] X : Uni 0 l} {~eq~ eq' : Eq X} {[str] x y : X} : Bool = eq _ x y
+_== {~ [irr] l : Nat} {~ [par] X : Uni 0 l} {~ eq' : Eq X} {[str] x y : X} : Bool = eq _ x y
 
-val [Depth 0] [resolves eq (Bool -> X)]
-eqBool-> {~ [irr] l' : Nat} {~ [par] X : Uni 0 l'} {~eq~ _ : Eq X} : Eq (Bool -> X)
+val [depth 0] [resolves eq (Bool -> X)]
+eqBool-> {~ [irr] l' : Nat} {~ [par] X : Uni 0 l'} {~ [resolves eq X] eqX : Eq X} : Eq (Bool -> X)
 	= f . g . (f true == g true) && (f false == g false)
 
 //-----------------------------------------
