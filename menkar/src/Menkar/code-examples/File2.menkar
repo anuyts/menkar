@@ -1,7 +1,3 @@
-/*	New:	-no Haskell code
-			-resolutions
-*/
-
 (depth (dsuc d)) | InitialOfFunctor
 	{pseudo | d : Depth}
 	{F {~ irr | l : Nat} : Uni d l -> Uni d l}
@@ -100,10 +96,3 @@ eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Bool
 
 IX (A -> {-: P}.(T , f))
 FX (A <- {-: P}.(T , f))
-
-//-----------------------------------------
-
-Stream {irr | l : Nat} {A : Uni d l} : Uni d l
-	= {par | X : Uni d l} >< (X -> A) >< (X -> X) >< X
-str | count {n : Nat} : Uni 0 0
-	= (Nat, x . x, suc, n)

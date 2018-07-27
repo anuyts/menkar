@@ -2,8 +2,10 @@ module Menkar.Raw where
 
 --data Module = Module [Entry] deriving (Show)
 
+data QName = QName [String] deriving (Show)
+
 data Atom =
-  AtomQName [String] |
+  AtomQName QName |
   AtomParens Expr |
   AtomDot |
   AtomTelescope Telescope |
@@ -13,9 +15,6 @@ data Atom =
 data Expr = Expr [Atom] deriving (Show)
 
 -----------------------------------------------------------
-
-{-| A pseudo-entry (todo) -}
-data PseudoEntry = PseudoEntry deriving (Show)
 
 {-| One item in the annotation clause. -}
 data Annotation =
@@ -31,7 +30,7 @@ data Segment = Segment LHS -- | SegmentPseudo PseudoLHS
 data Telescope = Telescope [Segment] deriving (Show)
 
 data LHSNames =
-  SomeNames [String] |
+  SomeNames [QName] |
   NoNameForConstraint
   deriving (Show)
 {-| The left hand side of a genuine entry, or the content of a cell of a telescope.
@@ -45,5 +44,5 @@ data LHS = LHS {
 data RHS = RHSModule [Entry] deriving (Show)
 data GenuineEntry = GenuineEntry LHS RHS deriving (Show)
 
-data Entry = EntryGenuine GenuineEntry | EntryPseudo PseudoEntry deriving (Show)
-data File = File [PseudoEntry] GenuineEntry deriving (Show)
+data Entry = EntryGenuine GenuineEntry deriving (Show)
+data File = File GenuineEntry deriving (Show)

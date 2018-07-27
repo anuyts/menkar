@@ -172,13 +172,13 @@ unqIdentifier = MP.label "unqualified identifier" $
     msg = "You have either neglected to leave a space after this identifier, or you have used a" ++
       " qualified identifier where an unqualified one was expected."
 
-qIdentifier :: CanParse m => m [String]
+qIdentifier :: CanParse m => m Raw.QName
 qIdentifier = MP.label "qualified identifier" $ lexeme $ do
   head <- identifierString
   tail <- many $ do
     MP.char '.'
     identifierString <|> fail "Another identifier is expected after '.', with no space in between."
-  return $ head : tail
+  return $ Raw.QName (head : tail)
 
 {-
 haskellCharLiteral :: CanParse m => m String
@@ -254,9 +254,8 @@ telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segmen
 lhs :: CanParse m => m Raw.LHS
 lhs = MP.label "LHS" $ do
   annots <- fromMaybe [] <$> optional annotationClause
-  names <- some unqIdentifier
+  names <- some qIdentifier
   context <- telescopeMany
-  --TODO arguments!
   maybeType <- optional $ do
     keyword ":"
     expr
@@ -271,6 +270,7 @@ moduleRHS :: CanParse m => m Raw.RHS
 moduleRHS = MP.label "module RHS" $ do
   keyword "module"
   entries <- accols $ many entry
+  optionalEntrySep
   return $ Raw.RHSModule entries
 
 rhs :: CanParse m => m Raw.RHS
@@ -280,8 +280,7 @@ genuineEntry :: CanParse m => m Raw.GenuineEntry
 genuineEntry = MP.label "module entry" $ do
   anLHS <- lhs
   keyword "="
-  anRHS <- moduleRHS -- todo
-  optionalEntrySep
+  anRHS <- rhs
   return $ Raw.GenuineEntry anLHS anRHS
 
 {-
@@ -293,14 +292,10 @@ modul = do
     _ -> fail "Expected a module" -- TODO
 -}
 
-pseudoEntry :: CanParse m => m Raw.PseudoEntry
-pseudoEntry = fail "Pseudos are not supported yet." --TODO
-
 entry :: CanParse m => m Raw.Entry
-entry = (Raw.EntryGenuine <$> genuineEntry) <|> (Raw.EntryPseudo <$>pseudoEntry)
+entry = (Raw.EntryGenuine <$> genuineEntry)
 
 file :: CanParse m => m Raw.File
 file = MP.between manySpace MP.eof $ do
-  pseudos <- many pseudoEntry
   themodule <- genuineEntry
-  return $ Raw.File pseudos themodule
+  return $ Raw.File themodule
