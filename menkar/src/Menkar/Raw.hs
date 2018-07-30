@@ -32,9 +32,9 @@ data Segment = Segment LHS -- | SegmentConstraint LHS
 data Telescope = Telescope [Segment] deriving (Show)
 
 data LHSNames =
-  SomeNamesForTelescope [String] |
-  QNameForEntry QName |
-  NoNameForConstraint
+  SomeNamesForTelescope [String]
+  | QNameForEntry QName
+  | NoNameForConstraint
   deriving (Show)
 {-| The left hand side of a genuine entry, or the content of a cell of a telescope.
     For entries, there is typically one name. -}
@@ -44,7 +44,11 @@ data LHS = LHS {
   contextLHS :: Telescope,
   typeLHS :: Maybe Expr} deriving (Show)
 
-data RHS = RHSModule [Entry] deriving (Show)
+data RHS =
+  RHSModule [Entry]
+  | RHSVal Expr
+  | RHSResolution
+  deriving (Show)
 data LREntry = LREntry LHS RHS deriving (Show)
 
 data Entry = EntryLR LREntry deriving (Show)

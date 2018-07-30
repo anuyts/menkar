@@ -95,6 +95,7 @@ keywords = [ ":"     -- typing
            --, "?"     -- for Glue etc.
            , ">>"    -- mapsto
            , "module"
+           , "val"
            , "data"
            , "codata"
            , "import"
@@ -280,7 +281,7 @@ constraint = accols $ do
       }
 
 argument :: CanParse m => m Raw.LHS 
-argument = accols $ do
+argument = MP.try $ accols $ do
       annots <- fromMaybe [] <$> optional annotationClause
       --names <- segmentNamesAndColon <|> segmentConstraintColon
       names <- Raw.SomeNamesForTelescope <$> some unqIdentifier
@@ -325,18 +326,30 @@ moduleRHS = MP.label "module RHS" $
   entries <- accols $ many entry
   return $ Raw.RHSModule entries-}
 
-rhs :: CanParse m => m Raw.RHS
-rhs = moduleRHS
+valRHS :: CanParse m => m Raw.RHS
+valRHS = Raw.RHSVal <$> (keyword "=" *> expr) 
 
-data EntryHeader = HeaderModule
+rhs :: CanParse m => EntryHeader -> m Raw.RHS
+rhs HeaderModule = moduleRHS
+rhs HeaderVal = valRHS
+rhs HeaderData = fail "Not supported yet: data"
+rhs HeaderCodata = fail "Not supported yet : codata"
+rhs HeaderResolution = return Raw.RHSResolution
+
+data EntryHeader = HeaderModule | HeaderVal | HeaderData | HeaderCodata | HeaderResolution
 entryHeader :: CanParse m => m EntryHeader
-entryHeader = (HeaderModule <$ keyword "module")
+entryHeader =
+  (HeaderModule <$ keyword "module")
+  <|> (HeaderVal <$ keyword "val")
+  <|> (HeaderData <$ keyword "data")
+  <|> (HeaderCodata <$ keyword "codata")
+  <|> (HeaderResolution <$ keyword "resolution")
 
 lrEntry :: CanParse m => m Raw.LREntry
 lrEntry = MP.label "entry" $ do
   header <- entryHeader
   anLHS <- lhs
-  anRHS <- rhs
+  anRHS <- rhs header
   return $ Raw.LREntry anLHS anRHS
 
 {-

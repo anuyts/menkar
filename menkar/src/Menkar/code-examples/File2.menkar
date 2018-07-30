@@ -1,3 +1,4 @@
+/* */
 module [depth dsuc d] InitialOfFunctor
 	{pseudo | d : Depth}
 	{F {~ irr | l : Nat} : Uni d l -> Uni d l}
@@ -9,7 +10,7 @@ module [depth dsuc d] InitialOfFunctor
 		{f : A -> B}
 		: F l A -> F l B
 	}
-/*	{str | /*preferrably use extension types instead of rewrite rules*/
+	{str | /*preferrably use extension types instead of rewrite rules*/
 		-:
 		{irr | lA : Nat}
 		{par | A : Uni d lA}
@@ -25,12 +26,12 @@ module [depth dsuc d] InitialOfFunctor
 		{g : B -> C}
 		{fa : F A}
 		-> F' g (F' f fa) := F' (a . g (f a)) fa
-	}	*/
+	}
 where {
 
-/*	IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A,
+	val IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A,
 
-	IsMph {~ irr | lA lB : Nat}
+	val IsMph {~ irr | lA lB : Nat}
 		{~| A : Uni d lA}
 		{~| B : Uni d lB}
 		{str | mkA : IsAlg A}
@@ -39,37 +40,20 @@ where {
 		: Uni d (max lA lB)
 		= f after mkA == mkB after F' f,
 
-	Mu {irr | l : Nat} : Uni d (suc l) = {@par X : Set [d] l} {mkX : IsAlg X} -> X,
+	val Mu {irr | l : Nat} : Uni d (suc l) = {@par X : Set d l} {mkX : IsAlg X} -> X,
 
-	str | fold {~ irr | l : Nat}
+	val [str] fold {~ irr | l : Nat}
 		{par | X : Uni d l}
 		{mkX : IsAlg X}
 		: Mu l -> X
 		= m . m X mkX,
 
-	str | mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm),
+	val [str] mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm),
 
-	str | mfold {~ irr | l : Nat} {par | X : Uni [d] l}
+	val [str] mfold {~ irr | l : Nat} {par | X : Uni d l}
 	: IsMph mkMu mkX (fold mkX)
 	= refl,
-
-	Mu' {irr | l : Nat} : Uni d (suc l) = data {
-		mkMu' : F Mu' -> Mu'
-	},
-
-	str | fold' {~ irr | l : Nat}
-		{par | X : Uni d l}
-		{mkX : IsAlg X}
-		: Mu' l -> X
-		= m . case m {
-			/*Of course this is nonsense: F is not recognized as covariant*/
-			mkMu' (fm >> fx) >> mkX fx
-		}
-
-	str | mfold' {~ irr | l : Nat} {par | X : Uni d l}
-	: IsMph mkMu' mkX (fold' mkX)
-	= refl,		*/
-}
+//}
 
 //-----------------------------------------
 
@@ -79,17 +63,17 @@ where {
 
 //-----------------------------------------
 
-/*
-(depth 1) (resolution eq) |
-Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool,
+val [depth 1] Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool,
+
+resolution [str] eq {~ irr | l : Nat} {par | X : Uni 0 l} : Eq X
 
 // eq {~ irr | l : Nat} {par | X : Uni 0 l} {(~ eq) | eq' : Eq X} : Eq X
 // i.e. eq X is the instance for X.
 
-(syntax (x == y)) |
-_== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
+val [syntax (x == y)] _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
 
-(Depth 0) (resolves eq (Bool -> X)) |
-eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Bool -> X)
+val [Depth 0][resolves eq (Bool -> X)] eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X}
+	: Eq (Bool -> X)
 	= \f \g (f true == g true) && (f false == g false)
-*/
+
+}
