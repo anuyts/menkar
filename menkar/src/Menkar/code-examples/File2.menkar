@@ -1,4 +1,4 @@
-/*(depth dsuc d)*/ | InitialOfFunctor
+module [depth dsuc d] InitialOfFunctor
 	{pseudo | d : Depth}
 	{F {~ irr | l : Nat} : Uni d l -> Uni d l}
 	{str |
@@ -26,7 +26,7 @@
 		{fa : F A}
 		-> F' g (F' f fa) := F' (a . g (f a)) fa
 	}	*/
-= module {
+where {
 
 /*	IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A,
 

@@ -19,9 +19,6 @@ import Data.Maybe
 type TestParser = MP.Parsec ParseError String
 instance CanParse (MP.ParsecT ParseError String Identity)
 
-(<?>) :: CanParse m => m a -> String -> m a
-(<?>) = (MP.<?>)
-
 testparse :: String -> IO (Either (MP.ParseError Char ParseError) Raw.File)
 testparse filename = do
   let path = "Menkar/code-examples/" ++ filename
@@ -53,7 +50,7 @@ describeCharType ct = case ct of
   SpaceChar -> "whitespace character (unicode)"
   LetterChar -> "letter character (unicode)"
   DigitChar -> "digit"
-  LooseChar -> "one of '|', ',' and '.'"
+  LooseChar -> "one of '|' and '.'"
   MiscChar -> "miscellaneous unicode character"
   OpenChar -> "opening delimiter (unicode)"
   CloseChar -> "closing delimiter (unicode)"
@@ -63,7 +60,8 @@ charType c
   | isSpace c = SpaceChar
   | isDigit c = DigitChar
   | isLetter c = LetterChar
-  | elem c ['|', ',', '.'] = LooseChar
+  | c == '.' = LooseChar
+  | c == '|' = LooseChar
   | otherwise = case generalCategory c of
       OpenPunctuation -> OpenChar
       ClosePunctuation -> CloseChar
@@ -88,9 +86,7 @@ isNameChar c = case charType c of
 -- keywords ------------------------------------------------
 
 keywords :: [String]
-keywords = [ "_"     -- omission / implicit term
-           , "__"    -- instance term
-           , ":"     -- typing
+keywords = [ ":"     -- typing
            , "-:"    -- typing propositions
            , "="     -- assignment
            --, "->"    -- function type
@@ -101,9 +97,10 @@ keywords = [ "_"     -- omission / implicit term
            , "module"
            , "data"
            , "codata"
-           , "syntax"
            , "import"
            , "open"
+           , "resolution"
+           , "where"
            ]
 
 -- basic subparsers ----------------------------------------
@@ -127,8 +124,8 @@ symbol = MPL.symbol manySpace
 
 pipe :: CanParse m => m ()
 pipe = void $ symbol "|"
-comma :: CanParse m => m ()
-comma = void $ symbol ","
+--comma :: CanParse m => m ()
+--comma = void $ symbol ","
 dot :: CanParse m => m ()
 dot = void $ lexeme $ MP.char '.' <* MP.notFollowedBy nameStickyChar
 
@@ -138,8 +135,11 @@ parens = MP.between (symbol "(") (symbol ")")
 accols :: CanParse m => m a -> m a
 accols = MP.between (symbol "{") (symbol "}")
 
+brackets :: CanParse m => m a -> m a
+brackets = MP.between (symbol "[") (symbol "]")
+
 charByType :: CanParse m => CharType -> m Char
-charByType ct = MP.satisfy (\ c -> charType c == ct) <?> describeCharType ct
+charByType ct = MP.label (describeCharType ct) $ MP.satisfy (\ c -> charType c == ct)
 
 nameChar :: CanParse m => m Char
 nameChar = charByType LetterChar <|> charByType DigitChar <|> charByType MiscChar
@@ -147,8 +147,8 @@ nameChar = charByType LetterChar <|> charByType DigitChar <|> charByType MiscCha
 nameStickyChar :: CanParse m => m Char
 nameStickyChar = nameChar <|> MP.char '.'
 
-natural :: CanParse m => m Nat
-natural = do
+natLiteral :: CanParse m => m Nat
+natLiteral = do
   --string <- some $ charByType DigitChar
   string <- (lexeme . MP.try) ((some $ charByType DigitChar) <* MP.notFollowedBy nameChar)
   return $ (read string :: Nat)
@@ -192,6 +192,7 @@ haskellCharLiteral = MP.label "Haskell character literal" $ do
   return $ "'" ++ concat content ++ "'"
 -}
 
+{-
 {-| Parses any rubbish, including what would otherwise be a comment,
     until a parenthesis closes that was never opened. Parentheses need not match.
     This parser is unaware of quotes. Don't use strings containing parentheses in Menkar
@@ -208,12 +209,15 @@ haskellCode = MP.label "Haskell code" $ fmap concat $ many $
 haskellCodeBracketed :: CanParse m => m String
 haskellCodeBracketed = lexeme $
   MP.between (MP.string "[") (MP.string "]") haskellCode
+-}
 
+{-
 optionalEntrySep :: CanParse m => m ()
 optionalEntrySep = void (symbol ",") <|> return ()
 
 requiredEntrySep :: CanParse m => m ()
 requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
+-}
 
 -- expression subparsers -----------------------------------
 
@@ -222,27 +226,75 @@ atom = (Raw.AtomQName <$> qIdentifier)
   <|> (Raw.AtomParens <$> parens expr)
   <|> (Raw.AtomDot <$ dot)
   <|> (Raw.AtomTelescope <$> telescopeSome)
+  <|> (Raw.AtomNatLiteral <$> natLiteral)
 
 expr :: CanParse m => m Raw.Expr
-expr = Raw.Expr <$> many atom
+expr = Raw.Expr <$> some atom
 
 -- high-level subparsers -----------------------------------
 
-haskellAnnotation :: CanParse m => m Raw.Annotation
-haskellAnnotation = Raw.AnnotationHaskell <$> haskellCodeBracketed
+-- annotations
+
+--haskellAnnotation :: CanParse m => m Raw.Annotation
+--haskellAnnotation = Raw.AnnotationHaskell <$> haskellCodeBracketed
 
 atomicAnnotation :: CanParse m => m Raw.Annotation
-atomicAnnotation = Raw.AnnotationAtomic <$> unqIdentifier
+atomicAnnotation = (\qname -> Raw.Annotation qname Nothing) <$> qIdentifier
+
+compoundAnnotation :: CanParse m => m Raw.Annotation
+compoundAnnotation = parens $ do
+  qname <- qIdentifier
+  content <- expr
+  return $ Raw.Annotation qname (Just content)
 
 annotation :: CanParse m => m Raw.Annotation
-annotation = MP.label "annotation" $ atomicAnnotation <|> haskellAnnotation
+annotation = MP.label "annotation" $ atomicAnnotation <|> compoundAnnotation
 
 annotationClause :: CanParse m => m [Raw.Annotation]
 annotationClause = MP.label "annotation clause" $ MP.try $ many annotation <* pipe
 
+entryAnnotation :: CanParse m => m Raw.Annotation
+entryAnnotation = brackets $ do
+  qname <- qIdentifier
+  content <- optional expr
+  return $ Raw.Annotation qname content
+
+-- telescopes
+
+segmentNamesAndColon :: CanParse m => m Raw.LHSNames
+segmentNamesAndColon = Raw.SomeNamesForTelescope <$> some unqIdentifier <* keyword ":"
+
+segmentConstraintColon :: CanParse m => m Raw.LHSNames
+segmentConstraintColon = Raw.NoNameForConstraint <$ keyword "-:"
+
+constraint :: CanParse m => m Raw.LHS
+constraint = accols $ do
+      annots <- fromMaybe [] <$> optional annotationClause
+      keyword "-:"
+      typ <- expr
+      return $ Raw.LHS {
+        Raw.annotationsLHS = annots,
+        Raw.namesLHS = Raw.NoNameForConstraint,
+        Raw.contextLHS = Raw.Telescope [],
+        Raw.typeLHS = Just typ
+      }
+
+argument :: CanParse m => m Raw.LHS 
+argument = accols $ do
+      annots <- fromMaybe [] <$> optional annotationClause
+      --names <- segmentNamesAndColon <|> segmentConstraintColon
+      names <- Raw.SomeNamesForTelescope <$> some unqIdentifier
+      context <- telescopeMany
+      maybeType <- keyword ":" *> optional expr
+      return $ Raw.LHS {
+        Raw.annotationsLHS = annots,
+        Raw.namesLHS = names,
+        Raw.contextLHS = context,
+        Raw.typeLHS = maybeType
+      }
+
 segment :: CanParse m => m Raw.Segment
-segment = Raw.Segment <$> accols lhs
-  -- or a constraint
+segment = MP.label "telescope segment" $ Raw.Segment <$> (argument <|> constraint)
 
 telescopeMany :: CanParse m => m Raw.Telescope
 telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segment
@@ -252,35 +304,40 @@ telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segmen
 
 lhs :: CanParse m => m Raw.LHS
 lhs = MP.label "LHS" $ do
-  annots <- fromMaybe [] <$> optional annotationClause
-  names <- some qIdentifier
+  annots <- many entryAnnotation
+  name <- Raw.QNameForEntry <$> qIdentifier
   context <- telescopeMany
   maybeType <- optional $ do
     keyword ":"
     expr
   return $ Raw.LHS {
     Raw.annotationsLHS = annots,
-    Raw.namesLHS = (Raw.SomeNames names),
+    Raw.namesLHS = name,
     Raw.contextLHS = context,
     Raw.typeLHS = maybeType
     }
 
 moduleRHS :: CanParse m => m Raw.RHS
-moduleRHS = MP.label "module RHS" $ do
+moduleRHS = MP.label "module RHS" $
+  Raw.RHSModule <$> (keyword "where" *> (accols $ many entry))
+  {-do
   keyword "module"
   entries <- accols $ many entry
-  optionalEntrySep
-  return $ Raw.RHSModule entries
+  return $ Raw.RHSModule entries-}
 
 rhs :: CanParse m => m Raw.RHS
 rhs = moduleRHS
 
-genuineEntry :: CanParse m => m Raw.GenuineEntry
-genuineEntry = MP.label "module entry" $ do
+data EntryHeader = HeaderModule
+entryHeader :: CanParse m => m EntryHeader
+entryHeader = (HeaderModule <$ keyword "module")
+
+lrEntry :: CanParse m => m Raw.LREntry
+lrEntry = MP.label "entry" $ do
+  header <- entryHeader
   anLHS <- lhs
-  keyword "="
   anRHS <- rhs
-  return $ Raw.GenuineEntry anLHS anRHS
+  return $ Raw.LREntry anLHS anRHS
 
 {-
 modul :: CanParse m => m Raw.Module
@@ -292,9 +349,9 @@ modul = do
 -}
 
 entry :: CanParse m => m Raw.Entry
-entry = (Raw.EntryGenuine <$> genuineEntry)
+entry = (Raw.EntryLR <$> lrEntry)
 
 file :: CanParse m => m Raw.File
 file = MP.between manySpace MP.eof $ do
-  themodule <- genuineEntry
+  themodule <- lrEntry
   return $ Raw.File themodule

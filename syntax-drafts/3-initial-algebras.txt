@@ -332,8 +332,9 @@ val _ {~ pseudo | d : Depth} {~ irr | l : Nat} {~ par | X : Uni d l} {~| x : X} 
 
 //-----------------------------------------
 
-val [depth 1][resolution eq]
-Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool
+val [depth 1] Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool
+
+resolution [str] eq {~ irr | l : Nat} {par | X : Uni 0 l} : Eq X
 
 // eq {~ irr | l : Nat} {par | X : Uni 0 l} {(~ eq) | eq' : Eq X} : Eq X
 // i.e. eq X is the instance for X.
