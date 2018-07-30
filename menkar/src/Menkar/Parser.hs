@@ -222,7 +222,6 @@ atom = (Raw.AtomQName <$> qIdentifier)
   <|> (Raw.AtomParens <$> parens expr)
   <|> (Raw.AtomDot <$ dot)
   <|> (Raw.AtomTelescope <$> telescopeSome)
-  <|> (Raw.AtomPseudoArg <$> haskellCodeBracketed)
 
 expr :: CanParse m => m Raw.Expr
 expr = Raw.Expr <$> many atom
@@ -243,7 +242,7 @@ annotationClause = MP.label "annotation clause" $ MP.try $ many annotation <* pi
 
 segment :: CanParse m => m Raw.Segment
 segment = Raw.Segment <$> accols lhs
-  -- or a constraint, or a pseudoLHS
+  -- or a constraint
 
 telescopeMany :: CanParse m => m Raw.Telescope
 telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segment

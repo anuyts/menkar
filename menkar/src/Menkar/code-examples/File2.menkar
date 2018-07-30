@@ -1,4 +1,4 @@
-(depth (dsuc d)) | InitialOfFunctor
+/*(depth dsuc d)*/ | InitialOfFunctor
 	{pseudo | d : Depth}
 	{F {~ irr | l : Nat} : Uni d l -> Uni d l}
 	{str |
@@ -9,7 +9,7 @@
 		{f : A -> B}
 		: F l A -> F l B
 	}
-	{str | /*preferrably use extension types instead of rewrite rules*/
+/*	{str | /*preferrably use extension types instead of rewrite rules*/
 		-:
 		{irr | lA : Nat}
 		{par | A : Uni d lA}
@@ -25,10 +25,10 @@
 		{g : B -> C}
 		{fa : F A}
 		-> F' g (F' f fa) := F' (a . g (f a)) fa
-	}
+	}	*/
 = module {
 
-	IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A,
+/*	IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A,
 
 	IsMph {~ irr | lA lB : Nat}
 		{~| A : Uni d lA}
@@ -68,17 +68,18 @@
 
 	str | mfold' {~ irr | l : Nat} {par | X : Uni d l}
 	: IsMph mkMu' mkX (fold' mkX)
-	= refl,
+	= refl,		*/
 }
 
 //-----------------------------------------
 
-_ {~ pseudo | d : Depth} {~ irr | l : Nat} {~ par | X : Uni d l} {~| x : X} : X = x
+/* _ {~ pseudo | d : Depth} {~ irr | l : Nat} {~ par | X : Uni d l} {~| x : X} : X = x	*/
 
 //maybe pseudos cannot be implicit, except for primitives
 
 //-----------------------------------------
 
+/*
 (depth 1) (resolution eq) |
 Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool,
 
@@ -91,8 +92,4 @@ _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X
 (Depth 0) (resolves eq (Bool -> X)) |
 eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Bool -> X)
 	= \f \g (f true == g true) && (f false == g false)
-
-//-----------------------------------------
-
-IX (A -> {-: P}.(T , f))
-FX (A <- {-: P}.(T , f))
+*/

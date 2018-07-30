@@ -8,8 +8,7 @@ data Atom =
   AtomQName QName |
   AtomParens Expr |
   AtomDot |
-  AtomTelescope Telescope |
-  AtomPseudoArg String
+  AtomTelescope Telescope
   deriving (Show)
 
 data Expr = Expr [Atom] deriving (Show)
