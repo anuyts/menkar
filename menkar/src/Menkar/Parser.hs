@@ -231,7 +231,7 @@ atom :: CanParse m => m Raw.Atom
 atom = (Raw.AtomQName <$> qIdentifier)
   <|> (Raw.AtomParens <$> parens expr)
   <|> (Raw.AtomDot <$ dot)
-  <|> (Raw.AtomTelescope <$> telescopeSome)
+  <|> (Raw.AtomSegment <$> segment)
   <|> (Raw.AtomNatLiteral <$> natLiteral)
 
 expr :: CanParse m => m Raw.Expr

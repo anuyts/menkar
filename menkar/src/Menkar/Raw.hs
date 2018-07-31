@@ -25,13 +25,13 @@ data Atom =
   AtomQName QName |
   AtomParens Expr |
   AtomDot |
-  AtomTelescope Telescope |
+  AtomSegment Segment |
   AtomNatLiteral Nat
 instance Pretty Atom where
   pretty (AtomQName qname) = pretty qname
   pretty (AtomParens expr) = parens $ pretty expr
   pretty AtomDot = dot
-  pretty (AtomTelescope telescope) = pretty telescope
+  pretty (AtomSegment segment) = pretty segment
   pretty (AtomNatLiteral n) = text $ show n
 instance Show Atom where
   show atom = "(quickParse atom " ++ (showshowdoc $ pretty atom) ++ ")"
