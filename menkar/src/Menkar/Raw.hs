@@ -1,10 +1,25 @@
 module Menkar.Raw where
 
 import Data.Number.Nat
+import Text.PrettyPrint.Leijen
+import Data.String.Utils (replace)
 
 --data Module = Module [Entry] deriving (Show)
 
-data QName = QName [String] deriving (Show)
+showshowdoc :: Doc -> String
+showshowdoc doc = replace "\\n" "\t\t\\n\\\n\\" $ show $ displayS (renderPretty 1.0 100 doc) ""
+
+data QName = QName [String]
+{-
+renderQName :: [String] -> ShowS
+renderQName [] tail = "<EMPTY QNAME>" ++ tail
+renderQName [name] tail = name ++ tail
+renderQName (name : names) tail = name ++ ('.' : (renderQName names tail))
+-}
+instance Pretty QName where
+  pretty (QName names) = encloseSep empty empty dot (map text names)
+instance Show QName where
+  show qname = "(quickParse qIdentifier " ++ (showshowdoc $ pretty qname) ++ ")"
 
 data Atom =
   AtomQName QName |
@@ -12,9 +27,20 @@ data Atom =
   AtomDot |
   AtomTelescope Telescope |
   AtomNatLiteral Nat
-  deriving (Show)
+instance Pretty Atom where
+  pretty (AtomQName qname) = pretty qname
+  pretty (AtomParens expr) = parens $ pretty expr
+  pretty AtomDot = dot
+  pretty (AtomTelescope telescope) = pretty telescope
+  pretty (AtomNatLiteral n) = text $ show n
+instance Show Atom where
+  show atom = "(quickParse atom " ++ (showshowdoc $ pretty atom) ++ ")"
 
-data Expr = Expr [Atom] deriving (Show)
+data Expr = Expr [Atom]
+instance Pretty Expr where
+  pretty (Expr atoms) = encloseSep empty empty space (map pretty atoms)
+instance Show Expr where
+  show expr = "(quickParse expr " ++ (showshowdoc $ pretty expr) ++ ")"
 
 -----------------------------------------------------------
 
@@ -24,32 +50,116 @@ data Annotation = Annotation QName (Maybe Expr)
   --AnnotationAtomic String |
   --{-| An annotation written in Haskell. The string the Haskell code, without brackets. -}
   --AnnotationHaskell String
-  deriving (Show)
+instance Pretty Annotation where
+  pretty (Annotation qname Nothing) = pretty qname
+  pretty (Annotation qname (Just expr)) = parens $ pretty qname <> space <> pretty expr
+instance Show Annotation where
+  show annot = "(quickParse annotation " ++ (showshowdoc $ pretty annot) ++ ")"
+
+prettyAnnotationBrackets :: Annotation -> Doc
+prettyAnnotationBrackets (Annotation qname Nothing) = brackets $ pretty qname
+prettyAnnotationBrackets (Annotation qname (Just expr)) = brackets $ pretty qname <> space <> pretty expr
+
+prettyAnnotationClause :: [Annotation] -> Doc
+prettyAnnotationClause annots = (encloseSep empty (text " |") space (map pretty annots))
 
 data Segment = Segment LHS -- | SegmentConstraint LHS
-  deriving (Show)
+instance Pretty Segment where
+  pretty (Segment lhs) = braces $ case (namesLHS lhs, typeLHS lhs) of
+    (NoNameForConstraint, Just expr) ->
+      prettyAnnotationClause (annotationsLHS lhs)
+      </> pretty (contextLHS lhs)
+      </> text "-:"
+      </> pretty expr
+    (SomeNamesForTelescope names, Just expr) ->
+      prettyAnnotationClause (annotationsLHS lhs)
+      </> encloseSep empty empty space (map text names)
+      </> pretty (contextLHS lhs)
+      </> text ":"
+      </> pretty expr
+    (SomeNamesForTelescope names, Nothing) ->
+      prettyAnnotationClause (annotationsLHS lhs)
+      </> encloseSep empty empty space (map text names)
+      </> pretty (contextLHS lhs)
+    _ -> text "<ERRONEOUS SEGMENT>:" </> (parens $ pretty lhs)
+instance Show Segment where
+  show segment = "(quickParse segment " ++ (showshowdoc $ pretty segment) ++ ")"
+
 {-| A bunch of assumptions in accolads. Essentially a dependent telescope. -}
-data Telescope = Telescope [Segment] deriving (Show)
+data Telescope = Telescope [Segment]
+instance Pretty Telescope where
+  pretty (Telescope segments) = encloseSep empty empty softline (map pretty segments)
+instance Show Telescope where
+  show telescope = "(quickParse telescope \n" ++ (showshowdoc $ pretty telescope) ++ ")"
 
 data LHSNames =
   SomeNamesForTelescope [String]
   | QNameForEntry QName
   | NoNameForConstraint
   deriving (Show)
+instance Pretty LHSNames where
+  pretty (SomeNamesForTelescope names) = encloseSep empty empty space (map text names)
+  pretty (QNameForEntry qname) = pretty qname
+  pretty (NoNameForConstraint) = text $ "<NoNameForConstraint>"
+  
+data EntryHeader = HeaderModule | HeaderVal | HeaderData | HeaderCodata | HeaderResolution deriving Show
+headerKeyword :: EntryHeader -> String
+headerKeyword HeaderModule = "module"
+headerKeyword HeaderVal = "val"
+headerKeyword HeaderData = "data"
+headerKeyword HeaderCodata = "codata"
+headerKeyword HeaderResolution = "resolution"
+instance Pretty EntryHeader where
+  pretty header = text $ headerKeyword header
+
 {-| The left hand side of a genuine entry, or the content of a cell of a telescope.
     For entries, there is typically one name. -}
 data LHS = LHS {
   annotationsLHS :: [Annotation],
   namesLHS :: LHSNames,
   contextLHS :: Telescope,
-  typeLHS :: Maybe Expr} deriving (Show)
+  typeLHS :: Maybe Expr}
+instance Pretty LHS where
+  pretty lhs =
+    encloseSep empty empty space (map prettyAnnotationBrackets $ annotationsLHS lhs) </>
+    pretty (namesLHS lhs) <> (
+      line <>
+      pretty (contextLHS lhs) <> case typeLHS lhs of
+          Nothing -> empty
+          Just expr -> empty </> char ':' </> pretty expr
+    )
+instance Show LHS where
+  show lhs = "(quickParse lhs \n" ++ (showshowdoc $ pretty lhs) ++ ")"
 
 data RHS =
   RHSModule [Entry]
   | RHSVal Expr
   | RHSResolution
-  deriving (Show)
-data LREntry = LREntry LHS RHS deriving (Show)
+instance Pretty RHS where
+  pretty (RHSModule entries) = text "where"
+                               <> space
+                               <> encloseSep (lbrace <> line) (line <> rbrace) line (map pretty entries)
+  pretty (RHSVal expr) = char '=' </> pretty expr
+  pretty (RHSResolution) = empty
+instance Show RHS where
+  show rhs@(RHSModule _) = "(quickparse (rhs Raw.HeaderModule) \n" ++ (showshowdoc $ pretty rhs) ++ ")"
+  show rhs@(RHSVal _) = "(quickparse (rhs Raw.HeaderVal) \n" ++ (showshowdoc $ pretty rhs) ++ ")"
+  show rhs@(RHSResolution) = "(quickparse (rhs Raw.HeaderResolution) \n" ++ (showshowdoc $ pretty rhs) ++ ")"
 
-data Entry = EntryLR LREntry deriving (Show)
-data File = File LREntry deriving (Show)
+data LREntry = LREntry EntryHeader LHS RHS
+instance Pretty LREntry where
+  pretty (LREntry header lhs rhs) = pretty header </> pretty lhs <> line <> pretty rhs
+instance Show LREntry where
+  show entry = "(quickParse lrEntry \n" ++ (showshowdoc $ pretty entry) ++ ")"
+
+data Entry = EntryLR LREntry
+instance Pretty Entry where
+  pretty (EntryLR lrEntry) = pretty lrEntry
+instance Show Entry where
+  show entry = "(quickParse entry \n" ++ (showshowdoc $ pretty entry) ++ ")"
+  
+data File = File LREntry
+instance Pretty File where
+  pretty (File lrEntry) = pretty lrEntry
+instance Show File where
+  show file = "(quickParse file \n" ++ (showshowdoc $ pretty file) ++ ")"

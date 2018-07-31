@@ -40,7 +40,7 @@ where {
 		: Uni d (max lA lB)
 		= f after mkA == mkB after F' f,
 
-	val Mu {irr | l : Nat} : Uni d (suc l) = {@par X : Set d l} {mkX : IsAlg X} -> X,
+	val Mu {irr | l : Nat} : Uni d (suc l) = {par X : Set d l} {mkX : IsAlg X} -> X,
 
 	val [str] fold {~ irr | l : Nat}
 		{par | X : Uni d l}
@@ -74,6 +74,6 @@ val [syntax (x == y)] _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' 
 
 val [Depth 0][resolves eq (Bool -> X)] eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X}
 	: Eq (Bool -> X)
-	= \f \g (f true == g true) && (f false == g false)
+	= f . g . (f true == g true) && (f false == g false)
 
 }

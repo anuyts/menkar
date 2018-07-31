@@ -25,6 +25,11 @@ testparse filename = do
   code <- readFile path
   return $ MP.parse file path code
 
+quickParse :: MP.Parsec ParseError String a -> String -> a
+quickParse parser code = case MP.parse parser "quick" code of
+  Left e -> error $ show e
+  Right a -> a
+
 -- ParseError ----------------------------------------------
 
 data ParseError
@@ -286,7 +291,7 @@ argument = MP.try $ accols $ do
       --names <- segmentNamesAndColon <|> segmentConstraintColon
       names <- Raw.SomeNamesForTelescope <$> some unqIdentifier
       context <- telescopeMany
-      maybeType <- keyword ":" *> optional expr
+      maybeType <- optional $ keyword ":" *> expr
       return $ Raw.LHS {
         Raw.annotationsLHS = annots,
         Raw.namesLHS = names,
@@ -329,28 +334,27 @@ moduleRHS = MP.label "module RHS" $
 valRHS :: CanParse m => m Raw.RHS
 valRHS = Raw.RHSVal <$> (keyword "=" *> expr) 
 
-rhs :: CanParse m => EntryHeader -> m Raw.RHS
-rhs HeaderModule = moduleRHS
-rhs HeaderVal = valRHS
-rhs HeaderData = fail "Not supported yet: data"
-rhs HeaderCodata = fail "Not supported yet : codata"
-rhs HeaderResolution = return Raw.RHSResolution
+rhs :: CanParse m => Raw.EntryHeader -> m Raw.RHS
+rhs Raw.HeaderModule = moduleRHS
+rhs Raw.HeaderVal = valRHS
+rhs Raw.HeaderData = fail "Not supported yet: data"
+rhs Raw.HeaderCodata = fail "Not supported yet : codata"
+rhs Raw.HeaderResolution = return Raw.RHSResolution
 
-data EntryHeader = HeaderModule | HeaderVal | HeaderData | HeaderCodata | HeaderResolution
-entryHeader :: CanParse m => m EntryHeader
+entryHeader :: CanParse m => m Raw.EntryHeader
 entryHeader =
-  (HeaderModule <$ keyword "module")
-  <|> (HeaderVal <$ keyword "val")
-  <|> (HeaderData <$ keyword "data")
-  <|> (HeaderCodata <$ keyword "codata")
-  <|> (HeaderResolution <$ keyword "resolution")
+  (Raw.HeaderModule <$ keyword "module")
+  <|> (Raw.HeaderVal <$ keyword "val")
+  <|> (Raw.HeaderData <$ keyword "data")
+  <|> (Raw.HeaderCodata <$ keyword "codata")
+  <|> (Raw.HeaderResolution <$ keyword "resolution")
 
 lrEntry :: CanParse m => m Raw.LREntry
 lrEntry = MP.label "entry" $ do
   header <- entryHeader
   anLHS <- lhs
   anRHS <- rhs header
-  return $ Raw.LREntry anLHS anRHS
+  return $ Raw.LREntry header anLHS anRHS
 
 {-
 modul :: CanParse m => m Raw.Module
