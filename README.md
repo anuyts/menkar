@@ -15,4 +15,11 @@ A resolution is essentially a user-defined open ad-hoc function of type `(X : Un
 * pseudopolymorphism for modes and modalities (pseudoparameters must be instantiated before type checking),
 * subtyping (very long term - even for universes we can use a lift function).
 
-It is named after the star Alpha Ceti, which is nicknamed Menkar.
+It is named after the star Alpha Ceti.
+
+## Loading/building
+Here are some packages currently in use:
+
+* `categories` - Note: you need to add `PolyKinds` to Control.Categorical.Functor.
+* `megaparsec`
+* `nat`
