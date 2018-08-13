@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, StandaloneDeriving, RankNTypes, PolyKinds, DeriveFunctor #-}
 {-# LANGUAGE MultiParamTypeClasses, UndecidableInstances, PartialTypeSignatures #-}
 
-module Menkar.SyntaxAlgebra where
+module Menkar.Syntax.Algebra where
 
 import Data.Functor.Compose
 import qualified Control.Category as C
