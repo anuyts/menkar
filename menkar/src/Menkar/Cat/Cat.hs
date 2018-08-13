@@ -1,9 +1,11 @@
 {-# LANGUAGE TypeFamilies, PolyKinds, ConstraintKinds, KindSignatures, FlexibleInstances, RankNTypes,
-MultiParamTypeClasses, GADTs, FunctionalDependencies #-}
+MultiParamTypeClasses, GADTs, FunctionalDependencies, PartialTypeSignatures, TypeApplications #-}
 
 module Menkar.Cat.Cat where
 
 import GHC.Exts (Constraint)
+
+-- THIS REALLY DOESN'T WORK
 
 --------------------------
 
@@ -20,7 +22,8 @@ class Cat (obj :: k -> Constraint) (hom :: k -> k -> *) | hom -> obj, obj -> hom
   (%) :: (obj x, obj y, obj z) => hom y z -> hom x y -> hom x z
 infixr 9 %
 
-class (Cat objA homA, Cat objB homB) => HFunctor objA homA objB homB f | f -> objA, f -> homA, f -> objB, f -> homB where
+class (Cat objA homA, Cat objB homB) => HFunctor objA homA objB homB f |
+  f -> objA, f -> homA, f -> objB, f -> homB, objA -> homA, homA -> objA, objB -> homB, homB -> objB where
   fobj :: Witness (objA x) -> Witness (objB (f x))
   fhom :: (objA x, objA y) => homA x y -> homB (f x) (f y)
 
@@ -44,7 +47,8 @@ newtype NT (objA :: ka -> Constraint) (homA :: ka -> ka -> *)
   = NT {runNT :: (forall a .(Cat objA homA, Cat objB homB, objA a) => homB (f a) (g a))}
 
 instance (Cat objA homA, Cat objB homB) => Cat (HFunctor objA homA objB homB) (NT objA homA objB homB) where
-  idhom = NT (trust (fobj (Witness :: Witness (objA _))) idhom)
+  idhom = NT (trust _ idhom)
+  --idhom = NT (trust (fobj (Witness :: Witness (objA _)) :: Witness (objB _)) idhom)
   NT nu % NT mu = _ --NT (trust _ $ nu % mu)
 
 {-
