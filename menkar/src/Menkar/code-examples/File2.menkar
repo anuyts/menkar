@@ -70,7 +70,8 @@ resolution [str] eq {~ irr | l : Nat} {par | X : Uni 0 l} : Eq X
 // eq {~ irr | l : Nat} {par | X : Uni 0 l} {(~ eq) | eq' : Eq X} : Eq X
 // i.e. eq X is the instance for X.
 
-val [syntax (x == y)] _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
+syntax [infix 0] x == y = _== x y
+val _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
 
 val [Depth 0][resolves eq (Bool -> X)] eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X}
 	: Eq (Bool -> X)
