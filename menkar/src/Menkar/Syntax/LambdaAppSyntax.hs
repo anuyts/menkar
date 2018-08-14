@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, StandaloneDeriving, RankNTypes, PolyKinds, DeriveFunctor #-}
-{-# LANGUAGE MultiParamTypeClasses, UndecidableInstances, PartialTypeSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses, UndecidableInstances, PartialTypeSignatures, DeriveGeneric #-}
 
 module Menkar.Syntax.LambdaAppSyntax where
 
@@ -8,6 +8,8 @@ import Data.Maybe
 import Data.Functor.Compose
 import qualified Control.Category as C
 import qualified Control.Categorical.Functor as C
+
+import GHC.Generics
 
 data LambdaAppSyntax x v = App (x v) (x v) | Lam (x (Maybe v))
 
@@ -21,3 +23,5 @@ deriving instance Functor x => Functor (LambdaAppSyntax x)
 instance Syntax LambdaAppSyntax where
   absorb (App x1 x2) = App (Compose x1) (Compose x2)
   absorb (Lam x') = Lam $ Compose $ fmap sequenceA x'
+
+deriving instance Generic1 (Term LambdaAppSyntax)
