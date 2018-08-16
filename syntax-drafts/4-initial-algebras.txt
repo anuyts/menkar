@@ -1,0 +1,145 @@
+/*	New:
+	*syntax is divided into classes:
+		*application
+		*operator-application (first ordinary argument is applied on the left)
+		*telescope
+			?? first class: {annots telescope | gamma : Gamma}
+			face: {annots | -: P}
+			object: {annots | x : A} or {annots | x : _} or {annots | A}
+			relevant operators: ->, ><, Record, >
+		*abstraction
+	*function arguments
+		*may have a name
+		*know whether they are implicit or what resolution they use
+		>these properties are ignored when conversion-checking
+	*operators start with an operator character
+		*an operator at the beginning of an expression, is viewed as being applied to the empty telescope
+	*to apply a function to a (potentially hidden) argument:
+		* `f .{argname = arg}` or `f .{arg}`
+	*to move from application mode to abstraction mode (i.e. to prevent inference of variables):
+		*automatic if there are no more hidden arguments
+		* `f ~` (not for operators)
+	*to move from abstraction mode to application mode (i.e. to trigger inference of variables):
+		*this is fairly useless
+		* `id f`
+	*mapsto is denoted >, mapsfrom is denoted <, face-lambdas are denoted `P ?`
+	*function composition is denoted .
+	*. turns expressions into operators.
+		*since numbers are not operators, we can use them as projections:
+		.1 = .fst, .2 = .snd .fst, .3 = .snd .snd .fst, etc
+		..1 = .id, ..2 = .snd, ..3 = .snd .snd, etc
+		*records are nested
+		*in a two-field record (i.e. sigma-type), both fields may have a name
+	*_ turns operators into expressions
+		qualified operator: .Data.Nat._+ rather than Data.Nat.+
+*/
+
+module [depth dsuc d] InitialOfFunctor
+	{pseudo | d : Depth}
+	{F {~ irr | l : Nat} : Uni d l -> Uni d l}
+	{str |
+		F'
+		{~ irr | lA lB : Nat}
+		{~ par | A : Uni d lA}
+		{~ par | B : Uni d lB}
+		{f : A -> B}
+		: F l A -> F l B
+	}
+	{str | /*preferrably use extension types instead of rewrite rules*/
+		-:
+		{irr | lA : Nat}
+		{par | A : Uni d lA}
+		-> F' ({a : A} > a) := ({fa : F A} > fa)
+	}
+	{str |
+		-:
+		{irr | lA lB lC : Nat}
+		{par | A : Uni d lA}
+		{par | B : Uni d lB}
+		{par | C : Uni d lC}
+		{f : A -> B}
+		{g : B -> C}
+		{fa : F A}
+		-> F' g (F' f fa) := F' (a > g (f a)) fa
+	}
+where {
+
+	val IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A
+
+	val IsMph {~ irr | lA lB : Nat}
+		{~| A : Uni d lA}
+		{~| B : Uni d lB}
+		{str | mkA : IsAlg A}
+		{str | mkB : IsAlg B}
+		{str | f : A -> B}
+		: Uni d (max lA lB)
+		= f . mkA == mkB . F' f
+
+	val Mu {irr | l : Nat} : Uni d (suc l) = {@par X : Set [d] l} {mkX : IsAlg X} -> X
+
+	val [str] fold {~ irr | l : Nat}
+		{par | X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu l -> X
+		= m > m X mkX
+
+	val [str] mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm X mkX mkX > (F' (fold mkX) fm)
+
+	val [str] mfold {~ irr | l : Nat} {par | X : Uni [d] l}
+	: IsMph mkMu mkX (fold mkX)
+	= refl
+
+	val Mu' {irr | l : Nat} : Uni d (suc l) = data {
+		mkMu' : F Mu' -> Mu'
+	}
+
+	val [str] fold' {~ irr | l : Nat}
+		{par | X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu' l -> X
+		//pattern matching lambda! (separate cases with pipe)
+		= case (mkMu' (fm > fx) > mkX fx)
+/*		= m > m .case {
+			/*Of course this is nonsense: F is not recognized as covariant*/
+			mkMu' (fm > fx) > mkX fx
+		} */
+
+	val [str] mfold' {~ irr | l : Nat} {par | X : Uni d l}
+	: IsMph mkMu' mkX (fold' mkX)
+	= refl
+}
+
+//-----------------------------------------
+
+val _ {~ pseudo | d : Depth} {~ irr | l : Nat} {~ par | X : Uni d l} {~| x : X} : X = x
+
+//maybe pseudos cannot be implicit except for primitives
+
+//-----------------------------------------
+
+val [depth 1] Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool
+
+resolution [str] eq {~ irr | l : Nat} {par | X : Uni 0 l} : Eq X
+
+// eq {~ irr | l : Nat} {par | X : Uni 0 l} {(~ eq) | eq' : Eq X} : Eq X
+// i.e. eq X is the instance for X.
+
+val [syntax x == y]
+_== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
+
+val [depth 0] [resolves eq (Bool -> X)]
+eqBool-> {~ irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Bool -> X)
+	= f g > (f true == g true) && (f false == g false)
+
+//-----------------------------------------
+
+//this doesn't even require special syntax!
+IX A (P ? T , f)
+FX A (P ? T , f)
+
+//-----------------------------------------
+
+val Stream {irr | l : Nat} {A : Uni d l} : Uni d l
+	= {par | X : Uni d l} >< (X -> A) >< (X -> X) >< X
+val [str] count {n : Nat} : Uni 0 0
+	= (Nat , x > x , suc , n)
