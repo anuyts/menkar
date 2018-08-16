@@ -63,15 +63,15 @@ instance C.Functor Term (NT (NT (->))) (NT (->)) where
     Op ftv -> Op $ runNT nu $ _
 -}
   
-flattenTerm :: Syntax f => Term f (Term f v) -> Term f v
-flattenTerm (Var tv) = tv
-flattenTerm (Op ftv) = Op $ runNT (C.fmap $ NT $ \ (Compose ttv) -> flattenTerm ttv) $ absorb ftv
+joinTerm :: Syntax f => Term f (Term f v) -> Term f v
+joinTerm (Var tv) = tv
+joinTerm (Op ftv) = Op $ runNT (C.fmap $ NT $ \ (Compose ttv) -> joinTerm ttv) $ absorb ftv
 
 instance Syntax f => Applicative (Term f) where
   pure = Var
-  f <*> a = flattenTerm $ fmap (<$> a) f
+  f <*> a = joinTerm $ fmap (<$> a) f
 
 instance Syntax f => Monad (Term f) where
-  a >>= f = flattenTerm $ fmap f a
+  a >>= f = joinTerm $ fmap f a
 
 ------------------------
