@@ -3,6 +3,7 @@ Normalization
 
 Before proceeding, context, expression and type are weak-head-normalized.
 For expressions, this process yields 3 results:
+
 * the normalized expression
 * information about what sort of substitution could make the current term reducible again:
    * constructions
