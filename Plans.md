@@ -12,9 +12,11 @@ This process yields 2 results:
 
 Note that we have multi-eliminations, e.g. `unglue (P ? f) g` reduces if `P` becomes true and if `g` becomes a `glue` term. Hence, we can at the same time be blocked on metavariable `P` and neutral due to `g`.
 
-BETTER: Weld, implication, assertion and their constructors/eliminators do not reduce at Top. Rather, they are kept as **decorations** which are ignored by definitional relations. So we can only be blocked on one variable/neutral at the same time.
+BETTER: Weld, implication, assertion and their constructors/eliminators do not reduce at Top. Rather, they are kept as **decorations** which are ignored by definitional relations. So we can only be blocked on one variable/neutral at the same time. So when normalizing, you can choose whether you want to keep or remove such decorations.
 
-~~Classification~~
+NOTE: The only face predicate i-related to Top (`i < Top`) is Top. So we never need to relate non-reduced and reduced types. (This is only true if Box Top does not reduce. We can be equally expressive by having an equality predicate for every i-interval instead of just for I.)
+
+Classification
 --------------
 We could use a two-dimensional classification of terms.
 
@@ -36,11 +38,18 @@ reducible = elimination of construction | elimination of reducible
 expression = whbf | reducible
 ```
 
-### Restrictional classification
+### ~~Restrictional classification~~
 Actually, this is not so useful.
 
 Type-checking
 =============
+
+Types of metas
+--------------
+* implicits
+   * goals: do not inhabit, so that the user can see the constraints.
+* instances
+* elaborations (don't solve them, just wait)
 
 Declarations
 ------------
@@ -52,10 +61,63 @@ Judgements
 ----------
 * If there are 0 ways to derive the judgement, we issue an error but (if this is the only thread) might want to continue type-checking those judgements that do not presuppose one that has now failed.
 * If there is 1 way to derive the judgement, we add the premises as constraints and remove the current judgement from the constraints.
-* If there are multiple ways (notably, for instance resolution), we postpone as until everything else is blocked or solved, then fork. Every branch in which type-checking succeeds, should ultimately yield the same (definitionally equal) solutions for all original metavariables.
+* If there are multiple distinct ways (notably, for instance resolution), we postpone as until everything else is blocked or solved, then fork. Every branch in which type-checking succeeds, should ultimately yield the same (definitionally equal) solutions for all original metavariables.
 * Sometimes (notably for smart elimination) there are multiple possible derivations, but we can pick one by pattern matching on a whnf. The variable/neutral case is included in the pattern match.
+
+At the end of a thread
+----------------------
+Try to inhabit unsolved implicits that are not goals. HOW!?
+
+Aftermath
+---------
+* If no threads succeeded, report the errors of all failed threads.
+* If one or more threads succeeded, all with equal resolution of the original metas, just report the solutions of the goals.
+* If 
 
 Discreteness: internal or external?
 -----------------------------------
 * Δ UniHS is certainly discrete, so it makes sense to use 0-relatedness for conversion checking.
 * In directed type theory, this is a different story, as we want to use arrows for coercion checking, and an arrow in Δ UniHS is just a mapsto in UniHS, which is only good enough for conversion if we know our type is functorial. In that case, it seems safe to conclude that if `a :~>: b`, then `F a :~>: F b`, since the morphism `φ` from `F a` to `F b` is such that for every `fa : F a` there is a definitional mapsto from `fa` to `φ fa`. So I guess every time you put something behind the `:`, the type checker will look for an instance of functoriality :-)
+
+Relatedness checking
+--------------------
+* If checking Top-relatedness: succeed.
+* Weak head normalize everything (no decorations).
+* If the type has eta, eta expand and recurse.
+* If the type is blocked, and both hands are whnf, try to match; at success recurse.
+* If both hands are whnf, either fail or match and recurse.
+* If one hand is a pure implicit:
+   * If you're checking 0-relatedness: solve the meta.
+   * If the other hand is a variable: block.
+   * If the other hand is a construction: head-solve the meta. Recurse.
+* We know that one hand is blocked. Block.
+
+Metavariable introduction
+-------------------------
+* Add a term judgement with the new metavariable as the term
+
+Term judgement
+--------------
+* Weak head normalize everything (no decorations)
+* If the term is a pure implicit and the type has eta, eta-solve the implicit and recurse.
+* If the term is a pure implicit, block.
+* Do whatever is appropriate given the term's head.
+
+Smart term judgement
+--------------------
+* introduce an elaboration-meta
+* require that the smart term elaborates to the meta
+
+Smart elimination judgement
+---------------------------
+Operator expressions are straightforwardly converted to non-operator expressions during parsing.
+
+Gamma |- EliminandType @ smart eliminations ~> dumb eliminations
+
+* weak head normalize the type (keep decorations)
+* if there is no elimination, auto-eliminate as long as the type admits.
+* if there is a `.~`, require that it be the last and stop.
+* if the first elimination of the smart term matches the type, use it.
+* otherwise, auto-eliminate once. (This includes peeling off a decoration)
+
+Is this worth the effort!? NO

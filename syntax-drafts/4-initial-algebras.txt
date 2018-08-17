@@ -135,12 +135,18 @@ eqBool-> {~ irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Boo
 
 //-----------------------------------------
 
-//this doesn't even require special syntax!
+/*this doesn't even require special syntax!
 IX A (P ? T , f)
-FX A (P ? T , f)
+FX A (P ? T , f) = IX ({t : P -> T} >< Ext A ({p : P} > f (t p))) ({p : P} > (T , ta > ta .1 p))
 
 IX A $ case {i == 0 ? A , id | i == 1 ? B , f}
 FX B $ case {i == 0 ? A , f | i == 1 ? B , id}
+
+Assumption:
+FX Unit (P ? T , _) = IX (P -> T) (P ? T )
+Assertion:
+IX Empty (P ? T ? case {})
+*/
 
 //-----------------------------------------
 
