@@ -5,8 +5,8 @@
 		*telescope
 			?? first class: {annots telescope | gamma : Gamma}
 			face: {annots | -: P}
-			object: {annots | x : A} or {annots | x : _} or {annots | A}
-			relevant operators: ->, ><, Record, >
+			object: {annots | x : A} or {annots | _ : A} or {annots | x}
+			relevant operators: (forall) ->, (exists) ><, >
 		*abstraction
 	*function arguments
 		*may have a name
@@ -18,20 +18,23 @@
 		* `f .{argname = arg}` or `f .{arg}`
 	*to move from application mode to abstraction mode (i.e. to prevent inference of variables):
 		*automatic if there are no more hidden arguments
-		* `f ~` (not for operators)
+		* `f .~` (not for operators)
 	*to move from abstraction mode to application mode (i.e. to trigger inference of variables):
 		*this is fairly useless
 		* `id f`
 	*mapsto is denoted >, mapsfrom is denoted <, face-lambdas are denoted `P ?`
 	*function composition is denoted .
-	*. turns expressions into operators.
-		*since numbers are not operators, we can use them as projections:
+	*. for smart elimination
+		*projections:
 		.1 = .fst, .2 = .snd .fst, .3 = .snd .snd .fst, etc
 		..1 = .id, ..2 = .snd, ..3 = .snd .snd, etc
 		*records are nested
 		*in a two-field record (i.e. sigma-type), both fields may have a name
+	*` turns expressions into operators
 	*_ turns operators into expressions
-		qualified operator: .Data.Nat._+ rather than Data.Nat.+
+		qualified operator: `Data.Nat._+ rather than Data.Nat.+
+	*propositions are named and annotated 'face'
+		*proposition quantification over Top is remembered but ignored by equality checking
 */
 
 module [depth dsuc d] InitialOfFunctor
@@ -45,14 +48,14 @@ module [depth dsuc d] InitialOfFunctor
 		{f : A -> B}
 		: F l A -> F l B
 	}
-	{str | /*preferrably use extension types instead of rewrite rules*/
-		-:
+	{str rewrite | /*preferrably use extension types instead of rewrite rules*/
+		F'-id :
 		{irr | lA : Nat}
 		{par | A : Uni d lA}
 		-> F' ({a : A} > a) := ({fa : F A} > fa)
 	}
-	{str |
-		-:
+	{str rewrite |
+		F'-comp :
 		{irr | lA lB lC : Nat}
 		{par | A : Uni d lA}
 		{par | B : Uni d lB}
@@ -98,11 +101,10 @@ where {
 		{mkX : IsAlg X}
 		: Mu' l -> X
 		//pattern matching lambda! (separate cases with pipe)
-		= case (mkMu' (fm > fx) > mkX fx)
-/*		= m > m .case {
+		= case {
 			/*Of course this is nonsense: F is not recognized as covariant*/
 			mkMu' (fm > fx) > mkX fx
-		} */
+		}
 
 	val [str] mfold' {~ irr | l : Nat} {par | X : Uni d l}
 	: IsMph mkMu' mkX (fold' mkX)
@@ -136,6 +138,9 @@ eqBool-> {~ irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Boo
 //this doesn't even require special syntax!
 IX A (P ? T , f)
 FX A (P ? T , f)
+
+IX A $ case {i == 0 ? A , id | i == 1 ? B , f}
+FX B $ case {i == 0 ? A , f | i == 1 ? B , id}
 
 //-----------------------------------------
 
