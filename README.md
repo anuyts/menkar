@@ -3,16 +3,18 @@ Menkar is (will be) a dependently typed programming language supporting the foll
 
 * implicit arguments in the sense of Agda,
 * instance arguments - a feature analogous to Agda's [instance arguments](https://doi.org/10.1145/2034574.2034796) and Haskell's typeclasses.
-A resolution is essentially a user-defined open ad-hoc function of type `(X : Uni d l) -> X` which takes the role of Agda's and Haskell's instance resolution. Instance arguments are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved.
+A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved.
 * support for multimode modality systems with type/term differentiation,
-* support for context exponentiation (for working with [tiny](https://ncatlab.org/nlab/show/tiny+object) objects),
-* internal presheaf operators,
+* a 'global' modality for dependencies that respect no relational structure whatsoever
+* internal global mode and modality polymorphism,
+* internal shape-irrelevant universe polymorphism,
+* support for context exponentiation (for working with dependably [atomic](https://ncatlab.org/nlab/show/tiny+object) objects),
+* internal presheaf operators, to wit: **fresh weakening** (for non-cartesian base categories), amazing dependent right adjoints (which we prefer to call **transpension types**), and the **initial type extension** (also called Weld type).
+From these, one can implement the **final type extension** (Glue) and the **Ψ-type**.
 * the possibility to implement inductive and co-inductive types from scratch by unsafely resizing their Church encoding
 (which is about as unsafe as omitting the strict positivity check),
 * erasure of irrelevant subterms,
 * non-unique resolution of irrelevant metavariables,
-* internal shape-irrelevant universe polymorphism,
-* pseudopolymorphism for modes and modalities (pseudoparameters must be instantiated before type checking),
 * subtyping (very long term - even for universes we can use a lift function).
 
 It is named after the star Alpha Ceti.
@@ -20,6 +22,6 @@ It is named after the star Alpha Ceti.
 ## Loading/building
 Here are some packages currently in use:
 
-* `categories` - Note: you need to add `PolyKinds` to Control.Categorical.Functor.
+* `categories` - Note: you need to add `PolyKinds` to Control.Categorical.Functor. (Currently not in use...)
 * `megaparsec`
 * `nat`
