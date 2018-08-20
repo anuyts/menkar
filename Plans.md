@@ -36,7 +36,11 @@ NOT REALLY BETTER: Weld, implication, assertion and their constructors/eliminato
 
 NOTE: The only face predicate i-related to Top (`i < Top`) is Top. So we never need to relate non-reduced and reduced types. (This is only true if Box Top does not reduce. We can be equally expressive by having an equality predicate for every i-interval instead of just for I.)
 
-**Contexts** are not normalized. There is instead a proof-calculus with J-rule... This is the only approach that is decidable-consistent with neutral propositions.
+**Contexts** are not normalized. There is instead a proof-calculus with J-rule as well as an eliminator
+```
+{C {P : Prop}{p : P} : Uni}{c : C Top tt}{P : Prop}{p : P} -> C P p
+```
+This is the only approach that allows neutral propositions and still lets substitution preserve definitional equality.
 
 Classification
 --------------
