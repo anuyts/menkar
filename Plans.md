@@ -1,3 +1,23 @@
+Parsing
+=======
+```
+Code
+  |
+  |  parser
+  V
+Raw syntax: operators, eliminators, lambdas, telescopes; no variable or name binding
+  |
+  |  scoper
+  |
+  |--> [(eliminate, smartelim)]
+  V
+Fine syntax
+  |
+  |  type checker
+  V
+Fine syntax (well-typed)
+```
+
 Normalization
 =============
 
@@ -12,15 +32,14 @@ This process yields 2 results:
 
 Note that we have multi-eliminations, e.g. `unglue (P ? f) g` reduces if `P` becomes true and if `g` becomes a `glue` term. Hence, we can at the same time be blocked on metavariable `P` and neutral due to `g`.
 
-BETTER: Weld, implication, assertion and their constructors/eliminators do not reduce at Top. Rather, they are kept as **decorations** which are ignored by definitional relations. So we can only be blocked on one variable/neutral at the same time. So when normalizing, you can choose whether you want to keep or remove such decorations.
+NOT REALLY BETTER: Weld, implication, assertion and their constructors/eliminators do not reduce at Top. Rather, they are kept as **decorations** which are ignored by definitional relations. So we can only be blocked on one variable/neutral at the same time. So when normalizing, you can choose whether you want to keep or remove such decorations. (You still want to know whether something is neutral/blocked w.r.t. decoration-removing normalization)
 
 NOTE: The only face predicate i-related to Top (`i < Top`) is Top. So we never need to relate non-reduced and reduced types. (This is only true if Box Top does not reduce. We can be equally expressive by having an equality predicate for every i-interval instead of just for I.)
 
+**Contexts** are not normalized. There is instead a proof-calculus with J-rule... This is the only approach that is decidable-consistent with neutral propositions.
+
 Classification
 --------------
-We could use a two-dimensional classification of terms.
-
-### Eliminational classification
 ```
 construction =
 	| constructor of expressions
@@ -37,9 +56,6 @@ whbf = whnf | blocked
 reducible = elimination of construction | elimination of reducible
 expression = whbf | reducible
 ```
-
-### ~~Restrictional classification~~
-Actually, this is not so useful.
 
 Type-checking
 =============
@@ -121,3 +137,23 @@ Gamma |- EliminandType @ smart eliminations ~> dumb eliminations
 * otherwise, auto-eliminate once. (This includes peeling off a decoration)
 
 Is this worth the effort!? NO
+
+(Co)-inductive types
+====================
+`Weld (A i) (P i ? T i , f i)` is just an inductive type cofamily over `T i` (i.e. an extension of `T i`).
+```
+data Weld {A : Uni} {~ | P : Face} {scheme : P -> {T : Uni} >< (A -> T)} : Set @ ({p : P} > scheme p .T) where {
+	val T {p : P} : Uni = p > scheme p .T
+	val f {p : P} : A -> T p = scheme p ..2
+	constructor weld {a : A} : Weld A scheme @ (p > f p a)
+}
+```
+
+`Glue (A i) (P i ? T i , f i)` is just a co-inductive type cofamily over `T i`.
+```
+data Glue {A : Uni} {~ | P : Face} {scheme : P -> {T : Uni} >< (T -> A)} : Set @ ({p : P} > scheme p .T) where {
+	val T {p : P} : Uni = p > scheme p .T
+	val f {p : P} : T p -> A = scheme p ..2
+	field unglue {g : Glue A scheme} : A @ (p > f p g)
+}
+```
