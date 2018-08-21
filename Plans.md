@@ -41,6 +41,8 @@ NOTE: The only face predicate i-related to Top (`i < Top`) is Top. So we never n
 {C {P : Prop}{p : P} : Uni}{c : C Top tt}{P : Prop}{p : P} -> C P p
 ```
 This is the only approach that allows neutral propositions and still lets substitution preserve definitional equality.
+Note: systems need eliminable propositions, so as to be sure that you can check they are consistent on overlaps.
+Note: therefore, you need to save the context as an argument to a system!
 
 Classification
 --------------
