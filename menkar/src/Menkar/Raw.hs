@@ -37,16 +37,26 @@ data Eliminator =
   ElimArg ArgSpec Expr |
   ElimProj ProjSpec
   -- case; induction
-
-data Elimination = Elimination Expr [Eliminator] deriving Show
-
-data TeleThing = TeleLambda Expr | TelePi Expr | TeleSigma Expr
   deriving Show
 
-data Expr =
-  ExprSmartElim |
-  ExprTeleThing Telescope TeleThing
+data Expr3 =
+  ExprQName QName |
+  ExprParens Expr |
+  ExprNatLiteral Nat
   deriving Show
+
+data Elimination = Elimination Expr3 [Eliminator] deriving Show
+
+--data TeleThing = TeleLambda Expr | TelePi Expr | TeleSigma Expr
+--  deriving Show
+
+data Expr2 =
+  ExprElimination Elimination
+  deriving Show
+
+data Operand = OperandTelescope Telescope | OperandExpr Expr2 deriving Show
+
+data Expr = ExprOps Operand (Maybe (Elimination, Maybe Expr)) deriving Show
 instance Pretty Expr where
   pretty = undefined
 
@@ -104,13 +114,13 @@ instance Pretty Segment where
       </> pretty expr
     (SomeNamesForTelescope names, Just expr) ->
       prettyAnnotationClause (annotationsLHS lhs)
-      </> encloseSep empty empty space (map text names)
+      </> encloseSep empty empty space (undefined {-map text names-})
       </> pretty (contextLHS lhs)
       </> text ":"
       </> pretty expr
     (SomeNamesForTelescope names, Nothing) ->
       prettyAnnotationClause (annotationsLHS lhs)
-      </> encloseSep empty empty space (map text names)
+      </> encloseSep empty empty space (undefined {-map text names-})
       </> pretty (contextLHS lhs)
     _ -> text "<ERRONEOUS SEGMENT>:" </> (parens $ pretty lhs)
 instance Show Segment where
@@ -124,12 +134,12 @@ instance Show Telescope where
   show telescope = "(quickParse telescope \n" ++ (showshowdoc $ pretty telescope) ++ ")"
 
 data LHSNames =
-  SomeNamesForTelescope [String]
+  SomeNamesForTelescope [Name]
   | QNameForEntry QName
   | NoNameForConstraint
   deriving (Show)
 instance Pretty LHSNames where
-  pretty (SomeNamesForTelescope names) = encloseSep empty empty space (map text names)
+  pretty (SomeNamesForTelescope names) = encloseSep empty empty space (undefined {-map text names-})
   pretty (QNameForEntry qname) = pretty qname
   pretty (NoNameForConstraint) = text $ "<NoNameForConstraint>"
   

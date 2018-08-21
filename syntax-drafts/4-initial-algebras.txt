@@ -4,7 +4,7 @@
 		*operator-application (first ordinary argument is applied on the left)
 		*telescope
 			?? first class: {annots telescope | gamma : Gamma}
-			object: {annots | x : A} or {annots | _ : A} or {annots | x} or {x}
+			object: {annots | x : A} or {annots | _ : A} or {annots | x}
 			relevant operators: ->, ><, >
 			empty: {}
 		*abstraction
@@ -131,7 +131,7 @@ _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X
 
 val [depth 0] [resolves eq (Bool -> X)]
 eqBool-> {~ irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Bool -> X)
-	= f g > (f true == g true) && (f false == g false)
+	= f > g > (f true == g true) && (f false == g false)
 
 //-----------------------------------------
 

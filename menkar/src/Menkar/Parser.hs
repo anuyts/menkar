@@ -316,11 +316,11 @@ expr = Raw.Expr <$> some atom
 --haskellAnnotation = Raw.AnnotationHaskell <$> haskellCodeBracketed
 
 atomicAnnotation :: CanParse m => m Raw.Annotation
-atomicAnnotation = (\qname -> Raw.Annotation qname Nothing) <$> qIdentifier
+atomicAnnotation = (\qname -> Raw.Annotation qname Nothing) <$> qName
 
 compoundAnnotation :: CanParse m => m Raw.Annotation
 compoundAnnotation = parens $ do
-  qname <- qIdentifier
+  qname <- qName
   content <- expr
   return $ Raw.Annotation qname (Just content)
 
@@ -332,14 +332,14 @@ annotationClause = MP.label "annotation clause" $ MP.try $ many annotation <* pi
 
 entryAnnotation :: CanParse m => m Raw.Annotation
 entryAnnotation = brackets $ do
-  qname <- qIdentifier
+  qname <- qName
   content <- optional expr
   return $ Raw.Annotation qname content
 
 -- telescopes
 
 segmentNamesAndColon :: CanParse m => m Raw.LHSNames
-segmentNamesAndColon = Raw.SomeNamesForTelescope <$> some unqIdentifier <* keyword ":"
+segmentNamesAndColon = Raw.SomeNamesForTelescope <$> some unqName <* keyword ":"
 
 segmentConstraintColon :: CanParse m => m Raw.LHSNames
 segmentConstraintColon = Raw.NoNameForConstraint <$ keyword "-:"
@@ -360,7 +360,7 @@ argument :: CanParse m => m Raw.LHS
 argument = MP.try $ accols $ do
       annots <- fromMaybe [] <$> optional annotationClause
       --names <- segmentNamesAndColon <|> segmentConstraintColon
-      names <- Raw.SomeNamesForTelescope <$> some unqIdentifier
+      names <- Raw.SomeNamesForTelescope <$> some unqName
       context <- telescopeMany
       maybeType <- optional $ keyword ":" *> expr
       return $ Raw.LHS {
@@ -382,7 +382,7 @@ telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segmen
 lhs :: CanParse m => m Raw.LHS
 lhs = MP.label "LHS" $ do
   annots <- many entryAnnotation
-  name <- Raw.QNameForEntry <$> qIdentifier
+  name <- Raw.QNameForEntry <$> qName
   context <- telescopeMany
   maybeType <- optional $ do
     keyword ":"
