@@ -319,10 +319,8 @@ requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
 -- expression subparsers -----------------------------------
 
 expr3 :: CanParse m => m Raw.Expr3
-expr3 = _
-
-operand :: CanParse m => m Raw.Operand
-operand = _
+expr3 = MP.label "atomic expression" $
+  (Raw.ExprQName <$> qName) <|> (Raw.ExprParens <$> parens expr) <|> (Raw.ExprNatLiteral <$> natLiteralNonSticky)
 
 argNext :: CanParse m => m Raw.Eliminator
 argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
@@ -343,23 +341,38 @@ projectorTail :: CanParse m => m Raw.ProjSpec
 projectorTail = Raw.ProjSpecTail <$> (dotPrecise *> dotPrecise *> natLiteralNonSticky)
 
 eliminator :: CanParse m => m Raw.Eliminator
-eliminator = argNext <|> argVisible <|> argNamed <|>
+eliminator = MP.label "eliminator" $
+  argNext <|> argVisible <|> argNamed <|>
   (Raw.ElimProj <$> (projectorNamed <|> projectorNumbered <|> projectorTail))
 
 argEndNext :: CanParse m => m Raw.Eliminator
 argEndNext = Raw.ElimEnd Nothing <$ loneDots
-
+argEndNamed :: CanParse m => m Raw.Eliminator
+argEndNamed = (dotPrecise *>) $ accols $ do
+  aName <- nameNonOpNonSticky
+  keyword "="
+  loneDots
+  return $ Raw.ElimEnd $ Just $ Raw.ArgSpecNamed aName
 eliminatorEnd :: CanParse m => m Raw.Eliminator
-eliminatorEnd = _
+eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <|> argEndNamed
 
 eliminators :: CanParse m => m [Raw.Eliminator]
-eliminators = (++) <$> many eliminator <*> ((: []) <$> eliminatorEnd)
+eliminators = (++) <$> many eliminator <*> (fromMaybe [] <$> optional ((: []) <$> eliminatorEnd))
+
+elimination :: CanParse m => m Raw.Elimination
+elimination = Raw.Elimination <$> expr3 <*> eliminators
+
+expr2 :: CanParse m => m Raw.Expr2
+expr2 = MP.label "operator-free expression" $ Raw.ExprElimination <$> elimination
+
+operand :: CanParse m => m Raw.Operand
+operand = (Raw.OperandTelescope <$> telescopeSome) <|> (Raw.OperandExpr <$> expr2)
 
 operator :: CanParse m => m Raw.Elimination
-operator = Raw.Elimination <$> (Raw.ExprQName <$> qOp) <*> eliminators
+operator = MP.label "operator with eliminations" $ Raw.Elimination <$> (Raw.ExprQName <$> qOp) <*> eliminators
 
 expr :: CanParse m => m Raw.Expr
-expr = do
+expr = MP.label "expression" $ do
   anOperand <- operand
   rest <- optional $ do
     anOperator <- operator
