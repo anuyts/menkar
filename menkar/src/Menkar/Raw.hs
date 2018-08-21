@@ -9,7 +9,9 @@ import Data.String.Utils (replace)
 showshowdoc :: Doc -> String
 showshowdoc doc = replace "\\n" "\t\t\\n\\\n\\" $ show $ displayS (renderPretty 1.0 100 doc) ""
 
-data QName = QName [String]
+data Name = Name String | NameOp String deriving Show
+
+data QName = QName [String] Name deriving Show
 {-
 renderQName :: [String] -> ShowS
 renderQName [] tail = "<EMPTY QNAME>" ++ tail
@@ -17,9 +19,10 @@ renderQName [name] tail = name ++ tail
 renderQName (name : names) tail = name ++ ('.' : (renderQName names tail))
 -}
 instance Pretty QName where
-  pretty (QName names) = encloseSep empty empty dot (map text names)
-instance Show QName where
-  show qname = "(quickParse qIdentifier " ++ (showshowdoc $ pretty qname) ++ ")"
+  pretty = undefined
+  --pretty (QName names) = encloseSep empty empty dot (map text names)
+--instance Show QName where
+--  show qname = "(quickParse qIdentifier " ++ (showshowdoc $ pretty qname) ++ ")"
 
 data Atom =
   AtomQName QName |

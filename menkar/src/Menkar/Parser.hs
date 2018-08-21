@@ -50,12 +50,15 @@ data CharType =
   SpaceChar | LetterChar | DigitChar | LooseChar | MiscChar | OpenChar | CloseChar
   deriving (Show, Eq)
 
+looseChars :: [Char]
+looseChars = "|'`."
+
 describeCharType :: CharType -> String
 describeCharType ct = case ct of
   SpaceChar -> "whitespace character (unicode)"
   LetterChar -> "letter character (unicode)"
   DigitChar -> "digit"
-  LooseChar -> "one of '|' and '.'"
+  LooseChar -> "one of " ++ looseChars
   MiscChar -> "miscellaneous unicode character"
   OpenChar -> "opening delimiter (unicode)"
   CloseChar -> "closing delimiter (unicode)"
@@ -65,8 +68,7 @@ charType c
   | isSpace c = SpaceChar
   | isDigit c = DigitChar
   | isLetter c = LetterChar
-  | c == '.' = LooseChar
-  | c == '|' = LooseChar
+  | elem c looseChars = LooseChar
   | otherwise = case generalCategory c of
       OpenPunctuation -> OpenChar
       ClosePunctuation -> CloseChar
@@ -94,11 +96,12 @@ keywords :: [String]
 keywords = [ ":"     -- typing
            , "-:"    -- typing propositions
            , "="     -- assignment
-           --, "->"    -- function type
-           --, "><"    -- sigma type
+           , "->"    -- function type
+           , "><"    -- sigma type
            --, "Uni"   -- universe
            --, "?"     -- for Glue etc.
-           , ">>"    -- mapsto
+           , ">"    -- mapsto
+           , "<"    -- mapsfrom
            , "module"
            , "val"
            , "data"
@@ -107,33 +110,61 @@ keywords = [ ":"     -- typing
            , "open"
            , "resolution"
            , "where"
+           , "case"
+           , "cocase"
+           , "match"
+           , "comatch"
+           , "return"
+           , "field"
+           , "constructor"
+           , "do"
            ]
 
 -- basic subparsers ----------------------------------------
 
+lineComment :: CanParse m => m ()
+lineComment = MPL.skipLineComment "//"
+blockComment :: CanParse m => m ()
+blockComment = MPL.skipBlockCommentNested "/*" "*/"
+comment :: CanParse m => m ()
+comment = lineComment <|> blockComment
+someWhitespace :: CanParse m => m ()
+someWhitespace = MP.space1
+
 {-| Consumes zero or more whitespace characters, line or block comments -}
 manySpace :: CanParse m => m ()
-manySpace = MPL.space MP.space1 lineCmnt blockCmnt
-  where
-    lineCmnt  = MPL.skipLineComment "//"
-    blockCmnt = MPL.skipBlockCommentNested "/*" "*/"
+manySpace = MP.skipMany $ MP.choice [MP.hidden someWhitespace, MP.hidden comment]
+{-| Consumes one or more whitespace characters, line or block comments -}
+someSpace :: CanParse m => m ()
+someSpace = MP.label "whitespace" $ MP.skipSome $ MP.choice [MP.hidden someWhitespace, MP.hidden comment]
 
 {-| 'lexeme p' consumes 'p', then 'manySpace'. -}
 lexeme :: CanParse m => m a -> m a
 lexeme = MPL.lexeme manySpace
+{-| 'loneLexeme p' consumes 'p', then 'someSpace'. -}
+loneLexeme :: CanParse m => m a -> m a
+loneLexeme = MPL.lexeme someSpace
 
-{-| Cconsumes and returns the specified string.
+{-| Consumes and returns the specified string.
     DO NOT USE THIS FOR KEYWORDS, lest "ifbla" will be parsed as "if bla".
     Use for "|", ",". -}
 symbol :: CanParse m => String -> m String
-symbol = MPL.symbol manySpace
+symbol = lexeme . MP.string
 
 pipe :: CanParse m => m ()
 pipe = void $ symbol "|"
---comma :: CanParse m => m ()
---comma = void $ symbol ","
-dot :: CanParse m => m ()
-dot = void $ lexeme $ MP.char '.' <* MP.notFollowedBy nameStickyChar
+
+tickPrecise :: CanParse m => m ()
+tickPrecise = void $ MP.string "`"
+underscorePrecise :: CanParse m => m ()
+underscorePrecise = void $ MP.string "_"
+dotPrecise :: CanParse m => m ()
+dotPrecise = void $ MP.string "."
+
+loneUnderscore :: CanParse m => m ()
+loneUnderscore = loneLexeme underscorePrecise
+loneDot :: CanParse m => m ()
+loneDot = loneLexeme dotPrecise
 
 parens :: CanParse m => m a -> m a
 parens = MP.between (symbol "(") (symbol ")")
@@ -149,35 +180,68 @@ charByType ct = MP.label (describeCharType ct) $ MP.satisfy (\ c -> charType c =
 
 nameChar :: CanParse m => m Char
 nameChar = charByType LetterChar <|> charByType DigitChar <|> charByType MiscChar
+nameNonOpChar :: CanParse m => m Char
+nameNonOpChar = charByType LetterChar <|> charByType DigitChar
+opChar :: CanParse m => m Char
+opChar = charByType MiscChar
 
 nameStickyChar :: CanParse m => m Char
 nameStickyChar = nameChar <|> MP.char '.'
 
-natLiteral :: CanParse m => m Nat
-natLiteral = do
+natLiteralPrecise :: CanParse m => m Nat
+natLiteralPrecise = do
   --string <- some $ charByType DigitChar
-  string <- (lexeme . MP.try) ((some $ charByType DigitChar) <* MP.notFollowedBy nameChar)
+  string <- MP.label "natural number" $ MP.try ((some $ charByType DigitChar) <* MP.notFollowedBy nameChar)
   return $ (read string :: Nat)
+natLiteral :: CanParse m => m Nat
+natLiteral = lexeme $ natLiteralPrecise
 
 keyword :: CanParse m => String -> m ()
 keyword w = (lexeme . MP.try) (MP.string w *> MP.notFollowedBy nameStickyChar)
 
-identifierString :: CanParse m => m String
-identifierString = MP.label "identifier" $ MP.try $ do
-  string <- some nameChar
+--formerly called identifierString
+nameNonOpPrecise :: CanParse m => m String
+nameNonOpPrecise = MP.label "non-operator identifier" $ MP.try $ do
+  letter <- nameNonOpChar
+  letters <- many nameChar
+  let string = letter : letters
   if string `elem` keywords
     then fail $ "Keyword " ++ show string ++ " cannot be an identifier."
     else if (and $ map isDigit string)
       then fail $ "Number " ++ show string ++ " cannot be an identifier."
       else return string
 
-unqIdentifier :: CanParse m => m String
-unqIdentifier = MP.label "unqualified identifier" $
-  lexeme $ identifierString <* (MP.notFollowedBy nameStickyChar <|> fail msg)
+opPrecise :: CanParse m => m String
+opPrecise = MP.label "operator identifier" $ MP.try $ do
+  letter <- opChar
+  letters <- many nameChar
+  let string = letter : letters
+  if string `elem` keywords
+    then fail $ "Keyword " ++ show string ++ " cannot be an identifier."
+    else if (and $ map isDigit string)
+      then fail $ "Number " ++ show string ++ " cannot be an identifier."
+      else return string
+
+nameOpPrecise :: CanParse m => m String
+nameOpPrecise = underscorePrecise *> opPrecise
+
+namePrecise :: CanParse m => m Raw.Name
+namePrecise = (Raw.Name <$> nameNonOpPrecise) <|> (Raw.NameOp <$> nameOpPrecise)
+
+unqName :: CanParse m => m Raw.Name
+unqName = MP.label "unqualified identifier" $
+  lexeme $ namePrecise <* (MP.notFollowedBy nameStickyChar <|> fail msg)
   where
     msg = "You have either neglected to leave a space after this identifier, or you have used a" ++
       " qualified identifier where an unqualified one was expected."
 
+qName :: CanParse m => m Raw.QName
+qName = MP.label "qualified identifier" $ lexeme $ do
+  modules <- many $ (nameNonOpPrecise <* dotPrecise)
+  theQName <- unqName
+  return $ Raw.QName modules theQName
+
+{-
 qIdentifier :: CanParse m => m Raw.QName
 qIdentifier = MP.label "qualified identifier" $ lexeme $ do
   head <- identifierString
@@ -185,6 +249,7 @@ qIdentifier = MP.label "qualified identifier" $ lexeme $ do
     MP.char '.'
     identifierString <|> fail "Another identifier is expected after '.', with no space in between."
   return $ Raw.QName (head : tail)
+-}
 
 {-
 haskellCharLiteral :: CanParse m => m String
