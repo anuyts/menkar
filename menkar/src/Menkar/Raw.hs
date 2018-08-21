@@ -9,7 +9,9 @@ import Data.String.Utils (replace)
 showshowdoc :: Doc -> String
 showshowdoc doc = replace "\\n" "\t\t\\n\\\n\\" $ show $ displayS (renderPretty 1.0 100 doc) ""
 
-data Name = Name String | NameOp String deriving Show
+data Opness = NonOp | Op deriving Show
+
+data Name = Name Opness String deriving Show
 
 data QName = QName [String] Name deriving Show
 {-
@@ -24,6 +26,31 @@ instance Pretty QName where
 --instance Show QName where
 --  show qname = "(quickParse qIdentifier " ++ (showshowdoc $ pretty qname) ++ ")"
 
+data ArgSpec = ArgSpecNext | ArgSpecVisible | ArgSpecNamed String deriving Show
+
+--data Argument = Argument ArgSpec Expr
+
+data ProjSpec = ProjSpecNamed String | ProjSpecNumbered Nat | ProjSpecRight Nat deriving Show
+
+data Eliminator =
+  ElimEnd |
+  ElimArg ArgSpec Expr |
+  ElimProj ProjSpec
+  -- case; induction
+
+data Elimination = Elimination Expr [Eliminator] deriving Show
+
+data TeleThing = TeleLambda Expr | TelePi Expr | TeleSigma Expr
+  deriving Show
+
+data Expr =
+  ExprSmartElim |
+  ExprTeleThing Telescope TeleThing
+  deriving Show
+instance Pretty Expr where
+  pretty = undefined
+
+{-
 data Atom =
   AtomQName QName |
   AtomParens Expr |
@@ -44,6 +71,7 @@ instance Pretty Expr where
   pretty (Expr atoms) = encloseSep empty empty space (map pretty atoms)
 instance Show Expr where
   show expr = "(quickParse expr " ++ (showshowdoc $ pretty expr) ++ ")"
+-}
 
 -----------------------------------------------------------
 

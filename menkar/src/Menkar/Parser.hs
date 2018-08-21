@@ -94,7 +94,7 @@ isNameChar c = case charType c of
 
 keywords :: [String]
 keywords = [ ":"     -- typing
-           , "-:"    -- typing propositions
+           --, "-:"    -- typing propositions
            , "="     -- assignment
            , "->"    -- function type
            , "><"    -- sigma type
@@ -102,22 +102,23 @@ keywords = [ ":"     -- typing
            --, "?"     -- for Glue etc.
            , ">"    -- mapsto
            , "<"    -- mapsfrom
-           , "module"
-           , "val"
-           , "data"
-           , "codata"
-           , "import"
-           , "open"
-           , "resolution"
-           , "where"
+           , "annotation"
            , "case"
            , "cocase"
-           , "match"
+           , "codata"
            , "comatch"
-           , "return"
-           , "field"
            , "constructor"
+           , "data"
            , "do"
+           , "field"
+           , "import"
+           , "match"
+           , "module"
+           , "open"
+           , "resolution"
+           , "return"
+           , "val"
+           , "where"
            ]
 
 -- basic subparsers ----------------------------------------
@@ -226,7 +227,7 @@ nameOpPrecise :: CanParse m => m String
 nameOpPrecise = underscorePrecise *> opPrecise
 
 namePrecise :: CanParse m => m Raw.Name
-namePrecise = (Raw.Name <$> nameNonOpPrecise) <|> (Raw.NameOp <$> nameOpPrecise)
+namePrecise = (Raw.Name Raw.NonOp <$> nameNonOpPrecise) <|> (Raw.Name Raw.Op <$> nameOpPrecise)
 
 unqName :: CanParse m => m Raw.Name
 unqName = MP.label "unqualified identifier" $
@@ -292,6 +293,10 @@ requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
 
 -- expression subparsers -----------------------------------
 
+expr :: CanParse m => m Raw.Expr
+expr = _
+
+{-
 atom :: CanParse m => m Raw.Atom
 atom = (Raw.AtomQName <$> qIdentifier)
   <|> (Raw.AtomParens <$> parens expr)
@@ -301,6 +306,7 @@ atom = (Raw.AtomQName <$> qIdentifier)
 
 expr :: CanParse m => m Raw.Expr
 expr = Raw.Expr <$> some atom
+-}
 
 -- high-level subparsers -----------------------------------
 

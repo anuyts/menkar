@@ -7,6 +7,7 @@
 			face: {annots | -: P}
 			object: {annots | x : A} or {annots | _ : A} or {annots | x}
 			relevant operators: (forall) ->, (exists) ><, >
+			empty: {}
 		*abstraction
 	*function arguments
 		*may have a name
