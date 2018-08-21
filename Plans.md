@@ -91,8 +91,8 @@ Try to inhabit unsolved implicits that are not goals. HOW!?
 Aftermath
 ---------
 * If no threads succeeded, report the errors of all failed threads.
-* If one or more threads succeeded, all with equal resolution of the original metas, just report the solutions of the goals.
-* If 
+* If one or more threads succeeded, all with 0-related resolution of the original metas, just report the solutions of the goals.
+* If multiple threads succeeded and do not agree, report the choices of all successful threads.
 
 Discreteness: internal or external?
 -----------------------------------
