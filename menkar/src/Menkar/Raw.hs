@@ -30,10 +30,10 @@ data ArgSpec = ArgSpecNext | ArgSpecVisible | ArgSpecNamed String deriving Show
 
 --data Argument = Argument ArgSpec Expr
 
-data ProjSpec = ProjSpecNamed String | ProjSpecNumbered Nat | ProjSpecRight Nat deriving Show
+data ProjSpec = ProjSpecNamed String | ProjSpecNumbered Nat | ProjSpecTail Nat deriving Show
 
 data Eliminator =
-  ElimEnd |
+  ElimEnd (Maybe ArgSpec) |
   ElimArg ArgSpec Expr |
   ElimProj ProjSpec
   -- case; induction
@@ -53,12 +53,16 @@ data Elimination = Elimination Expr3 [Eliminator] deriving Show
 data Expr2 =
   ExprElimination Elimination
   deriving Show
+expr3to2 :: Expr3 -> Expr2
+expr3to2 e = ExprElimination $ Elimination e []
 
 data Operand = OperandTelescope Telescope | OperandExpr Expr2 deriving Show
 
 data Expr = ExprOps Operand (Maybe (Elimination, Maybe Expr)) deriving Show
 instance Pretty Expr where
   pretty = undefined
+expr2to1 :: Expr2 -> Expr
+expr2to1 e = ExprOps (OperandExpr e) Nothing
 
 {-
 data Atom =

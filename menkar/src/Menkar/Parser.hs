@@ -166,6 +166,8 @@ loneUnderscore :: CanParse m => m ()
 loneUnderscore = loneLexeme underscorePrecise
 loneDot :: CanParse m => m ()
 loneDot = loneLexeme dotPrecise
+loneDots :: CanParse m => m ()
+loneDots = loneLexeme . void $ MP.string "..."
 
 parens :: CanParse m => m a -> m a
 parens = MP.between (symbol "(") (symbol ")")
@@ -194,11 +196,15 @@ natLiteralPrecise = do
   --string <- some $ charByType DigitChar
   string <- MP.label "natural number" $ MP.try ((some $ charByType DigitChar) <* MP.notFollowedBy nameChar)
   return $ (read string :: Nat)
-natLiteral :: CanParse m => m Nat
-natLiteral = lexeme $ natLiteralPrecise
+natLiteralNonSticky :: CanParse m => m Nat
+natLiteralNonSticky = nonStickyLexeme $ natLiteralPrecise
+
+nonStickyLexeme :: CanParse m => m a -> m a
+nonStickyLexeme p = (lexeme . MP.try) (p <* MP.notFollowedBy nameStickyChar)
 
 keyword :: CanParse m => String -> m ()
-keyword w = (lexeme . MP.try) (MP.string w *> MP.notFollowedBy nameStickyChar)
+keyword w = nonStickyLexeme (void $ MP.string w)
+--keyword w = (lexeme . MP.try) (MP.string w *> MP.notFollowedBy nameStickyChar)
 
 --formerly called identifierString
 nameNonOpPrecise :: CanParse m => m String
@@ -212,6 +218,9 @@ nameNonOpPrecise = MP.label "non-operator identifier" $ MP.try $ do
       then fail $ "Number " ++ show string ++ " cannot be an identifier."
       else return string
 
+nameNonOpNonSticky :: CanParse m => m String
+nameNonOpNonSticky = nonStickyLexeme nameNonOpPrecise
+
 opPrecise :: CanParse m => m String
 opPrecise = MP.label "operator identifier" $ MP.try $ do
   letter <- opChar
@@ -221,7 +230,7 @@ opPrecise = MP.label "operator identifier" $ MP.try $ do
     then fail $ "Keyword " ++ show string ++ " cannot be an identifier."
     else if (and $ map isDigit string)
       then fail $ "Number " ++ show string ++ " cannot be an identifier."
-      else return string
+      else return $ string
 
 nameOpPrecise :: CanParse m => m String
 nameOpPrecise = underscorePrecise *> opPrecise
@@ -230,17 +239,33 @@ namePrecise :: CanParse m => m Raw.Name
 namePrecise = (Raw.Name Raw.NonOp <$> nameNonOpPrecise) <|> (Raw.Name Raw.Op <$> nameOpPrecise)
 
 unqName :: CanParse m => m Raw.Name
-unqName = MP.label "unqualified identifier" $
+unqName = MP.label "unqualified identifier" $ nonStickyLexeme namePrecise
+  {-
   lexeme $ namePrecise <* (MP.notFollowedBy nameStickyChar <|> fail msg)
   where
     msg = "You have either neglected to leave a space after this identifier, or you have used a" ++
       " qualified identifier where an unqualified one was expected."
+  -}
 
 qName :: CanParse m => m Raw.QName
 qName = MP.label "qualified identifier" $ lexeme $ do
   modules <- many $ (nameNonOpPrecise <* dotPrecise)
   theQName <- unqName
   return $ Raw.QName modules theQName
+
+tickedQName :: CanParse m => m Raw.QName
+tickedQName = tickPrecise *> qName
+
+unqOp :: CanParse m => m Raw.Name
+unqOp = MP.label "unqualified operator" $ nonStickyLexeme $ Raw.Name Raw.Op <$> opPrecise
+  {-
+  lexeme $ Raw.Name Raw.Op <$> opPrecise <* (MP.notFollowedBy nameStickyChar <|> fail msg)
+  where
+    msg = "You have neglected to leave a space after this operator."
+  -}
+
+qOp :: CanParse m => m Raw.QName
+qOp = MP.label "qualified operator" $ tickedQName <|> (Raw.QName [] <$> unqOp)
 
 {-
 qIdentifier :: CanParse m => m Raw.QName
@@ -293,8 +318,54 @@ requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
 
 -- expression subparsers -----------------------------------
 
+expr3 :: CanParse m => m Raw.Expr3
+expr3 = _
+
+operand :: CanParse m => m Raw.Operand
+operand = _
+
+argNext :: CanParse m => m Raw.Eliminator
+argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
+argVisible :: CanParse m => m Raw.Eliminator
+argVisible = Raw.ElimArg Raw.ArgSpecVisible . Raw.expr2to1 . Raw.expr3to2 <$> expr3
+argNamed :: CanParse m => m Raw.Eliminator
+argNamed = (dotPrecise *>) $ accols $ do
+  aName <- nameNonOpNonSticky
+  keyword "="
+  aValue <- expr
+  return $ Raw.ElimArg (Raw.ArgSpecNamed aName) aValue
+
+projectorNamed :: CanParse m => m Raw.ProjSpec
+projectorNamed = Raw.ProjSpecNamed <$> (dotPrecise *> nameNonOpNonSticky)
+projectorNumbered :: CanParse m => m Raw.ProjSpec
+projectorNumbered = Raw.ProjSpecNumbered <$> (dotPrecise *> natLiteralNonSticky)
+projectorTail :: CanParse m => m Raw.ProjSpec
+projectorTail = Raw.ProjSpecTail <$> (dotPrecise *> dotPrecise *> natLiteralNonSticky)
+
+eliminator :: CanParse m => m Raw.Eliminator
+eliminator = argNext <|> argVisible <|> argNamed <|>
+  (Raw.ElimProj <$> (projectorNamed <|> projectorNumbered <|> projectorTail))
+
+argEndNext :: CanParse m => m Raw.Eliminator
+argEndNext = Raw.ElimEnd Nothing <$ loneDots
+
+eliminatorEnd :: CanParse m => m Raw.Eliminator
+eliminatorEnd = _
+
+eliminators :: CanParse m => m [Raw.Eliminator]
+eliminators = (++) <$> many eliminator <*> ((: []) <$> eliminatorEnd)
+
+operator :: CanParse m => m Raw.Elimination
+operator = Raw.Elimination <$> (Raw.ExprQName <$> qOp) <*> eliminators
+
 expr :: CanParse m => m Raw.Expr
-expr = _
+expr = do
+  anOperand <- operand
+  rest <- optional $ do
+    anOperator <- operator
+    maybeExpr <- optional expr
+    return (anOperator, maybeExpr)
+  return $ Raw.ExprOps anOperand rest
 
 {-
 atom :: CanParse m => m Raw.Atom
