@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Menkar.Raw where
 
 import Data.Number.Nat
@@ -12,16 +14,24 @@ showshowdoc doc = replace "\\n" "\t\t\\n\\\n\\" $ show $ displayS (renderPretty 
 data Opness = NonOp | Op deriving Show
 
 data Name = Name Opness String deriving Show
+instance Pretty Name where
+  pretty = undefined
 
-data QName = QName [String] Name deriving Show
+data Qualified a = Qualified [String] a
+deriving instance Show a => Show (Qualified a)
+instance Pretty a => Pretty (Qualified a) where
+  pretty = undefined
+
+--data QName = QName [String] Name deriving Show
+type QName = Qualified Name
 {-
 renderQName :: [String] -> ShowS
 renderQName [] tail = "<EMPTY QNAME>" ++ tail
 renderQName [name] tail = name ++ tail
 renderQName (name : names) tail = name ++ ('.' : (renderQName names tail))
 -}
-instance Pretty QName where
-  pretty = undefined
+--instance Pretty QName where
+--  pretty = undefined
   --pretty (QName names) = encloseSep empty empty dot (map text names)
 --instance Show QName where
 --  show qname = "(quickParse qIdentifier " ++ (showshowdoc $ pretty qname) ++ ")"
@@ -90,7 +100,7 @@ instance Show Expr where
 -----------------------------------------------------------
 
 {-| One item in the annotation clause. -}
-data Annotation = Annotation QName (Maybe Expr)
+data Annotation = Annotation (Qualified String) (Maybe Expr)
   --{-| An annotation that is just an unqualified identifier, e.g. "irr" or "~" -}
   --AnnotationAtomic String |
   --{-| An annotation written in Haskell. The string the Haskell code, without brackets. -}

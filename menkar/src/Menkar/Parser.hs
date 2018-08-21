@@ -44,6 +44,20 @@ instance Show ParseError where
 
 class (MP.MonadParsec ParseError String m) => CanParse m
 
+(<?|>) :: CanParse m => m a -> m a -> m a
+p <?|> q = (MP.try p) <|> q
+
+optionalTry :: CanParse m => m a -> m (Maybe a)
+optionalTry p = optional (MP.try p)
+
+manyTry :: CanParse m => m a -> m [a]
+manyTry = many . MP.try
+
+someTry :: CanParse m => m a -> m [a]
+someTry = some . MP.try
+
+infixl 3 <?|>
+
 -- characters ----------------------------------------------
 
 data CharType =
@@ -206,6 +220,19 @@ keyword :: CanParse m => String -> m ()
 keyword w = nonStickyLexeme (void $ MP.string w)
 --keyword w = (lexeme . MP.try) (MP.string w *> MP.notFollowedBy nameStickyChar)
 
+wordPrecise :: CanParse m => m String
+wordPrecise = MP.label "some word" $ MP.try $ do
+  string <- many nameChar
+  if string `elem` keywords
+    then fail $ "Keyword " ++ show string ++ " cannot be an identifier."
+    else if (and $ map isDigit string)
+      then fail $ "Number " ++ show string ++ " cannot be an identifier."
+      else return string
+unqWord :: CanParse m => m String
+unqWord = nonStickyLexeme wordPrecise
+qWord :: CanParse m => m (Raw.Qualified String)
+qWord = qualified unqWord
+
 --formerly called identifierString
 nameNonOpPrecise :: CanParse m => m String
 nameNonOpPrecise = MP.label "non-operator identifier" $ MP.try $ do
@@ -247,11 +274,14 @@ unqName = MP.label "unqualified identifier" $ nonStickyLexeme namePrecise
       " qualified identifier where an unqualified one was expected."
   -}
 
+qualified :: CanParse m => m a -> m (Raw.Qualified a)
+qualified p = lexeme $ do
+  modules <- manyTry $ (nameNonOpPrecise <* dotPrecise)
+  thing <- p
+  return $ Raw.Qualified modules thing
+
 qName :: CanParse m => m Raw.QName
-qName = MP.label "qualified identifier" $ lexeme $ do
-  modules <- many $ (nameNonOpPrecise <* dotPrecise)
-  theQName <- unqName
-  return $ Raw.QName modules theQName
+qName = MP.label "qualified identifier" $ qualified unqName
 
 tickedQName :: CanParse m => m Raw.QName
 tickedQName = tickPrecise *> qName
@@ -265,7 +295,7 @@ unqOp = MP.label "unqualified operator" $ nonStickyLexeme $ Raw.Name Raw.Op <$> 
   -}
 
 qOp :: CanParse m => m Raw.QName
-qOp = MP.label "qualified operator" $ tickedQName <|> (Raw.QName [] <$> unqOp)
+qOp = MP.label "qualified operator" $ tickedQName <|> (Raw.Qualified [] <$> unqOp)
 
 {-
 qIdentifier :: CanParse m => m Raw.QName
@@ -320,7 +350,7 @@ requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
 
 expr3 :: CanParse m => m Raw.Expr3
 expr3 = MP.label "atomic expression" $
-  (Raw.ExprQName <$> qName) <|> (Raw.ExprParens <$> parens expr) <|> (Raw.ExprNatLiteral <$> natLiteralNonSticky)
+  (Raw.ExprParens <$> parens expr) <|> (Raw.ExprQName <$> qName) <?|> (Raw.ExprNatLiteral <$> natLiteralNonSticky)
 
 argNext :: CanParse m => m Raw.Eliminator
 argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
@@ -342,8 +372,8 @@ projectorTail = Raw.ProjSpecTail <$> (dotPrecise *> dotPrecise *> natLiteralNonS
 
 eliminator :: CanParse m => m Raw.Eliminator
 eliminator = MP.label "eliminator" $
-  argNext <|> argVisible <|> argNamed <|>
-  (Raw.ElimProj <$> (projectorNamed <|> projectorNumbered <|> projectorTail))
+  argVisible <|> argNext <?|> argNamed <?|>
+  (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
 
 argEndNext :: CanParse m => m Raw.Eliminator
 argEndNext = Raw.ElimEnd Nothing <$ loneDots
@@ -354,10 +384,10 @@ argEndNamed = (dotPrecise *>) $ accols $ do
   loneDots
   return $ Raw.ElimEnd $ Just $ Raw.ArgSpecNamed aName
 eliminatorEnd :: CanParse m => m Raw.Eliminator
-eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <|> argEndNamed
+eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <?|> argEndNamed
 
 eliminators :: CanParse m => m [Raw.Eliminator]
-eliminators = (++) <$> many eliminator <*> (fromMaybe [] <$> optional ((: []) <$> eliminatorEnd))
+eliminators = (++) <$> manyTry eliminator <*> (fromMaybe [] <$> optionalTry ((: []) <$> eliminatorEnd))
 
 elimination :: CanParse m => m Raw.Elimination
 elimination = Raw.Elimination <$> expr3 <*> eliminators
@@ -366,7 +396,7 @@ expr2 :: CanParse m => m Raw.Expr2
 expr2 = MP.label "operator-free expression" $ Raw.ExprElimination <$> elimination
 
 operand :: CanParse m => m Raw.Operand
-operand = (Raw.OperandTelescope <$> telescopeSome) <|> (Raw.OperandExpr <$> expr2)
+operand = (Raw.OperandTelescope <$> telescopeSome) <?|> (Raw.OperandExpr <$> expr2)
 
 operator :: CanParse m => m Raw.Elimination
 operator = MP.label "operator with eliminations" $ Raw.Elimination <$> (Raw.ExprQName <$> qOp) <*> eliminators
@@ -400,13 +430,13 @@ expr = Raw.Expr <$> some atom
 --haskellAnnotation = Raw.AnnotationHaskell <$> haskellCodeBracketed
 
 atomicAnnotation :: CanParse m => m Raw.Annotation
-atomicAnnotation = (\qname -> Raw.Annotation qname Nothing) <$> qName
+atomicAnnotation = (\qword -> Raw.Annotation qword Nothing) <$> qWord
 
 compoundAnnotation :: CanParse m => m Raw.Annotation
 compoundAnnotation = parens $ do
-  qname <- qName
+  qword <- qWord
   content <- expr
-  return $ Raw.Annotation qname (Just content)
+  return $ Raw.Annotation qword (Just content)
 
 annotation :: CanParse m => m Raw.Annotation
 annotation = MP.label "annotation" $ atomicAnnotation <|> compoundAnnotation
@@ -416,9 +446,9 @@ annotationClause = MP.label "annotation clause" $ MP.try $ many annotation <* pi
 
 entryAnnotation :: CanParse m => m Raw.Annotation
 entryAnnotation = brackets $ do
-  qname <- qName
+  qword <- qWord
   content <- optional expr
-  return $ Raw.Annotation qname content
+  return $ Raw.Annotation qword content
 
 -- telescopes
 
@@ -430,7 +460,7 @@ segmentConstraintColon = Raw.NoNameForConstraint <$ keyword "-:"
 
 constraint :: CanParse m => m Raw.LHS
 constraint = accols $ do
-      annots <- fromMaybe [] <$> optional annotationClause
+      annots <- fromMaybe [] <$> optionalTry annotationClause
       keyword "-:"
       typ <- expr
       return $ Raw.LHS {
@@ -441,8 +471,8 @@ constraint = accols $ do
       }
 
 argument :: CanParse m => m Raw.LHS 
-argument = MP.try $ accols $ do
-      annots <- fromMaybe [] <$> optional annotationClause
+argument = accols $ do
+      annots <- fromMaybe [] <$> optionalTry annotationClause
       --names <- segmentNamesAndColon <|> segmentConstraintColon
       names <- Raw.SomeNamesForTelescope <$> some unqName
       context <- telescopeMany
@@ -455,7 +485,7 @@ argument = MP.try $ accols $ do
       }
 
 segment :: CanParse m => m Raw.Segment
-segment = MP.label "telescope segment" $ Raw.Segment <$> (argument <|> constraint)
+segment = MP.label "telescope segment" $ Raw.Segment <$> (argument <?|> constraint)
 
 telescopeMany :: CanParse m => m Raw.Telescope
 telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segment

@@ -1,7 +1,7 @@
 /* */
 module [depth dsuc d] InitialOfFunctor
 	{pseudo | d : Depth}
-	{F {~ irr | l : Nat} : Uni d l -> Uni d l}
+	{F {~ irr | l : Nat} : Uni d l .{a = b} -> Uni d l}
 	{str |
 		F'
 		{~ irr | lA lB : Nat}
