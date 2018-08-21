@@ -4,9 +4,8 @@
 		*operator-application (first ordinary argument is applied on the left)
 		*telescope
 			?? first class: {annots telescope | gamma : Gamma}
-			face: {annots | -: P}
-			object: {annots | x : A} or {annots | _ : A} or {annots | x}
-			relevant operators: (forall) ->, (exists) ><, >
+			object: {annots | x : A} or {annots | _ : A} or {annots | x} or {x}
+			relevant operators: ->, ><, >
 			empty: {}
 		*abstraction
 	*function arguments
