@@ -40,13 +40,15 @@ indent = local $ \ state -> state {
   currentIndent = currentIndent state ++ indentStep state
   }
 
-newtype RendererT m a = RendererT (ReaderT RenderState (WriterT String m) a) deriving (Functor, Applicative)
+newtype RendererT m a = RendererT {runRendererT :: ReaderT RenderState (WriterT String m) a} deriving (Functor, Applicative)
 deriving instance (Monad m) => Monad (RendererT m)
 deriving instance (Monad m) => MonadReader RenderState (RendererT m)
 deriving instance (Monad m) => MonadWriter [Char] (RendererT m)
 instance (Monad m) => MonadRenderer (RendererT m) where
 
 type Renderer = RendererT Identity
+unwrapRenderer :: Renderer a -> RenderState -> (a, String)
+unwrapRenderer (RendererT rwa) s = runWriter $ runReaderT rwa s
 
 printLn :: MonadRenderer m => String -> m ()
 printLn s = indentedLine s >>= tell
@@ -62,14 +64,10 @@ renderM tree@(PrettyTree line sublines rest) = do
              renderM tree'
            Nothing -> do
              printLn line
-             indent $ _
+             indent $ sequenceA_ $ renderM <$> sublines
 
-{-
 render :: RenderState -> PrettyTree String -> String
-render state tree@(PrettyTree line sublines Nothing)
-  = if lengthHoriz tree < widthLeft
-    then 
--}
+render state tree = snd $ unwrapRenderer (renderM tree) state
 
 {-
 renderAlt :: Int -> Int -> TreeText -> String
