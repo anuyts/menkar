@@ -15,6 +15,8 @@ data PrettyTree l =
   PrettyTree l [PrettyTree l] (Maybe (PrettyTree l))
   deriving (Functor, Foldable, Traversable)
 
+deriving instance Show l => Show (PrettyTree l)
+
 lengthHoriz :: Traversable l => PrettyTree (l c) -> Int
 lengthHoriz = sum . fmap length
 
@@ -69,7 +71,22 @@ renderM tree@(PrettyTree line sublines rest) = do
 render :: RenderState -> PrettyTree String -> String
 render state tree = snd $ unwrapRenderer (renderM tree) state
 
-{-
-renderAlt :: Int -> Int -> TreeText -> String
-renderAlt width indentation treetext
--}
+-------------------------------------------------------
+
+(\\\) :: PrettyTree a -> [PrettyTree a] -> PrettyTree a
+PrettyTree line sublines Nothing \\\ lines = PrettyTree line (sublines ++ lines) Nothing
+PrettyTree line sublines (Just rest) \\\ lines = PrettyTree line sublines (Just $ rest \\\ lines)
+
+(|||) :: PrettyTree a -> PrettyTree a -> PrettyTree a
+PrettyTree line sublines Nothing ||| tree = PrettyTree line sublines (Just tree)
+PrettyTree line sublines (Just rest) ||| tree = PrettyTree line sublines (Just $ rest ||| tree)
+
+(///) :: PrettyTree a -> PrettyTree a -> PrettyTree a
+(///) = (|||)
+
+infixl 6 \\\
+infixl 6 |||
+infixl 6 ///
+
+ribbon :: a -> PrettyTree a
+ribbon a = PrettyTree a [] Nothing
