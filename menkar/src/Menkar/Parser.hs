@@ -65,7 +65,7 @@ data CharType =
   deriving (Show, Eq)
 
 looseChars :: [Char]
-looseChars = "|'`."
+looseChars = "|_`."
 
 describeCharType :: CharType -> String
 describeCharType ct = case ct of
@@ -108,14 +108,7 @@ isNameChar c = case charType c of
 
 keywords :: [String]
 keywords = [ ":"     -- typing
-           --, "-:"    -- typing propositions
            , "="     -- assignment
-           , "->"    -- function type
-           , "><"    -- sigma type
-           --, "Uni"   -- universe
-           --, "?"     -- for Glue etc.
-           , ">"    -- mapsto
-           , "<"    -- mapsfrom
            , "annotation"
            , "case"
            , "cocase"
@@ -133,6 +126,13 @@ keywords = [ ":"     -- typing
            , "return"
            , "val"
            , "where"
+           --, "-:"    -- typing propositions
+           --, "->"    -- function type
+           --, "><"    -- sigma type
+           --, "Uni"   -- universe
+           --, "?"     -- for Glue etc.
+           --, ">"    -- mapsto
+           --, "<"    -- mapsfrom
            ]
 
 -- basic subparsers ----------------------------------------
@@ -294,8 +294,8 @@ unqOp = MP.label "unqualified operator" $ nonStickyLexeme $ Raw.Name Raw.Op <$> 
     msg = "You have neglected to leave a space after this operator."
   -}
 
-qOp :: CanParse m => m Raw.QName
-qOp = MP.label "qualified operator" $ tickedQName <|> (Raw.Qualified [] <$> unqOp)
+--qOp :: CanParse m => m Raw.QName
+--qOp = MP.label "qualified operator" $ tickedQName <|> (Raw.Qualified [] <$> unqOp)
 
 {-
 qIdentifier :: CanParse m => m Raw.QName
@@ -350,7 +350,10 @@ requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
 
 expr3 :: CanParse m => m Raw.Expr3
 expr3 = MP.label "atomic expression" $
-  (Raw.ExprParens <$> parens expr) <|> (Raw.ExprQName <$> qName) <?|> (Raw.ExprNatLiteral <$> natLiteralNonSticky)
+  (Raw.ExprParens <$> parens expr) <|>
+  (Raw.ExprImplicit <$ loneUnderscore) <?|>
+  (Raw.ExprQName <$> qName) <?|>
+  (Raw.ExprNatLiteral <$> natLiteralNonSticky)
 
 argNext :: CanParse m => m Raw.Eliminator
 argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
@@ -374,6 +377,8 @@ eliminator :: CanParse m => m Raw.Eliminator
 eliminator = MP.label "eliminator" $
   argVisible <|> argNext <?|> argNamed <?|>
   (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
+opEliminator :: CanParse m => m Raw.Eliminator
+opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
 
 argEndNext :: CanParse m => m Raw.Eliminator
 argEndNext = Raw.ElimEnd Nothing <$ loneDots
@@ -387,7 +392,10 @@ eliminatorEnd :: CanParse m => m Raw.Eliminator
 eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <?|> argEndNamed
 
 eliminators :: CanParse m => m [Raw.Eliminator]
-eliminators = (++) <$> manyTry eliminator <*> (fromMaybe [] <$> optionalTry ((: []) <$> eliminatorEnd))
+eliminators = MP.label "eliminators" $
+  (++) <$> manyTry eliminator <*> (fromMaybe [] <$> optionalTry ((: []) <$> eliminatorEnd))
+opEliminators :: CanParse m => m [Raw.Eliminator]
+opEliminators = MP.label "operator eliminators" $ manyTry opEliminator
 
 elimination :: CanParse m => m Raw.Elimination
 elimination = Raw.Elimination <$> expr3 <*> eliminators
@@ -398,8 +406,10 @@ expr2 = MP.label "operator-free expression" $ Raw.ExprElimination <$> eliminatio
 operand :: CanParse m => m Raw.Operand
 operand = (Raw.OperandTelescope <$> telescopeSome) <?|> (Raw.OperandExpr <$> expr2)
 
+operatorHead :: CanParse m => m Raw.Expr3
+operatorHead = (tickPrecise *> expr3) <|> (Raw.ExprQName . Raw.Qualified [] <$> unqOp)
 operator :: CanParse m => m Raw.Elimination
-operator = MP.label "operator with eliminations" $ Raw.Elimination <$> (Raw.ExprQName <$> qOp) <*> eliminators
+operator = MP.label "operator with eliminations" $ Raw.Elimination <$> operatorHead <*> opEliminators
 
 expr :: CanParse m => m Raw.Expr
 expr = MP.label "expression" $ do
@@ -452,11 +462,11 @@ entryAnnotation = brackets $ do
 
 -- telescopes
 
-segmentNamesAndColon :: CanParse m => m Raw.LHSNames
-segmentNamesAndColon = Raw.SomeNamesForTelescope <$> some unqName <* keyword ":"
+--segmentNamesAndColon :: CanParse m => m Raw.LHSNames
+--segmentNamesAndColon = Raw.SomeNamesForTelescope <$> some unqName <* keyword ":"
 
-segmentConstraintColon :: CanParse m => m Raw.LHSNames
-segmentConstraintColon = Raw.NoNameForConstraint <$ keyword "-:"
+--segmentConstraintColon :: CanParse m => m Raw.LHSNames
+--segmentConstraintColon = Raw.NoNameForConstraint <$ keyword "-:"
 
 constraint :: CanParse m => m Raw.LHS
 constraint = accols $ do
@@ -474,7 +484,7 @@ argument :: CanParse m => m Raw.LHS
 argument = accols $ do
       annots <- fromMaybe [] <$> optionalTry annotationClause
       --names <- segmentNamesAndColon <|> segmentConstraintColon
-      names <- Raw.SomeNamesForTelescope <$> some unqName
+      names <- Raw.SomeNamesForTelescope <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore))
       context <- telescopeMany
       maybeType <- optional $ keyword ":" *> expr
       return $ Raw.LHS {

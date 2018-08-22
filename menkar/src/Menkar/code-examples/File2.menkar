@@ -14,7 +14,7 @@ module [depth dsuc d] InitialOfFunctor
 		-:
 		{irr | lA : Nat}
 		{par | A : Uni d lA}
-		-> F' ({a : A} . a) := ({fa : F A} . fa)
+		-> F' ({a : A} > a) := ({fa : F A} > fa)
 	}
 	{str |
 		-:
@@ -25,7 +25,7 @@ module [depth dsuc d] InitialOfFunctor
 		{f : A -> B}
 		{g : B -> C}
 		{fa : F A}
-		-> F' g (F' f fa) := F' (a . g (f a)) fa
+		-> F' g (F' f fa) := F' (a > g (f a)) fa
 	}
 where {
 
@@ -46,13 +46,13 @@ where {
 		{par | X : Uni d l}
 		{mkX : IsAlg X}
 		: Mu l -> X
-		= m . m X mkX,
+		= m > m X mkX
 
-	val [str] mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm . X . mkX . mkX (F' (fold mkX) fm),
+	val [str] mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm > X > mkX > mkX (F' (fold mkX) fm),
 
 	val [str] mfold {~ irr | l : Nat} {par | X : Uni d l}
 	: IsMph mkMu mkX (fold mkX)
-	= refl,
+	= refl
 //}
 
 //-----------------------------------------
@@ -70,11 +70,11 @@ resolution [str] eq {~ irr | l : Nat} {par | X : Uni 0 l} : Eq X
 // eq {~ irr | l : Nat} {par | X : Uni 0 l} {(~ eq) | eq' : Eq X} : Eq X
 // i.e. eq X is the instance for X.
 
-syntax [infix 0] x == y = _== x y
+//syntax [infix 0] x == y = _== x y
 val _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
 
 val [Depth 0][resolves eq (Bool -> X)] eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X}
 	: Eq (Bool -> X)
-	= f . g . (f true == g true) && (f false == g false)
+	= f > g > (f true == g true) && (f false == g false)
 
 }

@@ -52,7 +52,8 @@ data Eliminator =
 data Expr3 =
   ExprQName QName |
   ExprParens Expr |
-  ExprNatLiteral Nat
+  ExprNatLiteral Nat |
+  ExprImplicit
   deriving Show
 
 data Elimination = Elimination Expr3 [Eliminator] deriving Show
@@ -148,7 +149,7 @@ instance Show Telescope where
   show telescope = "(quickParse telescope \n" ++ (showshowdoc $ pretty telescope) ++ ")"
 
 data LHSNames =
-  SomeNamesForTelescope [Name]
+  SomeNamesForTelescope [Maybe Name] -- name or underscore
   | QNameForEntry QName
   | NoNameForConstraint
   deriving (Show)
