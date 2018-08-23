@@ -137,6 +137,9 @@ keywords = [ ":"     -- typing
 
 -- basic subparsers ----------------------------------------
 
+eof :: CanParse m => m ()
+eof = MP.eof
+
 lineComment :: CanParse m => m ()
 lineComment = MPL.skipLineComment "//"
 blockComment :: CanParse m => m ()
@@ -381,13 +384,13 @@ opEliminator :: CanParse m => m Raw.Eliminator
 opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
 
 argEndNext :: CanParse m => m Raw.Eliminator
-argEndNext = Raw.ElimEnd Nothing <$ loneDots
+argEndNext = Raw.ElimEnd Raw.ArgSpecNext <$ loneDots
 argEndNamed :: CanParse m => m Raw.Eliminator
 argEndNamed = (dotPrecise *>) $ accols $ do
   aName <- nameNonOpNonSticky
   keyword "="
   loneDots
-  return $ Raw.ElimEnd $ Just $ Raw.ArgSpecNamed aName
+  return $ Raw.ElimEnd $ Raw.ArgSpecNamed aName
 eliminatorEnd :: CanParse m => m Raw.Eliminator
 eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <?|> argEndNamed
 

@@ -23,7 +23,7 @@ data ArgSpec = ArgSpecNext | ArgSpecVisible | ArgSpecNamed String deriving Show
 data ProjSpec = ProjSpecNamed String | ProjSpecNumbered Nat | ProjSpecTail Nat deriving Show
 
 data Eliminator =
-  ElimEnd (Maybe ArgSpec) |
+  ElimEnd ArgSpec {-^ should not be 'ArgSpecVisible'.-} |
   ElimArg ArgSpec Expr |
   ElimProj ProjSpec
   -- case; induction

@@ -115,6 +115,23 @@ PrettyTree line sublines (Just rest) ||| tree = PrettyTree line sublines (Just $
 (///) :: PrettyTree a -> PrettyTree a -> PrettyTree a
 (///) = (|||)
 
-infixl 6 \\\
-infixl 6 |||
-infixl 6 ///
+(++|) :: Monoid a => a -> PrettyTree a -> PrettyTree a
+a ++| (PrettyTree line sublines rest) = PrettyTree (a <> line) sublines rest
+
+{-
+(|++) :: Monoid a => PrettyTree a -> a -> PrettyTree a
+(PrettyTree line [] Nothing) |++ a = PrettyTree (line <> a) [] Nothing
+(PrettyTree line sublines Nothing) |++ a = PrettyTree line sublines (Just $ ribbon a)
+(PrettyTree line sublines (Just rest)) |++ a = PrettyTree line sublines (Just $ rest |++ a)
+-}
+
+(|++|) :: Monoid a => PrettyTree a -> PrettyTree a -> PrettyTree a
+(PrettyTree line [] Nothing) |++| tree = line ++| tree
+(PrettyTree line sublines Nothing) |++| tree = PrettyTree line sublines (Just tree)
+(PrettyTree line sublines (Just rest)) |++| tree = PrettyTree line sublines (Just $ rest |++| tree)
+
+(|++) :: Monoid a => PrettyTree a -> a -> PrettyTree a
+tree |++ a = tree |++| ribbon a
+
+infixl 3 \\\, |||, ///
+infixl 4 ++|, |++, |++|
