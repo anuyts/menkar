@@ -14,8 +14,15 @@ data PrettyTree l =
   {-| first line, sublines, then perhaps a continuation of the block -}
   PrettyTree l [PrettyTree l] (Maybe (PrettyTree l))
   deriving (Functor, Foldable, Traversable)
-
 deriving instance Show l => Show (PrettyTree l)
+
+ribbon :: a -> PrettyTree a
+ribbon a = PrettyTree a [] Nothing
+
+collapseOnce :: Monoid l => PrettyTree l -> PrettyTree l
+collapseOnce tree@(PrettyTree line sublines Nothing) = ribbon $ fold tree
+collapseOnce (PrettyTree line sublines (Just (PrettyTree line' sublines' rest')))
+  = PrettyTree (fold $ PrettyTree line sublines (Just $ ribbon line')) sublines' rest'
 
 lengthHoriz :: Traversable l => PrettyTree (l c) -> Int
 lengthHoriz = sum . fmap length
@@ -56,17 +63,41 @@ printLn :: MonadRenderer m => String -> m ()
 printLn s = indentedLine s >>= tell
 
 renderM :: MonadRenderer m => PrettyTree String -> m ()
+renderM (PrettyTree line [] Nothing) = printLn line
+renderM tree@(PrettyTree line sublines rest) = do
+  widthLeft <- askWidthLeft
+  let collapsedTree@(PrettyTree line' sublines' rest') = collapseOnce tree
+  if length line' <= widthLeft
+    --then return ()
+    then renderM collapsedTree
+    else do
+      printLn line
+      indent $ void $ sequenceA $ renderM <$> sublines
+      case rest of
+        Nothing -> return ()
+        Just restTree -> renderM restTree
+      --return ()
+
+{-
+renderM :: MonadRenderer m => PrettyTree String -> m ()
 renderM tree@(PrettyTree line sublines rest) = do
   widthLeft <- askWidthLeft
   if lengthHoriz tree <= widthLeft
     then printLn $ fold tree
     else case rest of
-           Just tree' -> do
-             renderM (PrettyTree line sublines Nothing)
-             renderM tree'
+           Just tree'@(PrettyTree line' sublines' rest') ->
+             let flattenableTree = PrettyTree line sublines (ribbon line')
+             in if lengthHoriz flattenableTree <= widthLeft
+                  then do
+                    printLn $ fold flattenableTree
+                    _
+                  else _
+             --renderM (PrettyTree line sublines Nothing)
+             --renderM tree'
            Nothing -> do
              printLn line
              indent $ sequenceA_ $ renderM <$> sublines
+-}
 
 render :: RenderState -> PrettyTree String -> String
 render state tree = snd $ unwrapRenderer (renderM tree) state
@@ -87,6 +118,3 @@ PrettyTree line sublines (Just rest) ||| tree = PrettyTree line sublines (Just $
 infixl 6 \\\
 infixl 6 |||
 infixl 6 ///
-
-ribbon :: a -> PrettyTree a
-ribbon a = PrettyTree a [] Nothing
