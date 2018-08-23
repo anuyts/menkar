@@ -144,13 +144,16 @@ a ++| (PrettyTree line sublines rest) = PrettyTree (Just a <> line) sublines res
 (PrettyTree line sublines (Just rest)) |++ a = PrettyTree line sublines (Just $ rest |++ a)
 -}
 
-(|++|) :: Monoid a => PrettyTree a -> PrettyTree a -> PrettyTree a
-(PrettyTree Nothing [] Nothing) |++| tree = tree
-(PrettyTree (Just line) [] Nothing) |++| tree = line ++| tree
-(PrettyTree line sublines Nothing) |++| tree = PrettyTree line sublines (Just tree)
-(PrettyTree line sublines (Just rest)) |++| tree = PrettyTree line sublines (Just $ rest |++| tree)
+(|+|) :: Monoid a => PrettyTree a -> PrettyTree a -> PrettyTree a
+(PrettyTree Nothing [] Nothing) |+| tree = tree
+(PrettyTree (Just line) [] Nothing) |+| tree = line ++| tree
+(PrettyTree line sublines Nothing) |+| tree = PrettyTree line sublines (Just tree)
+(PrettyTree line sublines (Just rest)) |+| tree = PrettyTree line sublines (Just $ rest |+| tree)
 
 (|++) :: Monoid a => PrettyTree a -> a -> PrettyTree a
-tree |++ a = tree |++| ribbon a
+tree |++ a = tree |+| ribbon a
 
-infixl 4 ++|, |++, |++|
+treeGroup :: [PrettyTree a] -> PrettyTree a
+treeGroup grp = PrettyTree Nothing grp Nothing
+
+infixl 4 ++|, |++, |+|

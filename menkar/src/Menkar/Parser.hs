@@ -446,10 +446,10 @@ atomicAnnotation :: CanParse m => m Raw.Annotation
 atomicAnnotation = (\qword -> Raw.Annotation qword Nothing) <$> qWord
 
 compoundAnnotation :: CanParse m => m Raw.Annotation
-compoundAnnotation = parens $ do
+compoundAnnotation = brackets $ do
   qword <- qWord
-  content <- expr
-  return $ Raw.Annotation qword (Just content)
+  content <- optional expr
+  return $ Raw.Annotation qword content
 
 annotation :: CanParse m => m Raw.Annotation
 annotation = MP.label "annotation" $ atomicAnnotation <|> compoundAnnotation
@@ -458,10 +458,7 @@ annotationClause :: CanParse m => m [Raw.Annotation]
 annotationClause = MP.label "annotation clause" $ MP.try $ many annotation <* pipe
 
 entryAnnotation :: CanParse m => m Raw.Annotation
-entryAnnotation = brackets $ do
-  qword <- qWord
-  content <- optional expr
-  return $ Raw.Annotation qword content
+entryAnnotation = compoundAnnotation
 
 -- telescopes
 
