@@ -31,8 +31,6 @@ instance Unparsable Name where
   unparse' (Name NonOp name) = ribbon name
   unparse' (Name Op name) = ribbon $ '_' : name
   parserName _ = "unqName"
---instance Show Name where
---  show = showUnparsable
 
 instance Unparsable a => Unparsable (Qualified a) where
   unparse' (Qualified modules name) = (foldr (\modul qname -> modul ++ '.' : qname) "" modules) ++| unparse' name
@@ -180,4 +178,40 @@ instance Unparsable File where
   unparse' (File lrEntry) = unparse' lrEntry
   parserName _ = "file"
   showUnparsable x = "(quickParse file \"\n" ++ unparse x ++ "\n\")"
-  
+
+------------------------------------------
+
+instance Show Name where
+  show = showUnparsable
+instance Unparsable a => Show (Qualified a) where
+  show = showUnparsable
+instance Show Eliminator where
+  show = showUnparsable
+instance Show Expr3 where
+  show = showUnparsable
+instance Show Elimination where
+  show = showUnparsable
+instance Show Expr2 where
+  show = showUnparsable
+instance Show Operand where
+  show = showUnparsable
+instance Show Expr where
+  show = showUnparsable
+instance Show Annotation where
+  show = showUnparsable
+instance Show Segment where
+  show = showUnparsable
+instance Show Telescope where
+  show = showUnparsable
+instance Show LHSNames where
+  show = showUnparsable
+instance Show LHS where
+  show = showUnparsable
+instance Show RHS where
+  show = showUnparsable
+instance Show LREntry where
+  show = showUnparsable
+instance Show Entry where
+  show = showUnparsable
+instance Show File where
+  show = showUnparsable
