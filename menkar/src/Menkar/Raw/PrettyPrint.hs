@@ -119,12 +119,12 @@ instance Unparsable Segment where
             (NoNameForConstraint, Just typ) ->
               unparseAnnotationClause annots
               |+| unparse' context
-              ||| "-: " ++| unparse' typ
+              \\\ ["-: " ++| unparse' typ]
             (SomeNamesForTelescope names, Just typ) ->
               unparseAnnotationClause annots
               |+| unparse' lhsNames
               |+| unparse' context
-              ||| ": " ++| unparse' typ
+              \\\ [": " ++| unparse' typ]
             (SomeNamesForTelescope names, Nothing) ->
               unparseAnnotationClause annots
               |+| unparse' lhsNames
@@ -150,11 +150,12 @@ unparseLHSUntyped (LHS annots lhsNames context _) =
     unparseEntryAnnotations annots
     |+| unparse' lhsNames |++ " "
     |+| unparse' context
+    ||| ribbonEmpty -- as a guard against \+\
 instance Unparsable LHS where
   unparse' lhs@(LHS annots lhsNames context Nothing) = unparseLHSUntyped lhs
   unparse' lhs@(LHS annots lhsNames context (Just typ)) =
     unparseLHSUntyped lhs
-    ||| ": " ++| unparse' typ
+    \\\ [": " ++| unparse' typ]
   parserName _ = "lhs"
 
 instance Unparsable RHS where
@@ -168,7 +169,7 @@ instance Unparsable RHS where
   parserName (RHSResolution) = "return Raw.RHSResolution"
 
 instance Unparsable LREntry where
-  unparse' (LREntry header lhs rhs) = headerKeyword header ++ " " ++| unparse' lhs ||| unparse' rhs
+  unparse' (LREntry header lhs rhs) = headerKeyword header ++ " " ++| unparse' lhs \+\ [unparse' rhs]
   parserName _ = "lrEntry"
 
 instance Unparsable Entry where

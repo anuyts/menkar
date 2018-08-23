@@ -6,6 +6,7 @@ import Data.Tree
 import Data.Functor.Identity
 import Data.Foldable
 import Data.Maybe
+import Data.Char
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Exception.AssertFalse
@@ -67,8 +68,11 @@ type Renderer = RendererT Identity
 unwrapRenderer :: Renderer a -> RenderState -> (a, String)
 unwrapRenderer (RendererT rwa) s = runWriter $ runReaderT rwa s
 
+removeLeadingWhitespace :: String -> String
+removeLeadingWhitespace = dropWhile isSpace
+
 printLn :: MonadRenderer m => String -> m ()
-printLn s = indentedLine s >>= tell
+printLn s = indentedLine (removeLeadingWhitespace s) >>= tell
 
 renderM :: MonadRenderer m => PrettyTree String -> m ()
 renderM (PrettyTree Nothing [] Nothing) = return ()
@@ -121,6 +125,11 @@ PrettyTree line [] Nothing \\\ lines = PrettyTree line lines Nothing
 PrettyTree line sublines Nothing \\\ lines = PrettyTree line sublines (Just $ PrettyTree Nothing lines Nothing)
 PrettyTree line sublines (Just rest) \\\ lines = PrettyTree line sublines (Just $ rest \\\ lines)
 
+-- | Append to existing indented group
+(\+\) :: PrettyTree a -> [PrettyTree a] -> PrettyTree a
+PrettyTree line sublines Nothing \+\ lines = PrettyTree line (sublines ++ lines) Nothing
+PrettyTree line sublines (Just rest) \+\ lines = PrettyTree line sublines (Just $ rest \+\ lines)
+
 -- | New line (non-obligatory)
 (|||) :: PrettyTree a -> PrettyTree a -> PrettyTree a
 PrettyTree line sublines Nothing ||| tree = PrettyTree line sublines (Just tree)
@@ -130,7 +139,7 @@ PrettyTree line sublines (Just rest) ||| tree = PrettyTree line sublines (Just $
 (///) :: PrettyTree a -> PrettyTree a -> PrettyTree a
 (///) = (|||)
 
-infixl 3 \\\, |||, ///
+infixl 3 \\\, |||, ///, \+\
 
 -------------------------------------------------------
 
