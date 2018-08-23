@@ -118,7 +118,7 @@ render state tree = snd $ unwrapRenderer (renderM tree) state
 -- | Append a new indented group
 (\\\) :: PrettyTree a -> [PrettyTree a] -> PrettyTree a
 PrettyTree line [] Nothing \\\ lines = PrettyTree line lines Nothing
-PrettyTree line sublines Nothing \\\ lines = PrettyTree line sublines (Just $ PrettyTree Nothing sublines Nothing)
+PrettyTree line sublines Nothing \\\ lines = PrettyTree line sublines (Just $ PrettyTree Nothing lines Nothing)
 PrettyTree line sublines (Just rest) \\\ lines = PrettyTree line sublines (Just $ rest \\\ lines)
 
 -- | New line (non-obligatory)

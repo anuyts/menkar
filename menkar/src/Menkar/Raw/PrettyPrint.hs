@@ -11,7 +11,7 @@ class Unparsable x where
   unparse' :: x -> PrettyTree String
   parserName :: x -> String
   unparse :: x -> String
-  unparse x = render (RenderState 100 "  " "  ") $ unparse' x
+  unparse x = render (RenderState 100 "  " "    ") $ unparse' x
   showUnparsable :: x -> String
   showUnparsable x = "(quickParse (manySpace *> " ++ parserName x ++ " <* eof) \"\n" ++ unparse x ++ "\n\")"
 
@@ -40,6 +40,9 @@ instance Unparsable Eliminator where
   unparse' (ElimEnd ArgSpecVisible) = ribbon "...<AT_NEXT_VISIBLE>"
   unparse' (ElimEnd (ArgSpecNamed name)) = ribbon $ ".{" ++ name ++ " = ...}"
   unparse' (ElimArg ArgSpecNext expr) = ".{" ++| unparse' expr |++ "}"
+  unparse' (ElimArg ArgSpecVisible (ExprOps (OperandExpr (ExprElimination (Elimination expr3 []))) Nothing))
+    -- special clause for expression that happens to be an expr3
+    = unparse' expr3
   unparse' (ElimArg ArgSpecVisible expr) = "(" ++| unparse' expr |++ ")"
   unparse' (ElimArg (ArgSpecNamed name) expr) = ".{" ++ name ++ " = " ++| unparse' expr |++ "}"
   unparse' (ElimProj (ProjSpecNamed name)) = ribbon $ '.' : name
@@ -56,6 +59,10 @@ instance Unparsable Expr3 where
   unparse' ExprImplicit = ribbon "_"
   parserName _ = "expr3"
 
+unparseOpElimination :: Elimination -> PrettyTree String
+unparseOpElimination (Elimination (ExprQName (Qualified [] (Name Op opname))) eliminators)
+  = ribbon opname \\\ (" " ++|) . unparse' <$> eliminators
+unparseOpElimination (Elimination expr3 eliminators) = "`" ++| unparse' expr3 \\\ (" " ++|) . unparse' <$> eliminators
 instance Unparsable Elimination where
   unparse' (Elimination expr3 eliminators) = unparse' expr3 \\\ (" " ++|) . unparse' <$> eliminators
   parserName _ = "elimination"
@@ -70,10 +77,10 @@ instance Unparsable Operand where
   parserName _ = "operand"
 
 unparseExprRHS :: (Elimination, Maybe Expr) -> [PrettyTree String]
-unparseExprRHS (elim, Nothing) = [unparse' elim]
+unparseExprRHS (elim, Nothing) = [" " ++| unparseOpElimination elim]
 unparseExprRHS (elim, Just expr) =
   let (operandPretty, restPretty) = unparseExpr expr
-  in  (unparse' elim |+| operandPretty) : restPretty
+  in  (" " ++| unparseOpElimination elim |++ " " |+| operandPretty) : restPretty
 unparseExpr :: Expr -> (PrettyTree String, [PrettyTree String])
 unparseExpr (ExprOps operand x) = (unparse' operand, fromMaybe [] (unparseExprRHS <$> x))
 
@@ -104,17 +111,17 @@ unparseEntryAnnotations :: [Annotation] -> PrettyTree String
 unparseEntryAnnotations annots = treeGroup $ (|++ " ") . unparseAnnotationBrackets <$> annots
 
 instance Unparsable Segment where
-  unparse' (Segment lhs@(LHS annots lhsNames context typMaybe)) = "{" ++| content |++ "}"
+  unparse' (Segment lhs@(LHS annots lhsNames context typMaybe)) = "{" ++| content |++ "} "
     where content = case (lhsNames, typMaybe) of
             (NoNameForConstraint, Just typ) ->
               unparseAnnotationClause annots
               |+| unparse' context
-              ||| " -: " ++| unparse' typ
+              ||| "-: " ++| unparse' typ
             (SomeNamesForTelescope names, Just typ) ->
               unparseAnnotationClause annots
               |+| unparse' lhsNames
               |+| unparse' context
-              ||| " : " ++| unparse' typ
+              ||| ": " ++| unparse' typ
             (SomeNamesForTelescope names, Nothing) ->
               unparseAnnotationClause annots
               |+| unparse' lhsNames
@@ -138,13 +145,13 @@ instance Unparsable LHSNames where
 unparseLHSUntyped :: LHS -> PrettyTree String
 unparseLHSUntyped (LHS annots lhsNames context _) =
     unparseEntryAnnotations annots
-    |+| unparse' lhsNames
+    |+| unparse' lhsNames |++ " "
     |+| unparse' context
 instance Unparsable LHS where
   unparse' lhs@(LHS annots lhsNames context Nothing) = unparseLHSUntyped lhs
   unparse' lhs@(LHS annots lhsNames context (Just typ)) =
     unparseLHSUntyped lhs
-    ||| " : " ++| unparse' typ
+    ||| ": " ++| unparse' typ
   parserName _ = "lhs"
 
 instance Unparsable RHS where
@@ -158,7 +165,7 @@ instance Unparsable RHS where
   parserName (RHSResolution) = "return Raw.RHSResolution"
 
 instance Unparsable LREntry where
-  unparse' (LREntry header lhs rhs) = headerKeyword header ++ " " ++| unparse' lhs |+| unparse' rhs
+  unparse' (LREntry header lhs rhs) = headerKeyword header ++ " " ++| unparse' lhs ||| unparse' rhs
   parserName _ = "lrEntry"
 
 instance Unparsable Entry where
