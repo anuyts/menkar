@@ -73,7 +73,7 @@ resolution [str] eq {~ irr | l : Nat} {par | X : Uni 0 l} : Eq X
 //syntax [infix 0] x == y = _== x y
 val _== {~ irr | l : Nat} {~ par | X : Uni 0 l} {[~ eq] | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
 
-val [Depth 0][resolves eq (Bool -> X)] eqBool-> {~irr | l' : Nat} {~ par | X : Uni 0 l'} {[resolves eq X] | _ : Eq X}
+val [Depth 0][resolves eq (Bool -> X)] eqBool-> {~ irr | l' : Nat} {~ par | X : Uni 0 l'} {[resolves eq X] | _ : Eq X}
 	: Eq (Bool -> X)
 	= f > g > (f true == g true) && (f false == g false)
 

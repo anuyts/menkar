@@ -7,6 +7,9 @@ import Menkar.Raw.Base
 import Text.PrettyPrint.Tree
 import Data.Maybe
 
+--showshowdoc :: Doc -> String
+--showshowdoc doc = replace "\\n" "\t\t\\n\\\n\\" $ show $ displayS (renderPretty 1.0 100 doc) ""
+
 class Unparsable x where
   unparse' :: x -> PrettyTree String
   parserName :: x -> String
