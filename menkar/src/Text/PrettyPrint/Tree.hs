@@ -5,24 +5,32 @@ module Text.PrettyPrint.Tree where
 import Data.Tree
 import Data.Functor.Identity
 import Data.Foldable
+import Data.Maybe
 import Control.Monad.Reader
 import Control.Monad.Writer
+import Control.Exception.AssertFalse
 
 --type TreeText = Tree String
 
 data PrettyTree l =
   {-| first line, sublines, then perhaps a continuation of the block -}
-  PrettyTree l [PrettyTree l] (Maybe (PrettyTree l))
+  PrettyTree (Maybe l) [PrettyTree l] (Maybe (PrettyTree l))
   deriving (Functor, Foldable, Traversable)
 deriving instance Show l => Show (PrettyTree l)
 
+ribbonMaybe :: Maybe a -> PrettyTree a
+ribbonMaybe ma = PrettyTree ma [] Nothing
 ribbon :: a -> PrettyTree a
-ribbon a = PrettyTree a [] Nothing
+ribbon = ribbonMaybe . Just
+ribbonEmpty :: PrettyTree a
+ribbonEmpty = ribbonMaybe Nothing
 
 collapseOnce :: Monoid l => PrettyTree l -> PrettyTree l
+collapseOnce (PrettyTree Nothing [] Nothing) = ribbonEmpty
+collapseOnce (PrettyTree Nothing [] (Just rest)) = rest
 collapseOnce tree@(PrettyTree line sublines Nothing) = ribbon $ fold tree
 collapseOnce (PrettyTree line sublines (Just (PrettyTree line' sublines' rest')))
-  = PrettyTree (fold $ PrettyTree line sublines (Just $ ribbon line')) sublines' rest'
+  = PrettyTree (Just $ fold $ PrettyTree line sublines (Just $ ribbonMaybe line')) sublines' rest'
 
 lengthHoriz :: Traversable l => PrettyTree (l c) -> Int
 lengthHoriz = sum . fmap length
@@ -63,16 +71,19 @@ printLn :: MonadRenderer m => String -> m ()
 printLn s = indentedLine s >>= tell
 
 renderM :: MonadRenderer m => PrettyTree String -> m ()
-renderM (PrettyTree line [] Nothing) = printLn line
+renderM (PrettyTree Nothing [] Nothing) = return ()
+renderM (PrettyTree Nothing [] (Just rest)) = renderM rest 
+renderM (PrettyTree (Just line) [] Nothing) = printLn line
 renderM tree@(PrettyTree line sublines rest) = do
   widthLeft <- askWidthLeft
-  let collapsedTree@(PrettyTree line' sublines' rest') = collapseOnce tree
+  let collapsedTree@(PrettyTree lineMaybe' sublines' rest') = collapseOnce tree
+  let line' = fromMaybe unreachable lineMaybe'
   if length line' <= widthLeft
     --then return ()
     then renderM collapsedTree
     else do
-      printLn line
-      indent $ void $ sequenceA $ renderM <$> sublines
+      sequenceA_ $ printLn <$> line
+      indent $ sequenceA_ $ renderM <$> sublines
       case rest of
         Nothing -> return ()
         Just restTree -> renderM restTree
@@ -104,19 +115,27 @@ render state tree = snd $ unwrapRenderer (renderM tree) state
 
 -------------------------------------------------------
 
+-- | Append a new indented group
 (\\\) :: PrettyTree a -> [PrettyTree a] -> PrettyTree a
-PrettyTree line sublines Nothing \\\ lines = PrettyTree line (sublines ++ lines) Nothing
+PrettyTree line [] Nothing \\\ lines = PrettyTree line lines Nothing
+PrettyTree line sublines Nothing \\\ lines = PrettyTree line sublines (Just $ PrettyTree Nothing sublines Nothing)
 PrettyTree line sublines (Just rest) \\\ lines = PrettyTree line sublines (Just $ rest \\\ lines)
 
+-- | New line (non-obligatory)
 (|||) :: PrettyTree a -> PrettyTree a -> PrettyTree a
 PrettyTree line sublines Nothing ||| tree = PrettyTree line sublines (Just tree)
 PrettyTree line sublines (Just rest) ||| tree = PrettyTree line sublines (Just $ rest ||| tree)
 
+-- | Same as '|||'
 (///) :: PrettyTree a -> PrettyTree a -> PrettyTree a
 (///) = (|||)
 
+infixl 3 \\\, |||, ///
+
+-------------------------------------------------------
+
 (++|) :: Monoid a => a -> PrettyTree a -> PrettyTree a
-a ++| (PrettyTree line sublines rest) = PrettyTree (a <> line) sublines rest
+a ++| (PrettyTree line sublines rest) = PrettyTree (Just a <> line) sublines rest
 
 {-
 (|++) :: Monoid a => PrettyTree a -> a -> PrettyTree a
@@ -126,12 +145,12 @@ a ++| (PrettyTree line sublines rest) = PrettyTree (a <> line) sublines rest
 -}
 
 (|++|) :: Monoid a => PrettyTree a -> PrettyTree a -> PrettyTree a
-(PrettyTree line [] Nothing) |++| tree = line ++| tree
+(PrettyTree Nothing [] Nothing) |++| tree = tree
+(PrettyTree (Just line) [] Nothing) |++| tree = line ++| tree
 (PrettyTree line sublines Nothing) |++| tree = PrettyTree line sublines (Just tree)
 (PrettyTree line sublines (Just rest)) |++| tree = PrettyTree line sublines (Just $ rest |++| tree)
 
 (|++) :: Monoid a => PrettyTree a -> a -> PrettyTree a
 tree |++ a = tree |++| ribbon a
 
-infixl 3 \\\, |||, ///
 infixl 4 ++|, |++, |++|
