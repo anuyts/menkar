@@ -31,19 +31,25 @@ instance (m :<= n) => (m :<= S n) where
     @arityclasses@ gives the number of arguments the operator takes. Each entry @'(n, cl)@ states that an argument has
     arity @n@ (can use @n@ additional variables) and should belong to syntactic class @cl@.
 -}
-data Term (op :: [(Nat, Maybe *)] -> Maybe * -> *) (arityclass :: (Nat, Maybe *)) (v :: *) :: * where
-  Var :: v -> Term op '(Z, Nothing) v
-  Abs :: Term op '(arity, cl) (Maybe v) -> Term op '(S arity, cl) v
-  Term :: op arityclasses cl -> Args op arityclasses v -> Term op '(Z, cl) v
+data Term (op :: [(Nat, Maybe *)] -> Maybe * -> *) (cl :: Maybe *) (v :: *) :: * where
+  Var :: v -> Term op Nothing v
+  Term :: op arityclasses cl -> Args op arityclasses v -> Term op cl v
+
+data OpenTerm (op :: [(Nat, Maybe *)] -> Maybe * -> *) (arityclass :: (Nat, Maybe *)) (v :: *) :: * where
+  Closed :: Term op cl v -> OpenTerm op '(Z, cl) v
+  Abs :: OpenTerm op '(arity, cl) (Maybe v) -> OpenTerm op '(S arity, cl) v
 
 data Args (op :: [(Nat, Maybe *)] -> Maybe * -> *) (arityclasses :: [(Nat, Maybe *)]) (v :: *) :: * where
   EndArgs :: Args op '[] v
-  (:..) :: Term op '(arity, cl) v -> Args op arityclasses v -> Args op ('(arity, cl) ': arityclasses) v
+  (:..) :: OpenTerm op '(arity, cl) v -> Args op arityclasses v -> Args op ('(arity, cl) ': arityclasses) v
 
-instance Functor (Term op arityclass) where
+instance Functor (Term op cl) where
   fmap f (Var v) = Var $ f v
-  fmap f (Abs t) = Abs $ fmap (fmap f) t
   fmap f (Term d args) = Term d (fmap f args)
+
+instance Functor (OpenTerm op arityclass) where
+  fmap f (Closed t) = Closed $ fmap f t
+  fmap f (Abs t) = Abs $ fmap (fmap f) t
 
 instance Functor (Args op arityclasses) where
   fmap f EndArgs = EndArgs
@@ -52,22 +58,14 @@ instance Functor (Args op arityclasses) where
 class Swallows (beast :: * -> *) (food :: * -> *) where
   swallow :: beast (food v) -> beast v
 
-{-
-termSwallow :: Leq m n -> Term op '(n, cl) (Term op '(m, Nothing) v) -> Term op '(n, cl) v
-termSwallow leq (Var tv) = _
-termSwallow leq ttv = _
--}
-
---instance (m :<= n) => Swallows (Term op '(n, cl)) (Term op '(m, Nothing)) where
-
-{-
-instance Swallows (Term op '(n, cl)) (Term op '(n, Nothing)) where
+instance Swallows (Term op cl) (Term op Nothing) where
   swallow (Var tv) = tv
-  swallow (Abs ttv) = Abs $ swallow $ fmap (fmap Just . fromMaybe _) $ ttv
   swallow (Term op args) = Term op $ swallow args
-  --swallow = termSwallow proveLeq
 
-instance Swallows (Args op arityclasses) (Term op '(n, Nothing)) where
+instance Swallows (OpenTerm op '(n, cl)) (Term op Nothing) where
+  swallow (Closed ttv) = Closed $ swallow ttv
+  swallow (Abs ttv) = Abs $ swallow $ fmap (fromMaybe (Var Nothing) . (fmap $ fmap Just)) $ ttv
+
+instance Swallows (Args op arityclasses) (Term op Nothing) where
   swallow EndArgs = EndArgs
   swallow (ttv :.. atv) = swallow ttv :.. swallow atv
--}
