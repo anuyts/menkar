@@ -5,6 +5,22 @@ module Menkar.Syntax.Codes where
 
 import Data.Kind
 import Data.Type.Natural (Nat(..))
+import Data.Maybe
+
+data Leq (m :: Nat) (n :: Nat) where
+  LeqEq :: Leq m m
+  LeqStep :: Leq m n -> Leq m (S n)
+
+class (:<=) (m :: Nat) (n :: Nat) where
+  proveLeq :: Leq m n
+
+instance m :<= m where
+  proveLeq = LeqEq
+
+instance (m :<= n) => (m :<= S n) where
+  proveLeq = LeqStep proveLeq
+
+-------------------------------------------
 
 {-| @'Term' op '(n, cl) v@ is the type of terms of syntactic class @cl@, built with operators from @op@,
     and @n@ free variables from @v@.
@@ -36,7 +52,22 @@ instance Functor (Args op arityclasses) where
 class Swallows (beast :: * -> *) (food :: * -> *) where
   swallow :: beast (food v) -> beast v
 
+{-
+termSwallow :: Leq m n -> Term op '(n, cl) (Term op '(m, Nothing) v) -> Term op '(n, cl) v
+termSwallow leq (Var tv) = _
+termSwallow leq ttv = _
+-}
+
+--instance (m :<= n) => Swallows (Term op '(n, cl)) (Term op '(m, Nothing)) where
+
+{-
 instance Swallows (Term op '(n, cl)) (Term op '(n, Nothing)) where
   swallow (Var tv) = tv
-  swallow ttv = _
+  swallow (Abs ttv) = Abs $ swallow $ fmap (fmap Just . fromMaybe _) $ ttv
+  swallow (Term op args) = Term op $ swallow args
+  --swallow = termSwallow proveLeq
 
+instance Swallows (Args op arityclasses) (Term op '(n, Nothing)) where
+  swallow EndArgs = EndArgs
+  swallow (ttv :.. atv) = swallow ttv :.. swallow atv
+-}
