@@ -25,11 +25,15 @@ data (:##>) (arityclasses :: [(Nat, Maybe SyntaxPreclass)]) (cl :: Maybe SyntaxP
   -------------------------------------------------------
   -- | # EXPRESSIONS
   -- | domain mode, domain modality, domain, body
-  Lam :: LamInfo ->
-           '[ '(Z, ClassMode), '(Z, ClassModality), '(Z, ClassExpr), '(S Z, ClassExpr) ] :##> ClassExpr
+  Lam :: LamInfo -> '[ '(Z, ClassMode), '(Z, ClassModality), '(Z, ClassExpr), '(S Z, ClassExpr) ] :##> ClassExpr
+  -- | function, argument
   App :: '[ '(Z, ClassExpr), '(Z, ClassExpr) ] :##> ClassExpr
+  -- | fst mode, fst modality, fst, snd
+  Pair :: '[ '(Z, ClassMode), '(Z, ClassModality), '(Z, ClassExpr), '(Z, ClassExpr) ] :##> ClassExpr
+  -- | usage modality, motive, single clause
+  PairElim :: '[ '(Z, ClassModality), '(S (S Z), ClassExpr), '(S (S Z), ClassExpr) ] :##> ClassExpr
   -- | any number of arguments
-  Meta :: forall n . MetaInfo -> '[ '(Z, ClassList ClassExpr) ] :##> ClassExpr
+  Meta :: MetaInfo -> '[ '(Z, ClassList ClassExpr) ] :##> ClassExpr
   
   -------------------------------------------------------
   -- | # LISTS
