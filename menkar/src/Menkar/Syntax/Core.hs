@@ -32,15 +32,15 @@ instance (m :<= n) => (m :<= S n) where
     @arityclasses@ gives the number of arguments the operator takes. Each entry @'(n, cl)@ states that an argument has
     arity @n@ (can use @n@ additional variables) and should belong to syntactic class @cl@.
 -}
-data Term (op :: [(Nat, Maybe *)] -> Maybe * -> *) (cl :: Maybe *) (v :: *) :: * where
+data Term (op :: [(Nat, Maybe k)] -> Maybe k -> *) (cl :: Maybe k) (v :: *) :: * where
   Var :: v -> Term op Nothing v
   Term :: op arityclasses cl -> Args op arityclasses v -> Term op cl v
 
-data OpenTerm (op :: [(Nat, Maybe *)] -> Maybe * -> *) (arityclass :: (Nat, Maybe *)) (v :: *) :: * where
+data OpenTerm (op :: [(Nat, Maybe k)] -> Maybe k -> *) (arityclass :: (Nat, Maybe k)) (v :: *) :: * where
   Closed :: Term op cl v -> OpenTerm op '(Z, cl) v
   Abs :: OpenTerm op '(arity, cl) (Maybe v) -> OpenTerm op '(S arity, cl) v
 
-data Args (op :: [(Nat, Maybe *)] -> Maybe * -> *) (arityclasses :: [(Nat, Maybe *)]) (v :: *) :: * where
+data Args (op :: [(Nat, Maybe k)] -> Maybe k -> *) (arityclasses :: [(Nat, Maybe k)]) (v :: *) :: * where
   EndArgs :: Args op '[] v
   (:..) :: OpenTerm op '(arity, cl) v -> Args op arityclasses v -> Args op ('(arity, cl) ': arityclasses) v
 
@@ -111,3 +111,9 @@ instance Traversable (OpenTerm op '(arity, cl)) where
 instance Traversable (Args op arityclasses) where
   sequenceA EndArgs = pure EndArgs
   sequenceA (tfv :.. afv) = (:..) <$> sequenceA tfv <*> sequenceA afv
+
+-------------------------------------------
+
+type family Repeat (x :: k) (n :: Nat) :: [k]
+type instance Repeat x Z = '[]
+type instance Repeat x (S n) = x ': Repeat x n
