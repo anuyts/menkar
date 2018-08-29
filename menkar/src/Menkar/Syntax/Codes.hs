@@ -6,6 +6,7 @@ module Menkar.Syntax.Codes where
 import Data.Kind
 import Data.Type.Natural (Nat(..))
 import Data.Maybe
+import Data.Monoid
 
 data Leq (m :: Nat) (n :: Nat) where
   LeqEq :: Leq m m
@@ -43,6 +44,8 @@ data Args (op :: [(Nat, Maybe *)] -> Maybe * -> *) (arityclasses :: [(Nat, Maybe
   EndArgs :: Args op '[] v
   (:..) :: OpenTerm op '(arity, cl) v -> Args op arityclasses v -> Args op ('(arity, cl) ': arityclasses) v
 
+-------------------------------------------
+
 instance Functor (Term op cl) where
   fmap f (Var v) = Var $ f v
   fmap f (Term d args) = Term d (fmap f args)
@@ -54,6 +57,8 @@ instance Functor (OpenTerm op arityclass) where
 instance Functor (Args op arityclasses) where
   fmap f EndArgs = EndArgs
   fmap f (arg :.. args) = fmap f arg :.. fmap f args
+
+-------------------------------------------
 
 class Swallows (beast :: * -> *) (food :: * -> *) where
   swallow :: beast (food v) -> beast v
@@ -69,3 +74,40 @@ instance Swallows (OpenTerm op '(n, cl)) (Term op Nothing) where
 instance Swallows (Args op arityclasses) (Term op Nothing) where
   swallow EndArgs = EndArgs
   swallow (ttv :.. atv) = swallow ttv :.. swallow atv
+
+-------------------------------------------
+
+instance Applicative (Term op Nothing) where
+  pure = Var
+  tf <*> tv = swallow $ fmap (<$> tv) tf
+
+instance Monad (Term op Nothing) where
+  tv >>= f = swallow $ f <$> tv
+
+-------------------------------------------
+
+instance Foldable (Term op cl) where
+  foldMap f (Var v) = f v
+  foldMap f (Term op args) = foldMap f args
+
+instance Foldable (OpenTerm op '(arity, cl)) where
+  foldMap f (Closed tv) = foldMap f tv
+  foldMap f (Abs tv) = foldMap (fromMaybe mempty . fmap f) tv
+
+instance Foldable (Args op arityclasses) where
+  foldMap f EndArgs = mempty
+  foldMap f (tv :.. av) = foldMap f tv <> foldMap f av
+
+-------------------------------------------
+
+instance Traversable (Term op cl) where
+  sequenceA (Var fv) = Var <$> fv
+  sequenceA (Term op args) = Term op <$> sequenceA args
+
+instance Traversable (OpenTerm op '(arity, cl)) where
+  sequenceA (Closed tfv) = Closed <$> sequenceA tfv
+  sequenceA (Abs tfv) = Abs <$> (sequenceA $ fmap sequenceA $ tfv)
+
+instance Traversable (Args op arityclasses) where
+  sequenceA EndArgs = pure EndArgs
+  sequenceA (tfv :.. afv) = (:..) <$> sequenceA tfv <*> sequenceA afv
