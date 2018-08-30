@@ -6,6 +6,7 @@ module Menkar.Syntax.ComposableTest where
 import Menkar.Syntax.Composable
 import GHC.Generics
 import Test.HUnit
+import Test.Picker
 
 data LambdaExpr' v =
   Lam (LambdaExpr (Maybe v)) |
