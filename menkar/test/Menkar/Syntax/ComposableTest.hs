@@ -7,6 +7,14 @@ import Menkar.Syntax.Composable
 import GHC.Generics
 import Test.HUnit
 import Test.Picker
+import Data.List.NonEmpty (fromList)
+
+------------------------------
+
+instance (Pickable v, Pickable (e v)) => Pickable (Expr e v) where
+  picker = chooseDeeper (fromList [Var <$> picker]) [Expr <$> picker]
+
+------------------------------
 
 data LambdaExpr' v =
   Lam (LambdaExpr (Maybe v)) |
@@ -18,6 +26,9 @@ deriving instance Show v => Show (LambdaExpr' v)
 deriving instance Eq v => Eq (LambdaExpr' v)
 
 type LambdaExpr = Expr LambdaExpr'
+
+instance (Pickable v) => Pickable (LambdaExpr' v) where
+  picker = choose . fromList $ [Lam <$> picker, App <$> picker <*> picker]
 
 ------------------------------
 
