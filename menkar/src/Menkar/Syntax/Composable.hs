@@ -39,6 +39,8 @@ data Expr (e :: * -> *) (v :: *) =
   Var v
   | Expr (e v)
   deriving (Functor, Foldable, Traversable)
+deriving instance (Show v, Show (e v)) => Show (Expr e v)
+deriving instance (Eq v, Eq (e v)) => Eq (Expr e v)
 
 instance Swallows e (Expr e) => Swallows (Expr e) (Expr e) where
   swallow (Var ev) = ev
@@ -91,19 +93,4 @@ instance Functor Syn where
   fmap f (Lam fv) = Lam $ fmap f fv
 
 deriving instance Generic1 Syn
--}
-
-
-data LambdaExpr' v =
-  Lam (LambdaExpr (Maybe v)) |
-  App (LambdaExpr v) (LambdaExpr v)
-  deriving (Functor, Foldable, Traversable, Generic1)
-
-deriving instance Swallows LambdaExpr' LambdaExpr
-
-type LambdaExpr = Expr LambdaExpr'
-
-{-
-instance Swallows LambdaExpr' LambdaExpr where
-  swallow eev = _
 -}
