@@ -22,6 +22,6 @@ It is named after the star Alpha Ceti.
 ## Loading/building
 Here are some packages currently in use:
 
-* `categories` - Note: you need to add `PolyKinds` to Control.Categorical.Functor. (Currently not in use...)
+* ~~`categories` - Note: you need to add `PolyKinds` to Control.Categorical.Functor.~~
 * `megaparsec`
 * `nat`
