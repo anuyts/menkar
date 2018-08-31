@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, PolyKinds, DataKinds, TypeFamilies, RankNTypes, ConstraintKinds, GADTs,
 FlexibleInstances, TypeInType, TypeOperators #-}
 
-module Menkar.Syntax.Core where
+module Menkar.Syntax.Codes where
 
 import Data.Kind
 import Data.Type.Natural (Nat(..))
