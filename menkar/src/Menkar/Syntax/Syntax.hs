@@ -1,7 +1,23 @@
-{-# LANGUAGE DataKinds, KindSignatures, GADTs, TypeOperators, RankNTypes #-}
+{- # LANGUAGE DataKinds, KindSignatures, GADTs, TypeOperators, RankNTypes #-}
 
 module Menkar.Syntax.Syntax where
 
+import Menkar.Syntax.Composable
+
+data LamInfo where
+data MetaInfo where
+
+data TermNV (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+  Lam LamInfo (Term mobj mhom (Maybe v))
+  deriving (Functor, Foldable, Traversable)
+
+type Term mobj mhom v = Expr (TermNV mobj mhom) v 
+
+
+
+
+
+{-
 import Data.Type.Natural (Nat(..))
 import Menkar.Syntax.Core
 
@@ -44,3 +60,4 @@ data (:##>) (arityclasses :: [(Nat, Maybe SyntaxPreclass)]) (cl :: Maybe SyntaxP
   -- Expr2 :: '[ '(Z, ClassExpr), '(Z, ClassExpr) ] :##> ClassExpr2
 
 type Expr v = Term (:##>) ClassExpr v
+-}

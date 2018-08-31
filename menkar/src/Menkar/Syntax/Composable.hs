@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveTraversable, KindSignatures, MultiParamTypeClasses, FlexibleContexts, FlexibleInstances,
-StandaloneDeriving, UndecidableInstances, TypeOperators, DeriveGeneric, DefaultSignatures, DeriveAnyClass #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Menkar.Syntax.Composable where
 
