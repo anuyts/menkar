@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs, DeriveFunctor, StandaloneDeriving, RankNTypes, ApplicativeDo, PartialTypeSignatures, TypeOperators,
-DefaultSignatures, DeriveGeneric, FlexibleContexts #-}
+DefaultSignatures, DeriveGeneric, FlexibleContexts, TypeApplications #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
 module Test.Picker where
@@ -68,7 +68,7 @@ instance MonadPicker Picker where
 class Pickable a where
   picker :: Picker a
   default picker :: (Generic a, Pickable (Rep a ())) => Picker a
-  picker = to <$> (picker :: Picker (Rep a ())) :: Picker a
+  picker = (to @_ @()) <$> picker
   --picker = Picker $ runThePicker
   runThePicker :: RandomGen g => {-| maximal search depth -} Nat -> State g (Maybe a)
   runThePicker = runPicker picker
