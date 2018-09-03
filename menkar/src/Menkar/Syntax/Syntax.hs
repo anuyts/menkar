@@ -7,6 +7,7 @@ import GHC.Generics
 import qualified Menkar.Raw.Base as Raw
 import Data.Functor.Compose
 
+{- Segment info will have to depend on v, because 'resolves' annotations have variables -}
 data SegmentInfo = SegmentInfo {name :: String}
 data MetaInfo where
 

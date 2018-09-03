@@ -4,13 +4,30 @@ import Menkar.Syntax.Composable
 import Menkar.Syntax.Syntax
 import Data.Void
 import Control.Exception.AssertFalse
+import qualified Menkar.Raw.Base
+
+data ModuleRef (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  ModuleRef {
+    moduleQName :: Raw.Qualified (),
+    {-| The module's mode. -}
+    moduleMode :: mode v,
+    {-| Modality the currently defined value must be used by, in this module.
+        This is the right adjoint to the contramodality by which the members of this module should be divided before use. -}
+    moduleModality :: modty v,
+    {-| Maybe this should be @w -> Term mode modty v@. Maybe there should be a type of fine modules. -}
+    moduleParams :: [Term mode modty v]
+  }
 
 data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *) (v :: *) where
+  {-| Empty context. -}
   CtxEmpty :: Ctx t mode modty Void
+  {-| Extended context -}
   (:..) :: Ctx t mode modty v -> Segment t mode modty v -> Ctx t mode modty (Maybe v)
   {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
       it right away and annotate some further variables as quantified over the new variable. -}
   (:^^) :: Segment t mode modty Void -> Ctx t mode modty v -> Ctx t mode modty (Either () v)
+  {-| Context extended with siblings defined in a certain module. -}
+  (:<...>) :: Ctx t mode modty v -> ModuleRef mode modty v -> Ctx t mode modty v
 
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
 -- because `f <$> (g <$> x)` is much less efficient than `f . g <$> x`.
