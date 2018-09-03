@@ -18,6 +18,19 @@ data ModedModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
   Swallows (ModedModality mode modty) (Term mode modty)
 
+data ModedContramodality (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  ModedContramodality {domMode' :: mode v, codMode' :: mode v, rightAdjoint :: modty v}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
+  Swallows (ModedContramodality mode modty) (Term mode modty)
+
+modedLeftAdjoint :: ModedModality mode modty v -> ModedContramodality mode modty v
+modedLeftAdjoint (ModedModality dom cod mod) = (ModedContramodality cod dom mod)
+modedRightAdjoint :: ModedContramodality mode modty v -> ModedModality mode modty v
+modedRightAdjoint (ModedContramodality dom cod mod) = (ModedModality cod dom mod)
+
+------------------------------------
+
 data Segment
      {-| Type of the types in the context. Typically @'Type'@ or @'Pair3' 'Type'@ -}
      (ty :: (* -> *) -> (* -> *) -> * -> *)
