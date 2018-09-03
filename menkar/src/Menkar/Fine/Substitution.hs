@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Menkar.Syntax.Composable where
+module Menkar.Fine.Substitution where
 
 import Data.Functor.Compose
 import Control.Applicative

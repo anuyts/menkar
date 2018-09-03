@@ -1,7 +1,7 @@
-module Menkar.Syntax.Judgement where
+module Menkar.Fine.Judgement where
 
 import Menkar.Syntax.Composable
-import Menkar.Syntax.Syntax
+import Menkar.Fine.Syntax
 import Data.Void
 import Control.Exception.AssertFalse
 import qualified Menkar.Raw as Raw

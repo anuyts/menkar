@@ -1,6 +1,6 @@
 {- # LANGUAGE DataKinds, KindSignatures, GADTs, TypeOperators, RankNTypes #-}
 
-module Menkar.Syntax.Syntax where
+module Menkar.Fine.Syntax where
 
 import Menkar.Syntax.Composable
 import GHC.Generics

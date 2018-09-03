@@ -1,6 +1,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Menkar.Raw.Base where
+module Menkar.Raw.Syntax where
 
 import Data.Number.Nat
 import Data.String.Utils (replace)
