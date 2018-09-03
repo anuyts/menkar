@@ -2,11 +2,11 @@
 
 module Menkar.Fine.Syntax where
 
-import Menkar.Syntax.Composable
+import Menkar.Fine.Substitution
 import GHC.Generics
-import qualified Menkar.Raw.Base as Raw
+import qualified Menkar.Raw.Syntax as Raw
 import Data.Functor.Compose
-import Data.StringMap
+import Data.HashMap.Lazy
 
 {- Segment info will have to depend on v, because 'resolves' annotations have variables -}
 data SegmentInfo = SegmentInfo {name :: String}
@@ -170,8 +170,8 @@ type Val = Segment Type ValRHS
 
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRHS {
-    moduleVals :: StringMap (Val mode modty v),
-    moduleModules :: StringMap (Module mode modty v)
+    moduleVals :: Compose (HashMap String) (Val mode modty) v,
+    moduleModules :: Compose (HashMap String) (Module mode modty) v
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>

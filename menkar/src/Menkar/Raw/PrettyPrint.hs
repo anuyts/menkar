@@ -3,7 +3,7 @@
 module Menkar.Raw.PrettyPrint where
 
 import Control.Exception.AssertFalse
-import Menkar.Raw.Base
+import Menkar.Raw.Syntax
 import Text.PrettyPrint.Tree
 import Data.Maybe
 

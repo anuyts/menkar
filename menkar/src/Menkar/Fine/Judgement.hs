@@ -1,10 +1,10 @@
 module Menkar.Fine.Judgement where
 
-import Menkar.Syntax.Composable
+import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
 import Data.Void
 import Control.Exception.AssertFalse
-import qualified Menkar.Raw as Raw
+import qualified Menkar.Raw.Syntax as Raw
 
 data ModuleRef (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRef {
@@ -22,16 +22,16 @@ data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *
   {-| Empty context. -}
   CtxEmpty :: Ctx t mode modty Void
   {-| Extended context -}
-  (:..) :: Ctx t mode modty v -> Segment t mode modty v -> Ctx t mode modty (Maybe v)
+  (:..) :: Ctx t mode modty v -> Segment t t mode modty v -> Ctx t mode modty (Maybe v)
   {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
       it right away and annotate some further variables as quantified over the new variable. -}
-  (:^^) :: Segment t mode modty Void -> Ctx t mode modty v -> Ctx t mode modty (Either () v)
+  (:^^) :: Segment t t mode modty Void -> Ctx t mode modty v -> Ctx t mode modty (Either () v)
   {-| Context extended with siblings defined in a certain module. -}
   (:<...>) :: Ctx t mode modty v -> ModuleRef mode modty v -> Ctx t mode modty v
 
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
 -- because `f <$> (g <$> x)` is much less efficient than `f . g <$> x`.
-getSegment :: (Functor mode, Functor modty, Functor (t mode modty)) => Ctx t mode modty v -> v -> Segment t mode modty v
+getSegment :: (Functor mode, Functor modty, Functor (t mode modty)) => Ctx t mode modty v -> v -> Segment t t mode modty v
 getSegment CtxEmpty _ = unreachable
 getSegment (gamma :.. segT) Nothing = Just <$> segT
 getSegment (gamma :.. segT) (Just v) = Just <$> getSegment gamma v

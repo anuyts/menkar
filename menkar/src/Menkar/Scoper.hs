@@ -3,7 +3,7 @@
 module Menkar.Scoper where
 
 import Menkar.TCMonad.MonadScoper
-import qualified Menkar.Raw as Raw
+import qualified Menkar.Raw.Syntax as Raw
 
 --scEntry :: MonadScoper s => Raw.Entry -> 
 
