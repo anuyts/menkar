@@ -103,9 +103,10 @@ Relatedness checking
 * If checking Top-relatedness: succeed.
 * Weak head normalize everything (no decorations).
 * If the type has eta, eta expand and recurse. †
-* If the type is blocked, and both hands are whnf, try to match; at success recurse, otherwise block.
+* If the type is blocked, and both hands are whnf, try to match; at success recurse, otherwise block. (WHY IS THIS OK?)
 * If both hands are whnf, either fail or match and recurse.
-* If one hand is a pure implicit: head-solve the meta and recurse! (We're not checking Top-relatedness, so the head is not i-erased.) †
+* If one hand is a pure implicit and the other is not: head-solve the meta and recurse! (We're not checking Top-relatedness, so the head is not i-erased.) †
+* If one hand is a pure implicit and the other is a different implicit: ?
 * We know that one hand is blocked. Block.
 
 † This no longer works if you have intersection/union types, or any other construction that causes heads to be i-erased.
