@@ -4,7 +4,7 @@ import Menkar.Syntax.Composable
 import Menkar.Syntax.Syntax
 import Data.Void
 import Control.Exception.AssertFalse
-import qualified Menkar.Raw.Base
+import qualified Menkar.Raw as Raw
 
 data ModuleRef (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRef {
