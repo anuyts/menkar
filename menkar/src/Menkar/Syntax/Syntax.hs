@@ -54,6 +54,14 @@ data ConstructorTerm (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
 deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
   Swallows (ConstructorTerm mobj mhom) (Term mobj mhom)
 
+data SmartEliminator (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+  SmartElimEnd Raw.ArgSpec |
+  SmartElimArg Raw.ArgSpec (Term mobj mhom v) |
+  SmartElimProj Raw.ProjSpec
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
+  Swallows (SmartEliminator mobj mhom) (Term mobj mhom)
+
 data Eliminator (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
   ElimUnsafeResize
     (Term mobj mhom v) {-^ Type's proper level -}
@@ -87,6 +95,7 @@ deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), S
 
 type Term mobj mhom = Expr (TermNV mobj mhom)
 
+-- | is this useful?
 data Type (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
   ElType {-^ Constructor'ish -} 
     (Term mobj mhom v) {-^ Type's proper level -}
