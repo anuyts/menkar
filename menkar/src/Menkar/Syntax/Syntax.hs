@@ -16,12 +16,21 @@ data ModedModality (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
 deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
   Swallows (ModedModality mobj mhom) (Term mobj mhom)
 
+data Segment (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+  Segment {
+    segmentInfo :: SegmentInfo,
+    segmentModality :: ModedModality mobj mhom v,
+    segmentType :: Term mobj mhom v
+  }
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
+  Swallows (Segment mobj mhom) (Term mobj mhom)
+
 data Binding (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
   Binding {
-    bindingInfo :: SegmentInfo,
-    bindingModality :: ModedModality mobj mhom v,
-    bindingDomain :: Term mobj mhom v,
-    bindingBody :: Term mobj mhom (Maybe v)}
+    bindingSegment :: Segment mobj mhom v,
+    bindingBody :: Term mobj mhom (Maybe v)
+  }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
   Swallows (Binding mobj mhom) (Term mobj mhom)
