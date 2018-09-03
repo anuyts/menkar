@@ -10,114 +10,119 @@ import Data.Functor.Compose
 data SegmentInfo = SegmentInfo {name :: String}
 data MetaInfo where
 
-data ModedModality (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
-  ModedModality {domMode :: mobj v, codMode :: mobj v, modality :: mhom v}
+data ModedModality (mode :: * -> *) (mhom :: * -> *) (v :: *) =
+  ModedModality {domMode :: mode v, codMode :: mode v, modality :: mhom v}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (ModedModality mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (ModedModality mode mhom) (Term mode mhom)
 
-data Segment (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+data Segment (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (mhom :: * -> *) (v :: *) =
   Segment {
     segmentInfo :: SegmentInfo,
-    segmentModality :: ModedModality mobj mhom v,
-    segmentType :: Term mobj mhom v
+    segmentModality :: ModedModality mode mhom v,
+    segmentType :: t mode mhom v
   }
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (Segment mobj mhom) (Term mobj mhom)
+deriving instance (
+    Functor mode,
+    Functor mhom,
+    Swallows mode (Term mode mhom),
+    Swallows mhom (Term mode mhom),
+    Swallows (t mode mhom) (Term mode mhom)
+  ) => Swallows (Segment t mode mhom) (Term mode mhom)
 
-data Binding (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+data Binding (mode :: * -> *) (mhom :: * -> *) (v :: *) =
   Binding {
-    bindingSegment :: Segment mobj mhom v,
-    bindingBody :: Term mobj mhom (Maybe v)
+    bindingSegment :: Segment Type mode mhom v,
+    bindingBody :: Term mode mhom (Maybe v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (Binding mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (Binding mode mhom) (Term mode mhom)
 
-data TypeTerm (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+data TypeTerm (mode :: * -> *) (mhom :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
-    (mobj v) {-^ mode (of both the universe and its elements) -}
-    (Term mobj mhom v) {-^ level -} |
-  Pi (Binding mobj mhom v) |
-  Sigma (Binding mobj mhom v) |
+    (mode v) {-^ mode (of both the universe and its elements) -}
+    (Term mode mhom v) {-^ level -} |
+  Pi (Binding mode mhom v) |
+  Sigma (Binding mode mhom v) |
   EmptyType |
   UnitType
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (TypeTerm mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (TypeTerm mode mhom) (Term mode mhom)
 
-data ConstructorTerm (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+data ConstructorTerm (mode :: * -> *) (mhom :: * -> *) (v :: *) =
   ConsUnsafeResize
-    (mobj v) {-^ Type's mode -}
-    (Term mobj mhom v) {-^ Type's proper level -}
-    (Term mobj mhom v) {-^ Type's assigned level -}
-    (TypeTerm mobj mhom v) {-^ Type -} |
-  Lam (Binding mobj mhom v) |
+    (mode v) {-^ Type's mode -}
+    (Term mode mhom v) {-^ Type's proper level -}
+    (Term mode mhom v) {-^ Type's assigned level -}
+    (TypeTerm mode mhom v) {-^ Type -} |
+  Lam (Binding mode mhom v) |
   Pair SegmentInfo
-    (ModedModality mobj mhom v)
-    (Term mobj mhom v)
-    (Term mobj mhom v) |
+    (ModedModality mode mhom v)
+    (Term mode mhom v)
+    (Term mode mhom v) |
   ConsUnit
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (ConstructorTerm mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (ConstructorTerm mode mhom) (Term mode mhom)
 
-data SmartEliminator (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+data SmartEliminator (mode :: * -> *) (mhom :: * -> *) (v :: *) =
   SmartElimEnd Raw.ArgSpec |
-  SmartElimArg Raw.ArgSpec (Term mobj mhom v) |
+  SmartElimArg Raw.ArgSpec (Term mode mhom v) |
   SmartElimProj Raw.ProjSpec
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (SmartEliminator mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (SmartEliminator mode mhom) (Term mode mhom)
 
-data Eliminator (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+data Eliminator (mode :: * -> *) (mhom :: * -> *) (v :: *) =
   ElimUnsafeResize
-    (Term mobj mhom v) {-^ Type's proper level -}
-    (Term mobj mhom v) {-^ Type's assigned level -}
-    (Term mobj mhom v) {-^ Type -} |
-  App Raw.ArgSpec (Term mobj mhom v) {-^ argument -} |
+    (Term mode mhom v) {-^ Type's proper level -}
+    (Term mode mhom v) {-^ Type's assigned level -}
+    (Term mode mhom v) {-^ Type -} |
+  App Raw.ArgSpec (Term mode mhom v) {-^ argument -} |
   ElimPair
-    (Binding mobj mhom v) {-^ pair's sigma type -} 
-    (Term mobj mhom (Maybe v)) {-^ motive -}
-    (Term mobj mhom (Maybe (Maybe v))) {-^ clause -} |
+    (Binding mode mhom v) {-^ pair's sigma type -} 
+    (Term mode mhom (Maybe v)) {-^ motive -}
+    (Term mode mhom (Maybe (Maybe v))) {-^ clause -} |
   Fst
-    (Binding mobj mhom v) {-^ pair's sigma type -} |
+    (Binding mode mhom v) {-^ pair's sigma type -} |
   Snd
-    (Binding mobj mhom v) {-^ pair's sigma type -} |
+    (Binding mode mhom v) {-^ pair's sigma type -} |
   ElimEmpty
-    (Term mobj mhom (Maybe v)) {-^ motive -}
+    (Term mode mhom (Maybe v)) {-^ motive -}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (Eliminator mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (Eliminator mode mhom) (Term mode mhom)
 
-data TermNV (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
-  TermCons (ConstructorTerm mobj mhom v) |
+data TermNV (mode :: * -> *) (mhom :: * -> *) (v :: *) =
+  TermCons (ConstructorTerm mode mhom v) |
   TermElim
-    (ModedModality mobj mhom v) {-^ modality by which the eliminee is used -}
-    (Term mobj mhom v) {-^ eliminee -}
-    (Eliminator mobj mhom v) {-^ eliminator -} |
-  TermMeta (Compose [] (Term mobj mhom) v)
+    (ModedModality mode mhom v) {-^ modality by which the eliminee is used -}
+    (Term mode mhom v) {-^ eliminee -}
+    (Eliminator mode mhom v) {-^ eliminator -} |
+  TermMeta (Compose [] (Term mode mhom) v)
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (TermNV mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (TermNV mode mhom) (Term mode mhom)
 
-type Term mobj mhom = Expr (TermNV mobj mhom)
+type Term mode mhom = Expr (TermNV mode mhom)
 
 -- | is this useful?
-data Type (mobj :: * -> *) (mhom :: * -> *) (v :: *) =
+data Type (mode :: * -> *) (mhom :: * -> *) (v :: *) =
   ElType {-^ Constructor'ish -} 
-    (Term mobj mhom v) {-^ Type's proper level -}
-    (TypeTerm mobj mhom v) {-^ Type -} |
+    (Term mode mhom v) {-^ Type's proper level -}
+    (TypeTerm mode mhom v) {-^ Type -} |
   ElTerm {-^ Eliminator'ish -}
-    (Term mobj mhom v) {-^ Type's proper level -}
-    (Term mobj mhom v) {-^ Type -}
+    (Term mode mhom v) {-^ Type's proper level -}
+    (Term mode mhom v) {-^ Type -}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mobj, Functor mhom, Swallows mobj (Term mobj mhom), Swallows mhom (Term mobj mhom)) =>
-  Swallows (Type mobj mhom) (Term mobj mhom)
+deriving instance (Functor mode, Functor mhom, Swallows mode (Term mode mhom), Swallows mhom (Term mode mhom)) =>
+  Swallows (Type mode mhom) (Term mode mhom)
  
-
-
+data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 (t a b c) (t a b c) deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Swallows (t mode mhom) (Term mode mhom)) => Swallows (Pair3 t mode mhom) (Term mode mhom)
 
 
 
