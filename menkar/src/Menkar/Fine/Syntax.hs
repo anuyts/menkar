@@ -170,7 +170,7 @@ data Telescoped
      (modty :: * -> *)
      (v :: *) =
   Telescoped (rhs mode modty v) |
-  Segment ty ty mode modty v :|- rhs mode modty (Maybe v)
+  Segment ty ty mode modty v :|- Telescoped ty rhs mode modty (Maybe v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
     Functor mode,
@@ -218,6 +218,9 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   
 data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c} deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Pair3 t mode modty)
+
+data Unit3 (a :: ka) (b :: kb) (c :: kc) = Unit3 deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance CanSwallow (Term mode modty) (Unit3 mode modty)
 
 {-
 data Module (mode :: * -> *) (modty :: * -> *) (v :: *) =

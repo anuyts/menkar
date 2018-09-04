@@ -58,6 +58,60 @@ expr2 :: MonadScoper mode modty rel sc =>
 expr2 gamma d (Raw.ExprElimination e) = elimination gamma d e
 
 {-
+lambda :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Raw.Segment -> {-^ segment on the left of the operator -}
+  Raw.Expr -> {-^ operand on the right of the operator -}
+  sc (Term mode modty v)
+lambda gamma d arg body = lambda
+-}
+lambda2 :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Telescoped Type Unit3 mode modty v ->
+      {-^ remainder of the already-scoped part of the telescope on the left of the operator -}
+  [Raw.Segment] -> {-^ telescope on the left of the operator -}
+  Raw.Expr -> {-^ operand on the right of the operator -}
+  sc (Term mode modty v)
+lambda2 gamma d (Telescoped Unit3) args body = lambda gamma d args body
+lambda2 gamma d (seg :|- segs) args body =
+  Expr . TermCons . Lam . Binding seg <$> lambda2 (gamma :.. seg) (Just <$> d) segs args body
+  
+lambda :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  [Raw.Segment] -> {-^ telescope on the left of the operator -}
+  Raw.Expr -> {-^ operand on the right of the operator -}
+  sc (Term mode modty v)
+lambda gamma d [] body = expr gamma d body
+lambda gamma d (arg:args) body = do
+  argTele <- segment gamma d arg
+  lambda2 gamma d argTele args body
+  --peelTelescoped gamma argTele $ \ wkn gamma' Unit3 -> do
+  --  sublambda <- lambda gamma' (wkn <$> d) args body
+  --  _
+
+exprTele :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Raw.Telescope -> {-^ telescope on the left of the operator -}
+  Raw.Elimination -> {-^ the operator -}
+  Maybe (Raw.Expr) -> {-^ operand on the right of the operator -}
+  sc (Term mode modty v)
+exprTele gamma d theta op@(Raw.Elimination _ (_ : _)) maybeER =
+  scopeFail $ "Smart eliminations used on a binding operator: " ++ show op
+exprTele gamma d theta op@(Raw.Elimination (Raw.ExprQName (Raw.Qualified [] (Raw.Name Raw.Op opname))) []) maybeER =
+  case (opname, maybeER) of
+    (">", Just body) -> lambda gamma d (Raw.untelescope theta) body
+    ("><", Just cod) -> _sigma
+    ("->", Just cod) -> _pi
+    (_, Nothing) -> scopeFail $ "Binder body/codomain is missing."
+    _    -> scopeFail $ "Illegal operator name: " ++ opname
+exprTele gamma d theta op maybeER =
+  scopeFail $ "Binding operator is not an unqualified name: " ++ show op
+
+{-
 type Fixity = Double
 data Associativity = AssocLeft | AssocRight | AssocAlone
 data OpTree mode modty v =
@@ -86,43 +140,6 @@ exprToTree :: MonadScoper mode modty rel sc =>
 exprToTree gamma d _ = _exprToTree
 -}
 
-{-
-lambda :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
-  mode v ->
-  Raw.Segment -> {-^ segment on the left of the operator -}
-  Raw.Expr -> {-^ operand on the right of the operator -}
-  sc (Term mode modty v)
-lambda gamma d arg body = lambda
--}
-lambda :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
-  mode v ->
-  [Raw.Segment] -> {-^ telescope on the left of the operator -}
-  Raw.Expr -> {-^ operand on the right of the operator -}
-  sc (Term mode modty v)
-lambda gamma d [] body = expr gamma d body
-lambda gamma d (arg:args) body = _lambda
-
-exprTele :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
-  mode v ->
-  Raw.Telescope -> {-^ telescope on the left of the operator -}
-  Raw.Elimination -> {-^ the operator -}
-  Maybe (Raw.Expr) -> {-^ operand on the right of the operator -}
-  sc (Term mode modty v)
-exprTele gamma d theta op@(Raw.Elimination _ (_ : _)) maybeER =
-  scopeFail $ "Smart eliminations used on a binding operator: " ++ show op
-exprTele gamma d theta op@(Raw.Elimination (Raw.ExprQName (Raw.Qualified [] (Raw.Name Raw.Op opname))) []) maybeER =
-  case (opname, maybeER) of
-    (">", Just body) -> lambda gamma d (Raw.untelescope theta) body
-    ("><", Just cod) -> _sigma
-    ("->", Just cod) -> _pi
-    (_, Nothing) -> scopeFail $ "Binder body is missing."
-    _    -> scopeFail $ "Illegal operator name: " ++ opname
-exprTele gamma d theta op maybeER =
-  scopeFail $ "Binding operator is not an unqualified name: " ++ show op
-
 {- YOU NEED TO RESOLVE FIXITY HERE -}
 {- For now, every operator is right associative with equal precedence -}
 expr :: MonadScoper mode modty rel sc =>
@@ -136,9 +153,18 @@ expr gamma d (Raw.ExprOps (Raw.OperandExpr eL) (Just (op, Nothing))) = do
 expr gamma d (Raw.ExprOps (Raw.OperandExpr eL) (Just (op, Just eR))) = do
   elimination gamma d (Raw.addEliminators op [Raw.ElimArg Raw.ArgSpecVisible (Raw.expr2to1 eL),
                                               Raw.ElimArg Raw.ArgSpecVisible eR])
-expr gamma d devil@(Raw.ExprOps (Raw.OperandTelescope _) Nothing) =
-  assertFalse $ "Naked telescope appears as expression: " ++ show fullExpr
+expr gamma d fullExpr@(Raw.ExprOps (Raw.OperandTelescope _) Nothing) =
+  scopeFail $ "Naked telescope appears as expression: " ++ show fullExpr
 expr gamma d (Raw.ExprOps (Raw.OperandTelescope theta) (Just (op, maybeER))) = exprTele gamma d theta op maybeER
+
+------------------------------------------------
+
+segment :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Raw.Segment ->
+  sc (Telescoped Type Unit3 mode modty v)
+segment gamma d seg = _segment
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 val :: MonadScoper mode modty rel s => Raw.LHS -> Raw.RHS -> s (Val mode modty v)

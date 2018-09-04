@@ -11,7 +11,12 @@ data Constraint mode modty rel = Constraint {
     constraintReason :: String
   }
 
-class Monad sc => MonadScoper
+class (
+    Monad sc,
+    Traversable mode,
+    Traversable modty,
+    Traversable rel
+  ) => MonadScoper
     (mode :: * -> *)
     (modty :: * -> *)
     (rel :: * -> *)

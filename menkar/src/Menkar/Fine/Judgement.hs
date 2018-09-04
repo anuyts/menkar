@@ -88,3 +88,14 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
+
+-------------------------------------------------------------
+
+peelTelescoped ::
+  Ctx ty mode modty v ->
+  Telescoped ty rhs mode modty v ->
+  (forall w . (v -> w) -> Ctx ty mode modty w -> rhs mode modty w -> motive) ->
+  motive
+peelTelescoped gamma (Telescoped rhs) k = k id gamma rhs
+peelTelescoped gamma (seg :|- thing) k =
+  peelTelescoped (gamma :.. seg) thing (\ wkn' -> k (wkn' . Just))
