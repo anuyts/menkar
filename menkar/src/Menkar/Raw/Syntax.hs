@@ -56,7 +56,7 @@ data Annotation = Annotation (Qualified String) (Maybe Expr) --deriving Show
 data Segment = Segment LHS --deriving Show
 
 {-| A bunch of assumptions in accolads. Essentially a dependent telescope. -}
-data Telescope = Telescope [Segment] --deriving Show
+data Telescope = Telescope {untelescope :: [Segment]} --deriving Show
 
 data LHSNames =
   SomeNamesForTelescope [Maybe Name] -- name or underscore

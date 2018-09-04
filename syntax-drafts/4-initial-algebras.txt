@@ -151,6 +151,9 @@ IX Empty (P ? T ? case {})
 //-----------------------------------------
 
 val Stream {irr | l : Nat} {A : Uni d l} : Uni d l
-	= {par | X : Uni d l} >< (X -> A) >< (X -> X) >< X
+	//= {par | X : Uni d l} >< (X -> A) >< (X -> X) >< X
+        = {par | X : Uni d l} {hd : X -> A} {tl : X -> X} {state : X} >< TT
+        //= Record {par | X : Uni d l} {hd : X -> A} {tl : X -> X} {state : X}
 val [str] count {n : Nat} : Uni 0 0
-	= (Nat , x > x , suc , n)
+	//= (Nat , (x > x) , suc , n)
+	= (Nat , (x > x) , suc , n , tt)

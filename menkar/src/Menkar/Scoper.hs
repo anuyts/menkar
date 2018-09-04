@@ -3,7 +3,7 @@
 module Menkar.Scoper where
 
 import Menkar.TCMonad.MonadScoper
-import qualified Menkar.Raw.Syntax as Raw
+import qualified Menkar.Raw as Raw
 import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import Menkar.Fine.Substitution
@@ -86,6 +86,24 @@ exprToTree :: MonadScoper mode modty rel sc =>
 exprToTree gamma d _ = _exprToTree
 -}
 
+{-
+lambda :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Raw.Segment -> {-^ segment on the left of the operator -}
+  Raw.Expr -> {-^ operand on the right of the operator -}
+  sc (Term mode modty v)
+lambda gamma d arg body = lambda
+-}
+lambda :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  [Raw.Segment] -> {-^ telescope on the left of the operator -}
+  Raw.Expr -> {-^ operand on the right of the operator -}
+  sc (Term mode modty v)
+lambda gamma d [] body = expr gamma d body
+lambda gamma d (arg:args) body = _lambda
+
 exprTele :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
   mode v ->
@@ -93,7 +111,17 @@ exprTele :: MonadScoper mode modty rel sc =>
   Raw.Elimination -> {-^ the operator -}
   Maybe (Raw.Expr) -> {-^ operand on the right of the operator -}
   sc (Term mode modty v)
-exprTele gamma d theta op maybeER = _exprTele
+exprTele gamma d theta op@(Raw.Elimination _ (_ : _)) maybeER =
+  scopeFail $ "Smart eliminations used on a binding operator: " ++ show op
+exprTele gamma d theta op@(Raw.Elimination (Raw.ExprQName (Raw.Qualified [] (Raw.Name Raw.Op opname))) []) maybeER =
+  case (opname, maybeER) of
+    (">", Just body) -> lambda gamma d (Raw.untelescope theta) body
+    ("><", Just cod) -> _sigma
+    ("->", Just cod) -> _pi
+    (_, Nothing) -> scopeFail $ "Binder body is missing."
+    _    -> scopeFail $ "Illegal operator name: " ++ opname
+exprTele gamma d theta op maybeER =
+  scopeFail $ "Binding operator is not an unqualified name: " ++ show op
 
 {- YOU NEED TO RESOLVE FIXITY HERE -}
 {- For now, every operator is right associative with equal precedence -}
@@ -108,7 +136,8 @@ expr gamma d (Raw.ExprOps (Raw.OperandExpr eL) (Just (op, Nothing))) = do
 expr gamma d (Raw.ExprOps (Raw.OperandExpr eL) (Just (op, Just eR))) = do
   elimination gamma d (Raw.addEliminators op [Raw.ElimArg Raw.ArgSpecVisible (Raw.expr2to1 eL),
                                               Raw.ElimArg Raw.ArgSpecVisible eR])
-expr gamma d (Raw.ExprOps (Raw.OperandTelescope _) Nothing) = assertFalse "Naked telescope appears as expression."
+expr gamma d devil@(Raw.ExprOps (Raw.OperandTelescope _) Nothing) =
+  assertFalse $ "Naked telescope appears as expression: " ++ show fullExpr
 expr gamma d (Raw.ExprOps (Raw.OperandTelescope theta) (Just (op, maybeER))) = exprTele gamma d theta op maybeER
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
