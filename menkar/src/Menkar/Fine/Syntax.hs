@@ -12,14 +12,23 @@ import Data.HashMap.Lazy
 data SegmentInfo = SegmentInfo {name :: String}
 data MetaInfo where
 
+{-
+data DependentModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  NonDependentModality (ModedModality mode modty v) | Flat (mode v)
+  --DependentModality {dmodDom :: mode v, dmodCod :: mode (Maybe v), dmodMod :: modty v}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
+  Swallows (DependentModality mode modty) (Term mode modty)
+-}
+
 data ModedModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  ModedModality {domMode :: mode v, codMode :: mode v, modality :: modty v}
+  ModedModality {modDom :: mode v, modCod :: mode v, modMod :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
   Swallows (ModedModality mode modty) (Term mode modty)
 
 data ModedContramodality (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  ModedContramodality {domMode' :: mode v, codMode' :: mode v, rightAdjoint :: modty v}
+  ModedContramodality {contramodDom :: mode v, contramodCod :: mode v, contramodRightAdjoint :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
   Swallows (ModedContramodality mode modty) (Term mode modty)

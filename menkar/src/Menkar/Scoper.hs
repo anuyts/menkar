@@ -16,7 +16,7 @@ eliminator :: MonadScoper mode modty rel sc =>
   sc (SmartEliminator mode modty v)
 eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec e) = do
-  e' <- todo
+  e' <- expr gamma e
   return $ SmartElimArg argSpec e'
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
@@ -24,8 +24,33 @@ expr3 :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
   Raw.Expr3 ->
   sc (Term mode modty v)
-expr3 gamma e = _
+expr3 gamma (Raw.ExprQName qname) = term4val gamma qname
+expr3 gamma (Raw.ExprParens e) = expr gamma e
+expr3 gamma (Raw.ExprNatLiteral n) = todo
+expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma
 
+elimination :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  Raw.Elimination ->
+  sc (Term mode modty v)
+elimination gamma (Raw.Elimination e elims) = do
+  e' <- expr3 gamma e
+  tyE' <- type4newImplicit gamma
+  elims' <- sequenceA (eliminator gamma <$> elims)
+  result' <- term4newImplicit gamma
+  --theMode <- mode4newImplicit gamma
+  pushConstraint $ Constraint {
+      constraintJudgement = JudSmartElim gamma _mode e' tyE' elims' result',
+      constraintParent = Nothing,
+      constraintReason = "Scoper: Elaborate smart elimination."
+    }
+  return result'
+
+expr :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  Raw.Expr ->
+  sc (Term mode modty v)
+expr = _expr
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 val :: MonadScoper mode modty rel s => Raw.LHS -> Raw.RHS -> s (Val mode modty v)
