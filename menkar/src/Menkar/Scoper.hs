@@ -12,35 +12,38 @@ import Control.Exception.AssertFalse
 
 eliminator :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
+  mode v ->
   Raw.Eliminator ->
   sc (SmartEliminator mode modty v)
-eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
-eliminator gamma (Raw.ElimArg argSpec e) = do
-  e' <- expr gamma e
+eliminator gamma d (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
+eliminator gamma d (Raw.ElimArg argSpec e) = do
+  e' <- expr gamma d e
   return $ SmartElimArg argSpec e'
-eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
+eliminator gamma d (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
 expr3 :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
+  mode v ->
   Raw.Expr3 ->
   sc (Term mode modty v)
-expr3 gamma (Raw.ExprQName qname) = term4val gamma qname
-expr3 gamma (Raw.ExprParens e) = expr gamma e
-expr3 gamma (Raw.ExprNatLiteral n) = todo
-expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma
+expr3 gamma d (Raw.ExprQName qname) = term4val gamma d qname
+expr3 gamma d (Raw.ExprParens e) = expr gamma d e
+expr3 gamma d (Raw.ExprNatLiteral n) = todo
+expr3 gamma d (Raw.ExprImplicit) = term4newImplicit gamma d
 
 elimination :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
+  mode v ->
   Raw.Elimination ->
   sc (Term mode modty v)
-elimination gamma (Raw.Elimination e elims) = do
-  e' <- expr3 gamma e
-  tyE' <- type4newImplicit gamma
-  elims' <- sequenceA (eliminator gamma <$> elims)
-  result' <- term4newImplicit gamma
+elimination gamma d (Raw.Elimination e elims) = do
+  e' <- expr3 gamma d e
+  tyE' <- type4newImplicit gamma d
+  elims' <- sequenceA (eliminator gamma d <$> elims)
+  result' <- term4newImplicit gamma d
   --theMode <- mode4newImplicit gamma
   pushConstraint $ Constraint {
-      constraintJudgement = JudSmartElim gamma _mode e' tyE' elims' result',
+      constraintJudgement = JudSmartElim gamma d e' tyE' elims' result',
       constraintParent = Nothing,
       constraintReason = "Scoper: Elaborate smart elimination."
     }
@@ -48,6 +51,7 @@ elimination gamma (Raw.Elimination e elims) = do
 
 expr :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
+  mode v ->
   Raw.Expr ->
   sc (Term mode modty v)
 expr = _expr

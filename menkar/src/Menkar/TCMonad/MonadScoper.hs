@@ -18,9 +18,9 @@ class Monad sc => MonadScoper
     (sc :: * -> *)
     | mode -> modty, mode -> rel where
   --type ConstraintRef sc :: *
-  term4val :: Ctx Type mode modty v -> Raw.QName -> sc (Term mode modty v)
+  term4val :: Ctx Type mode modty v -> mode v -> Raw.QName -> sc (Term mode modty v)
   {- TODO: also return an implicit-ref -}
-  term4newImplicit :: Ctx Type mode modty v -> sc (Term mode modty v)
-  type4newImplicit :: Ctx Type mode modty v -> sc (Type mode modty v)
+  term4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Term mode modty v)
+  type4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Type mode modty v)
   --mode4newImplicit :: Ctx Type mode modty v -> sc (mode v)
   pushConstraint :: Constraint mode modty rel -> sc ()
