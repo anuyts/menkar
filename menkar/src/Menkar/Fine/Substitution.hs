@@ -6,11 +6,12 @@ import Data.Functor.Compose
 import Control.Applicative
 import GHC.Generics
 
-class Swallows (g :: * -> *) (f :: * -> *) where
+class CanSwallow (f :: * -> *) (g :: * -> *) where
   swallow :: g (f v) -> g v
-  default swallow :: (Generic1 g, Swallows (Rep1 g) f) => g (f v) -> g v
+  default swallow :: (Generic1 g, CanSwallow f (Rep1 g)) => g (f v) -> g v
   swallow = to1 . swallow . from1
 
+{-
 newtype Precompose g f x = Precompose {getPrecompose :: (g (f x))}
 
 deriving instance (Functor g, Functor f) => Functor (Precompose g f)
@@ -21,11 +22,12 @@ instance (Applicative g, Applicative f) => Applicative (Precompose g f) where
   pure x = Precompose $ pure . pure $ x
   Precompose gff <*> Precompose gfx = Precompose ((<*>) <$> gff <*> gfx)
 
-instance (Swallows g f, Functor h) => Swallows (Compose h g) f where
-  swallow (Compose hgfx) = Compose (fmap swallow hgfx)
-
-instance (Swallows h f, Functor h, Traversable g, Applicative f) => Swallows (Precompose h g) f where
+instance (CanSwallow f h, Functor h, Traversable g, Applicative f) => CanSwallow f (Precompose h g) where
   swallow (Precompose hgfx) = Precompose $ swallow $ fmap sequenceA hgfx
+-}
+
+instance (CanSwallow f g, Functor h) => CanSwallow f (Compose h g) where
+  swallow (Compose hgfx) = Compose (fmap swallow hgfx)
 
 -------------------------------------------
 
@@ -41,44 +43,44 @@ data Expr (e :: * -> *) (v :: *) =
 deriving instance (Show v, Show (e v)) => Show (Expr e v)
 deriving instance (Eq v, Eq (e v)) => Eq (Expr e v)
 
-instance Swallows e (Expr e) => Swallows (Expr e) (Expr e) where
+instance CanSwallow (Expr e) e => CanSwallow (Expr e) (Expr e) where
   swallow (Var ev) = ev
   swallow (Expr eev) = Expr (swallow eev)
 
-instance (Functor e, Swallows e (Expr e)) => Applicative (Expr e) where
+instance (Functor e, CanSwallow (Expr e) e) => Applicative (Expr e) where
   pure = Var
   tf <*> tv = swallow $ fmap (<$> tv) tf
 
-instance (Functor e, Swallows e (Expr e)) => Monad (Expr e) where
+instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
   tv >>= f = swallow $ f <$> tv
 
 --------------------------------------------
 
 -- void
-instance Swallows V1 e where
+instance CanSwallow e V1 where
   swallow contradiction = undefined
 
 -- unit
-instance Swallows U1 e where
+instance CanSwallow e U1 where
   swallow U1 = U1
 
-instance Swallows f e => Swallows (Rec1 f) e where
+instance CanSwallow e f => CanSwallow e (Rec1 f) where
   swallow (Rec1 fex) = Rec1 $ swallow fex
 
-instance Swallows (K1 i c) e where
+instance CanSwallow e (K1 i c) where
   swallow (K1 k) = K1 k
 
-instance Swallows f e => Swallows (M1 i c f) e where
+instance CanSwallow e f => CanSwallow e (M1 i c f) where
   swallow (M1 fex) = M1 $ swallow fex
 
-instance (Swallows l e, Swallows r e) => Swallows (l :+: r) e where
+instance (CanSwallow e l, CanSwallow e r) => CanSwallow e (l :+: r) where
   swallow (L1 lex) = L1 (swallow lex)
   swallow (R1 rex) = R1 (swallow rex)
 
-instance (Swallows f e, Swallows g e) => Swallows (f :*: g) e where
+instance (CanSwallow e f, CanSwallow e g) => CanSwallow e (f :*: g) where
   swallow (fex :*: gex) = swallow fex :*: swallow gex
 
-instance (Swallows h e, Functor h, Traversable g, Applicative e) => Swallows (h :.: g) e where
+instance (CanSwallow e h, Functor h, Traversable g, Applicative e) => CanSwallow e (h :.: g) where
   swallow (Comp1 hgex) = Comp1 $ swallow $ fmap sequenceA hgex
 
 --------------------------------------------

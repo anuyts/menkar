@@ -1,1 +1,1 @@
-ghci -i../src/
+ghci -i../src/ -XDeriveTraversable -XMultiParamTypeClasses -XFlexibleContexts -XFlexibleInstances -XStandaloneDeriving -XTypeOperators -XDeriveGeneric -XDefaultSignatures -XDeriveAnyClass -XKindSignatures -XGADTs -XRankNTypes -XDataKinds -XPolyKinds -XTypeFamilies -XFunctionalDependencies

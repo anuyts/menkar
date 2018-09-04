@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveTraversable, KindSignatures, MultiParamTypeClasses, FlexibleContexts, FlexibleInstances,
 StandaloneDeriving, UndecidableInstances, TypeOperators, DeriveGeneric, DefaultSignatures, DeriveAnyClass #-}
 
-module Menkar.Syntax.ComposableTest where
+module Menkar.Fine.SubstitutionTest where
 
-import Menkar.Syntax.Composable
+import Menkar.Fine.Substitution
 import GHC.Generics
 import Test.HUnit
 import Test.Picker
@@ -18,9 +18,9 @@ instance (Pickable v, Pickable (e v)) => Pickable (Expr e v) where
 data LambdaExpr' v =
   Lam (LambdaExpr (Maybe v)) |
   App (LambdaExpr v) (LambdaExpr v)
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow LambdaExpr)
 
-deriving instance Swallows LambdaExpr' LambdaExpr
+--deriving instance CanSwallow LambdaExpr LambdaExpr'
 deriving instance Show v => Show (LambdaExpr' v)
 deriving instance Eq v => Eq (LambdaExpr' v)
 

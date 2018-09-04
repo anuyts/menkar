@@ -17,21 +17,21 @@ data DependentModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
   NonDependentModality (ModedModality mode modty v) | Flat (mode v)
   --DependentModality {dmodDom :: mode v, dmodCod :: mode (Maybe v), dmodMod :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (DependentModality mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode (Term mode modty), CanSwallow (Term mode modty) modty (Term mode modty)) =>
+  CanSwallow (Term mode modty) (DependentModality mode modty) (Term mode modty)
 -}
 
 data ModedModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModedModality {modDom :: mode v, modCod :: mode v, modMod :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (ModedModality mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (ModedModality mode modty)
 
 data ModedContramodality (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModedContramodality {contramodDom :: mode v, contramodCod :: mode v, contramodRightAdjoint :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (ModedContramodality mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (ModedContramodality mode modty)
 
 modedLeftAdjoint :: ModedModality mode modty v -> ModedContramodality mode modty v
 modedLeftAdjoint (ModedModality dom cod mod) = (ModedContramodality cod dom mod)
@@ -59,11 +59,11 @@ deriving instance (
     Functor modty,
     Functor (ty mode modty),
     Functor (rhs mode modty),
-    Swallows mode (Term mode modty),
-    Swallows modty (Term mode modty),
-    Swallows (ty mode modty) (Term mode modty),
-    Swallows (rhs mode modty) (Term mode modty)
-  ) => Swallows (Segment ty rhs mode modty) (Term mode modty)
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty mode modty),
+    CanSwallow (Term mode modty) (rhs mode modty)
+  ) => CanSwallow (Term mode modty) (Segment ty rhs mode modty)
 
 data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Binding {
@@ -71,8 +71,8 @@ data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
     bindingBody :: Term mode modty (Maybe v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (Binding mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (Binding mode modty)
 
 data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
@@ -83,8 +83,8 @@ data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   EmptyType |
   UnitType
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (TypeTerm mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (TypeTerm mode modty)
 
 data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ConsUnsafeResize
@@ -99,16 +99,16 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Term mode modty v) |
   ConsUnit
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (ConstructorTerm mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (ConstructorTerm mode modty)
 
 data SmartEliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   SmartElimEnd Raw.ArgSpec |
   SmartElimArg Raw.ArgSpec (Term mode modty v) |
   SmartElimProj Raw.ProjSpec
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (SmartEliminator mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (SmartEliminator mode modty)
 
 data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimUnsafeResize
@@ -127,8 +127,8 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimEmpty
     (Term mode modty (Maybe v)) {-^ motive -}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (Eliminator mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (Eliminator mode modty)
 
 -- | is this useful? If not, keep it as a newtype over Term.
 data Type (mode :: * -> *) (modty :: * -> *) (v :: *) =
@@ -139,8 +139,8 @@ data Type (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Term mode modty v) {-^ Type's proper level -}
     (Term mode modty v) {-^ Type -}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (Type mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (Type mode modty)
 
 ------------------------------------
 
@@ -152,8 +152,8 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Eliminator mode modty v) {-^ eliminator -} |
   TermMeta (Compose [] (Term mode modty) v)
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (TermNV mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (TermNV mode modty)
 
 type Term mode modty = Expr (TermNV mode modty)
 
@@ -173,22 +173,22 @@ deriving instance (
     Functor modty,
     Functor (ty mode modty),
     Functor (rhs mode modty),
-    Swallows mode (Term mode modty),
-    Swallows modty (Term mode modty),
-    Swallows (ty mode modty) (Term mode modty),
-    Swallows (rhs mode modty) (Term mode modty)
-  ) => Swallows (Telescoped ty rhs mode modty) (Term mode modty)
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty mode modty),
+    CanSwallow (Term mode modty) (rhs mode modty)
+  ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
 
 data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) = ValRHS (Term mode modty v) (Type mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (ValRHS mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (ValRHS mode modty)
 
 type Val = Segment Type ValRHS
 --newtype Val (mode :: * -> *) (modty :: * -> *) (v :: *) = Val (Segment Type ValRHS mode modty v)
 --  deriving (Functor, Foldable, Traversable, Generic1)
---deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
---  Swallows (Val mode modty) (Term mode modty)
+--deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+--  CanSwallow (Term mode modty) (Val mode modty)
 
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRHS {
@@ -196,24 +196,24 @@ data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
     moduleModules :: Compose (HashMap String) (Module mode modty) v
   }
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (ModuleRHS mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (ModuleRHS mode modty)
 
 type Module = Segment Type ModuleRHS
 --newtype Module (mode :: * -> *) (modty :: * -> *) (v :: *) = Module (Segment Type ModuleRHS mode modty v)
 --  deriving (Functor, Foldable, Traversable, Generic1)
---deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
---  Swallows (Val mode modty) (Term mode modty)
+--deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+--  CanSwallow (Term mode modty) (Val mode modty)
 
 data Entry (mode :: * -> *) (modty :: * -> *) (v :: *) = EntryVal (Val mode modty v) | EntryModule (Module mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, Swallows mode (Term mode modty), Swallows modty (Term mode modty)) =>
-  Swallows (Entry mode modty) (Term mode modty)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (Entry mode modty)
 
 ------------------------------------
   
 data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c} deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Swallows (t mode modty) (Term mode modty)) => Swallows (Pair3 t mode modty) (Term mode modty)
+deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Pair3 t mode modty)
 
 {-
 data Module (mode :: * -> *) (modty :: * -> *) (v :: *) =
