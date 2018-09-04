@@ -117,7 +117,9 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Term mode modty v) {-^ Type's proper level -}
     (Term mode modty v) {-^ Type's assigned level -}
     (Term mode modty v) {-^ Type -} |
-  App Raw.ArgSpec (Term mode modty v) {-^ argument -} |
+  App
+    (Binding mode modty v) {-^ function's pi type -} 
+    (Term mode modty v) {-^ argument -} |
   ElimPair
     (Binding mode modty v) {-^ pair's sigma type -} 
     (Term mode modty (Maybe v)) {-^ motive -}

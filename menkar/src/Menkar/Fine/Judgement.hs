@@ -33,6 +33,7 @@ getSegment (gamma :.. segT) Nothing = Just <$> segT
 getSegment (gamma :.. segT) (Just v) = Just <$> getSegment gamma v
 getSegment (segT :^^ gamma) (Left ()) = absurd <$> segT
 getSegment (segT :^^ gamma) (Right v) = Right <$> getSegment gamma v
+getSegment (segT :<...> _) v = getSegment segT v
 
 -------------------------------------------------------------
 

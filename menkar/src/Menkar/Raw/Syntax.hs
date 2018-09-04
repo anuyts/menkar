@@ -33,6 +33,8 @@ data Expr3 =
   --deriving Show
 
 data Elimination = Elimination Expr3 [Eliminator] --deriving Show
+addEliminators :: Elimination -> [Eliminator] -> Elimination
+addEliminators (Elimination e elims) moreElims = Elimination e (elims ++ moreElims)
 
 data Expr2 =
   ExprElimination Elimination
