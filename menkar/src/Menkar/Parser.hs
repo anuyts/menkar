@@ -443,12 +443,12 @@ expr = Raw.Expr <$> some atom
 --haskellAnnotation = Raw.AnnotationHaskell <$> haskellCodeBracketed
 
 atomicAnnotation :: CanParse m => m Raw.Annotation
-atomicAnnotation = (\qword -> Raw.Annotation qword Nothing) <$> qWord
+atomicAnnotation = (\qword -> Raw.Annotation qword []) <$> qWord
 
 compoundAnnotation :: CanParse m => m Raw.Annotation
 compoundAnnotation = brackets $ do
   qword <- qWord
-  content <- optional expr
+  content <- many expr3
   return $ Raw.Annotation qword content
 
 annotation :: CanParse m => m Raw.Annotation

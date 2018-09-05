@@ -51,7 +51,7 @@ expr2to1 e = ExprOps (OperandExpr e) Nothing
 -----------------------------------------------------------
 
 {-| One item in the annotation clause. -}
-data Annotation = Annotation (Qualified String) (Maybe Expr) --deriving Show
+data Annotation = Annotation (Qualified String) [Expr3] --deriving Show
 
 data Segment = Segment LHS --deriving Show
 

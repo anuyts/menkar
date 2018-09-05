@@ -92,15 +92,15 @@ instance Unparsable Expr where
   parserName _ = "expr"
 
 instance Unparsable Annotation where
-  unparse' (Annotation qname Nothing) = unparse' qname
-  unparse' (Annotation qname (Just expr)) = "[" ++| unparse' qname |++ " "
-                                            \\\ [unparse' expr]
+  unparse' (Annotation qname []) = unparse' qname
+  unparse' (Annotation qname exprs) = "[" ++| unparse' qname
+                                            \\\ ((" " ++|) . unparse' <$> exprs)
                                             /// ribbon "]"
   parserName _ = "annotation"
   
 unparseAnnotationBrackets :: Annotation -> PrettyTree String
-unparseAnnotationBrackets (Annotation qname Nothing) = "[" ++| unparse' qname |++ "]"
-unparseAnnotationBrackets annot@(Annotation qname (Just expr)) = unparse' annot
+unparseAnnotationBrackets (Annotation qname []) = "[" ++| unparse' qname |++ "]"
+unparseAnnotationBrackets annot = unparse' annot
 
 unparseAnnotationClause :: [Annotation] -> PrettyTree String
 unparseAnnotationClause [] = ribbonEmpty
