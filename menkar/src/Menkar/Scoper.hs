@@ -9,6 +9,8 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import Menkar.Fine.Substitution
 import Control.Exception.AssertFalse
+import Control.Monad.State.Lazy
+import Data.Functor.Compose
 
 {- SEARCH FOR TODOS -}
 
@@ -191,12 +193,46 @@ expr gamma d (Raw.ExprOps (Raw.OperandTelescope theta) (Just (op, maybeER))) = e
 
 ------------------------------------------------
 
+annotation :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Raw.Annotation ->
+  sc (Annotation mode modty v)
+annotation gamma d (Raw.Annotation (Raw.Qualified [] "~") []) = return AnnotImplicit
+annotation gamma d (Raw.Annotation qstring exprs) = do
+  exprs' <- sequenceA $ expr3 gamma d <$> exprs
+  annot4annot gamma d qstring exprs'
+
 segment :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
   mode v ->
   Raw.Segment ->
   sc (Telescoped Type Unit3 mode modty v)
 segment gamma d seg = _segment
+
+lhs2segments :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Raw.LHS ->
+  sc [Segment Type Type mode modty v]
+lhs2segments gamma d lhs = (`evalStateT` newSegmentBuilder) $ do
+  annots <- sequenceA $ annotation gamma d <$> Raw.annotationsLHS lhs
+  forM_ annots $ \ annot -> do
+    builder <- get
+    case annot of
+      AnnotMode d' -> case segmentBuilderMode builder of
+        Compose (Just d'') -> scopeFail $ "Encountered multiple mode annotations: " ++ show lhs
+        Compose Nothing -> modify $ \ builder -> builder {segmentBuilderMode = Compose $ Just d'}
+      AnnotModality mu' -> case segmentBuilderModality builder of
+        Compose (Just mu'') -> scopeFail $ "Encountered multiple modality annotations: " ++ show lhs
+        Compose Nothing -> modify $ \ builder -> builder {segmentBuilderModality = Compose $ Just mu'}
+      AnnotImplicit -> case segmentBuilderVisibility builder of
+        Compose (Just v) -> scopeFail $ "Encountered multiple visibility annotations: " ++ show lhs
+        Compose Nothing -> modify $ \ builder -> builder {segmentBuilderVisibility = Compose $ Just Implicit}
+  -- somehow parse context and type
+  -- multiply builder for each name (ListT?)
+  -- build segment
+  _lhs2segments
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 val :: MonadScoper mode modty rel s => Raw.LHS -> Raw.RHS -> s (Val mode modty v)

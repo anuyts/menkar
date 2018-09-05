@@ -1,9 +1,12 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Menkar.TCMonad.MonadScoper where
 
 import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import qualified Menkar.Raw.Syntax as Raw
+import Control.Monad.State.Lazy
 
 data Constraint mode modty rel = Constraint {
     constraintJudgement :: Judgement mode modty rel,
@@ -25,9 +28,19 @@ class (
     -- -| mode -> modty, mode -> rel where
   --type ConstraintRef sc :: *
   term4val :: Ctx Type mode modty v -> mode v -> Raw.QName -> sc (Term mode modty v)
+  annot4annot :: Ctx Type mode modty v -> mode v ->
+    Raw.Qualified String -> [Term mode modty v] -> sc (Annotation mode modty v)
   {- TODO: also return an implicit-ref -}
   term4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Term mode modty v)
   type4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Type mode modty v)
   --mode4newImplicit :: Ctx Type mode modty v -> sc (mode v)
   pushConstraint :: Constraint mode modty rel -> sc ()
   scopeFail :: String -> sc a
+
+instance (MonadScoper mode modty rel sc) => MonadScoper mode modty rel (StateT s sc) where
+  term4val gamma d qname = lift $ term4val gamma d qname
+  annot4annot gamma d qstring args = lift $ annot4annot gamma d qstring args
+  term4newImplicit gamma d = lift $ term4newImplicit gamma d
+  type4newImplicit gamma d = lift $ type4newImplicit gamma d
+  pushConstraint c = lift $ pushConstraint c
+  scopeFail msg = lift $ scopeFail msg

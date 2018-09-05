@@ -9,7 +9,6 @@ import Data.Functor.Compose
 import Data.HashMap.Lazy
 
 {- Segment info will have to depend on v, because 'resolves' annotations have variables -}
-data SegmentInfo = SegmentInfo {name :: String}
 data MetaInfo where
 
 {-
@@ -42,31 +41,6 @@ modedRightAdjoint (ModedContramodality dom cod mod) = (ModedModality cod dom mod
 
 ------------------------------------
 
-data Segment
-     {-| Type of the types in the context. Typically @'Type'@ or @'Pair3' 'Type'@ -}
-     (ty :: (* -> *) -> (* -> *) -> * -> *)
-     {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
-     (rhs :: (* -> *) -> (* -> *) -> * -> *)
-     (mode :: * -> *)
-     (modty :: * -> *)
-     (v :: *) =
-  Segment {
-    segmentInfo :: SegmentInfo,
-    segmentModality :: ModedModality mode modty v,
-    segmentType :: Telescoped ty rhs mode modty v
-  }
-  deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (
-    Functor mode,
-    Functor modty,
-    Functor (ty mode modty),
-    Functor (rhs mode modty),
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (ty mode modty),
-    CanSwallow (Term mode modty) (rhs mode modty)
-  ) => CanSwallow (Term mode modty) (Segment ty rhs mode modty)
-
 data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Binding {
     bindingSegment :: Segment Type Type mode modty v,
@@ -95,8 +69,8 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Term mode modty v) {-^ Type's assigned level -}
     (TypeTerm mode modty v) {-^ Type -} |
   Lam (Binding mode modty v) |
-  Pair SegmentInfo
-    (ModedModality mode modty v)
+  Pair
+    (Binding mode modty v) {-^ pair's sigma type -} 
     (Term mode modty v)
     (Term mode modty v) |
   ConsUnit
@@ -162,6 +136,82 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 type Term mode modty = Expr (TermNV mode modty)
 
 ------------------------------------
+
+--data SegmentInfo = SegmentInfo {name :: String}
+
+data Annotation mode modty v =
+  AnnotMode (mode v) |
+  AnnotModality (modty v) |
+  AnnotImplicit
+  --AnnotResolves (Term )
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (Annotation mode modty)
+
+data Visibility mode modty v =
+  Visible |
+  Implicit |
+  Resolves (Term mode modty v) -- this may change
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (Visibility mode modty)
+
+data Segment
+     {-| Type of the types in the context. Typically @'Type'@ or @'Pair3' 'Type'@ -}
+     (ty :: (* -> *) -> (* -> *) -> * -> *)
+     {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
+     (rhs :: (* -> *) -> (* -> *) -> * -> *)
+     (mode :: * -> *)
+     (modty :: * -> *)
+     (v :: *) =
+  Segment {
+    --segmentInfo :: SegmentInfo,
+    --segmentAnnots :: Compose [] (Annotation mode modty) v,
+    segmentName :: String,
+    segmentModality :: ModedModality mode modty v,
+    segmentVisibility :: Visibility mode modty v,
+    segmentRHS :: Telescoped ty rhs mode modty v
+  }
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (ty mode modty),
+    Functor (rhs mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty mode modty),
+    CanSwallow (Term mode modty) (rhs mode modty)
+  ) => CanSwallow (Term mode modty) (Segment ty rhs mode modty)
+
+data SegmentBuilder
+     {-| Type of the types in the context. Typically @'Type'@ or @'Pair3' 'Type'@ -}
+     (ty :: (* -> *) -> (* -> *) -> * -> *)
+     {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
+     (rhs :: (* -> *) -> (* -> *) -> * -> *)
+     (mode :: * -> *)
+     (modty :: * -> *)
+     (v :: *) =
+  SegmentBuilder {
+    segmentBuilderName :: [String],
+    segmentBuilderMode :: Compose Maybe mode v,
+    segmentBuilderModality :: Compose Maybe modty v,
+    segmentBuilderVisibility :: Compose Maybe (Visibility mode modty) v,
+    segmentBuilderType :: Compose Maybe (Telescoped ty rhs mode modty) v
+  }
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (ty mode modty),
+    Functor (rhs mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty mode modty),
+    CanSwallow (Term mode modty) (rhs mode modty)
+  ) => CanSwallow (Term mode modty) (SegmentBuilder ty rhs mode modty)
+newSegmentBuilder :: SegmentBuilder ty rhs mode modty v
+newSegmentBuilder = SegmentBuilder [] (Compose Nothing) (Compose Nothing) (Compose Nothing) (Compose Nothing)
 
 data Telescoped
      (ty :: (* -> *) -> (* -> *) -> * -> *)
