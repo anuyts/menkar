@@ -57,15 +57,6 @@ expr2 :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 expr2 gamma d (Raw.ExprElimination e) = elimination gamma d e
 
-{-
-lambda :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
-  mode v ->
-  Raw.Segment -> {-^ segment on the left of the operator -}
-  Raw.Expr -> {-^ operand on the right of the operator -}
-  sc (Term mode modty v)
-lambda gamma d arg body = lambda
--}
 lambda2 :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
   mode v ->

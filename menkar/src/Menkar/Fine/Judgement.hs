@@ -19,11 +19,11 @@ data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *
   CtxEmpty :: Ctx t mode modty Void
   {-| Extended context -}
   (:..) :: Ctx t mode modty v -> Segment t t mode modty v -> Ctx t mode modty (Maybe v)
-  {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
-      it right away and annotate some further variables as quantified over the new variable. -}
-  (:^^) :: Segment t t mode modty Void -> Ctx t mode modty v -> Ctx t mode modty (Either () v)
   {-| Context extended with siblings defined in a certain module. -}
   (:<...>) :: Ctx t mode modty v -> ModuleInScope mode modty v -> Ctx t mode modty v
+{-  {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
+      it right away and annotate some further variables as quantified over the new variable. -}
+  (:^^) :: Segment t t mode modty Void -> Ctx t mode modty v -> Ctx t mode modty (Either () v) -}
 
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
 -- because `f <$> (g <$> x)` is much less efficient than `f . g <$> x`.
@@ -31,9 +31,9 @@ getSegment :: (Functor mode, Functor modty, Functor (t mode modty)) => Ctx t mod
 getSegment CtxEmpty _ = unreachable
 getSegment (gamma :.. segT) Nothing = Just <$> segT
 getSegment (gamma :.. segT) (Just v) = Just <$> getSegment gamma v
-getSegment (segT :^^ gamma) (Left ()) = absurd <$> segT
-getSegment (segT :^^ gamma) (Right v) = Right <$> getSegment gamma v
 getSegment (segT :<...> _) v = getSegment segT v
+--getSegment (segT :^^ gamma) (Left ()) = absurd <$> segT
+--getSegment (segT :^^ gamma) (Right v) = Right <$> getSegment gamma v
 
 -------------------------------------------------------------
 
