@@ -1,3 +1,33 @@
+Base categories
+===============
+There are the following templates
+```
+cube	cubical sets
+bpcube	bridge path cubical sets
+dcube	depth cubical sets
+procube	directed cubical sets
+clock	multiclock type theory
+```
+There are the following options
+```
++s	symmetries
+?s	maybe symmetries
+-s	no symmetries
+
++d	diagonals (cartesian; there will be ranges)
+?d	maybe diagonals (cancellative symmetric semi-cartesian; a lot of things become unclear)
+-d	no diagonals (affine)
+
++c	connections (only for cartesian; /\ and \/ are available)
+?c	maybe connections
+-c	no connections (only for affine; Phi is available if affine)
+
+0	nullary (for clock; note that the base category is spooky: you need to use the generalized boundary)
+1	unary
+2	binary
+...
+```
+
 Parsing
 =======
 ```
