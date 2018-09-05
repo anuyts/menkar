@@ -2,6 +2,7 @@
 
 module Menkar.Scoper where
 
+import Prelude hiding (pi)
 import Menkar.TCMonad.MonadScoper
 import qualified Menkar.Raw as Raw
 import Menkar.Fine.Syntax
@@ -57,7 +58,43 @@ expr2 :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 expr2 gamma d (Raw.ExprElimination e) = elimination gamma d e
 
-lambda2 :: MonadScoper mode modty rel sc =>
+buildPi :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Segment Type Type mode modty v ->
+  Term mode modty (Maybe v) ->
+  sc (Term mode modty v)
+buildPi gamma d seg cod = do
+  lvl <- term4newImplicit gamma d
+  return $ Expr $ TermCons $ ConsUnsafeResize d lvl lvl $ Pi $ Binding seg cod
+
+buildSigma :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Segment Type Type mode modty v ->
+  Term mode modty (Maybe v) ->
+  sc (Term mode modty v)
+buildSigma gamma d seg cod = do
+  lvl <- term4newImplicit gamma d
+  return $ Expr $ TermCons $ ConsUnsafeResize d lvl lvl $ Sigma $ Binding seg cod
+  
+buildLambda :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Segment Type Type mode modty v ->
+  Term mode modty (Maybe v) ->
+  sc (Term mode modty v)
+buildLambda gamma d seg body =
+  return $ Expr $ TermCons $ Lam $ Binding seg body
+
+binder2 :: MonadScoper mode modty rel sc =>
+  ( forall w .
+    Ctx Type mode modty w ->
+    mode w ->
+    Segment Type Type mode modty w ->
+    Term mode modty (Maybe w) ->
+    sc (Term mode modty w)
+  ) ->
   Ctx Type mode modty v ->
   mode v ->
   Telescoped Type Unit3 mode modty v ->
@@ -65,23 +102,27 @@ lambda2 :: MonadScoper mode modty rel sc =>
   [Raw.Segment] -> {-^ telescope on the left of the operator -}
   Raw.Expr -> {-^ operand on the right of the operator -}
   sc (Term mode modty v)
-lambda2 gamma d (Telescoped Unit3) args body = lambda gamma d args body
-lambda2 gamma d (seg :|- segs) args body =
-  Expr . TermCons . Lam . Binding seg <$> lambda2 (gamma :.. seg) (Just <$> d) segs args body
-  
-lambda :: MonadScoper mode modty rel sc =>
+binder2 build gamma d (Telescoped Unit3) args body = binder build gamma d args body
+binder2 build gamma d (seg :|- segs) args body =
+  build gamma d seg =<< binder2 build (gamma :.. seg) (Just <$> d) segs args body
+
+binder :: MonadScoper mode modty rel sc =>
+  ( forall w .
+    Ctx Type mode modty w ->
+    mode w ->
+    Segment Type Type mode modty w ->
+    Term mode modty (Maybe w) ->
+    sc (Term mode modty w)
+  ) ->
   Ctx Type mode modty v ->
   mode v ->
   [Raw.Segment] -> {-^ telescope on the left of the operator -}
   Raw.Expr -> {-^ operand on the right of the operator -}
   sc (Term mode modty v)
-lambda gamma d [] body = expr gamma d body
-lambda gamma d (arg:args) body = do
+binder build gamma d [] body = expr gamma d body
+binder build gamma d (arg:args) body = do
   argTele <- segment gamma d arg
-  lambda2 gamma d argTele args body
-  --peelTelescoped gamma argTele $ \ wkn gamma' Unit3 -> do
-  --  sublambda <- lambda gamma' (wkn <$> d) args body
-  --  _
+  binder2 build gamma d argTele args body
 
 exprTele :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
@@ -94,9 +135,9 @@ exprTele gamma d theta op@(Raw.Elimination _ (_ : _)) maybeER =
   scopeFail $ "Smart eliminations used on a binding operator: " ++ show op
 exprTele gamma d theta op@(Raw.Elimination (Raw.ExprQName (Raw.Qualified [] (Raw.Name Raw.Op opname))) []) maybeER =
   case (opname, maybeER) of
-    (">", Just body) -> lambda gamma d (Raw.untelescope theta) body
-    ("><", Just cod) -> _sigma
-    ("->", Just cod) -> _pi
+    (">", Just body) -> binder buildLambda gamma d (Raw.untelescope theta) body
+    ("><", Just cod) -> binder buildSigma gamma d (Raw.untelescope theta) cod
+    ("->", Just cod) -> binder buildPi gamma d (Raw.untelescope theta) cod
     (_, Nothing) -> scopeFail $ "Binder body/codomain is missing."
     _    -> scopeFail $ "Illegal operator name: " ++ opname
 exprTele gamma d theta op maybeER =
