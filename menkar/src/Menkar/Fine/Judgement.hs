@@ -88,6 +88,8 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
+  -- JudAccuracy: "This term should be known up to that accuracy"
+  -- JudReport: "This term is that goal and should be reported on" (maybe this is not a judgement, but something in the monad).
 
 -------------------------------------------------------------
 

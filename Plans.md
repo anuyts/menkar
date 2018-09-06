@@ -115,13 +115,18 @@ Judgements
 
 At the end of a thread
 ----------------------
-Try to inhabit unsolved implicits that are not goals. HOW!?
+A thread can terminate the following ways:
+* Failure: a constraint is required that does not hold.
+* Success: after the constraint solving phase, every object of interest is known up to the desired accuracy. **Subsequently**, there exists some joint resolution of all metas satisfying all remaining constraints.
+* Unresolved metas: after the constraint solving phase, some objects of interest are not known up to the desired accuracy.
+* Unresolved existence of metas: all objects of interest are known up to the desired accuracy, but we failed to spawn a solution to the remaining metas and constraints.
 
 Aftermath
 ---------
-* If no threads succeeded, report the errors of all failed threads.
-* If one or more threads succeeded, all with 0-related resolution of the original metas, just report the solutions of the goals.
-* If multiple threads succeeded and do not agree, report the choices of all successful threads.
+* If all threads failed, report the errors of all failed threads.
+* If some threads terminate with unresolved (existence of) metas, report about all non-failed threads.
+* If one or more threads succeeded and agree up to the desired accuracy, just report the solutions of the goals.
+* If multiple threads succeeded and do not agree up to the desired accuracy, report the choices of all successful threads.
 
 Discreteness: internal or external?
 -----------------------------------
