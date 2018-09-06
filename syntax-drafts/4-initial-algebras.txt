@@ -161,5 +161,5 @@ val [str] count {n : Nat} : Uni 0 0
 //-----------------------------------------
 
 val transport {~ | A : Uni l} {~ | a a' : A} {P : A -> Uni l} {p : P a} {e : a == a'} : P a'
-	= let {val transportP {~ | x x' : A} {e : x == x'} : P x -> P x' where {case refl = q > q}}
+	= let {matcher transportP {~ | x x' : A} {e : x == x'} : P x -> P x' where {case refl = q > q}}
 	  in transportP e p
