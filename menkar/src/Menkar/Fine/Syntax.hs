@@ -167,7 +167,7 @@ data Segment
   Segment {
     --segmentInfo :: SegmentInfo,
     --segmentAnnots :: Compose [] (Annotation mode modty) v,
-    segmentName :: String,
+    segmentName :: Raw.Name,
     segmentModality :: ModedModality mode modty v,
     segmentVisibility :: Visibility mode modty v,
     segmentRHS :: Telescoped ty rhs mode modty v

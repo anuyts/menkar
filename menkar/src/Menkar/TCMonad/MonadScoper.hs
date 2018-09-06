@@ -33,6 +33,8 @@ class (
   {- TODO: also return an implicit-ref -}
   term4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Term mode modty v)
   type4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Type mode modty v)
+  mode4newImplicit :: Ctx Type mode modty v -> mode v -> sc (mode v)
+  modty4newImplicit :: Ctx Type mode modty v -> mode v -> sc (modty v)
   --mode4newImplicit :: Ctx Type mode modty v -> sc (mode v)
   pushConstraint :: Constraint mode modty rel -> sc ()
   scopeFail :: String -> sc a
@@ -42,5 +44,7 @@ instance (MonadScoper mode modty rel sc) => MonadScoper mode modty rel (StateT s
   annot4annot gamma d qstring args = lift $ annot4annot gamma d qstring args
   term4newImplicit gamma d = lift $ term4newImplicit gamma d
   type4newImplicit gamma d = lift $ type4newImplicit gamma d
+  mode4newImplicit gamma d = lift $ mode4newImplicit gamma d
+  modty4newImplicit gamma d = lift $ modty4newImplicit gamma d
   pushConstraint c = lift $ pushConstraint c
   scopeFail msg = lift $ scopeFail msg

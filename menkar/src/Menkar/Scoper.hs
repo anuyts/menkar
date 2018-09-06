@@ -60,6 +60,29 @@ expr2 :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 expr2 gamma d (Raw.ExprElimination e) = elimination gamma d e
 
+--------------------------------------------------
+
+simpleLambda :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v ->
+  mode v ->
+  Raw.Expr2 ->
+  Raw.Expr ->
+  sc (Term mode modty v)
+simpleLambda gamma d (Raw.ExprElimination (Raw.Elimination (Raw.ExprQName (Raw.Qualified [] name)) [])) body =
+  do
+    d <- mode4newImplicit gamma d
+    mu <- modty4newImplicit gamma d
+    ty <- type4newImplicit gamma d
+    let seg = Segment {
+          segmentName = name,
+          segmentModality = ModedModality d mu,
+          segmentVisibility = Visible,
+          segmentRHS = Telescoped ty
+       }
+    body' <- expr (gamma :.. seg) (Just <$> d) body
+    return . Expr . TermCons . Lam $ Binding seg body'
+simpleLambda gamma d arg body = scopeFail $ "To the left of a '>', I expect either a telescope, or a single unqualified name."
+
 buildPi :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
   mode v ->
@@ -175,20 +198,34 @@ exprToTree gamma d _ = _exprToTree
 -}
 
 {- YOU NEED TO RESOLVE FIXITY HERE -}
-{- For now, every operator is right associative with equal precedence -}
+{- | For now, every operator is right associative with equal precedence -}
 expr :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
   mode v ->
   Raw.Expr ->
   sc (Term mode modty v)
+-- Operator-free expression (e.g. @5@)
 expr gamma d (Raw.ExprOps (Raw.OperandExpr e) Nothing) = expr2 gamma d e
+-- Simple lambda (e.g. @x > f x@)
+expr gamma d fullExpr@
+             (Raw.ExprOps
+               (Raw.OperandExpr boundArg)
+               (Just (Raw.Elimination (Raw.ExprQName (Raw.Qualified [] (Raw.Name Raw.Op ">"))) elims, maybeBody))
+             ) = case (elims, maybeBody) of
+                   ([], Just body) -> simpleLambda gamma d boundArg body
+                   (_:_, _) -> scopeFail $ "Smart eliminations used on '>': " ++ show fullExpr
+                   (_, Nothing) -> scopeFail $ "Body of lambda missing: " ++ show fullExpr
+-- Unary operator expression (e.g. @5 ! .{arg = 3}@)
 expr gamma d (Raw.ExprOps (Raw.OperandExpr eL) (Just (op, Nothing))) = do
   elimination gamma d (Raw.addEliminators op [Raw.ElimArg Raw.ArgSpecVisible (Raw.expr2to1 eL)])
+-- Binary operator expression (e.g. @a == .{A} b@)
 expr gamma d (Raw.ExprOps (Raw.OperandExpr eL) (Just (op, Just eR))) = do
   elimination gamma d (Raw.addEliminators op [Raw.ElimArg Raw.ArgSpecVisible (Raw.expr2to1 eL),
                                               Raw.ElimArg Raw.ArgSpecVisible eR])
+-- Naked telescope
 expr gamma d fullExpr@(Raw.ExprOps (Raw.OperandTelescope _) Nothing) =
   scopeFail $ "Naked telescope appears as expression: " ++ show fullExpr
+-- Operation on telescope
 expr gamma d (Raw.ExprOps (Raw.OperandTelescope theta) (Just (op, maybeER))) = exprTele gamma d theta op maybeER
 
 ------------------------------------------------
