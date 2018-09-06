@@ -10,6 +10,7 @@ import Menkar.Fine.Judgement
 import Menkar.Fine.Substitution
 import Control.Exception.AssertFalse
 import Control.Monad.State.Lazy
+import Control.Monad.List
 import Data.Functor.Compose
 import Data.Void
 
@@ -255,12 +256,25 @@ rhsmap :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
 rhsmap f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 rhsmap f gamma (seg :|- stuff) = (seg :|-) <$> rhsmap (f . (. Just)) (gamma :.. (Left <$> seg)) stuff
 
+buildSegment :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  SegmentBuilder Type Type mode modty v ->
+  sc [Segment Type Type mode modty v]
+buildSegment gamma d builder = _buildSegment
+
 lhs2segments :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
   Raw.LHS ->
   sc [Segment Type Type mode modty v]
-lhs2segments gamma d lhs = (`evalStateT` newSegmentBuilder) $ do
+lhs2segments gamma d lhs = (>>= buildSegment gamma d) . (`execStateT` newSegmentBuilder) $ do
+  names <- case Raw.namesLHS lhs of
+    Raw.SomeNamesForTelescope names' -> return names'
+    Raw.QNameForEntry qname ->
+      scopeFail $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse lhs
+    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
+  modify $ \ builder -> builder {segmentBuilderNames = names}
   annots <- sequenceA $ annotation gamma d <$> Raw.annotationsLHS lhs
   forM_ annots $ \ annot -> do
     builder <- get
@@ -288,10 +302,18 @@ lhs2segments gamma d lhs = (`evalStateT` newSegmentBuilder) $ do
                                 ElTerm lvl <$> expr gammadelta d' e
                     in rhsmap f gamma delta
   modify $ \ builder -> builder {segmentBuilderTelescopedType = telescopedType}
-  -- somehow parse context and type
+  {-
+  names <- case Raw.namesLHS lhs of
+    Raw.SomeNamesForTelescope names' -> return names'
+    Raw.QNameForEntry qname ->
+      scopeFail $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse lhs
+    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
+  name <- lift . ListT $ return names
+  -- modify $ \ builder -> builder {segmentBuilderName}
   -- multiply builder for each name (ListT?)
   -- build segment
   _lhs2segments
+  -}
 
 telescope :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->

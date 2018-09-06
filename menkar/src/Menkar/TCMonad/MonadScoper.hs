@@ -40,7 +40,7 @@ class (
   pushConstraint :: Constraint mode modty rel -> sc ()
   scopeFail :: String -> sc a
 
-instance (MonadScoper mode modty rel sc) => MonadScoper mode modty rel (StateT s sc) where
+instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
   term4val gamma d qname = lift $ term4val gamma d qname
   annot4annot gamma d qstring args = lift $ annot4annot gamma d qstring args
   term4newImplicit gamma d = lift $ term4newImplicit gamma d

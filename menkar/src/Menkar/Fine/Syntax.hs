@@ -194,7 +194,7 @@ data SegmentBuilder
      (modty :: * -> *)
      (v :: *) =
   SegmentBuilder {
-    segmentBuilderName :: [String],
+    segmentBuilderNames :: [Maybe Raw.Name],
     segmentBuilderMode :: Compose Maybe mode v,
     segmentBuilderModality :: Compose Maybe modty v,
     segmentBuilderVisibility :: Compose Maybe (Visibility mode modty) v,
