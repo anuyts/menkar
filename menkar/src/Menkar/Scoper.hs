@@ -70,13 +70,17 @@ simpleLambda :: MonadScoper mode modty rel sc =>
   Raw.Expr2 ->
   Raw.Expr ->
   sc (Term mode modty v)
-simpleLambda gamma d (Raw.ExprElimination (Raw.Elimination (Raw.ExprQName (Raw.Qualified [] name)) [])) body =
+simpleLambda gamma d (Raw.ExprElimination (Raw.Elimination boundArg [])) body =
   do
     d <- mode4newImplicit gamma d
     mu <- modty4newImplicit gamma d
     ty <- type4newImplicit gamma d
+    maybeName <- case boundArg of
+      Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
+      Raw.ExprImplicit -> return $ Nothing
+      _ -> scopeFail $ "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore."
     let seg = Segment {
-          segmentName = name,
+          segmentName = maybeName,
           segmentModality = ModedModality d mu,
           segmentVisibility = Visible,
           segmentRHS = Telescoped ty,
@@ -84,7 +88,8 @@ simpleLambda gamma d (Raw.ExprElimination (Raw.Elimination (Raw.ExprQName (Raw.Q
        }
     body' <- expr (gamma :.. (Left <$> seg)) (Just <$> d) body
     return . Expr . TermCons . Lam $ Binding seg body'
-simpleLambda gamma d arg body = scopeFail $ "To the left of a '>', I expect either a telescope, or a single unqualified name."
+simpleLambda gamma d arg body =
+  scopeFail $ "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore."
 
 buildPi :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
@@ -256,12 +261,39 @@ rhsmap :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
 rhsmap f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 rhsmap f gamma (seg :|- stuff) = (seg :|-) <$> rhsmap (f . (. Just)) (gamma :.. (Left <$> seg)) stuff
 
+{- | For now, arguments written between the same accolads, are required to have the same type.
+     The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
+-}
 buildSegment :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
   SegmentBuilder Type Type mode modty v ->
   sc [Segment Type Type mode modty v]
-buildSegment gamma d builder = _buildSegment
+buildSegment gamma d builder = runListT $ do
+  -- allocate all implicits BEFORE name fork
+  d <- case segmentBuilderMode builder of
+    Compose (Just d') -> return d'
+    Compose Nothing -> mode4newImplicit gamma d
+  mu <- case segmentBuilderModality builder of
+    Compose (Just mu') -> return mu'
+    Compose Nothing -> modty4newImplicit gamma d
+  let vis = case segmentBuilderVisibility builder of
+        Compose (Just vis') -> vis'
+        Compose Nothing -> Visible
+  rhs <- rhsmap (
+           \ wkn gammadelta (Maybe3 (Compose maybeTy)) -> case maybeTy of
+               Just ty -> return ty
+               Nothing -> type4newImplicit gammadelta (wkn <$> d)
+         ) gamma (segmentBuilderTelescopedType builder)
+  -- fork
+  name <- ListT . return $ segmentBuilderNames builder
+  return Segment {
+      segmentName = name,
+      segmentModality = ModedModality d mu,
+      segmentVisibility = vis,
+      segmentRHS = rhs,
+      segmentRightCartesian = False
+    }
 
 lhs2segments :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
