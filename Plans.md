@@ -90,8 +90,8 @@ reducible = elimination of construction | elimination of reducible
 expression = whbf | reducible
 ```
 
-Type-checking
-=============
+Type-checker
+============
 
 Types of metas
 --------------
@@ -181,7 +181,13 @@ Gamma |- EliminandType @ smart eliminations ~> dumb eliminations
 
 Is this worth the effort!? NO
 
-INSTANCE ARGUMENTS
+Substructurality
+================
+When moving into the body of `merid` or `Transp`, a new shape variable is added to the *front* of the context (using `:^^`) and marked as `right-cartesian`, indicating that the entire context should be viewed as the cartesian product of the shape on the left, and all the rest. An equation is added to the right, which states that the new variable is equal to the argument given to `merid` or `Transp`.
+
+Subsequently, we divide by `i \between`, causing the new shape variable to disappear and all other variables -- including shape variables and the new equation -- to be lollipop'ed. This should work fine, and raises the question whether we should include quantified variables at all. The answer is yes: so that we can type-check `|_`.
+
+Instance arguments
 ==================
 If you give a record an instance field, then the corresponding projection is added as a clause to the resolution.
 
