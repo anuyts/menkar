@@ -58,10 +58,10 @@ expr3to1smart e = expr2to1 . expr3to2 $ e
 {-| One item in the annotation clause. -}
 data Annotation = Annotation (Qualified String) [Expr3] --deriving Show
 
-data Segment = Segment LHS --deriving Show
+newtype Segment = Segment LHS --deriving Show
 
 {-| A bunch of assumptions in accolads. Essentially a dependent telescope. -}
-data Telescope = Telescope {untelescope :: [Segment]} --deriving Show
+newtype Telescope = Telescope {untelescope :: [Segment]} --deriving Show
 
 data LHSNames =
   SomeNamesForTelescope [Maybe Name] -- name or underscore

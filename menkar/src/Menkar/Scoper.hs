@@ -248,13 +248,6 @@ annotation gamma d (Raw.Annotation qstring exprs) = do
   exprs' <- sequenceA $ expr3 gamma d <$> exprs
   annot4annot gamma d qstring exprs'
 
-segment :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v Void ->
-  mode v ->
-  Raw.Segment ->
-  sc (Telescoped Type Unit3 mode modty v)
-segment gamma d seg = _segment
-
 rhsmap :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
   (forall w . (v -> w) -> Ctx ty mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
   (Ctx ty mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
@@ -295,6 +288,7 @@ buildSegment gamma d builder = runListT $ do
       segmentRightCartesian = False
     }
 
+{- | This is almost good for scoping entries, though for now only works for segments. -}
 lhs2segments :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
@@ -334,25 +328,44 @@ lhs2segments gamma d lhs = (>>= buildSegment gamma d) . (`execStateT` newSegment
                                 ElTerm lvl <$> expr gammadelta d' e
                     in rhsmap f gamma delta
   modify $ \ builder -> builder {segmentBuilderTelescopedType = telescopedType}
-  {-
-  names <- case Raw.namesLHS lhs of
-    Raw.SomeNamesForTelescope names' -> return names'
-    Raw.QNameForEntry qname ->
-      scopeFail $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse lhs
-    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
-  name <- lift . ListT $ return names
-  -- modify $ \ builder -> builder {segmentBuilderName}
-  -- multiply builder for each name (ListT?)
-  -- build segment
-  _lhs2segments
-  -}
+
+segments2telescoped :: --MonadScoper mode modty rel sc =>
+  (Functor mode, Functor modty) =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  [Segment Type Type mode modty v] ->
+  (Telescoped Type Unit3 mode modty v)
+segments2telescoped gamma d [] =
+  Telescoped Unit3
+segments2telescoped gamma d (seg:segs) =
+  seg :|- segments2telescoped (gamma :.. (Left <$> seg)) (Just <$> d) (fmap Just <$> segs)
+
+segment :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.Segment ->
+  sc (Telescoped Type Unit3 mode modty v)
+segment gamma d (Raw.Segment lhs) = segments2telescoped gamma d <$> lhs2segments gamma d lhs
+
+telescope2 :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Telescoped Type Unit3 mode modty v ->
+  Raw.Telescope ->
+  sc (Telescoped Type Unit3 mode modty v)
+telescope2 gamma d (Telescoped Unit3) rawtele = telescope gamma d rawtele
+telescope2 gamma d (seg :|- telescoped) rawtele =
+  (seg :|-) <$> telescope2 (gamma :.. (Left <$> seg)) (Just <$> d) telescoped rawtele
 
 telescope :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
   Raw.Telescope ->
   sc (Telescoped Type Unit3 mode modty v)
-telescope gamma d seg = _telescope
+telescope gamma d (Raw.Telescope []) = return $ Telescoped Unit3
+telescope gamma d (Raw.Telescope (seg : segs)) = do
+  frontSegs <- segment gamma d seg
+  telescope2 gamma d frontSegs (Raw.Telescope segs)
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 val :: MonadScoper mode modty rel s => Raw.LHS -> Raw.RHS -> s (Val mode modty v)
