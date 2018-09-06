@@ -7,6 +7,7 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import qualified Menkar.Raw.Syntax as Raw
 import Control.Monad.State.Lazy
+import Data.Void
 
 data Constraint mode modty rel = Constraint {
     constraintJudgement :: Judgement mode modty rel,
@@ -27,14 +28,14 @@ class (
     | sc -> mode, sc -> modty, sc -> rel where
     -- -| mode -> modty, mode -> rel where
   --type ConstraintRef sc :: *
-  term4val :: Ctx Type mode modty v -> mode v -> Raw.QName -> sc (Term mode modty v)
-  annot4annot :: Ctx Type mode modty v -> mode v ->
+  term4val :: Ctx Type mode modty v Void -> mode v -> Raw.QName -> sc (Term mode modty v)
+  annot4annot :: Ctx Type mode modty v Void -> mode v ->
     Raw.Qualified String -> [Term mode modty v] -> sc (Annotation mode modty v)
   {- TODO: also return an implicit-ref -}
-  term4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Term mode modty v)
-  type4newImplicit :: Ctx Type mode modty v -> mode v -> sc (Type mode modty v)
-  mode4newImplicit :: Ctx Type mode modty v -> mode v -> sc (mode v)
-  modty4newImplicit :: Ctx Type mode modty v -> mode v -> sc (modty v)
+  term4newImplicit :: Ctx Type mode modty v Void -> mode v -> sc (Term mode modty v)
+  type4newImplicit :: Ctx Type mode modty v Void -> mode v -> sc (Type mode modty v)
+  mode4newImplicit :: Ctx Type mode modty v Void -> mode v -> sc (mode v)
+  modty4newImplicit :: Ctx Type mode modty v Void -> mode v -> sc (modty v)
   --mode4newImplicit :: Ctx Type mode modty v -> sc (mode v)
   pushConstraint :: Constraint mode modty rel -> sc ()
   scopeFail :: String -> sc a

@@ -11,11 +11,12 @@ import Menkar.Fine.Substitution
 import Control.Exception.AssertFalse
 import Control.Monad.State.Lazy
 import Data.Functor.Compose
+import Data.Void
 
 {- SEARCH FOR TODOS -}
 
 eliminator :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Eliminator ->
   sc (SmartEliminator mode modty v)
@@ -26,7 +27,7 @@ eliminator gamma d (Raw.ElimArg argSpec e) = do
 eliminator gamma d (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
 expr3 :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Expr3 ->
   sc (Term mode modty v)
@@ -36,7 +37,7 @@ expr3 gamma d (Raw.ExprNatLiteral n) = todo
 expr3 gamma d (Raw.ExprImplicit) = term4newImplicit gamma d
 
 elimination :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Elimination ->
   sc (Term mode modty v)
@@ -54,7 +55,7 @@ elimination gamma d (Raw.Elimination e elims) = do
   return result'
 
 expr2 :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Expr2 ->
   sc (Term mode modty v)
@@ -63,7 +64,7 @@ expr2 gamma d (Raw.ExprElimination e) = elimination gamma d e
 --------------------------------------------------
 
 simpleLambda :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Expr2 ->
   Raw.Expr ->
@@ -77,14 +78,15 @@ simpleLambda gamma d (Raw.ExprElimination (Raw.Elimination (Raw.ExprQName (Raw.Q
           segmentName = name,
           segmentModality = ModedModality d mu,
           segmentVisibility = Visible,
-          segmentRHS = Telescoped ty
+          segmentRHS = Telescoped ty,
+          segmentRightCartesian = False
        }
-    body' <- expr (gamma :.. seg) (Just <$> d) body
+    body' <- expr (gamma :.. (Left <$> seg)) (Just <$> d) body
     return . Expr . TermCons . Lam $ Binding seg body'
 simpleLambda gamma d arg body = scopeFail $ "To the left of a '>', I expect either a telescope, or a single unqualified name."
 
 buildPi :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Segment Type Type mode modty v ->
   Term mode modty (Maybe v) ->
@@ -94,7 +96,7 @@ buildPi gamma d seg cod = do
   return $ Expr $ TermCons $ ConsUnsafeResize d lvl lvl $ Pi $ Binding seg cod
 
 buildSigma :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Segment Type Type mode modty v ->
   Term mode modty (Maybe v) ->
@@ -104,7 +106,7 @@ buildSigma gamma d seg cod = do
   return $ Expr $ TermCons $ ConsUnsafeResize d lvl lvl $ Sigma $ Binding seg cod
   
 buildLambda :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Segment Type Type mode modty v ->
   Term mode modty (Maybe v) ->
@@ -114,13 +116,13 @@ buildLambda gamma d seg body =
 
 binder2 :: MonadScoper mode modty rel sc =>
   ( forall w .
-    Ctx Type mode modty w ->
+    Ctx Type mode modty w Void ->
     mode w ->
     Segment Type Type mode modty w ->
     Term mode modty (Maybe w) ->
     sc (Term mode modty w)
   ) ->
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Telescoped Type Unit3 mode modty v ->
       {-^ remainder of the already-scoped part of the telescope on the left of the operator -}
@@ -129,17 +131,17 @@ binder2 :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 binder2 build gamma d (Telescoped Unit3) args body = binder build gamma d args body
 binder2 build gamma d (seg :|- segs) args body =
-  build gamma d seg =<< binder2 build (gamma :.. seg) (Just <$> d) segs args body
+  build gamma d seg =<< binder2 build (gamma :.. (Left <$> seg)) (Just <$> d) segs args body
 
 binder :: MonadScoper mode modty rel sc =>
   ( forall w .
-    Ctx Type mode modty w ->
+    Ctx Type mode modty w Void ->
     mode w ->
     Segment Type Type mode modty w ->
     Term mode modty (Maybe w) ->
     sc (Term mode modty w)
   ) ->
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   [Raw.Segment] -> {-^ telescope on the left of the operator -}
   Raw.Expr -> {-^ operand on the right of the operator -}
@@ -150,7 +152,7 @@ binder build gamma d (arg:args) body = do
   binder2 build gamma d argTele args body
 
 exprTele :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Telescope -> {-^ telescope on the left of the operator -}
   Raw.Elimination -> {-^ the operator -}
@@ -200,7 +202,7 @@ exprToTree gamma d _ = _exprToTree
 {- YOU NEED TO RESOLVE FIXITY HERE -}
 {- | For now, every operator is right associative with equal precedence -}
 expr :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Expr ->
   sc (Term mode modty v)
@@ -231,7 +233,7 @@ expr gamma d (Raw.ExprOps (Raw.OperandTelescope theta) (Just (op, maybeER))) = e
 ------------------------------------------------
 
 annotation :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Annotation ->
   sc (Annotation mode modty v)
@@ -240,16 +242,21 @@ annotation gamma d (Raw.Annotation qstring exprs) = do
   exprs' <- sequenceA $ expr3 gamma d <$> exprs
   annot4annot gamma d qstring exprs'
 
-{- add an additional argument + scoper for the rhs of the telescope -}
 segment :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.Segment ->
   sc (Telescoped Type Unit3 mode modty v)
 segment gamma d seg = _segment
 
+rhsmap :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
+  (forall w . (v -> w) -> Ctx ty mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
+  (Ctx ty mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+rhsmap f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
+rhsmap f gamma (seg :|- stuff) = (seg :|-) <$> rhsmap (f . (. Just)) (gamma :.. (Left <$> seg)) stuff
+
 lhs2segments :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+  Ctx Type mode modty v Void ->
   mode v ->
   Raw.LHS ->
   sc [Segment Type Type mode modty v]
@@ -267,10 +274,31 @@ lhs2segments gamma d lhs = (`evalStateT` newSegmentBuilder) $ do
       AnnotImplicit -> case segmentBuilderVisibility builder of
         Compose (Just v) -> scopeFail $ "Encountered multiple visibility annotations: " ++ show lhs
         Compose Nothing -> modify $ \ builder -> builder {segmentBuilderVisibility = Compose $ Just Implicit}
+  delta <- telescope gamma d $ Raw.contextLHS lhs
+  telescopedType <- let f :: forall w .
+                          (_ -> w) ->
+                          Ctx Type _ _ w Void ->
+                          Unit3 _ _ w ->
+                          StateT _ _ (Maybe3 Type _ _ w)
+                        f = \ wkn gammadelta Unit3 -> case Raw.typeLHS lhs of
+                              Nothing -> return . Maybe3 . Compose $ Nothing
+                              Just e -> Maybe3 . Compose . Just <$> do
+                                let d' = wkn <$> d
+                                lvl <- term4newImplicit gammadelta d'
+                                ElTerm lvl <$> expr gammadelta d' e
+                    in rhsmap f gamma delta
+  modify $ \ builder -> builder {segmentBuilderTelescopedType = telescopedType}
   -- somehow parse context and type
   -- multiply builder for each name (ListT?)
   -- build segment
   _lhs2segments
+
+telescope :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.Telescope ->
+  sc (Telescoped Type Unit3 mode modty v)
+telescope gamma d seg = _telescope
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 val :: MonadScoper mode modty rel s => Raw.LHS -> Raw.RHS -> s (Val mode modty v)
