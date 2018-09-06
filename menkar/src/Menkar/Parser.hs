@@ -361,7 +361,7 @@ expr3 = MP.label "atomic expression" $
 argNext :: CanParse m => m Raw.Eliminator
 argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
 argVisible :: CanParse m => m Raw.Eliminator
-argVisible = Raw.ElimArg Raw.ArgSpecVisible . Raw.expr2to1 . Raw.expr3to2 <$> expr3
+argVisible = Raw.ElimArg Raw.ArgSpecVisible . Raw.expr3to1smart <$> expr3
 argNamed :: CanParse m => m Raw.Eliminator
 argNamed = (dotPrecise *>) $ accols $ do
   aName <- nameNonOpNonSticky

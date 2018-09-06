@@ -203,6 +203,7 @@ annotation gamma d (Raw.Annotation qstring exprs) = do
   exprs' <- sequenceA $ expr3 gamma d <$> exprs
   annot4annot gamma d qstring exprs'
 
+{- add an additional argument + scoper for the rhs of the telescope -}
 segment :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v ->
   mode v ->

@@ -39,14 +39,19 @@ addEliminators (Elimination e elims) moreElims = Elimination e (elims ++ moreEli
 data Expr2 =
   ExprElimination Elimination
   --deriving Show
-expr3to2 :: Expr3 -> Expr2
-expr3to2 e = ExprElimination $ Elimination e []
 
 data Operand = OperandTelescope Telescope | OperandExpr Expr2 --deriving Show
 
 data Expr = ExprOps Operand (Maybe (Elimination, Maybe Expr)) --deriving Show
+
+expr3to2 :: Expr3 -> Expr2
+expr3to2 e = ExprElimination $ Elimination e []
 expr2to1 :: Expr2 -> Expr
 expr2to1 e = ExprOps (OperandExpr e) Nothing
+expr3to1smart :: Expr3 -> Expr
+expr3to1smart (ExprParens e) = e
+expr3to1smart ExprImplicit = expr2to1 $ ExprElimination $ Elimination ExprImplicit [ElimEnd ArgSpecNext]
+expr3to1smart e = expr2to1 . expr3to2 $ e
 
 -----------------------------------------------------------
 
