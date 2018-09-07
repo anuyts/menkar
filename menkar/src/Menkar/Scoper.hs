@@ -328,7 +328,21 @@ lhs2builder :: MonadScoper mode modty rel sc =>
   --sc [Segment Type Type mode modty v]
   sc (SegmentBuilder Type Type mode modty v)
 --lhs2builder gamma d lhs = (>>= buildSegment gamma d) . (`execStateT` newSegmentBuilder) $ do
+
+{- THERE IS A FUNDAMENTAL PROBLEM HERE:
+   -The mode & modality may depend on the telescope.
+   -The telescope needs to be checked in a context divided by the modality.
+   HOWEVER: The only information you're using about the context is:
+   -The number of variables
+   -The vals and modules in scope
+   I.e. you're using a context with variables and definitions, but without types and modalities.
+   So you should use a special scoping context
+   FOR TYPE-CHECKING: the flat modality guarantees that there exists a sensible order.
+   The constraint solver will find simply solve constraints.
+-}
 lhs2builder gamma d lhs = (`execStateT` newSegmentBuilder) $ do
+
+  -- NAMES
   let names = Raw.namesLHS lhs
   {-names <- case Raw.namesLHS lhs of
     Raw.SomeNamesForTelescope names' -> return names'
@@ -336,6 +350,11 @@ lhs2builder gamma d lhs = (`execStateT` newSegmentBuilder) $ do
       scopeFail $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse lhs
     Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."-}
   modify $ \ builder -> builder {segmentBuilderNames = names}
+
+  -- ANNOTATIONS
+  {- For now, we check the annotations outside of the telescope of the thing they annotate.
+     This rules out dependent modes
+  -}
   annots <- sequenceA $ annotation gamma d <$> Raw.annotationsLHS lhs
   forM_ annots $ \ annot -> do
     builder <- get
@@ -349,6 +368,8 @@ lhs2builder gamma d lhs = (`execStateT` newSegmentBuilder) $ do
       AnnotImplicit -> case segmentBuilderVisibility builder of
         Compose (Just v) -> scopeFail $ "Encountered multiple visibility annotations: " ++ show lhs
         Compose Nothing -> modify $ \ builder -> builder {segmentBuilderVisibility = Compose $ Just Implicit}
+
+  -- TELESCOPE AND TYPE (should be checked after dividing the context)
   delta <- telescope gamma d $ Raw.contextLHS lhs
   telescopedType <- let f :: forall w .
                           (_ -> w) ->
@@ -486,16 +507,3 @@ file :: MonadScoper mode modty rel sc =>
   Raw.File ->
   sc (Entry mode modty v)
 file gamma d rawFile = entry gamma d (Raw.file2nestedModules rawFile)
-
-{- TACKLE THIS THE OTHER WAY AROUND!!!
-lrEntry :: MonadScoper mode modty rel s => Raw.LREntry -> s (Entry mode modty v)
-lrEntry (Raw.LREntry Raw.HeaderVal lhs rhs) = EntryVal <$> val lhs rhs
-lrEntry _ = _lrentry
-
-entry :: MonadScoper mode modty rel s => Raw.Entry -> s (Entry mode modty v)
-entry (Raw.EntryLR entry) = lrEntry entry
-
-file :: MonadScoper mode modty rel s => Raw.File -> s (Entry mode modty v)
-file (Raw.File entry) = lrEntry entry
--}
-

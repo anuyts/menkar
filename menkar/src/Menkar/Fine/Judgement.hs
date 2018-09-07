@@ -41,7 +41,9 @@ data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *
   (:^^) :: Segment t t mode modty w -> Ctx t mode modty v (Maybe w) -> Ctx t mode modty (Either () v) w
   {-| Context extended with siblings defined in a certain module. -}
   (:<...>) :: Ctx t mode modty v w -> ModuleRHS mode modty (Either v w) -> Ctx t mode modty (Identity v) w
-infixl 3 :.., :^^, :<...>
+  {-| Context divided by a modality. -}
+  (:\\) :: ModedContramodality mode modty (Either v w) -> Ctx t mode modty v w -> Ctx t mode modty (Identity v) w
+infixl 3 :.., :^^, :<...>, :\\
 deriving instance (Functor mode, Functor modty, Functor (t mode modty)) => Functor (Ctx t mode modty v)
 deriving instance (Foldable mode, Foldable modty, Foldable (t mode modty)) => Foldable (Ctx t mode modty v)
 deriving instance (Traversable mode, Traversable modty, Traversable (t mode modty)) => Traversable (Ctx t mode modty v)
@@ -58,7 +60,9 @@ instance (
   swallow (gamma :.. seg) = swallow gamma :.. swallow (fmap sequenceA seg)
   swallow (seg :^^ gamma) = swallow seg :^^ swallow (fmap sequenceA gamma)
   swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
+  swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma 
 
+-- TODO: you need a left division here!
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
 -- because `f <$> (g <$> x)` is much less efficient than `f . g <$> x`.
 getSegment :: (Functor mode, Functor modty, Functor (t mode modty)) =>
@@ -72,6 +76,7 @@ getSegment (segT :^^ gamma) (Right v) = either
                                           (fromMaybe (Left $ Left ()) . fmap Right)
                                           <$> getSegment gamma v
 getSegment (segT :<...> _) (Identity v) = bimap Identity id <$> getSegment segT v
+getSegment (kappa :\\ gamma) (Identity v) = bimap Identity id <$> todo
 
 -------------------------------------------------------------
 
