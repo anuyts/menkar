@@ -194,7 +194,7 @@ data SegmentBuilder
      (modty :: * -> *)
      (v :: *) =
   SegmentBuilder {
-    segmentBuilderNames :: [Maybe Raw.Name],
+    segmentBuilderNames :: Raw.LHSNames,
     segmentBuilderMode :: Compose Maybe mode v,
     segmentBuilderModality :: Compose Maybe modty v,
     segmentBuilderVisibility :: Compose Maybe (Visibility mode modty) v,
@@ -212,8 +212,13 @@ deriving instance (
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (SegmentBuilder ty rhs mode modty)
 newSegmentBuilder :: SegmentBuilder ty rhs mode modty v
-newSegmentBuilder = SegmentBuilder [] (Compose Nothing) (Compose Nothing) (Compose Nothing)
-  (Telescoped . Maybe3 . Compose $ Nothing)
+newSegmentBuilder = SegmentBuilder {
+    segmentBuilderNames = Raw.SomeNamesForTelescope [],
+    segmentBuilderMode = (Compose Nothing),
+    segmentBuilderModality = (Compose Nothing),
+    segmentBuilderVisibility = (Compose Nothing),
+    segmentBuilderTelescopedType = (Telescoped . Maybe3 . Compose $ Nothing)
+  }
 
 data Telescoped
      (ty :: (* -> *) -> (* -> *) -> * -> *)
