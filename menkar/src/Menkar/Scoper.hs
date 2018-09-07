@@ -254,6 +254,30 @@ rhsmap :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
 rhsmap f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 rhsmap f gamma (seg :|- stuff) = (seg :|-) <$> rhsmap (f . (. Just)) (gamma :.. (Left <$> seg)) stuff
 
+segmentNamesHandler :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.LHSNames ->
+  sc [Maybe Raw.Name]
+segmentNamesHandler gamma d names = case names of
+    Raw.SomeNamesForTelescope names -> return names
+    Raw.QNameForEntry qname ->
+      assertFalse $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse qname
+    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
+
+nestedEntryNamesHandler :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.LHSNames ->
+  sc [Maybe Raw.Name]
+nestedEntryNamesHandler gamma d names = case names of
+    lhsnames@(Raw.SomeNamesForTelescope names) -> 
+      assertFalse $ "I thought I was scoping an entry, but it was parsed as a telescope segment: " ++ Raw.unparse lhsnames
+    Raw.QNameForEntry (Raw.Qualified [] name) -> return $ [Just name]
+    Raw.QNameForEntry qname ->
+      scopeFail $ "Not supposed to be qualified: " ++ Raw.unparse qname
+    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
+
 {- | For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
@@ -261,8 +285,9 @@ buildSegment :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
   SegmentBuilder Type Type mode modty v ->
+  (Raw.LHSNames -> sc [Maybe Raw.Name]) ->
   sc [Segment Type Type mode modty v]
-buildSegment gamma d builder = runListT $ do
+buildSegment gamma d builder nameHandler = runListT $ do
   -- allocate all implicits BEFORE name fork
   d <- case segmentBuilderMode builder of
     Compose (Just d') -> return d'
@@ -279,11 +304,12 @@ buildSegment gamma d builder = runListT $ do
                Nothing -> type4newImplicit gammadelta (wkn <$> d)
          ) gamma (segmentBuilderTelescopedType builder)
   -- fork
-  name <- ListT $ case segmentBuilderNames builder of
+  name <- ListT . nameHandler $ segmentBuilderNames builder
+    {-case segmentBuilderNames builder of
     Raw.SomeNamesForTelescope names -> return names
     Raw.QNameForEntry qname ->
       scopeFail $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse qname
-    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
+    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."-}
   return Segment {
       segmentName = name,
       segmentModality = ModedModality d mu,
@@ -354,7 +380,7 @@ segment :: MonadScoper mode modty rel sc =>
   sc (Telescoped Type Unit3 mode modty v)
 segment gamma d (Raw.Segment lhs) = do
   builder <- lhs2builder gamma d lhs
-  segments2telescoped gamma d <$> buildSegment gamma d builder
+  segments2telescoped gamma d <$> buildSegment gamma d builder (segmentNamesHandler gamma d)
 
 telescope2 :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
@@ -384,14 +410,17 @@ val :: MonadScoper mode modty rel sc =>
   Raw.LHS ->
   Raw.RHS ->
   sc (Val mode modty v)
-val gamma d lhs rhs = _val
-{-do
-  let Raw.QNameForEntry qname = 
-  return Segment {
-    segmentInfo = _info,
-    segmentModality = _mod,
-    segmentType = _type
-  }-}
+val gamma d rawLHS (Raw.RHSVal e) = do
+  builder <- lhs2builder gamma d rawLHS
+  [lhs] <- buildSegment gamma d builder (nestedEntryNamesHandler gamma d)
+  let ty = segmentRHS lhs
+  rhs <- rhsmap (
+           \ wkn gammadelta ty' -> do
+             tm' <- expr gammadelta (wkn <$> d) e
+             return $ ValRHS tm' ty'
+         ) gamma ty
+  return $ lhs {segmentRHS = rhs}
+val gamma d rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 lrEntry :: MonadScoper mode modty rel s => Raw.LREntry -> s (Entry mode modty v)
