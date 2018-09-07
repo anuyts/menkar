@@ -13,6 +13,7 @@ import Control.Monad.State.Lazy
 import Control.Monad.List
 import Data.Functor.Compose
 import Data.Void
+import Data.HashMap.Lazy
 
 {- SEARCH FOR TODOS -}
 
@@ -421,6 +422,23 @@ val gamma d rawLHS (Raw.RHSVal e) = do
          ) gamma ty
   return $ lhs {segmentRHS = rhs}
 val gamma d rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
+
+{-| Not the top-level module. -}
+modul :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.LHS ->
+  Raw.RHS ->
+  sc (Module mode modty v)
+modul gamma d rawLHS (Raw.RHSModule entries) = do
+  builder <- lhs2builder gamma d rawLHS
+  [lhs] <- buildSegment gamma d builder (nestedEntryNamesHandler gamma d)
+  let ty = segmentRHS lhs
+  rhs <- rhsmap (
+           \ wkn gammadelta ty' -> _rhs
+         ) gamma ty
+  return $ lhs {segmentRHS = rhs}
+modul gamma d rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 lrEntry :: MonadScoper mode modty rel s => Raw.LREntry -> s (Entry mode modty v)
