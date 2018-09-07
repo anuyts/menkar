@@ -14,6 +14,7 @@ import Control.Monad.List
 import Data.Functor.Compose
 import Data.Void
 import Data.HashMap.Lazy
+import Data.Functor.Identity
 
 {- SEARCH FOR TODOS -}
 
@@ -423,6 +424,29 @@ val gamma d rawLHS (Raw.RHSVal e) = do
   return $ lhs {segmentRHS = rhs}
 val gamma d rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
+entryInModule :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.Entry ->
+  ModuleRHS mode modty v ->
+  sc (ModuleRHS mode modty v)
+entryInModule gamma d rawEntry modul = do
+  let gammaModul = gamma :<...> Left <$> modul
+        {-(Left <$> ModuleInScope {
+          moduleContramod = ModedContramodality d _confused,
+          moduleContents = modul
+        })-}
+  fineEntry <- entry gammaModul (Identity <$> d) rawEntry
+  return $ addToModule modul fineEntry
+
+entriesInModule :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  [Raw.Entry] ->
+  ModuleRHS mode modty v ->
+  sc (ModuleRHS mode modty v)
+entriesInModule gamma d rawEntries modul = foldl (>>=) (return modul) (entryInModule gamma d <$> rawEntries)
+
 {-| Not the top-level module. -}
 modul :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
@@ -430,15 +454,38 @@ modul :: MonadScoper mode modty rel sc =>
   Raw.LHS ->
   Raw.RHS ->
   sc (Module mode modty v)
-modul gamma d rawLHS (Raw.RHSModule entries) = do
+modul gamma d rawLHS (Raw.RHSModule rawEntries) = do
   builder <- lhs2builder gamma d rawLHS
   [lhs] <- buildSegment gamma d builder (nestedEntryNamesHandler gamma d)
   let ty = segmentRHS lhs
   rhs <- rhsmap (
-           \ wkn gammadelta ty' -> _rhs
+           \ wkn gammadelta ty' -> entriesInModule gammadelta (wkn <$> d) rawEntries newModule
          ) gamma ty
   return $ lhs {segmentRHS = rhs}
 modul gamma d rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
+
+lrEntry :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.LREntry ->
+  sc (Entry mode modty v)
+lrEntry gamma d (Raw.LREntry Raw.HeaderVal lhs rhs) = EntryVal <$> val gamma d lhs rhs
+lrEntry gamma d (Raw.LREntry Raw.HeaderModule lhs rhs) = EntryModule <$> modul gamma d lhs rhs
+lrEntry gamma d entry = scopeFail $ "Nonsensical or unsupported entry: " ++ Raw.unparse entry
+
+entry :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.Entry ->
+  sc (Entry mode modty v)
+entry gamma d (Raw.EntryLR rawLREntry) = lrEntry gamma d rawLREntry
+
+file :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  mode v ->
+  Raw.File ->
+  sc (Entry mode modty v)
+file gamma d rawFile = entry gamma d (Raw.file2nestedModules rawFile)
 
 {- TACKLE THIS THE OTHER WAY AROUND!!!
 lrEntry :: MonadScoper mode modty rel s => Raw.LREntry -> s (Entry mode modty v)

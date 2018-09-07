@@ -7,6 +7,9 @@ import GHC.Generics
 import qualified Menkar.Raw.Syntax as Raw
 import Data.Functor.Compose
 import Data.HashMap.Lazy
+import Data.Functor.Identity
+import Data.Maybe
+import Control.Exception.AssertFalse
 
 {- Segment info will have to depend on v, because 'resolves' annotations have variables -}
 data MetaInfo where
@@ -253,12 +256,25 @@ type Val = Segment Type ValRHS
 
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRHS {
-    moduleVals :: Compose (HashMap String) (Val mode modty) v,
-    moduleModules :: Compose (HashMap String) (Module mode modty) v
+    moduleVals :: Compose (HashMap Raw.Name) (Val mode modty) (Identity v),
+    moduleModules :: Compose (HashMap String) (Module mode modty) (Identity v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModuleRHS mode modty)
+newModule :: ModuleRHS mode modty v
+newModule = ModuleRHS (Compose empty) (Compose empty)
+addToModule :: ModuleRHS mode modty v -> Entry mode modty (Identity v) -> ModuleRHS mode modty v
+addToModule modul (EntryVal val) =
+  modul {moduleVals = Compose $
+          update (const $ Just val) (fromMaybe (assertFalse "nameless val") $ segmentName val) $
+          getCompose $ moduleVals modul
+        }
+addToModule modul (EntryModule submodule) =
+  modul {moduleModules = Compose $
+          update (const $ Just submodule) (Raw.stringName $ fromMaybe (assertFalse "nameless val") $ segmentName submodule) $
+          getCompose $ moduleModules modul
+        }
 
 type Module = Segment Type ModuleRHS
 --newtype Module (mode :: * -> *) (modty :: * -> *) (v :: *) = Module (Segment Type ModuleRHS mode modty v)

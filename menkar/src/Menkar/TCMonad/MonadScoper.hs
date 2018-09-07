@@ -36,7 +36,7 @@ class (
   type4newImplicit :: Ctx Type mode modty v Void -> mode v -> sc (Type mode modty v)
   mode4newImplicit :: Ctx Type mode modty v Void -> mode v -> sc (mode v)
   modty4newImplicit :: Ctx Type mode modty v Void -> mode v -> sc (modty v)
-  --mode4newImplicit :: Ctx Type mode modty v -> sc (mode v)
+  --newModule :: Ctx Type mode modty v Void -> mode v -> Maybe String ->
   pushConstraint :: Constraint mode modty rel -> sc ()
   scopeFail :: String -> sc a
 

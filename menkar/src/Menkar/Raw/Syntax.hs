@@ -4,10 +4,12 @@ module Menkar.Raw.Syntax where
 
 import Data.Number.Nat
 import Data.String.Utils (replace)
+import Data.Hashable
+import GHC.Generics
 
-data Opness = NonOp | Op deriving Show
+data Opness = NonOp | Op deriving (Show, Eq, Generic, Hashable)
 
-data Name = Name Opness String --deriving Show
+data Name = Name {opnessName :: Opness, stringName :: String} deriving (Eq, Generic, Hashable) --deriving Show
 
 data Qualified a = Qualified [String] a
 --deriving instance Show a => Show (Qualified a)
@@ -93,6 +95,24 @@ data RHS =
 
 data LREntry = LREntry EntryHeader LHS RHS --deriving Show
 
-data Entry = EntryLR LREntry --deriving Show
+newtype Entry = EntryLR LREntry --deriving Show
 
-data File = File LREntry --deriving Show
+newtype File = File LREntry --deriving Show
+
+wrapInModules :: [String] -> Entry -> Entry
+wrapInModules [] entry = entry
+wrapInModules (moduleName:moduleNames) entry =
+  EntryLR $ LREntry HeaderModule lhs rhs
+  where lhs = LHS {
+          annotationsLHS = [],
+          namesLHS = QNameForEntry $ Qualified [] $ Name NonOp moduleName,
+          contextLHS = Telescope [],
+          typeLHS = Nothing
+          }
+        rhs = RHSModule [wrapInModules moduleNames entry]
+
+file2nestedModules :: File -> Entry
+file2nestedModules (File entry@(LREntry header lhs rhs)) =
+  let QNameForEntry (Qualified moduleNames name) = namesLHS lhs
+      entry' = EntryLR $ LREntry header (lhs {namesLHS = QNameForEntry $ Qualified [] name}) rhs
+  in wrapInModules moduleNames entry'

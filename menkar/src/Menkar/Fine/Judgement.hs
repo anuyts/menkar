@@ -8,8 +8,10 @@ import qualified Menkar.Raw.Syntax as Raw
 import Data.Bifunctor
 import Data.Maybe
 import GHC.Generics
+import Data.Functor.Identity
 --import Data.Functor.Compose
 
+{-
 data ModuleInScope (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleInScope {
     {-| Modality the currently defined value must be used by, in this module.
@@ -20,6 +22,7 @@ data ModuleInScope (mode :: * -> *) (modty :: * -> *) (v :: *) =
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModuleInScope mode modty)
+-}
 
 {- | @'Ctx' t mode modty v w@ is the type of contexts with
      types of type @t@,
@@ -37,7 +40,8 @@ data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *
       it right away and annotate some further variables as quantified over the new variable. -}
   (:^^) :: Segment t t mode modty w -> Ctx t mode modty v (Maybe w) -> Ctx t mode modty (Either () v) w
   {-| Context extended with siblings defined in a certain module. -}
-  (:<...>) :: Ctx t mode modty v w -> ModuleInScope mode modty (Either v w) -> Ctx t mode modty v w
+  (:<...>) :: Ctx t mode modty v w -> ModuleRHS mode modty (Either v w) -> Ctx t mode modty (Identity v) w
+infixl 3 :.., :^^, :<...>
 deriving instance (Functor mode, Functor modty, Functor (t mode modty)) => Functor (Ctx t mode modty v)
 deriving instance (Foldable mode, Foldable modty, Foldable (t mode modty)) => Foldable (Ctx t mode modty v)
 deriving instance (Traversable mode, Traversable modty, Traversable (t mode modty)) => Traversable (Ctx t mode modty v)
@@ -67,7 +71,7 @@ getSegment (segT :^^ gamma) (Right v) = either
                                           (Left . Right)
                                           (fromMaybe (Left $ Left ()) . fmap Right)
                                           <$> getSegment gamma v
-getSegment (segT :<...> _) v = getSegment segT v
+getSegment (segT :<...> _) (Identity v) = bimap Identity id <$> getSegment segT v
 
 -------------------------------------------------------------
 
