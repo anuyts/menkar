@@ -175,7 +175,7 @@ data Segment
     segmentModality :: ModedModality mode modty v,
     segmentVisibility :: Visibility mode modty v,
     segmentRHS :: Telescoped ty rhs mode modty v,
-    segmentRightCartesian :: Bool
+    segmentRightCartesian :: Bool -- This is useless, it follows from the use of :^^
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
