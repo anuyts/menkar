@@ -3,6 +3,7 @@
 module Menkar.Fine.Syntax where
 
 import Menkar.Fine.Substitution
+import Menkar.Fine.Context.Variable
 import GHC.Generics
 import qualified Menkar.Raw.Syntax as Raw
 import Data.Functor.Compose
@@ -47,7 +48,7 @@ modedRightAdjoint (ModedContramodality dom cod mod) = (ModedModality cod dom mod
 data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Binding {
     bindingSegment :: Segment Type Type mode modty v,
-    bindingBody :: Term mode modty (Maybe v)
+    bindingBody :: Term mode modty (VarExt v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
@@ -230,7 +231,7 @@ data Telescoped
      (modty :: * -> *)
      (v :: *) =
   Telescoped (rhs mode modty v) |
-  Segment ty ty mode modty v :|- Telescoped ty rhs mode modty (Maybe v)
+  Segment ty ty mode modty v :|- Telescoped ty rhs mode modty (VarExt v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
     Functor mode,
@@ -256,15 +257,15 @@ type Val = Segment Type ValRHS
 
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRHS {
-    moduleVals :: Compose (HashMap Raw.Name) (Val mode modty) (Identity v),
-    moduleModules :: Compose (HashMap String) (Module mode modty) (Identity v)
+    moduleVals :: Compose (HashMap Raw.Name) (Val mode modty) (VarInModule v),
+    moduleModules :: Compose (HashMap String) (Module mode modty) (VarInModule v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModuleRHS mode modty)
 newModule :: ModuleRHS mode modty v
 newModule = ModuleRHS (Compose empty) (Compose empty)
-addToModule :: ModuleRHS mode modty v -> Entry mode modty (Identity v) -> ModuleRHS mode modty v
+addToModule :: ModuleRHS mode modty v -> Entry mode modty (VarInModule v) -> ModuleRHS mode modty v
 addToModule modul (EntryVal val) =
   modul {moduleVals = Compose $
           update (const $ Just val) (fromMaybe (assertFalse "nameless val") $ segmentName val) $

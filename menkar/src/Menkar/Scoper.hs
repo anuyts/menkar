@@ -8,6 +8,8 @@ import qualified Menkar.Raw as Raw
 import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import Menkar.Fine.Substitution
+import Menkar.Fine.Context.Variable
+import Menkar.Fine.Context
 import Control.Exception.AssertFalse
 import Control.Monad.State.Lazy
 import Control.Monad.List
@@ -15,6 +17,7 @@ import Data.Functor.Compose
 import Data.Void
 import Data.HashMap.Lazy
 import Data.Functor.Identity
+import Data.Coerce
 
 {- SEARCH FOR TODOS -}
 
@@ -94,7 +97,7 @@ simpleLambda gamma d rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) 
           segmentRHS = Telescoped fineTy,
           segmentRightCartesian = False
        }
-    fineBody <- expr (gamma :.. (Left <$> fineSeg)) (Just <$> d) rawBody
+    fineBody <- expr (gamma :.. (VarFromCtx <$> fineSeg)) (VarWkn <$> d) rawBody
     return . Expr . TermCons . Lam $ Binding fineSeg fineBody
 simpleLambda gamma d rawArg rawBody =
   scopeFail $
@@ -105,7 +108,7 @@ buildPi :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
   Segment Type Type mode modty v ->
-  Term mode modty (Maybe v) ->
+  Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildPi gamma d fineSeg fineCod = do
   fineLvl <- term4newImplicit gamma d
@@ -116,7 +119,7 @@ buildSigma :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
   Segment Type Type mode modty v ->
-  Term mode modty (Maybe v) ->
+  Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildSigma gamma d fineSeg fineCod = do
   fineLvl <- term4newImplicit gamma d
@@ -127,7 +130,7 @@ buildLambda :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   mode v ->
   Segment Type Type mode modty v ->
-  Term mode modty (Maybe v) ->
+  Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildLambda gamma d fineSeg fineCod =
   return $ Expr $ TermCons $ Lam $ Binding fineSeg fineCod
@@ -140,7 +143,7 @@ binder2 :: MonadScoper mode modty rel sc =>
     Ctx Type mode modty w Void ->
     mode w ->
     Segment Type Type mode modty w ->
-    Term mode modty (Maybe w) ->
+    Term mode modty (VarExt w) ->
     sc (Term mode modty w)
   ) ->
   Ctx Type mode modty v Void ->
@@ -152,7 +155,7 @@ binder2 :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 binder2 build gamma d (Telescoped Unit3) rawArgs rawBody = binder build gamma d rawArgs rawBody
 binder2 build gamma d (fineSeg :|- fineSegs) rawArgs rawBody =
-  build gamma d fineSeg =<< binder2 build (gamma :.. (Left <$> fineSeg)) (Just <$> d) fineSegs rawArgs rawBody
+  build gamma d fineSeg =<< binder2 build (gamma :.. (VarFromCtx <$> fineSeg)) (VarWkn <$> d) fineSegs rawArgs rawBody
 
 {-| @'binder' build gamma d rawArgs rawBody@ scopes the Menkar expression
     @<rawArgs> **> rawBody@ to a term, where
@@ -162,7 +165,7 @@ binder :: MonadScoper mode modty rel sc =>
     Ctx Type mode modty w Void ->
     mode w ->
     Segment Type Type mode modty w ->
-    Term mode modty (Maybe w) ->
+    Term mode modty (VarExt w) ->
     sc (Term mode modty w)
   ) ->
   Ctx Type mode modty v Void ->
@@ -279,7 +282,7 @@ mapTelescoped :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty
   (forall w . (v -> w) -> Ctx ty mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
   (Ctx ty mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
 mapTelescoped f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
-mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$> mapTelescoped (f . (. Just)) (gamma :.. (Left <$> seg)) stuff
+mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$> mapTelescoped (f . (. VarWkn)) (gamma :.. (VarFromCtx <$> seg)) stuff
 
 {-| @'segmentNamesHandler' gamma d@ fails or maps @'SomeNamesForTelescope' rawNames@ to @rawNames@ -}
 segmentNamesHandler :: MonadScoper mode modty rel sc =>
@@ -424,7 +427,7 @@ segments2telescoped :: --MonadScoper mode modty rel sc =>
 segments2telescoped gamma d [] =
   Telescoped Unit3
 segments2telescoped gamma d (fineSeg:fineSegs) =
-  fineSeg :|- segments2telescoped (gamma :.. (Left <$> fineSeg)) (Just <$> d) (fmap Just <$> fineSegs)
+  fineSeg :|- segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (VarWkn <$> d) (fmap VarWkn <$> fineSegs)
 
 {-| Scope a raw segment to a fine telescope. -}
 segment :: MonadScoper mode modty rel sc =>
@@ -445,7 +448,7 @@ telescope2 :: MonadScoper mode modty rel sc =>
   sc (Telescoped Type Unit3 mode modty v)
 telescope2 gamma d (Telescoped Unit3) rawTele = telescope gamma d rawTele
 telescope2 gamma d (fineSeg :|- fineSegs) rawTele =
-  (fineSeg :|-) <$> telescope2 (gamma :.. (Left <$> fineSeg)) (Just <$> d) fineSegs rawTele
+  (fineSeg :|-) <$> telescope2 (gamma :.. (VarFromCtx <$> fineSeg)) (VarWkn <$> d) fineSegs rawTele
 
 {-| Scope a telescope -}
 telescope :: MonadScoper mode modty rel sc =>
@@ -487,12 +490,12 @@ entryInModule :: MonadScoper mode modty rel sc =>
   ModuleRHS mode modty v ->
   sc (ModuleRHS mode modty v)
 entryInModule gamma d rawEntry fineModule = do
-  let gammaModule = gamma :<...> Left <$> fineModule
+  let gammaModule = gamma :<...> VarFromCtx <$> fineModule
         {-(Left <$> ModuleInScope {
           moduleContramod = ModedContramodality d _confused,
           moduleContents = modul
         })-}
-  fineEntry <- entry gammaModule (Identity <$> d) rawEntry
+  fineEntry <- entry gammaModule (VarInModule <$> d) rawEntry
   return $ addToModule fineModule fineEntry
 
 {-| @'entriesInModule' gamma d fineModule rawEntry@ scopes @rawEntries@ as part of the module @fineModule@ -}
