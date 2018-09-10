@@ -78,7 +78,7 @@ where {
 		: Uni d (max lA lB)
 		= f . mkA == mkB . F' f
 
-	val Mu {irr | l : Nat} : Uni d (suc l) = {@par X : Set [d] l} {mkX : IsAlg X} -> X
+	val Mu {irr | l : Nat} : Uni d (suc l) = {par | X : Set [d] l} {mkX : IsAlg X} -> X
 
 	val [str] fold {~ irr | l : Nat}
 		{par | X : Uni d l}
