@@ -116,6 +116,7 @@ Judgements
 At the end of a thread
 ----------------------
 A thread can terminate the following ways:
+
 * Failure: a constraint is required that does not hold.
 * Success: after the constraint solving phase, every object of interest is known up to the desired accuracy. **Subsequently**, there exists some joint resolution of all metas satisfying all remaining constraints.
 * Unresolved metas: after the constraint solving phase, some objects of interest are not known up to the desired accuracy.

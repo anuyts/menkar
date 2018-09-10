@@ -4,9 +4,10 @@ Menkar is (will be) a dependently typed programming language supporting the foll
 * implicit arguments in the sense of Agda,
 * instance arguments - a feature analogous to Agda's [instance arguments](https://doi.org/10.1145/2034574.2034796) and Haskell's typeclasses.
 A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved.
-* support for multimode modality systems with type/term differentiation,
-* a 'global' modality for dependencies that respect no relational structure whatsoever
-* internal global mode and modality polymorphism,
+* support for multimode modality systems
+* support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a fibrant universe to a possibly non-fibrant (Hofmann-Streicher)-universe whose codes can be promoted to the type level continuously.
+* a 'crisp' modality for dependencies that respect no relational structure whatsoever
+* internal crisp mode and modality polymorphism,
 * internal shape-irrelevant universe polymorphism,
 * support for context exponentiation (for working with dependably [atomic](https://ncatlab.org/nlab/show/tiny+object) objects),
 * internal presheaf operators, to wit: **fresh weakening** (for non-cartesian base categories), amazing dependent right adjoints (which we prefer to call **transpension types**), and the **initial type extension** (also called Weld type).
