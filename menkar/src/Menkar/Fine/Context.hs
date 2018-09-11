@@ -29,14 +29,13 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (ModuleInScope mode modty)
 -}
 
-{-
 {-| Scoping context. Type arguments analogous to @'Ctx'@. -}
 data ScCtx (mode :: * -> *) (modty :: * -> *) (v :: *) (w :: *) where
   ScCtxEmpty :: ScCtx mode modty Void w
   (::..) :: ScCtx mode modty v w -> String -> ScCtx mode modty (VarExt v) w
-  (::^^) :: String -> ScCtx t mode modty v (VarExt w) -> ScCtx mode modty (VarLeftExt v) w
-  (::<...>) :: ScCtx t mode modty v w -> ModuleRHS mode modty 
--}
+  (::^^) :: String -> ScCtx mode modty v (VarExt w) -> ScCtx mode modty (VarLeftExt v) w
+  (::<...>) :: ScCtx mode modty v w -> ModuleRHS mode modty (VarOpenCtx v w) -> ScCtx mode modty (VarInModule v) w
+  (::\\) :: () -> ScCtx mode modty v w -> ScCtx mode modty (VarDiv v) w
 
 {- | @'Ctx' t mode modty v w@ is the type of contexts with
      types of type @t@,
@@ -75,8 +74,6 @@ instance (
   swallow (seg :^^ gamma) = swallow seg :^^ swallow (fmap sequenceA gamma)
   swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
   swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
-
-type ScCtx = Ctx Unit3 Unit1 Unit1
 
 -- TODO: you need a left division here!
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
