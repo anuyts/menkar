@@ -47,7 +47,7 @@ modedRightAdjoint (ModedContramodality dom cod mod) = (ModedModality cod dom mod
 
 data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Binding {
-    bindingSegment :: Segment Type Type mode modty v,
+    bindingSegment :: Segment Type mode modty v,
     bindingBody :: Term mode modty (VarExt v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
@@ -171,10 +171,74 @@ data Declaration
      (modty :: * -> *)
      (v :: *) =
   Declaration {
-    name'Decl :: Maybe Raw.Name,
-    mod'Decl :: ModedModality mode modty v
+    decl'name :: Maybe Raw.Name,
+    decl'modty :: ModedModality mode modty v,
+    decl'plicity :: Plicity mode modty v,
+    decl'content :: content mode modty v
   }
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (content mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (content mode modty)
+  ) => CanSwallow (Term mode modty) (Declaration content mode modty)
 
+data PartialDeclaration
+     {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
+     (content :: (* -> *) -> (* -> *) -> * -> *)
+     (mode :: * -> *)
+     (modty :: * -> *)
+     (v :: *) =
+  PartialDeclaration {
+    pdecl'name :: Raw.LHSNames,
+    pdecl'mode :: Compose Maybe mode v,
+    pdecl'modty :: Compose Maybe modty v,
+    pdecl'plicity :: Compose Maybe (Plicity mode modty) v,
+    pdecl'content :: Compose Maybe (content mode modty) v
+    }
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (content mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (content mode modty)
+  ) => CanSwallow (Term mode modty) (PartialDeclaration content mode modty)
+
+type TelescopedDeclaration ty content = Telescoped ty (Declaration content)
+type Segment ty = TelescopedDeclaration ty ty
+
+tdecl'name :: TelescopedDeclaration ty content mode modty v -> Maybe Raw.Name
+tdecl'name (Telescoped decl) = decl'name decl
+tdecl'name (seg :|- tdecl) = tdecl'name tdecl
+segment'name :: Segment ty mode modty v -> Maybe Raw.Name
+segment'name = tdecl'name
+
+data Telescoped
+     (ty :: (* -> *) -> (* -> *) -> * -> *)
+     (rhs :: (* -> *) -> (* -> *) -> * -> *)
+     (mode :: * -> *)
+     (modty :: * -> *)
+     (v :: *) =
+  Telescoped (rhs mode modty v) |
+  TelescopedDeclaration ty ty mode modty v :|- Telescoped ty rhs mode modty (VarExt v)
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (ty mode modty),
+    Functor (rhs mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty mode modty),
+    CanSwallow (Term mode modty) (rhs mode modty)
+  ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
+
+{-
 data Segment
      {-| Type of the types in the context. Typically @'Type'@ or @'Pair3' 'Type'@ -}
      (ty :: (* -> *) -> (* -> *) -> * -> *)
@@ -258,13 +322,14 @@ deriving instance (
     CanSwallow (Term mode modty) (ty mode modty),
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
+-}
 
 data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) = ValRHS (Term mode modty v) (Type mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ValRHS mode modty)
 
-type Val = Segment Type ValRHS
+type Val = TelescopedDeclaration Type ValRHS
 --newtype Val (mode :: * -> *) (modty :: * -> *) (v :: *) = Val (Segment Type ValRHS mode modty v)
 --  deriving (Functor, Foldable, Traversable, Generic1)
 --deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
@@ -283,16 +348,16 @@ newModule = ModuleRHS (Compose empty) (Compose empty)
 addToModule :: ModuleRHS mode modty v -> Entry mode modty (VarInModule v) -> ModuleRHS mode modty v
 addToModule modul (EntryVal val) =
   modul {moduleVals = Compose $
-          update (const $ Just val) (fromMaybe (assertFalse "nameless val") $ segmentName val) $
+          update (const $ Just val) (fromMaybe (assertFalse "nameless val") $ tdecl'name val) $
           getCompose $ moduleVals modul
         }
 addToModule modul (EntryModule submodule) =
   modul {moduleModules = Compose $
-          update (const $ Just submodule) (Raw.stringName $ fromMaybe (assertFalse "nameless val") $ segmentName submodule) $
+          update (const $ Just submodule) (Raw.stringName $ fromMaybe (assertFalse "nameless val") $ tdecl'name submodule) $
           getCompose $ moduleModules modul
         }
 
-type Module = Segment Type ModuleRHS
+type Module = TelescopedDeclaration Type ModuleRHS
 --newtype Module (mode :: * -> *) (modty :: * -> *) (v :: *) = Module (Segment Type ModuleRHS mode modty v)
 --  deriving (Functor, Foldable, Traversable, Generic1)
 --deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
