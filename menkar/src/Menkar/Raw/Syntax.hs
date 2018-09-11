@@ -16,12 +16,12 @@ data Qualified a = Qualified [String] a
 
 type QName = Qualified Name
 
-data ArgSpec = ArgSpecNext | ArgSpecVisible | ArgSpecNamed String deriving Show
+data ArgSpec = ArgSpecNext | ArgSpecExplicit | ArgSpecNamed String deriving Show
 
 data ProjSpec = ProjSpecNamed String | ProjSpecNumbered Nat | ProjSpecTail Nat deriving Show
 
 data Eliminator =
-  ElimEnd ArgSpec {-^ should not be 'ArgSpecVisible'.-} |
+  ElimEnd ArgSpec {-^ should not be 'ArgSpecExplicit'.-} |
   ElimArg ArgSpec Expr |
   ElimProj ProjSpec
   -- case; induction

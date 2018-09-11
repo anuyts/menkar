@@ -156,13 +156,24 @@ data Annotation mode modty v =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Annotation mode modty)
 
-data Visibility mode modty v =
-  Visible |
+data Plicity mode modty v =
+  Explicit |
   Implicit |
   Resolves (Term mode modty v) -- this may change
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
-  CanSwallow (Term mode modty) (Visibility mode modty)
+  CanSwallow (Term mode modty) (Plicity mode modty)
+
+data Declaration
+     {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
+     (content :: (* -> *) -> (* -> *) -> * -> *)
+     (mode :: * -> *)
+     (modty :: * -> *)
+     (v :: *) =
+  Declaration {
+    name'Decl :: Maybe Raw.Name,
+    mod'Decl :: ModedModality mode modty v
+  }
 
 data Segment
      {-| Type of the types in the context. Typically @'Type'@ or @'Pair3' 'Type'@ -}
@@ -177,7 +188,7 @@ data Segment
     --segmentAnnots :: Compose [] (Annotation mode modty) v,
     segmentName :: Maybe Raw.Name,
     segmentModality :: ModedModality mode modty v,
-    segmentVisibility :: Visibility mode modty v,
+    segmentPlicity :: Plicity mode modty v,
     segmentRHS :: Telescoped ty rhs mode modty v,
     segmentRightCartesian :: Bool -- This is useless, it follows from the use of :^^
   }
@@ -205,7 +216,7 @@ data SegmentBuilder
     segmentBuilderNames :: Raw.LHSNames,
     segmentBuilderMode :: Compose Maybe mode v,
     segmentBuilderModality :: Compose Maybe modty v,
-    segmentBuilderVisibility :: Compose Maybe (Visibility mode modty) v,
+    segmentBuilderPlicity :: Compose Maybe (Plicity mode modty) v,
     segmentBuilderTelescopedType :: (Telescoped ty (Maybe3 rhs) mode modty) v
   }
   deriving (Functor, Foldable, Traversable, Generic1)
@@ -224,7 +235,7 @@ newSegmentBuilder = SegmentBuilder {
     segmentBuilderNames = Raw.SomeNamesForTelescope [],
     segmentBuilderMode = (Compose Nothing),
     segmentBuilderModality = (Compose Nothing),
-    segmentBuilderVisibility = (Compose Nothing),
+    segmentBuilderPlicity = (Compose Nothing),
     segmentBuilderTelescopedType = (Telescoped . Maybe3 . Compose $ Nothing)
   }
 

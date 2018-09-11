@@ -38,13 +38,13 @@ instance Unparsable a => Unparsable (Qualified a) where
 
 instance Unparsable Eliminator where
   unparse' (ElimEnd ArgSpecNext) = ribbon "..."
-  unparse' (ElimEnd ArgSpecVisible) = ribbon "...<AT_NEXT_VISIBLE>"
+  unparse' (ElimEnd ArgSpecExplicit) = ribbon "...<AT_NEXT_EXPLICIT>"
   unparse' (ElimEnd (ArgSpecNamed name)) = ribbon $ ".{" ++ name ++ " = ...}"
   unparse' (ElimArg ArgSpecNext expr) = ".{" ++| unparse' expr |++ "}"
-  unparse' (ElimArg ArgSpecVisible (ExprOps (OperandExpr (ExprElimination (Elimination expr3 []))) Nothing))
+  unparse' (ElimArg ArgSpecExplicit (ExprOps (OperandExpr (ExprElimination (Elimination expr3 []))) Nothing))
     -- special clause for expression that happens to be an expr3
     = unparse' expr3
-  unparse' (ElimArg ArgSpecVisible expr) = "(" ++| unparse' expr |++ ")"
+  unparse' (ElimArg ArgSpecExplicit expr) = "(" ++| unparse' expr |++ ")"
   unparse' (ElimArg (ArgSpecNamed name) expr) = ".{" ++ name ++ " = " ++| unparse' expr |++ "}"
   unparse' (ElimProj (ProjSpecNamed name)) = ribbon $ '.' : name
   unparse' (ElimProj (ProjSpecNumbered n)) = ribbon $ '.' : show n

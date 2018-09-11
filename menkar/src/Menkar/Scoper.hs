@@ -89,7 +89,7 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
     let fineSeg = Segment {
           segmentName = maybeName,
           segmentModality = ModedModality d mu,
-          segmentVisibility = Visible,
+          segmentPlicity = Explicit,
           segmentRHS = Telescoped fineTy,
           segmentRightCartesian = False
        }
@@ -241,11 +241,11 @@ expr gamma fullRawExpr@
                    (_, Nothing) -> scopeFail $ "Body of lambda missing: " ++ Raw.unparse fullRawExpr
 -- Unary operator expression (e.g. @5 ! .{arg = 3}@)
 expr gamma (Raw.ExprOps (Raw.OperandExpr rawExprL) (Just (rawOp, Nothing))) = do
-  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecVisible (Raw.expr2to1 rawExprL)])
+  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecExplicit (Raw.expr2to1 rawExprL)])
 -- Binary operator expression (e.g. @a == .{A} b@)
 expr gamma (Raw.ExprOps (Raw.OperandExpr rawExprL) (Just (rawOp, Just rawExprR))) = do
-  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecVisible (Raw.expr2to1 rawExprL),
-                                              Raw.ElimArg Raw.ArgSpecVisible rawExprR])
+  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecExplicit (Raw.expr2to1 rawExprL),
+                                              Raw.ElimArg Raw.ArgSpecExplicit rawExprR])
 -- Naked telescope
 expr gamma fullRawExpr@(Raw.ExprOps (Raw.OperandTelescope _) Nothing) =
   scopeFail $ "Naked telescope appears as expression: " ++ Raw.unparse fullRawExpr
@@ -315,9 +315,9 @@ buildSegment gamma segBuilder nameHandler = runListT $ do
   mu <- case segmentBuilderModality segBuilder of
     Compose (Just mu') -> return mu'
     Compose Nothing -> modty4newImplicit gamma
-  let vis = case segmentBuilderVisibility segBuilder of
+  let vis = case segmentBuilderPlicity segBuilder of
         Compose (Just vis') -> vis'
-        Compose Nothing -> Visible
+        Compose Nothing -> Explicit
   rhs <- mapTelescoped (
            \ wkn gammadelta (Maybe3 (Compose maybeTy)) -> case maybeTy of
                Just ty -> return ty
@@ -333,7 +333,7 @@ buildSegment gamma segBuilder nameHandler = runListT $ do
   return Segment {
       segmentName = name,
       segmentModality = ModedModality d mu,
-      segmentVisibility = vis,
+      segmentPlicity = vis,
       segmentRHS = rhs,
       segmentRightCartesian = False
     }
@@ -367,6 +367,21 @@ lhs2builder gamma rawLHS = (`execStateT` newSegmentBuilder) $ do
     Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."-}
   modify $ \ segBuilder -> segBuilder {segmentBuilderNames = rawNames}
 
+  -- TELESCOPE AND TYPE (should be checked after dividing the context)
+  fineDelta <- telescope gamma $ Raw.contextLHS rawLHS
+  fineTelescopedType <- let f :: forall w .
+                              (_ -> w) ->
+                              ScCtx _ _ w Void ->
+                              Unit3 _ _ w ->
+                              StateT _ _ (Maybe3 Type _ _ w)
+                            f = \ wkn gammadelta Unit3 -> case Raw.typeLHS rawLHS of
+                              Nothing -> return . Maybe3 . Compose $ Nothing
+                              Just rawTy -> Maybe3 . Compose . Just <$> do
+                                fineLvl <- term4newImplicit gammadelta
+                                ElTerm fineLvl <$> expr gammadelta rawTy
+                        in mapTelescoped f gamma fineDelta
+  modify $ \ segBuilder -> segBuilder {segmentBuilderTelescopedType = fineTelescopedType}
+
   -- ANNOTATIONS
   {- TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
      For now, we check the annotations outside of the telescope of the thing they annotate.
@@ -382,24 +397,9 @@ lhs2builder gamma rawLHS = (`execStateT` newSegmentBuilder) $ do
       AnnotModality mu' -> case segmentBuilderModality segBuilder of
         Compose (Just mu'') -> scopeFail $ "Encountered multiple modality annotations: " ++ Raw.unparse rawLHS
         Compose Nothing -> modify $ \ segBuilder -> segBuilder {segmentBuilderModality = Compose $ Just mu'}
-      AnnotImplicit -> case segmentBuilderVisibility segBuilder of
+      AnnotImplicit -> case segmentBuilderPlicity segBuilder of
         Compose (Just v) -> scopeFail $ "Encountered multiple visibility annotations: " ++ Raw.unparse rawLHS
-        Compose Nothing -> modify $ \ segBuilder -> segBuilder {segmentBuilderVisibility = Compose $ Just Implicit}
-
-  -- TELESCOPE AND TYPE (should be checked after dividing the context)
-  fineDelta <- telescope gamma $ Raw.contextLHS rawLHS
-  fineTelescopedType <- let f :: forall w .
-                              (_ -> w) ->
-                              ScCtx _ _ w Void ->
-                              Unit3 _ _ w ->
-                              StateT _ _ (Maybe3 Type _ _ w)
-                            f = \ wkn gammadelta Unit3 -> case Raw.typeLHS rawLHS of
-                              Nothing -> return . Maybe3 . Compose $ Nothing
-                              Just rawTy -> Maybe3 . Compose . Just <$> do
-                                fineLvl <- term4newImplicit gammadelta
-                                ElTerm fineLvl <$> expr gammadelta rawTy
-                        in mapTelescoped f gamma fineDelta
-  modify $ \ segBuilder -> segBuilder {segmentBuilderTelescopedType = fineTelescopedType}
+        Compose Nothing -> modify $ \ segBuilder -> segBuilder {segmentBuilderPlicity = Compose $ Just Implicit}
 
 {-| Chain a list of fine segments to a fine telescope. -}
 segments2telescoped :: --MonadScoper mode modty rel sc =>

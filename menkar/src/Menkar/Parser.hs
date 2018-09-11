@@ -360,8 +360,8 @@ expr3 = MP.label "atomic expression" $
 
 argNext :: CanParse m => m Raw.Eliminator
 argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
-argVisible :: CanParse m => m Raw.Eliminator
-argVisible = Raw.ElimArg Raw.ArgSpecVisible . Raw.expr3to1smart <$> expr3
+argExplicit :: CanParse m => m Raw.Eliminator
+argExplicit = Raw.ElimArg Raw.ArgSpecExplicit . Raw.expr3to1smart <$> expr3
 argNamed :: CanParse m => m Raw.Eliminator
 argNamed = (dotPrecise *>) $ accols $ do
   aName <- nameNonOpNonSticky
@@ -378,7 +378,7 @@ projectorTail = Raw.ProjSpecTail <$> (dotPrecise *> dotPrecise *> natLiteralNonS
 
 eliminator :: CanParse m => m Raw.Eliminator
 eliminator = MP.label "eliminator" $
-  argVisible <|> argNext <?|> argNamed <?|>
+  argExplicit <|> argNext <?|> argNamed <?|>
   (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
 opEliminator :: CanParse m => m Raw.Eliminator
 opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
