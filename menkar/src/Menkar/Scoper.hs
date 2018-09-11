@@ -52,16 +52,17 @@ elimination :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 elimination gamma d (Raw.Elimination rawExpr rawElims) = do
   fineExpr <- expr3 gamma d rawExpr
-  fineTy <- type4newImplicit gamma d
+  --fineTy <- type4newImplicit gamma d
   fineElims <- sequenceA (eliminator gamma d <$> rawElims)
   fineResult <- term4newImplicit gamma d
+  return . Expr $ TermSmartElim fineExpr (Compose fineElims) fineResult
   --theMode <- mode4newImplicit gamma
-  pushConstraint $ Constraint {
+  {-pushConstraint $ Constraint {
       constraintJudgement = JudSmartElim gamma d fineExpr fineTy fineElims fineResult,
       constraintParent = Nothing,
       constraintReason = "Scoper: Elaborate smart elimination."
-    }
-  return fineResult
+    }-}
+  --return fineResult
 
 {-| @'expr2' gamma d rawExpr@ scopes @rawExpr@ to a term. -}
 expr2 :: MonadScoper mode modty rel sc =>

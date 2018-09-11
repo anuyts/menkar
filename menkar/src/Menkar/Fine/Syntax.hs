@@ -132,7 +132,11 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (ModedModality mode modty v) {-^ modality by which the eliminee is used -}
     (Term mode modty v) {-^ eliminee -}
     (Eliminator mode modty v) {-^ eliminator -} |
-  TermMeta (Compose [] (Term mode modty) v)
+  TermMeta (Compose [] (Term mode modty) v) |
+  TermSmartElim
+    (Term mode modty v) {-^ eliminate -}
+    (Compose [] (SmartEliminator mode modty) v) {-^ eliminators -}
+    (Term mode modty v) {-^ result -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (TermNV mode modty)
@@ -297,6 +301,10 @@ deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (T
 data Unit3 (a :: ka) (b :: kb) (c :: kc) = Unit3
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance CanSwallow (Term mode modty) (Unit3 mode modty)
+
+data Unit1 (a :: ka) = Unit1
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance CanSwallow (Term mode modty) (Unit1)
 
 newtype Maybe3 t (a :: ka) (b :: kb) (c :: kc) = Maybe3 (Compose Maybe (t a b) c)
   deriving (Functor, Foldable, Traversable, Generic1)
