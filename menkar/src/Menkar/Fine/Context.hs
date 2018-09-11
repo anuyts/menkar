@@ -29,13 +29,36 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (ModuleInScope mode modty)
 -}
 
+newtype ScSegment (mode :: * -> *) (modty :: * -> *) (v :: *) = ScSegment (Maybe Raw.Name)
+  deriving (Functor, Traversable, Foldable, Generic1)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (ScSegment mode modty)
+segment2scSegment :: Segment ty rhs mode modty v -> ScSegment mode modty v
+segment2scSegment fineSeg = ScSegment $ segmentName fineSeg
+
 {-| Scoping context. Type arguments analogous to @'Ctx'@. -}
 data ScCtx (mode :: * -> *) (modty :: * -> *) (v :: *) (w :: *) where
   ScCtxEmpty :: ScCtx mode modty Void w
-  (::..) :: ScCtx mode modty v w -> String -> ScCtx mode modty (VarExt v) w
-  (::^^) :: String -> ScCtx mode modty v (VarExt w) -> ScCtx mode modty (VarLeftExt v) w
+  (::..) :: ScCtx mode modty v w -> ScSegment mode modty (VarOpenCtx v w) -> ScCtx mode modty (VarExt v) w
+  (::^^) :: ScSegment mode modty w -> ScCtx mode modty v (VarExt w) -> ScCtx mode modty (VarLeftExt v) w
   (::<...>) :: ScCtx mode modty v w -> ModuleRHS mode modty (VarOpenCtx v w) -> ScCtx mode modty (VarInModule v) w
   (::\\) :: () -> ScCtx mode modty v w -> ScCtx mode modty (VarDiv v) w
+deriving instance (Functor mode, Functor modty) => Functor (ScCtx mode modty v)
+deriving instance (Foldable mode, Foldable modty) => Foldable (ScCtx mode modty v)
+deriving instance (Traversable mode, Traversable modty) => Traversable (ScCtx mode modty v)
+instance (
+    Functor mode,
+    Functor modty,
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty
+  ) =>
+    CanSwallow (Term mode modty) (ScCtx mode modty v) where
+  swallow ScCtxEmpty = ScCtxEmpty
+  swallow (gamma ::.. seg) = swallow gamma ::.. swallow (fmap sequenceA seg)
+  swallow (seg ::^^ gamma) = swallow seg ::^^ swallow (fmap sequenceA gamma)
+  swallow (gamma ::<...> modul) = swallow gamma ::<...> swallow (fmap sequenceA modul)
+  swallow (() ::\\ gamma) = () ::\\ swallow gamma
+infixl 3 ::.., ::^^, ::<...>, ::\\
 
 {- | @'Ctx' t mode modty v w@ is the type of contexts with
      types of type @t@,
