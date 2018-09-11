@@ -193,7 +193,7 @@ data PartialDeclaration
      (modty :: * -> *)
      (v :: *) =
   PartialDeclaration {
-    pdecl'name :: Raw.LHSNames,
+    pdecl'names :: Raw.LHSNames,
     pdecl'mode :: Compose Maybe mode v,
     pdecl'modty :: Compose Maybe modty v,
     pdecl'plicity :: Compose Maybe (Plicity mode modty) v,
@@ -208,9 +208,21 @@ deriving instance (
     CanSwallow (Term mode modty) modty,
     CanSwallow (Term mode modty) (content mode modty)
   ) => CanSwallow (Term mode modty) (PartialDeclaration content mode modty)
+  
+newPartialDeclaration :: PartialDeclaration content mode modty v
+newPartialDeclaration = PartialDeclaration {
+  pdecl'names = Raw.SomeNamesForTelescope [],
+  pdecl'mode = Compose Nothing,
+  pdecl'modty = Compose Nothing,
+  pdecl'plicity = Compose Nothing,
+  pdecl'content = Compose Nothing
+  }
 
 type TelescopedDeclaration ty content = Telescoped ty (Declaration content)
 type Segment ty = TelescopedDeclaration ty ty
+
+type TelescopedPartialDeclaration ty content = Telescoped ty (PartialDeclaration content)
+type PartialSegment ty = TelescopedPartialDeclaration ty ty
 
 tdecl'name :: TelescopedDeclaration ty content mode modty v -> Maybe Raw.Name
 tdecl'name (Telescoped decl) = decl'name decl

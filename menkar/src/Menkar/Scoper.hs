@@ -86,13 +86,12 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
       Raw.ExprImplicit -> return $ Nothing
       _ -> scopeFail $
            "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
-    let fineSeg = Segment {
-          segmentName = maybeName,
-          segmentModality = ModedModality d mu,
-          segmentPlicity = Explicit,
-          segmentRHS = Telescoped fineTy,
-          segmentRightCartesian = False
-       }
+    let fineSeg = Telescoped $ Declaration {
+          decl'name = maybeName,
+          decl'modty = ModedModality d mu,
+          decl'plicity = Explicit,
+          decl'content = fineTy
+        }
     fineBody <- expr (gamma ::.. (VarFromCtx <$> segment2scSegment fineSeg)) rawBody
     return . Expr . TermCons . Lam $ Binding fineSeg fineBody
 simpleLambda gamma rawArg rawBody =
@@ -102,7 +101,7 @@ simpleLambda gamma rawArg rawBody =
 {-| @'buildPi' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> -> <fineCod>@ to a term. -}
 buildPi :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
-  Segment Type Type mode modty v ->
+  Segment Type mode modty v ->
   Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildPi gamma fineSeg fineCod = do
@@ -113,7 +112,7 @@ buildPi gamma fineSeg fineCod = do
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
-  Segment Type Type mode modty v ->
+  Segment Type mode modty v ->
   Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildSigma gamma fineSeg fineCod = do
@@ -124,7 +123,7 @@ buildSigma gamma fineSeg fineCod = do
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
-  Segment Type Type mode modty v ->
+  Segment Type mode modty v ->
   Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildLambda gamma fineSeg fineCod =
@@ -136,7 +135,7 @@ buildLambda gamma fineSeg fineCod =
 binder2 :: MonadScoper mode modty rel sc =>
   ( forall w .
     ScCtx mode modty w Void ->
-    Segment Type Type mode modty w ->
+    Segment Type mode modty w ->
     Term mode modty (VarExt w) ->
     sc (Term mode modty w)
   ) ->
@@ -156,7 +155,7 @@ binder2 build gamma (fineSeg :|- fineSegs) rawArgs rawBody =
 binder :: MonadScoper mode modty rel sc =>
   ( forall w .
     ScCtx mode modty w Void ->
-    Segment Type Type mode modty w ->
+    Segment Type mode modty w ->
     Term mode modty (VarExt w) ->
     sc (Term mode modty w)
   ) ->
@@ -304,10 +303,34 @@ nestedEntryNamesHandler gamma rawLHSNames = case rawLHSNames of
 -}
 buildSegment :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
-  SegmentBuilder Type Type mode modty v ->
+  PartialSegment Type mode modty v ->
   (Raw.LHSNames -> sc [Maybe Raw.Name]) ->
-  sc [Segment Type Type mode modty v]
-buildSegment gamma segBuilder nameHandler = runListT $ do
+  sc [Segment Type mode modty v]
+buildSegment gamma partSeg nameHandler = runListT $ mapTelescoped (
+    \ wkn gammadelta partDecl -> do
+        -- allocate all implicits BEFORE name fork
+        d <- case pdecl'mode partDecl of
+          Compose (Just d') -> return d'
+          Compose Nothing -> mode4newImplicit gammadelta
+        mu <- case pdecl'modty partDecl of
+          Compose (Just mu') -> return mu'
+          Compose Nothing -> modty4newImplicit gammadelta
+        let plic = case pdecl'plicity partDecl of
+              Compose (Just plic') -> plic'
+              Compose Nothing -> Explicit
+        ty <- case pdecl'content partDecl of
+          Compose (Just ty') -> return ty'
+          Compose Nothing -> type4newImplicit gammadelta {- TODO adapt this for general telescoped declarations. -}
+        name <- ListT . nameHandler $ pdecl'names partDecl
+        return Declaration {
+          decl'name = name,
+          decl'modty = ModedModality d mu,
+          decl'plicity = plic,
+          decl'content = ty
+          }
+  ) gamma partSeg
+
+  {-do
   -- allocate all implicits BEFORE name fork
   d <- case segmentBuilderMode segBuilder of
     Compose (Just d') -> return d'
@@ -336,8 +359,19 @@ buildSegment gamma segBuilder nameHandler = runListT $ do
       segmentPlicity = vis,
       segmentRHS = rhs,
       segmentRightCartesian = False
-    }
+    }-}
 
+{-| @'lhs2pseg' gamma rawLHS@ scopes @rawLHS@ to a partial segment. -}
+lhs2pseg :: MonadScoper mode modty rel sc =>
+  ScCtx mode modty v Void ->
+  Raw.LHS ->
+  --sc [Segment Type mode modty v]
+  sc (PartialSegment Type mode modty v)
+lhs2pseg gamma rawLHS = do
+  fineDelta <- telescope gamma $ Raw.contextLHS rawLHS
+  _lhs2pseg
+
+{----------------------------------------------------------------------------
 {- THERE IS A FUNDAMENTAL PROBLEM HERE:
    -The mode & modality may depend on the telescope.
    -The telescope needs to be checked in a context divided by the modality.
@@ -353,8 +387,8 @@ buildSegment gamma segBuilder nameHandler = runListT $ do
 lhs2builder :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.LHS ->
-  --sc [Segment Type Type mode modty v]
-  sc (SegmentBuilder Type Type mode modty v)
+  --sc [Segment Type mode modty v]
+  sc (PartialSegment Type mode modty v)
 --lhs2builder gamma lhs = (>>= buildSegment gamma) . (`execStateT` newSegmentBuilder) $ do
 lhs2builder gamma rawLHS = (`execStateT` newSegmentBuilder) $ do
 
@@ -400,12 +434,26 @@ lhs2builder gamma rawLHS = (`execStateT` newSegmentBuilder) $ do
       AnnotImplicit -> case segmentBuilderPlicity segBuilder of
         Compose (Just v) -> scopeFail $ "Encountered multiple visibility annotations: " ++ Raw.unparse rawLHS
         Compose Nothing -> modify $ \ segBuilder -> segBuilder {segmentBuilderPlicity = Compose $ Just Implicit}
+------------------------------------------------------------------------}
 
+segment :: MonadScoper mode modty rel sc =>
+  ScCtx mode modty v Void ->
+  Raw.Segment ->
+  sc (Telescoped Type Unit3 mode modty v)
+segment gamma rawSeg = _segment
+
+telescope :: MonadScoper mode modty rel sc =>
+  ScCtx mode modty v Void ->
+  Raw.Telescope ->
+  sc (Telescoped Type Unit3 mode modty v)
+telescope gamma rawTele = _telescope
+
+{-
 {-| Chain a list of fine segments to a fine telescope. -}
 segments2telescoped :: --MonadScoper mode modty rel sc =>
   (Functor mode, Functor modty) =>
   ScCtx mode modty v Void ->
-  [Segment Type Type mode modty v] ->
+  [Segment Type mode modty v] ->
   (Telescoped Type Unit3 mode modty v)
 segments2telescoped gamma [] =
   Telescoped Unit3
@@ -519,3 +567,4 @@ file :: MonadScoper mode modty rel sc =>
   Raw.File ->
   sc (Entry mode modty v)
 file gamma rawFile = entry gamma (Raw.file2nestedModules rawFile)
+-}

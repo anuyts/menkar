@@ -33,8 +33,8 @@ newtype ScSegment (mode :: * -> *) (modty :: * -> *) (v :: *) = ScSegment (Maybe
   deriving (Functor, Traversable, Foldable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ScSegment mode modty)
-segment2scSegment :: Segment ty rhs mode modty v -> ScSegment mode modty v
-segment2scSegment fineSeg = ScSegment $ segmentName fineSeg
+segment2scSegment :: Segment ty mode modty v -> ScSegment mode modty v
+segment2scSegment fineSeg = ScSegment $ segment'name fineSeg
 
 {-| Scoping context. Type arguments analogous to @'Ctx'@. -}
 data ScCtx (mode :: * -> *) (modty :: * -> *) (v :: *) (w :: *) where
@@ -71,10 +71,10 @@ data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *
   {-| Empty context. -}
   CtxEmpty :: Ctx t mode modty Void w
   {-| Extended context -}
-  (:..) :: Ctx t mode modty v w -> Segment t t mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarExt v) w
+  (:..) :: Ctx t mode modty v w -> Segment t mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarExt v) w
   {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
       it right away and annotate some further variables as quantified over the new variable. -}
-  (:^^) :: Segment t t mode modty w -> Ctx t mode modty v (VarExt w) -> Ctx t mode modty (VarLeftExt v) w
+  (:^^) :: Segment t mode modty w -> Ctx t mode modty v (VarExt w) -> Ctx t mode modty (VarLeftExt v) w
   {-| Context extended with siblings defined in a certain module. -}
   (:<...>) :: Ctx t mode modty v w -> ModuleRHS mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarInModule v) w
   {-| Context divided by a modality. -}
@@ -102,7 +102,7 @@ instance (
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
 -- because `f <$> (g <$> x)` is much less efficient than `f . g <$> x`.
 getSegment :: (Functor mode, Functor modty, Functor (t mode modty)) =>
-  Ctx t mode modty v w -> v -> Segment t t mode modty (VarOpenCtx v w)
+  Ctx t mode modty v w -> v -> Segment t mode modty (VarOpenCtx v w)
 getSegment CtxEmpty _ = unreachable
 getSegment (gamma :.. segT) VarLast = bimap VarWkn id <$> segT
 getSegment (gamma :.. segT) (VarWkn v) = bimap VarWkn id <$> getSegment gamma v
