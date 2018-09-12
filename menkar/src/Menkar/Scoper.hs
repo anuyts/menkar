@@ -273,16 +273,24 @@ mapTelescoped f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescoped (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
 
+{-
+class PresentNames (declSort :: Raw.DeclSort) where
+  presentNames :: MonadScoper mode modty rel sc =>
+    ScCtx name modty v Void ->
+    Raw.DeclNames declSort ->
+    [Maybe Raw.Name]
+instance PresentNames Raw.DeclSortSegment where
+  presentNames gamma (Raw.DeclNamesSegment rawMaybeNames) = rawMaybeNames
+instance PresentNames Raw.DeclSortModule where
+  presentNames gamma (Raw.DeclNamesModule string) = 
+
 {-| @'segmentNamesHandler' gamma@ fails or maps @'SomeNamesForTelescope' rawNames@ to @rawNames@ -}
 segmentNamesHandler :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
-  Raw.LHSNames ->
+  Raw.DeclNames Raw.DeclSortSegment ->
   sc [Maybe Raw.Name]
-segmentNamesHandler gamma rawLHSNames = case rawLHSNames of
-    Raw.SomeNamesForTelescope rawNames -> return rawNames
-    Raw.QNameForEntry rawQName ->
-      assertFalse $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse rawQName
-    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
+segmentNamesHandler gamma rawDeclNames = case rawDeclNames of
+  Raw.DeclNamesSegment rawMaybeNames -> return rawMaybeNames
 
 {-| @'nestedEntryNamesHandler' gamma@ fails or maps @'QNameForEntry' (Qualified [] rawName)@ to @[rawName]@ -}
 nestedEntryNamesHandler :: MonadScoper mode modty rel sc =>
@@ -296,16 +304,18 @@ nestedEntryNamesHandler gamma rawLHSNames = case rawLHSNames of
     Raw.QNameForEntry rawQName ->
       scopeFail $ "Not supposed to be qualified: " ++ Raw.unparse rawQName
     Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
+-}
 
 {- | @'buildSegment' gamma segBuilder nameHandler@ builds a list of segments out of @segBuilder@.
 
      For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
+-- You need PARAMETRIZED FINE DECLARATIONS
 buildSegment :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
-  PartialSegment Type mode modty v ->
-  (Raw.LHSNames -> sc [Maybe Raw.Name]) ->
+  PartialSegment declSort Type mode modty v ->
+  --(Raw.DeclNames declSort -> sc [Maybe Raw.Name]) ->
   sc [Segment Type mode modty v]
 buildSegment gamma partSeg nameHandler = runListT $ mapTelescoped (
     \ wkn gammadelta partDecl -> do
