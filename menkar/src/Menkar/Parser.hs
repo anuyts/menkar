@@ -468,6 +468,7 @@ entryAnnotation = compoundAnnotation
 --segmentConstraintColon :: CanParse m => m Raw.LHSNames
 --segmentConstraintColon = Raw.NoNameForConstraint <$ keyword "-:"
 
+{-
 constraint :: CanParse m => m Raw.LHS
 constraint = accols $ do
       annots <- fromMaybe [] <$> optionalTry annotationClause
@@ -496,6 +497,20 @@ argument = accols $ do
 
 segment :: CanParse m => m Raw.Segment
 segment = MP.label "telescope segment" $ Raw.Segment <$> (argument <?|> constraint)
+-}
+
+segment :: CanParse m => m Raw.Segment
+segment = MP.label "telescope segment" $ accols $ do
+      annots <- fromMaybe [] <$> optionalTry annotationClause
+      names <- Raw.DeclNamesSegment <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore))
+      context <- telescopeMany
+      maybeType <- optional $ keyword ":" *> expr
+      return $ Raw.Segment $ Raw.Declaration {
+        Raw.decl'annotations = annots,
+        Raw.decl'names = names,
+        Raw.decl'telescope = context,
+        Raw.decl'content = fromMaybe Raw.DeclContentEmpty $ Raw.DeclContent <$> maybeType
+      }
 
 telescopeMany :: CanParse m => m Raw.Telescope
 telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segment
@@ -503,22 +518,48 @@ telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many s
 telescopeSome :: CanParse m => m Raw.Telescope
 telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segment
 
-lhs :: CanParse m => m Raw.LHS
-lhs = MP.label "LHS" $ do
+lhs :: CanParse m => Raw.EntryHeader declSort -> m (Raw.Declaration declSort)
+lhs header = MP.label "LHS" $ do
   annots <- many entryAnnotation
-  name <- Raw.QNameForEntry <$> qName
+  name <- case header of
+    Raw.HeaderToplevelModule -> do
+      qname <- qName
+      qstring <- sequenceA $ (<$> qname) $ \ name -> case name of
+        Raw.Name Raw.NonOp str' -> return str'
+        _ -> fail $ "Expected non-operator name: " ++ Raw.unparse qname
+      return $ Raw.DeclNamesToplevelModule qstring
+    Raw.HeaderModule -> do
+      qname <- qName
+      str <- case qname of
+        Raw.Qualified [] (Raw.Name Raw.NonOp str') -> return str'
+        _ -> fail $ "Expected unqualified non-operator name: " ++ Raw.unparse qname
+      return $ Raw.DeclNamesModule str
+    Raw.HeaderVal -> do
+      qname <- qName
+      name <- case qname of
+        Raw.Qualified [] name' -> return name'
+        _ -> fail $ "Expected unqualified name: " ++ Raw.unparse qname
+      return $ Raw.DeclNamesVal name
+    header -> fail $ "Not supported yet: " ++ Raw.headerKeyword header
   context <- telescopeMany
   maybeType <- optional $ do
     keyword ":"
     expr
-  return $ Raw.LHS {
-    Raw.annotationsLHS = annots,
-    Raw.namesLHS = name,
-    Raw.contextLHS = context,
-    Raw.typeLHS = maybeType
+  declContentType <- case maybeType of
+    Nothing -> return $ Raw.DeclContentEmpty
+    Just ty -> case header of
+      Raw.HeaderModule -> fail $ "Did not expect a type here: " ++ Raw.unparse ty
+      Raw.HeaderToplevelModule -> fail $ "Did not expect a type here: " ++ Raw.unparse ty
+      Raw.HeaderVal -> return $ Raw.DeclContent ty
+      _ -> fail $ "Not supported yet: " ++ Raw.headerKeyword header
+  return $ Raw.Declaration {
+    Raw.decl'annotations = annots,
+    Raw.decl'names = name,
+    Raw.decl'telescope = context,
+    Raw.decl'content = declContentType
     }
 
-moduleRHS :: CanParse m => m Raw.RHS
+moduleRHS :: CanParse m => m (Raw.RHS (Raw.DeclSortModule b))
 moduleRHS = MP.label "module RHS" $
   Raw.RHSModule <$> (keyword "where" *> (accols $ many entry))
   {-do
@@ -526,30 +567,24 @@ moduleRHS = MP.label "module RHS" $
   entries <- accols $ many entry
   return $ Raw.RHSModule entries-}
 
-valRHS :: CanParse m => m Raw.RHS
+valRHS :: CanParse m => m (Raw.RHS Raw.DeclSortVal)
 valRHS = Raw.RHSVal <$> (keyword "=" *> expr) 
 
-rhs :: CanParse m => Raw.EntryHeader -> m Raw.RHS
+rhs :: CanParse m => Raw.EntryHeader declSort -> m (Raw.RHS declSort)
+rhs Raw.HeaderToplevelModule = moduleRHS
 rhs Raw.HeaderModule = moduleRHS
 rhs Raw.HeaderVal = valRHS
 rhs Raw.HeaderData = fail "Not supported yet: data"
 rhs Raw.HeaderCodata = fail "Not supported yet : codata"
 rhs Raw.HeaderResolution = fail "Not supported yet : resolution" --return Raw.RHSResolution
 
-entryHeader :: CanParse m => m Raw.EntryHeader
+entryHeader :: CanParse m => m Raw.AnyEntryHeader
 entryHeader =
-  (Raw.HeaderModule <$ keyword "module")
-  <|> (Raw.HeaderVal <$ keyword "val")
-  <|> (Raw.HeaderData <$ keyword "data")
-  <|> (Raw.HeaderCodata <$ keyword "codata")
-  <|> (Raw.HeaderResolution <$ keyword "resolution")
-
-lrEntry :: CanParse m => m Raw.LREntry
-lrEntry = MP.label "entry" $ do
-  header <- entryHeader
-  anLHS <- lhs
-  anRHS <- rhs header
-  return $ Raw.LREntry header anLHS anRHS
+    (Raw.AnyEntryHeader Raw.HeaderModule <$ keyword "module")
+    <|> (Raw.AnyEntryHeader Raw.HeaderVal <$ keyword "val")
+    <|> (Raw.AnyEntryHeader Raw.HeaderData <$ keyword "data")
+    <|> (Raw.AnyEntryHeader Raw.HeaderCodata <$ keyword "codata")
+    <|> (Raw.AnyEntryHeader Raw.HeaderResolution <$ keyword "resolution")
 
 {-
 modul :: CanParse m => m Raw.Module
@@ -560,10 +595,16 @@ modul = do
     _ -> fail "Expected a module" -- TODO
 -}
 
-entry :: CanParse m => m Raw.Entry
-entry = (Raw.EntryLR <$> lrEntry)
+entry :: CanParse m => m Raw.AnyEntry
+entry = MP.label "entry" $ do
+  Raw.AnyEntryHeader header <- entryHeader
+  anLHS <- lhs header
+  anRHS <- rhs header
+  return $ Raw.AnyEntry $ Raw.EntryLR header anLHS anRHS
 
 file :: CanParse m => m Raw.File
 file = MP.between manySpace MP.eof $ do
-  themodule <- lrEntry
-  return $ Raw.File themodule
+  Raw.AnyEntry themodule <- entry
+  case Raw.entry'header themodule of
+    Raw.HeaderToplevelModule -> return $ Raw.File themodule
+    _ -> fail $ "Top level entry should be a module : " ++ Raw.unparse themodule

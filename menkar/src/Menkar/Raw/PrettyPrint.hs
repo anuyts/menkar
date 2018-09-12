@@ -112,70 +112,80 @@ unparseEntryAnnotations :: [Annotation] -> PrettyTree String
 unparseEntryAnnotations annots = treeGroup $ (|++ " ") . unparseAnnotationBrackets <$> annots
 
 instance Unparsable Segment where
-  unparse' (Segment lhs@(LHS annots lhsNames context typMaybe)) = "{" ++| content |++ "} "
-    where content = case (lhsNames, typMaybe) of
-            (NoNameForConstraint, Just typ) ->
-              unparseAnnotationClause annots
-              |+| unparse' context
-              \\\ ["-: " ++| unparse' typ]
-            (SomeNamesForTelescope names, Just typ) ->
-              unparseAnnotationClause annots
-              |+| unparse' lhsNames
-              |+| unparse' context
+  unparse' (Segment decl) = "{" ++| content |++ "} "
+    where content = case (decl'names decl, decl'content decl) of
+            (DeclNamesSegment names, DeclContent typ) ->
+              unparseAnnotationClause (decl'annotations decl)
+              |+| unparse' (decl'names decl)
+              |+| unparse' (decl'telescope decl)
               \\\ [": " ++| unparse' typ]
-            (SomeNamesForTelescope names, Nothing) ->
-              unparseAnnotationClause annots
-              |+| unparse' lhsNames
-              |+| unparse' context
-            _ -> "<ERRONEOUS_SEGMENT>: " ++| unparse' lhs
+            (DeclNamesSegment names, DeclContentEmpty) ->
+              unparseAnnotationClause (decl'annotations decl)
+              |+| unparse' (decl'names decl)
+              |+| unparse' (decl'telescope decl)
   parserName _ = "segment"
 
 instance Unparsable Telescope where
   unparse' (Telescope segments) = treeGroup $ unparse' <$> segments
   parserName _ = "telescopeMany"
 
-instance Unparsable LHSNames where
-  unparse' (SomeNamesForTelescope names) = (treeGroup $ (|++ " ") . fromMaybe (ribbon "_") . fmap unparse' <$> names)
-  unparse' (QNameForEntry qname) = unparse' qname
-  unparse' NoNameForConstraint = ribbon "/*NoNameForConstraint*/"
-  parserName (SomeNamesForTelescope _) =
-    "(Raw.SomeNamesForTelescope <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore)))"
-  parserName (QNameForEntry _) = "(Raw.QNameForEntry <$> qName)"
-  parserName NoNameForConstraint = "return Raw.NoNameForConstraint"
+instance Unparsable (DeclNames declSort) where
+  unparse' (DeclNamesSegment names) = (treeGroup $ (|++ " ") . fromMaybe (ribbon "_") . fmap unparse' <$> names)
+  unparse' (DeclNamesToplevelModule qstring) = unparse' qstring
+  unparse' (DeclNamesModule string) = unparse' string
+  unparse' (DeclNamesVal name) = unparse' name
+  parserName (DeclNamesSegment _) = "(Raw.DeclNamesSegment <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore)))"
+  parserName (DeclNamesToplevelModule _) = "(Raw.DeclNamesToplevelModule <$> qName)"
+  parserName (DeclNamesModule _) = "(Raw.DeclNamesModule <$> unqName)"
+  parserName (DeclNamesVal _) = "(Raw.DeclNamesVal <$> unqName)"
 
-unparseLHSUntyped :: LHS -> PrettyTree String
-unparseLHSUntyped (LHS annots lhsNames context _) =
-    unparseEntryAnnotations annots
-    |+| unparse' lhsNames |++ " "
-    |+| unparse' context
+unparseLHSUntyped :: Declaration declSort -> PrettyTree String
+unparseLHSUntyped decl =
+    unparseEntryAnnotations (decl'annotations decl)
+    |+| unparse' (decl'names decl) |++ " "
+    |+| unparse' (decl'telescope decl)
     ||| ribbonEmpty -- as a guard against \+\
-instance Unparsable LHS where
+instance Unparsable (Declaration declSort) where
+  unparse' lhs = case decl'content lhs of
+    DeclContentEmpty -> unparseLHSUntyped lhs
+    DeclContent typ -> 
+      unparseLHSUntyped lhs
+      \\\ [": " ++| unparse' typ]
+  parserName _ = "lhs"
+  {-
   unparse' lhs@(LHS annots lhsNames context Nothing) = unparseLHSUntyped lhs
   unparse' lhs@(LHS annots lhsNames context (Just typ)) =
     unparseLHSUntyped lhs
     \\\ [": " ++| unparse' typ]
   parserName _ = "lhs"
-
-instance Unparsable RHS where
+  -}
+  
+instance Unparsable (RHS declSort) where
   unparse' (RHSModule entries) = ribbon " where {"
                                  \\\ (entries >>= (\ entry -> [unparse' entry, ribbon "        "]))
                                  /// ribbon "}"
   unparse' (RHSVal expr) = " = " ++| unparse' expr
-  unparse' (RHSResolution) = ribbonEmpty
+  --unparse' (RHSResolution) = ribbonEmpty
   parserName (RHSModule _) = "moduleRHS"
   parserName (RHSVal _) = "valRHS"
-  parserName (RHSResolution) = "return Raw.RHSResolution"
+  --parserName (RHSResolution) = "return Raw.RHSResolution"
 
+{-
 instance Unparsable LREntry where
   unparse' (LREntry header lhs rhs) = headerKeyword header ++ " " ++| unparse' lhs \+\ [unparse' rhs]
   parserName _ = "lrEntry"
+-}
 
-instance Unparsable Entry where
-  unparse' (EntryLR lrEntry) = unparse' lrEntry
+instance Unparsable (Entry declSort) where
+  unparse' (EntryLR header lhs rhs) = headerKeyword header ++ " " ++| unparse' lhs \+\ [unparse' rhs]
   parserName _ = "entry"
 
+instance Unparsable AnyEntry where
+  unparse' (AnyEntry entry) = unparse' entry
+  parserName _ = "Raw.AnyEntry <$> entry"
+
 instance Unparsable File where
-  unparse' (File lrEntry) = unparse' lrEntry
+  unparse' (File entry) = unparse' entry
   parserName _ = "file"
   showUnparsable x = "(quickParse file \"\n" ++ unparse x ++ "\n\")"
 
@@ -203,15 +213,15 @@ instance Show Segment where
   show = showUnparsable
 instance Show Telescope where
   show = showUnparsable
-instance Show LHSNames where
+instance Show (DeclNames declSort) where
   show = showUnparsable
-instance Show LHS where
+instance Show (Declaration declSort) where
   show = showUnparsable
-instance Show RHS where
+instance Show (RHS declSort) where
   show = showUnparsable
-instance Show LREntry where
+instance Show (Entry declSort) where
   show = showUnparsable
-instance Show Entry where
+instance Show AnyEntry where
   show = showUnparsable
 instance Show File where
   show = showUnparsable

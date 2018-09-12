@@ -11,7 +11,7 @@ data Opness = NonOp | Op deriving (Show, Eq, Generic, Hashable)
 
 data Name = Name {opnessName :: Opness, stringName :: String} deriving (Eq, Generic, Hashable) --deriving Show
 
-data Qualified a = Qualified [String] a
+data Qualified a = Qualified [String] a deriving (Functor, Foldable, Traversable)
 --deriving instance Show a => Show (Qualified a)
 
 type QName = Qualified Name
@@ -78,21 +78,30 @@ data DeclNames declSort where
   DeclNamesVal :: Name -> DeclNames DeclSortVal
   --deriving (Show)
 
-type family DeclContent (declSort :: DeclSort) :: *
-type instance DeclContent DeclSortVal = Maybe Expr
-type instance DeclContent (DeclSortModule b) = ()
-type instance DeclContent DeclSortResolution = Maybe Expr
-type instance DeclContent DeclSortSegment = Maybe Expr
+class CanBeTyped (declSort :: DeclSort) where
+
+instance CanBeTyped DeclSortVal where
+instance CanBeTyped DeclSortResolution where
+instance CanBeTyped DeclSortSegment where
+
+data DeclContent (declSort :: DeclSort) where
+  DeclContent :: CanBeTyped declSort => Expr -> DeclContent declSort
+  DeclContentEmpty :: DeclContent declSort
 
 data EntryHeader :: DeclSort -> * where
-  HeaderModule :: EntryHeader (DeclSortModule b)
+  HeaderToplevelModule :: EntryHeader (DeclSortModule True)
+  HeaderModule :: EntryHeader (DeclSortModule False)
   HeaderVal :: EntryHeader DeclSortVal
   HeaderResolution :: EntryHeader DeclSortResolution
   HeaderData :: EntryHeader DeclSortVal
   HeaderCodata :: EntryHeader DeclSortVal
 
+data AnyEntryHeader where
+  AnyEntryHeader :: EntryHeader declSort -> AnyEntryHeader
+
 --data EntryHeader = HeaderModule | HeaderVal | HeaderData | HeaderCodata | HeaderResolution deriving Show
 headerKeyword :: EntryHeader declSort -> String
+headerKeyword HeaderToplevelModule = "module"
 headerKeyword HeaderModule = "module"
 headerKeyword HeaderVal = "val"
 headerKeyword HeaderData = "data"
@@ -116,37 +125,39 @@ data RHS declSort where
 coerceRHSToplevel :: RHS (DeclSortModule b1) -> RHS (DeclSortModule b2)
 coerceRHSToplevel (RHSModule entries) = RHSModule entries
 
-data Entry declSort where
-  LREntry :: EntryHeader declSort -> Declaration declSort -> RHS declSort -> Entry declSort
+data Entry declSort = EntryLR {
+  entry'header :: EntryHeader declSort,
+  entry'lhs :: Declaration declSort,
+  entry'rhs :: RHS declSort}
   --deriving Show
 
 data AnyEntry where
   AnyEntry :: Entry declSort -> AnyEntry
 
---newtype Entry = EntryLR LREntry --deriving Show
+--newtype Entry = EntryLR EntryLR --deriving Show
 
 newtype File = File (Entry (DeclSortModule True)) --deriving Show
 
 wrapInModules :: [String] -> Entry (DeclSortModule False) -> Entry (DeclSortModule False)
 wrapInModules [] entry = entry
 wrapInModules (moduleName:moduleNames) entry =
-  LREntry HeaderModule lhs rhs
+  EntryLR HeaderModule lhs rhs
   where lhs = Declaration {
           decl'annotations = [],
           decl'names = DeclNamesModule $ moduleName,
           decl'telescope = Telescope [],
-          decl'content = ()
+          decl'content = DeclContentEmpty
           }
         rhs = RHSModule [AnyEntry $ wrapInModules moduleNames entry]
 
 file2nestedModules :: File -> Entry (DeclSortModule False)
-file2nestedModules (File toplevelmodule@(LREntry HeaderModule lhs rhs)) =
+file2nestedModules (File toplevelmodule@(EntryLR HeaderToplevelModule lhs rhs)) =
   let DeclNamesToplevelModule (Qualified moduleNames string) = decl'names lhs
       lhs' = Declaration {
         decl'annotations = decl'annotations lhs,
         decl'names = DeclNamesModule $ string,
         decl'telescope = decl'telescope lhs,
-        decl'content = ()
+        decl'content = DeclContentEmpty
         }
-      modul = LREntry HeaderModule lhs' (coerceRHSToplevel rhs)
+      modul = EntryLR HeaderModule lhs' (coerceRHSToplevel rhs)
   in wrapInModules moduleNames modul
