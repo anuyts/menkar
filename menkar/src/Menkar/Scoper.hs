@@ -461,8 +461,6 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
         return $ ValRHS fineTm fineTy
     ) gamma fineLHS
 val gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
-  
-{-
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule :: MonadScoper mode modty rel sc =>
@@ -486,6 +484,34 @@ entriesInModule :: MonadScoper mode modty rel sc =>
   ModuleRHS mode modty v ->
   sc (ModuleRHS mode modty v)
 entriesInModule gamma rawEntries fineModule = foldl (>>=) (return fineModule) (entryInModule gamma <$> rawEntries)
+
+{-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
+modul :: MonadScoper mode modty rel sc =>
+  ScCtx mode modty v Void ->
+  Raw.LHS ->
+  Raw.RHS ->
+  sc (Module mode modty v)
+modul gamma rawLHS (Raw.RHSModule rawEntries) = do
+  partialSeg <- lhs2pseg gamma rawLHS
+  [fineLHS] <- buildSegment gamma partialSeg (nestedEntryNamesHandler gamma)
+  mapTelescoped (
+      --TODO TODO TODO here we want a fineLHS that doesn't have a type!!!
+      --This is a bug: every module creates a meta for its type.
+      \wkn gammadelta -> decl'content $ \fineTy -> entriesInModule gammadelta rawEntries newModule
+    ) gamma fineLHS
+modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
+
+
+
+
+
+entry :: MonadScoper mode modty rel sc =>
+  ScCtx mode modty v Void ->
+  Raw.Entry ->
+  sc (Entry mode modty v)
+entry gamma (Raw.EntryLR rawLREntry) = _entry
+  
+{-
 
 {-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
 modul :: MonadScoper mode modty rel sc =>
