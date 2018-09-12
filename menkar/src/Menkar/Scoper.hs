@@ -88,10 +88,10 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
       _ -> scopeFail $
            "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
     let fineSeg = Telescoped $ Declaration {
-          decl'name = maybeName,
-          decl'modty = ModedModality d mu,
-          decl'plicity = Explicit,
-          decl'content = fineTy
+          _decl'name = maybeName,
+          _decl'modty = ModedModality d mu,
+          _decl'plicity = Explicit,
+          _decl'content = fineTy
         }
     fineBody <- expr (gamma ::.. (VarFromCtx <$> segment2scSegment fineSeg)) rawBody
     return . Expr . TermCons . Lam $ Binding fineSeg fineBody
@@ -324,10 +324,10 @@ buildSegment gamma partSeg nameHandler = runListT $ mapTelescoped (
           Compose Nothing -> type4newImplicit gammadelta {- TODO adapt this for general telescoped declarations. -}
         name <- ListT . nameHandler $ _pdecl'names partDecl
         return Declaration {
-          decl'name = name,
-          decl'modty = ModedModality d mu,
-          decl'plicity = plic,
-          decl'content = ty
+          _decl'name = name,
+          _decl'modty = ModedModality d mu,
+          _decl'plicity = plic,
+          _decl'content = ty
           }
   ) gamma partSeg
 
@@ -422,8 +422,8 @@ segment :: MonadScoper mode modty rel sc =>
   Raw.Segment ->
   sc (Telescoped Type Unit3 mode modty v)
 segment gamma (Raw.Segment rawLHS) = do
-  pseg <- lhs2pseg gamma rawLHS
-  segments2telescoped gamma <$> buildSegment gamma pseg (segmentNamesHandler gamma)
+  partialSeg <- lhs2pseg gamma rawLHS
+  segments2telescoped gamma <$> buildSegment gamma partialSeg (segmentNamesHandler gamma)
 
 {-| scope a partly fine, partly raw telescope to a fine telescope. -}
 telescope2 :: MonadScoper mode modty rel sc =>
@@ -445,8 +445,6 @@ telescope gamma (Raw.Telescope (rawSeg : rawSegs)) = do
   telescope2 gamma fineFrontSegs (Raw.Telescope rawSegs)
 
 ----------------------------------------------------------
-  
-{-
 
 {-| Scope a raw LHS and a raw value RHS to a value, or fail. -}
 val :: MonadScoper mode modty rel sc =>
@@ -455,16 +453,16 @@ val :: MonadScoper mode modty rel sc =>
   Raw.RHS ->
   sc (Val mode modty v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
-  lhsBuilder <- lhs2builder gamma rawLHS
-  [fineLHS] <- buildSegment gamma lhsBuilder (nestedEntryNamesHandler gamma)
-  let fineTelescopedTy = segmentRHS fineLHS
-  fineRHS <- mapTelescoped (
-           \ wkn gammadelta fineTy -> do
-             fineTm <- expr gammadelta rawExpr
-             return $ ValRHS fineTm fineTy
-         ) gamma fineTelescopedTy
-  return $ fineLHS {segmentRHS = fineRHS}
+  partialSeg <- lhs2pseg gamma rawLHS
+  [fineLHS] <- buildSegment gamma partialSeg (nestedEntryNamesHandler gamma)
+  mapTelescoped (
+      \wkn gammadelta -> decl'content $ \fineTy -> do
+        fineTm <- expr gammadelta rawExpr
+        return $ ValRHS fineTm fineTy
+    ) gamma fineLHS
 val gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
+  
+{-
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule :: MonadScoper mode modty rel sc =>

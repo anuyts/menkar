@@ -173,10 +173,10 @@ data Declaration
      (modty :: * -> *)
      (v :: *) =
   Declaration {
-    decl'name :: Maybe Raw.Name,
-    decl'modty :: ModedModality mode modty v,
-    decl'plicity :: Plicity mode modty v,
-    decl'content :: content mode modty v
+    _decl'name :: Maybe Raw.Name,
+    _decl'modty :: ModedModality mode modty v,
+    _decl'plicity :: Plicity mode modty v,
+    _decl'content :: content mode modty v
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
@@ -227,7 +227,7 @@ type TelescopedPartialDeclaration ty content = Telescoped ty (PartialDeclaration
 type PartialSegment ty = TelescopedPartialDeclaration ty ty
 
 tdecl'name :: TelescopedDeclaration ty content mode modty v -> Maybe Raw.Name
-tdecl'name (Telescoped decl) = decl'name decl
+tdecl'name (Telescoped decl) = _decl'name decl
 tdecl'name (seg :|- tdecl) = tdecl'name tdecl
 segment'name :: Segment ty mode modty v -> Maybe Raw.Name
 segment'name = tdecl'name
@@ -252,6 +252,7 @@ deriving instance (
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
 
+makeLenses ''Declaration
 makeLenses ''PartialDeclaration
 
 {-
