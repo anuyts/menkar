@@ -60,19 +60,39 @@ expr3to1smart e = expr2to1 . expr3to2 $ e
 {-| One item in the annotation clause. -}
 data Annotation = Annotation (Qualified String) [Expr3] --deriving Show
 
-newtype Segment = Segment LHS --deriving Show
+newtype Segment = Segment (Declaration DeclSortSegment) --deriving Show
 
 {-| A bunch of assumptions in accolads. Essentially a dependent telescope. -}
 newtype Telescope = Telescope {untelescope :: [Segment]} --deriving Show
 
-data LHSNames =
-  SomeNamesForTelescope [Maybe Name] -- name or underscore
-  | QNameForEntry QName
-  | NoNameForConstraint
+data DeclSort =
+  DeclSortVal |
+  DeclSortModule Bool {-^ Whether it's toplevel. -} |
+  DeclSortResolution |
+  DeclSortSegment
+
+data DeclNames declSort where
+  DeclNamesSegment :: [Maybe Name] {-^ name or underscore -} -> DeclNames DeclSortSegment
+  DeclNamesToplevelModule :: Qualified String -> DeclNames (DeclSortModule True)
+  DeclNamesModule :: String -> DeclNames (DeclSortModule False)
+  DeclNamesVal :: Name -> DeclNames DeclSortVal
   --deriving (Show)
 
-data EntryHeader = HeaderModule | HeaderVal | HeaderData | HeaderCodata | HeaderResolution deriving Show
-headerKeyword :: EntryHeader -> String
+type family DeclContent (declSort :: DeclSort) :: *
+type instance DeclContent DeclSortVal = Maybe Expr
+type instance DeclContent (DeclSortModule b) = ()
+type instance DeclContent DeclSortResolution = Maybe Expr
+type instance DeclContent DeclSortSegment = Maybe Expr
+
+data EntryHeader :: DeclSort -> * where
+  HeaderModule :: EntryHeader (DeclSortModule b)
+  HeaderVal :: EntryHeader DeclSortVal
+  HeaderResolution :: EntryHeader DeclSortResolution
+  HeaderData :: EntryHeader DeclSortVal
+  HeaderCodata :: EntryHeader DeclSortVal
+
+--data EntryHeader = HeaderModule | HeaderVal | HeaderData | HeaderCodata | HeaderResolution deriving Show
+headerKeyword :: EntryHeader declSort -> String
 headerKeyword HeaderModule = "module"
 headerKeyword HeaderVal = "val"
 headerKeyword HeaderData = "data"
@@ -81,38 +101,52 @@ headerKeyword HeaderResolution = "resolution"
 
 {-| The left hand side of a genuine entry, or the content of a cell of a telescope.
     For entries, there is typically one name. -}
-data LHS = LHS {
-  lhs'annotations :: [Annotation],
-  lhs'names :: LHSNames,
-  lhs'context :: Telescope,
-  lhs'type :: Maybe Expr} --deriving Show
+data Declaration declSort = Declaration {
+  decl'annotations :: [Annotation],
+  decl'names :: DeclNames declSort,
+  decl'telescope :: Telescope,
+  decl'content :: DeclContent declSort} --deriving Show
 
-data RHS =
-  RHSModule [Entry]
-  | RHSVal Expr
-  | RHSResolution
+data RHS declSort where
+  RHSModule :: [AnyEntry] -> RHS (DeclSortModule b)
+  RHSVal :: Expr -> RHS DeclSortVal
+  --RHSResolution
   --deriving Show
 
-data LREntry = LREntry EntryHeader LHS RHS --deriving Show
+coerceRHSToplevel :: RHS (DeclSortModule b1) -> RHS (DeclSortModule b2)
+coerceRHSToplevel (RHSModule entries) = RHSModule entries
 
-newtype Entry = EntryLR LREntry --deriving Show
+data Entry declSort where
+  LREntry :: EntryHeader declSort -> Declaration declSort -> RHS declSort -> Entry declSort
+  --deriving Show
 
-newtype File = File LREntry --deriving Show
+data AnyEntry where
+  AnyEntry :: Entry declSort -> AnyEntry
 
-wrapInModules :: [String] -> Entry -> Entry
+--newtype Entry = EntryLR LREntry --deriving Show
+
+newtype File = File (Entry (DeclSortModule True)) --deriving Show
+
+wrapInModules :: [String] -> Entry (DeclSortModule False) -> Entry (DeclSortModule False)
 wrapInModules [] entry = entry
 wrapInModules (moduleName:moduleNames) entry =
-  EntryLR $ LREntry HeaderModule lhs rhs
-  where lhs = LHS {
-          lhs'annotations = [],
-          lhs'names = QNameForEntry $ Qualified [] $ Name NonOp moduleName,
-          lhs'context = Telescope [],
-          lhs'type = Nothing
+  LREntry HeaderModule lhs rhs
+  where lhs = Declaration {
+          decl'annotations = [],
+          decl'names = DeclNamesModule $ moduleName,
+          decl'telescope = Telescope [],
+          decl'content = ()
           }
-        rhs = RHSModule [wrapInModules moduleNames entry]
+        rhs = RHSModule [AnyEntry $ wrapInModules moduleNames entry]
 
-file2nestedModules :: File -> Entry
-file2nestedModules (File entry@(LREntry header lhs rhs)) =
-  let QNameForEntry (Qualified moduleNames name) = lhs'names lhs
-      entry' = EntryLR $ LREntry header (lhs {lhs'names = QNameForEntry $ Qualified [] name}) rhs
-  in wrapInModules moduleNames entry'
+file2nestedModules :: File -> Entry (DeclSortModule False)
+file2nestedModules (File toplevelmodule@(LREntry HeaderModule lhs rhs)) =
+  let DeclNamesToplevelModule (Qualified moduleNames string) = decl'names lhs
+      lhs' = Declaration {
+        decl'annotations = decl'annotations lhs,
+        decl'names = DeclNamesModule $ string,
+        decl'telescope = decl'telescope lhs,
+        decl'content = ()
+        }
+      modul = LREntry HeaderModule lhs' (coerceRHSToplevel rhs)
+  in wrapInModules moduleNames modul

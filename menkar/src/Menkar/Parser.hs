@@ -534,7 +534,7 @@ rhs Raw.HeaderModule = moduleRHS
 rhs Raw.HeaderVal = valRHS
 rhs Raw.HeaderData = fail "Not supported yet: data"
 rhs Raw.HeaderCodata = fail "Not supported yet : codata"
-rhs Raw.HeaderResolution = return Raw.RHSResolution
+rhs Raw.HeaderResolution = fail "Not supported yet : resolution" --return Raw.RHSResolution
 
 entryHeader :: CanParse m => m Raw.EntryHeader
 entryHeader =
