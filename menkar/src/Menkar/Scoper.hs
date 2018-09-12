@@ -369,14 +369,14 @@ lhs2pseg :: MonadScoper mode modty rel sc =>
   --sc [Segment Type mode modty v]
   sc (PartialSegment Type mode modty v)
 lhs2pseg gamma rawLHS = do
-  fineDelta <- telescope gamma $ Raw.contextLHS rawLHS
+  fineDelta <- telescope gamma $ Raw.lhs'context rawLHS
   mapTelescoped (
       \ wkn gammadelta Unit3 -> (`execStateT` newPartialDeclaration) $ do
           --names
-          let rawNames = Raw.namesLHS rawLHS
+          let rawNames = Raw.lhs'names rawLHS
           pdecl'names .= rawNames
           --type
-          case Raw.typeLHS rawLHS of
+          case Raw.lhs'type rawLHS of
             Nothing -> return ()
             Just rawTy -> do
               fineTy <- do
@@ -384,7 +384,7 @@ lhs2pseg gamma rawLHS = do
                 ElTerm fineLvl <$> expr gammadelta rawTy
               pdecl'content .= (Compose $ Just $ fineTy)
           --annotations
-          fineAnnots <- sequenceA $ annotation gammadelta <$> Raw.annotationsLHS rawLHS
+          fineAnnots <- sequenceA $ annotation gammadelta <$> Raw.lhs'annotations rawLHS
           forM_ fineAnnots $
             \ fineAnnot ->
               case fineAnnot of

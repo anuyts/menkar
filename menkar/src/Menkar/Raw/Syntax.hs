@@ -82,10 +82,10 @@ headerKeyword HeaderResolution = "resolution"
 {-| The left hand side of a genuine entry, or the content of a cell of a telescope.
     For entries, there is typically one name. -}
 data LHS = LHS {
-  annotationsLHS :: [Annotation],
-  namesLHS :: LHSNames,
-  contextLHS :: Telescope,
-  typeLHS :: Maybe Expr} --deriving Show
+  lhs'annotations :: [Annotation],
+  lhs'names :: LHSNames,
+  lhs'context :: Telescope,
+  lhs'type :: Maybe Expr} --deriving Show
 
 data RHS =
   RHSModule [Entry]
@@ -104,15 +104,15 @@ wrapInModules [] entry = entry
 wrapInModules (moduleName:moduleNames) entry =
   EntryLR $ LREntry HeaderModule lhs rhs
   where lhs = LHS {
-          annotationsLHS = [],
-          namesLHS = QNameForEntry $ Qualified [] $ Name NonOp moduleName,
-          contextLHS = Telescope [],
-          typeLHS = Nothing
+          lhs'annotations = [],
+          lhs'names = QNameForEntry $ Qualified [] $ Name NonOp moduleName,
+          lhs'context = Telescope [],
+          lhs'type = Nothing
           }
         rhs = RHSModule [wrapInModules moduleNames entry]
 
 file2nestedModules :: File -> Entry
 file2nestedModules (File entry@(LREntry header lhs rhs)) =
-  let QNameForEntry (Qualified moduleNames name) = namesLHS lhs
-      entry' = EntryLR $ LREntry header (lhs {namesLHS = QNameForEntry $ Qualified [] name}) rhs
+  let QNameForEntry (Qualified moduleNames name) = lhs'names lhs
+      entry' = EntryLR $ LREntry header (lhs {lhs'names = QNameForEntry $ Qualified [] name}) rhs
   in wrapInModules moduleNames entry'
