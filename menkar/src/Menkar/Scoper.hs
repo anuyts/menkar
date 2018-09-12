@@ -406,19 +406,6 @@ lhs2pseg gamma rawLHS = do
                     Nothing -> pdecl'plicity._Wrapped' .= Just Implicit
     ) gamma fineDelta
 
-segment :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void ->
-  Raw.Segment ->
-  sc (Telescoped Type Unit3 mode modty v)
-segment gamma rawSeg = _segment
-
-telescope :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void ->
-  Raw.Telescope ->
-  sc (Telescoped Type Unit3 mode modty v)
-telescope gamma rawTele = _telescope
-
-{-
 {-| Chain a list of fine segments to a fine telescope. -}
 segments2telescoped :: --MonadScoper mode modty rel sc =>
   (Functor mode, Functor modty) =>
@@ -430,14 +417,13 @@ segments2telescoped gamma [] =
 segments2telescoped gamma (fineSeg:fineSegs) =
   fineSeg :|- segments2telescoped (gamma ::.. (VarFromCtx <$> segment2scSegment fineSeg)) (fmap VarWkn <$> fineSegs)
 
-{-| Scope a raw segment to a fine telescope. -}
 segment :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.Segment ->
   sc (Telescoped Type Unit3 mode modty v)
 segment gamma (Raw.Segment rawLHS) = do
-  segBuilder <- lhs2builder gamma rawLHS
-  segments2telescoped gamma <$> buildSegment gamma segBuilder (segmentNamesHandler gamma)
+  pseg <- lhs2pseg gamma rawLHS
+  segments2telescoped gamma <$> buildSegment gamma pseg (segmentNamesHandler gamma)
 
 {-| scope a partly fine, partly raw telescope to a fine telescope. -}
 telescope2 :: MonadScoper mode modty rel sc =>
@@ -449,7 +435,6 @@ telescope2 gamma (Telescoped Unit3) rawTele = telescope gamma rawTele
 telescope2 gamma (fineSeg :|- fineSegs) rawTele =
   (fineSeg :|-) <$> telescope2 (gamma ::.. (VarFromCtx <$> segment2scSegment fineSeg)) fineSegs rawTele
 
-{-| Scope a telescope -}
 telescope :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.Telescope ->
@@ -460,6 +445,8 @@ telescope gamma (Raw.Telescope (rawSeg : rawSegs)) = do
   telescope2 gamma fineFrontSegs (Raw.Telescope rawSegs)
 
 ----------------------------------------------------------
+  
+{-
 
 {-| Scope a raw LHS and a raw value RHS to a value, or fail. -}
 val :: MonadScoper mode modty rel sc =>
