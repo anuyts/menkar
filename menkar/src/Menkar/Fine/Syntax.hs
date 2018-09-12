@@ -190,12 +190,13 @@ deriving instance (
 
 data PartialDeclaration
      {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
+     (declSort :: Raw.DeclSort)
      (content :: (* -> *) -> (* -> *) -> * -> *)
      (mode :: * -> *)
      (modty :: * -> *)
      (v :: *) =
   PartialDeclaration {
-    _pdecl'names :: Raw.LHSNames,
+    _pdecl'names :: Maybe (Raw.DeclNames declSort),
     _pdecl'mode :: Compose Maybe mode v,
     _pdecl'modty :: Compose Maybe modty v,
     _pdecl'plicity :: Compose Maybe (Plicity mode modty) v,
@@ -209,11 +210,11 @@ deriving instance (
     CanSwallow (Term mode modty) mode,
     CanSwallow (Term mode modty) modty,
     CanSwallow (Term mode modty) (content mode modty)
-  ) => CanSwallow (Term mode modty) (PartialDeclaration content mode modty)
+  ) => CanSwallow (Term mode modty) (PartialDeclaration declSort content mode modty)
   
-newPartialDeclaration :: PartialDeclaration content mode modty v
+newPartialDeclaration :: PartialDeclaration declSort content mode modty v
 newPartialDeclaration = PartialDeclaration {
-  _pdecl'names = Raw.SomeNamesForTelescope [],
+  _pdecl'names = Nothing,
   _pdecl'mode = Compose Nothing,
   _pdecl'modty = Compose Nothing,
   _pdecl'plicity = Compose Nothing,
@@ -223,8 +224,8 @@ newPartialDeclaration = PartialDeclaration {
 type TelescopedDeclaration ty content = Telescoped ty (Declaration content)
 type Segment ty = TelescopedDeclaration ty ty
 
-type TelescopedPartialDeclaration ty content = Telescoped ty (PartialDeclaration content)
-type PartialSegment ty = TelescopedPartialDeclaration ty ty
+type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
+type PartialSegment declSort ty = TelescopedPartialDeclaration declSort ty ty
 
 tdecl'name :: TelescopedDeclaration ty content mode modty v -> Maybe Raw.Name
 tdecl'name (Telescoped decl) = _decl'name decl
