@@ -501,34 +501,6 @@ modul gamma rawLHS (Raw.RHSModule rawEntries) = do
     ) gamma fineLHS
 modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
-
-
-
-
-entry :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void ->
-  Raw.Entry ->
-  sc (Entry mode modty v)
-entry gamma (Raw.EntryLR rawLREntry) = _entry
-  
-{-
-
-{-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
-modul :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void ->
-  Raw.LHS ->
-  Raw.RHS ->
-  sc (Module mode modty v)
-modul gamma rawLHS (Raw.RHSModule rawEntries) = do
-  lhsBuilder <- lhs2builder gamma rawLHS
-  [fineLHS] <- buildSegment gamma lhsBuilder (nestedEntryNamesHandler gamma)
-  let fineTelescopedTy = segmentRHS fineLHS
-  fineRHS <- mapTelescoped (
-           \ wkn gammadelta fineTy -> entriesInModule gammadelta rawEntries newModule
-         ) gamma fineTelescopedTy
-  return $ fineLHS {segmentRHS = fineRHS}
-modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
-
 lrEntry :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.LREntry ->
@@ -548,4 +520,3 @@ file :: MonadScoper mode modty rel sc =>
   Raw.File ->
   sc (Entry mode modty v)
 file gamma rawFile = entry gamma (Raw.file2nestedModules rawFile)
--}
