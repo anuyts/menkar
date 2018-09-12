@@ -1,4 +1,5 @@
-{- # LANGUAGE DataKinds, KindSignatures, GADTs, TypeOperators, RankNTypes #-}
+{- # LANGUAGE DataKinds, KindSignatures, GADTs, TypeOperators, RankNTypes, #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Menkar.Fine.Syntax where
 
@@ -11,6 +12,7 @@ import Data.HashMap.Lazy
 import Data.Functor.Identity
 import Data.Maybe
 import Control.Exception.AssertFalse
+import Control.Lens
 
 {- Segment info will have to depend on v, because 'resolves' annotations have variables -}
 data MetaInfo where
@@ -193,11 +195,11 @@ data PartialDeclaration
      (modty :: * -> *)
      (v :: *) =
   PartialDeclaration {
-    pdecl'names :: Raw.LHSNames,
-    pdecl'mode :: Compose Maybe mode v,
-    pdecl'modty :: Compose Maybe modty v,
-    pdecl'plicity :: Compose Maybe (Plicity mode modty) v,
-    pdecl'content :: Compose Maybe (content mode modty) v
+    _pdecl'names :: Raw.LHSNames,
+    _pdecl'mode :: Compose Maybe mode v,
+    _pdecl'modty :: Compose Maybe modty v,
+    _pdecl'plicity :: Compose Maybe (Plicity mode modty) v,
+    _pdecl'content :: Compose Maybe (content mode modty) v
     }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
@@ -211,11 +213,11 @@ deriving instance (
   
 newPartialDeclaration :: PartialDeclaration content mode modty v
 newPartialDeclaration = PartialDeclaration {
-  pdecl'names = Raw.SomeNamesForTelescope [],
-  pdecl'mode = Compose Nothing,
-  pdecl'modty = Compose Nothing,
-  pdecl'plicity = Compose Nothing,
-  pdecl'content = Compose Nothing
+  _pdecl'names = Raw.SomeNamesForTelescope [],
+  _pdecl'mode = Compose Nothing,
+  _pdecl'modty = Compose Nothing,
+  _pdecl'plicity = Compose Nothing,
+  _pdecl'content = Compose Nothing
   }
 
 type TelescopedDeclaration ty content = Telescoped ty (Declaration content)
@@ -249,6 +251,8 @@ deriving instance (
     CanSwallow (Term mode modty) (ty mode modty),
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
+
+makeLenses ''PartialDeclaration
 
 {-
 data Segment

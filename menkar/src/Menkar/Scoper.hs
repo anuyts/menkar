@@ -18,6 +18,7 @@ import Data.Void
 import Data.HashMap.Lazy
 import Data.Functor.Identity
 import Data.Coerce
+import Control.Lens
 
 {- SEARCH FOR TODOS -}
 
@@ -309,19 +310,19 @@ buildSegment :: MonadScoper mode modty rel sc =>
 buildSegment gamma partSeg nameHandler = runListT $ mapTelescoped (
     \ wkn gammadelta partDecl -> do
         -- allocate all implicits BEFORE name fork
-        d <- case pdecl'mode partDecl of
+        d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
           Compose Nothing -> mode4newImplicit gammadelta
-        mu <- case pdecl'modty partDecl of
+        mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
           Compose Nothing -> modty4newImplicit gammadelta
-        let plic = case pdecl'plicity partDecl of
+        let plic = case _pdecl'plicity partDecl of
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit
-        ty <- case pdecl'content partDecl of
+        ty <- case _pdecl'content partDecl of
           Compose (Just ty') -> return ty'
           Compose Nothing -> type4newImplicit gammadelta {- TODO adapt this for general telescoped declarations. -}
-        name <- ListT . nameHandler $ pdecl'names partDecl
+        name <- ListT . nameHandler $ _pdecl'names partDecl
         return Declaration {
           decl'name = name,
           decl'modty = ModedModality d mu,
@@ -369,72 +370,41 @@ lhs2pseg :: MonadScoper mode modty rel sc =>
   sc (PartialSegment Type mode modty v)
 lhs2pseg gamma rawLHS = do
   fineDelta <- telescope gamma $ Raw.contextLHS rawLHS
-  _lhs2pseg
-
-{----------------------------------------------------------------------------
-{- THERE IS A FUNDAMENTAL PROBLEM HERE:
-   -The mode & modality may depend on the telescope.
-   -The telescope needs to be checked in a context divided by the modality.
-   HOWEVER: The only information you're using about the context is:
-   -The number of variables
-   -The vals and modules in scope
-   I.e. you're using a context with variables and definitions, but without types and modalities.
-   So you should use a special scoping context
-   FOR TYPE-CHECKING: the flat modality guarantees that there exists a sensible order.
-   The constraint solver will find simply solve constraints.
--}
-{-| @'lhs2builder' gamma rawLHS@ scopes @rawLHS@ to a segment builder. -}
-lhs2builder :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void ->
-  Raw.LHS ->
-  --sc [Segment Type mode modty v]
-  sc (PartialSegment Type mode modty v)
---lhs2builder gamma lhs = (>>= buildSegment gamma) . (`execStateT` newSegmentBuilder) $ do
-lhs2builder gamma rawLHS = (`execStateT` newSegmentBuilder) $ do
-
-  -- NAMES
-  let rawNames = Raw.namesLHS rawLHS
-  {-names <- case Raw.namesLHS lhs of
-    Raw.SomeNamesForTelescope names' -> return names'
-    Raw.QNameForEntry qname ->
-      scopeFail $ "I thought I was scoping a telescope segment, but it was parsed as an entry: " ++ Raw.unparse lhs
-    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."-}
-  modify $ \ segBuilder -> segBuilder {segmentBuilderNames = rawNames}
-
-  -- TELESCOPE AND TYPE (should be checked after dividing the context)
-  fineDelta <- telescope gamma $ Raw.contextLHS rawLHS
-  fineTelescopedType <- let f :: forall w .
-                              (_ -> w) ->
-                              ScCtx _ _ w Void ->
-                              Unit3 _ _ w ->
-                              StateT _ _ (Maybe3 Type _ _ w)
-                            f = \ wkn gammadelta Unit3 -> case Raw.typeLHS rawLHS of
-                              Nothing -> return . Maybe3 . Compose $ Nothing
-                              Just rawTy -> Maybe3 . Compose . Just <$> do
-                                fineLvl <- term4newImplicit gammadelta
-                                ElTerm fineLvl <$> expr gammadelta rawTy
-                        in mapTelescoped f gamma fineDelta
-  modify $ \ segBuilder -> segBuilder {segmentBuilderTelescopedType = fineTelescopedType}
-
-  -- ANNOTATIONS
-  {- TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-     For now, we check the annotations outside of the telescope of the thing they annotate.
-     This rules out dependent modes.
-  -}
-  fineAnnots <- sequenceA $ annotation gamma <$> Raw.annotationsLHS rawLHS
-  forM_ fineAnnots $ \ fineAnnot -> do
-    segBuilder <- get
-    case fineAnnot of
-      AnnotMode d' -> case segmentBuilderMode segBuilder of
-        Compose (Just d'') -> scopeFail $ "Encountered multiple mode annotations: " ++ Raw.unparse rawLHS
-        Compose Nothing -> modify $ \ segBuilder -> segBuilder {segmentBuilderMode = Compose $ Just d'}
-      AnnotModality mu' -> case segmentBuilderModality segBuilder of
-        Compose (Just mu'') -> scopeFail $ "Encountered multiple modality annotations: " ++ Raw.unparse rawLHS
-        Compose Nothing -> modify $ \ segBuilder -> segBuilder {segmentBuilderModality = Compose $ Just mu'}
-      AnnotImplicit -> case segmentBuilderPlicity segBuilder of
-        Compose (Just v) -> scopeFail $ "Encountered multiple visibility annotations: " ++ Raw.unparse rawLHS
-        Compose Nothing -> modify $ \ segBuilder -> segBuilder {segmentBuilderPlicity = Compose $ Just Implicit}
-------------------------------------------------------------------------}
+  mapTelescoped (
+      \ wkn gammadelta Unit3 -> (`execStateT` newPartialDeclaration) $ do
+          --names
+          let rawNames = Raw.namesLHS rawLHS
+          pdecl'names .= rawNames
+          --type
+          case Raw.typeLHS rawLHS of
+            Nothing -> return ()
+            Just rawTy -> do
+              fineTy <- do
+                fineLvl <- term4newImplicit gammadelta
+                ElTerm fineLvl <$> expr gammadelta rawTy
+              pdecl'content .= (Compose $ Just $ fineTy)
+          --annotations
+          fineAnnots <- sequenceA $ annotation gammadelta <$> Raw.annotationsLHS rawLHS
+          forM_ fineAnnots $
+            \ fineAnnot ->
+              case fineAnnot of
+                AnnotMode fineMode -> do
+                  -- _Wrapped' is a lens for Compose
+                  maybeOldFineMode <- use $ pdecl'mode._Wrapped'
+                  case maybeOldFineMode of
+                    Just oldFineMode -> scopeFail $ "Encountered multiple mode annotations: " ++ Raw.unparse rawLHS
+                    Nothing -> pdecl'mode._Wrapped' .= Just fineMode
+                AnnotModality fineModty -> do
+                  maybeOldFineModty <- use $ pdecl'modty._Wrapped'
+                  case maybeOldFineModty of
+                    Just oldFineModty -> scopeFail $ "Encountered multiple modality annotations: " ++ Raw.unparse rawLHS
+                    Nothing -> pdecl'modty._Wrapped' .= Just fineModty
+                AnnotImplicit -> do
+                  maybeOldFinePlicity <- use $ pdecl'plicity._Wrapped'
+                  case maybeOldFinePlicity of
+                    Just oldFinePlicity -> scopeFail $ "Encountered multiple visibility annotations: " ++ Raw.unparse rawLHS
+                    Nothing -> pdecl'plicity._Wrapped' .= Just Implicit
+    ) gamma fineDelta
 
 segment :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->

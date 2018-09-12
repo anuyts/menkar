@@ -24,5 +24,6 @@ It is named after the star Alpha Ceti.
 Here are some packages currently in use:
 
 * ~~`categories` - Note: you need to add `PolyKinds` to Control.Categorical.Functor.~~
+* `lens`
 * `megaparsec`
 * `nat`
