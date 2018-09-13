@@ -38,7 +38,7 @@ expr3 :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.Expr3 ->
   sc (Term mode modty v)
-expr3 gamma (Raw.ExprQName rawQName) = term4val gamma rawQName
+expr3 gamma (Raw.ExprQName rawQName) = term4qname gamma rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = todo
 expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma

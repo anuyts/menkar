@@ -28,26 +28,22 @@ class (
     (rel :: * -> *)
     (sc :: * -> *)
     | sc -> mode, sc -> modty, sc -> rel where
-    -- -| mode -> modty, mode -> rel where
-  --type ConstraintRef sc :: *
-  term4val :: ScCtx mode modty v Void -> Raw.QName -> sc (Term mode modty v)
+  term4qname :: ScCtx mode modty v Void -> Raw.QName -> sc (Term mode modty v)
   annot4annot :: ScCtx mode modty v Void -> 
     Raw.Qualified String -> [Term mode modty v] -> sc (Annotation mode modty v)
-  {- TODO: also return an implicit-ref -}
   term4newImplicit :: ScCtx mode modty v Void -> sc (Term mode modty v)
-  type4newImplicit :: ScCtx mode modty v Void -> sc (Type mode modty v)
   mode4newImplicit :: ScCtx mode modty v Void -> sc (mode v)
   modty4newImplicit :: ScCtx mode modty v Void -> sc (modty v)
-  --newModule :: ScCtx Type mode modty v Void -> mode v -> Maybe String ->
-  pushConstraint :: Constraint mode modty rel -> sc ()
   scopeFail :: String -> sc a
 
+type4newImplicit :: MonadScoper mode modty rel sc =>
+  ScCtx mode modty v Void -> sc (Type mode modty v)
+type4newImplicit gamma = Type <$> term4newImplicit gamma
+
 instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
-  term4val gamma qname = lift $ term4val gamma qname
+  term4qname gamma qname = lift $ term4qname gamma qname
   annot4annot gamma qstring args = lift $ annot4annot gamma qstring args
   term4newImplicit gamma = lift $ term4newImplicit gamma
-  type4newImplicit gamma = lift $ type4newImplicit gamma
   mode4newImplicit gamma = lift $ mode4newImplicit gamma
   modty4newImplicit gamma = lift $ modty4newImplicit gamma
-  pushConstraint c = lift $ pushConstraint c
   scopeFail msg = lift $ scopeFail msg
