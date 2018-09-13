@@ -166,14 +166,22 @@ data Plicity mode modty v =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Plicity mode modty)
 
+data DeclSort = DeclSortVal | DeclSortModule | DeclSortSegment
+
+data DeclName declSort where
+  DeclNameVal :: Raw.Name -> DeclName DeclSortVal
+  DeclNameModule :: String -> DeclName DeclSortModule
+  DeclNameSegment :: Maybe Raw.Name -> DeclName DeclSortSegment
+
 data Declaration
      {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
+     (declSort :: DeclSort)
      (content :: (* -> *) -> (* -> *) -> * -> *)
      (mode :: * -> *)
      (modty :: * -> *)
      (v :: *) =
   Declaration {
-    _decl'name :: Maybe Raw.Name,
+    _decl'name :: DeclName declSort,
     _decl'modty :: ModedModality mode modty v,
     _decl'plicity :: Plicity mode modty v,
     _decl'content :: content mode modty v
@@ -186,7 +194,7 @@ deriving instance (
     CanSwallow (Term mode modty) mode,
     CanSwallow (Term mode modty) modty,
     CanSwallow (Term mode modty) (content mode modty)
-  ) => CanSwallow (Term mode modty) (Declaration content mode modty)
+  ) => CanSwallow (Term mode modty) (Declaration declSort content mode modty)
 
 data PartialDeclaration
      {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
@@ -221,17 +229,18 @@ newPartialDeclaration = PartialDeclaration {
   _pdecl'content = Compose Nothing
   }
 
-type TelescopedDeclaration ty content = Telescoped ty (Declaration content)
-type Segment ty = TelescopedDeclaration ty ty
+type TelescopedDeclaration declSort ty content = Telescoped ty (Declaration declSort content)
+type Segment ty = TelescopedDeclaration DeclSortSegment ty ty
 
 type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
-type PartialSegment declSort ty = TelescopedPartialDeclaration declSort ty ty
+type PartialSegment ty = TelescopedPartialDeclaration Raw.DeclSortSegment ty ty
 
-tdecl'name :: TelescopedDeclaration ty content mode modty v -> Maybe Raw.Name
-tdecl'name (Telescoped decl) = _decl'name decl
-tdecl'name (seg :|- tdecl) = tdecl'name tdecl
-segment'name :: Segment ty mode modty v -> Maybe Raw.Name
-segment'name = tdecl'name
+_tdecl'name :: TelescopedDeclaration declSort ty content mode modty v -> DeclName declSort
+_tdecl'name (Telescoped decl) = _decl'name decl
+_tdecl'name (seg :|- tdecl) = _tdecl'name tdecl
+_segment'name :: Segment ty mode modty v -> Maybe Raw.Name
+_segment'name seg = case _tdecl'name seg of
+  DeclNameSegment maybeName -> maybeName
 
 data Telescoped
      (ty :: (* -> *) -> (* -> *) -> * -> *)
@@ -240,7 +249,7 @@ data Telescoped
      (modty :: * -> *)
      (v :: *) =
   Telescoped (rhs mode modty v) |
-  TelescopedDeclaration ty ty mode modty v :|- Telescoped ty rhs mode modty (VarExt v)
+  Segment ty mode modty v :|- Telescoped ty rhs mode modty (VarExt v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
     Functor mode,
@@ -261,39 +270,37 @@ data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) = ValRHS (Term mode modt
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ValRHS mode modty)
 
-type Val = TelescopedDeclaration Type ValRHS
+type Val = TelescopedDeclaration DeclSortVal Type ValRHS
 --newtype Val (mode :: * -> *) (modty :: * -> *) (v :: *) = Val (Segment Type ValRHS mode modty v)
 --  deriving (Functor, Foldable, Traversable, Generic1)
 --deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
 --  CanSwallow (Term mode modty) (Val mode modty)
+_val'name :: Val mode modty v -> Raw.Name
+_val'name seg = case _tdecl'name seg of
+  DeclNameVal name -> name
 
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRHS {
-    moduleVals :: Compose (HashMap Raw.Name) (Val mode modty) (VarInModule v),
-    moduleModules :: Compose (HashMap String) (Module mode modty) (VarInModule v)
+    _module'vals :: Compose (HashMap Raw.Name) (Val mode modty) (VarInModule v),
+    _module'modules :: Compose (HashMap String) (Module mode modty) (VarInModule v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModuleRHS mode modty)
+
+type Module = TelescopedDeclaration DeclSortModule Type ModuleRHS
+
+makeLenses ''ModuleRHS
+
 newModule :: ModuleRHS mode modty v
 newModule = ModuleRHS (Compose empty) (Compose empty)
-addToModule :: ModuleRHS mode modty v -> Entry mode modty (VarInModule v) -> ModuleRHS mode modty v
-addToModule modul (EntryVal val) =
-  modul {moduleVals = Compose $
-          update (const $ Just val) (fromMaybe (assertFalse "nameless val") $ tdecl'name val) $
-          getCompose $ moduleVals modul
-        }
-addToModule modul (EntryModule submodule) =
-  modul {moduleModules = Compose $
-          update (const $ Just submodule) (Raw.stringName $ fromMaybe (assertFalse "nameless val") $ tdecl'name submodule) $
-          getCompose $ moduleModules modul
-        }
+addToModule :: Entry mode modty (VarInModule v) -> ModuleRHS mode modty v -> ModuleRHS mode modty v
+addToModule (EntryVal val) = set (module'vals . _Wrapped' . at (_val'name val)) $ Just val
+addToModule (EntryModule submodule) = set (module'modules . _Wrapped' . at (_module'name submodule)) $ Just submodule
 
-type Module = TelescopedDeclaration Type ModuleRHS
---newtype Module (mode :: * -> *) (modty :: * -> *) (v :: *) = Module (Segment Type ModuleRHS mode modty v)
---  deriving (Functor, Foldable, Traversable, Generic1)
---deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
---  CanSwallow (Term mode modty) (Val mode modty)
+_module'name :: Module mode modty v -> String
+_module'name seg = case _tdecl'name seg of
+  DeclNameModule name -> name
 
 data Entry (mode :: * -> *) (modty :: * -> *) (v :: *) = EntryVal (Val mode modty v) | EntryModule (Module mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
