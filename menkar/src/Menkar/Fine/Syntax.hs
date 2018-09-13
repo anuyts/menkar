@@ -59,7 +59,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
     (mode v) {-^ mode (of both the universe and its elements) -}
-    (Term mode modty v) {-^ level -} |
+    (Term mode modty v) {-^ level it classifies -} |
   Pi (Binding mode modty v) |
   Sigma (Binding mode modty v) |
   EmptyType |
@@ -71,8 +71,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ConsUnsafeResize
     (mode v) {-^ Type's mode -}
-    (Term mode modty v) {-^ Type's proper level -}
-    (Term mode modty v) {-^ Type's assigned level -}
+    (Term mode modty v) {-^ Type's unsafely assigned level -}
     (TypeTerm mode modty v) {-^ Type -} |
   Lam (Binding mode modty v) |
   Pair
@@ -94,8 +93,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 
 data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimUnsafeResize
-    (Term mode modty v) {-^ Type's proper level -}
-    (Term mode modty v) {-^ Type's assigned level -}
+    (Term mode modty v) {-^ Type's unsafely assigned level -}
     (Term mode modty v) {-^ Type -} |
   App
     (Binding mode modty v) {-^ function's pi type -} 
@@ -117,10 +115,8 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 -- | is this useful? If not, keep it as a newtype over Term.
 data Type (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElType {-^ Constructor'ish -} 
-    (Term mode modty v) {-^ Type's proper level -}
     (TypeTerm mode modty v) {-^ Type -} |
   ElTerm {-^ Eliminator'ish -}
-    (Term mode modty v) {-^ Type's proper level -}
     (Term mode modty v) {-^ Type -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
