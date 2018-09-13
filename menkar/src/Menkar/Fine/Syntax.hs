@@ -3,7 +3,7 @@
 
 module Menkar.Fine.Syntax where
 
-import Menkar.Fine.Substitution
+import Menkar.Fine.Substitution hiding (Expr (..))
 import Menkar.Fine.Context.Variable
 import GHC.Generics
 import qualified Menkar.Raw.Syntax as Raw
@@ -143,7 +143,8 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (TermNV mode modty)
 
-type Term mode modty = Expr (TermNV mode modty)
+type Term = Expr3 TermNV
+  
 
 ------------------------------------
 

@@ -53,7 +53,7 @@ elimination gamma (Raw.Elimination rawExpr rawElims) = do
   --fineTy <- type4newImplicit gamma
   fineElims <- sequenceA (eliminator gamma <$> rawElims)
   fineResult <- term4newImplicit gamma
-  return . Expr $ TermSmartElim fineExpr (Compose fineElims) fineResult
+  return . Expr3 $ TermSmartElim fineExpr (Compose fineElims) fineResult
   --theMode <- mode4newImplicit gamma
   {-pushConstraint $ Constraint {
       constraintJudgement = JudSmartElim gamma fineExpr fineTy fineElims fineResult,
@@ -94,7 +94,7 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
           _decl'content = fineTy
         }
     fineBody <- expr (gamma ::.. (VarFromCtx <$> segment2scSegment fineSeg)) rawBody
-    return . Expr . TermCons . Lam $ Binding fineSeg fineBody
+    return . Expr3 . TermCons . Lam $ Binding fineSeg fineBody
 simpleLambda gamma rawArg rawBody =
   scopeFail $
   "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
@@ -108,7 +108,7 @@ buildPi :: MonadScoper mode modty rel sc =>
 buildPi gamma fineSeg fineCod = do
   fineLvl <- term4newImplicit gamma
   fineMode <- mode4newImplicit gamma
-  return $ Expr $ TermCons $ ConsUnsafeResize fineMode fineLvl fineLvl $ Pi $ Binding fineSeg fineCod
+  return $ Expr3 $ TermCons $ ConsUnsafeResize fineMode fineLvl fineLvl $ Pi $ Binding fineSeg fineCod
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma :: MonadScoper mode modty rel sc =>
@@ -119,7 +119,7 @@ buildSigma :: MonadScoper mode modty rel sc =>
 buildSigma gamma fineSeg fineCod = do
   fineLvl <- term4newImplicit gamma
   fineMode <- mode4newImplicit gamma
-  return $ Expr $ TermCons $ ConsUnsafeResize fineMode fineLvl fineLvl $ Sigma $ Binding fineSeg fineCod
+  return $ Expr3 $ TermCons $ ConsUnsafeResize fineMode fineLvl fineLvl $ Sigma $ Binding fineSeg fineCod
   
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda :: MonadScoper mode modty rel sc =>
@@ -128,7 +128,7 @@ buildLambda :: MonadScoper mode modty rel sc =>
   Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildLambda gamma fineSeg fineCod =
-  return $ Expr $ TermCons $ Lam $ Binding fineSeg fineCod
+  return $ Expr3 $ TermCons $ Lam $ Binding fineSeg fineCod
 
 {-| @'binder2' build gamma fineSegs rawArgs rawBody@ scopes the Menkar expression
     @<fineSegs> **> <rawArgs> **> rawBody@ to a term, where

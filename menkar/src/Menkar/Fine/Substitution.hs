@@ -54,6 +54,31 @@ instance (Functor e, CanSwallow (Expr e) e) => Applicative (Expr e) where
 instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
   tv >>= f = swallow $ f <$> tv
 
+-------------------------------------------
+
+{-| @'Expr' e v@ is the type of expressions with variables from 'v' and non-variables from 'e v'.
+    The constraints @('Functor' e, 'Swallows' e ('Expr' e))@ should hold.
+    The idea is that any other syntactic class can be defined as @Compose g (Expr e)@, for some functor g.
+    Then automatically, @Compose g (Expr e)@ is a swallowing functor.
+-}
+data Expr3 (e :: ka -> kb -> * -> *) (a :: ka) (b :: kb) (v :: *) =
+  Var3 v
+  | Expr3 (e a b v)
+  deriving (Functor, Foldable, Traversable)
+deriving instance (Show v, Show (e a b v)) => Show (Expr3 e a b v)
+deriving instance (Eq v, Eq (e a b v)) => Eq (Expr3 e a b v)
+
+instance CanSwallow (Expr3 e a b) (e a b) => CanSwallow (Expr3 e a b) (Expr3 e a b) where
+  swallow (Var3 ev) = ev
+  swallow (Expr3 eev) = Expr3 (swallow eev)
+
+instance (Functor (e a b), CanSwallow (Expr3 e a b) (e a b)) => Applicative (Expr3 e a b) where
+  pure = Var3
+  tf <*> tv = swallow $ fmap (<$> tv) tf
+
+instance (Functor (e a b), CanSwallow (Expr3 e a b) (e a b)) => Monad (Expr3 e a b) where
+  tv >>= f = swallow $ f <$> tv
+
 --------------------------------------------
 
 -- void
