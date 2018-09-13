@@ -56,6 +56,9 @@ data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Binding mode modty)
 
+{-| HS-Types should carry no level information whatsoever:
+    you couldn't type-check it, as they are definitionally irrelevant in the level.
+-}
 data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
     (mode v) {-^ mode (of both the universe and its elements) -}
@@ -69,9 +72,9 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (TypeTerm mode modty)
 
 data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  ConsUnsafeResize
+  ConsUniHS
     (mode v) {-^ Type's mode -}
-    (Term mode modty v) {-^ Type's unsafely assigned level -}
+    --(Term mode modty v) {-^ Type's unsafely assigned level -}
     (TypeTerm mode modty v) {-^ Type -} |
   Lam (Binding mode modty v) |
   Pair
@@ -93,7 +96,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 
 data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimUnsafeResize
-    (Term mode modty v) {-^ Type's unsafely assigned level -}
+    --(Term mode modty v) {-^ Type's unsafely assigned level -}
     (Term mode modty v) {-^ Type -} |
   App
     (Binding mode modty v) {-^ function's pi type -} 
@@ -112,12 +115,12 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)
 
--- | is this useful? If not, keep it as a newtype over Term.
-data Type (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  ElType {-^ Constructor'ish -} 
+-- | This doesn't seem particularly useful.
+newtype Type (mode :: * -> *) (modty :: * -> *) (v :: *) = Type (Term mode modty v)
+  {-ElType {-^ Constructor'ish -} 
     (TypeTerm mode modty v) {-^ Type -} |
   ElTerm {-^ Eliminator'ish -}
-    (Term mode modty v) {-^ Type -}
+    (Term mode modty v) {-^ Type -}-}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Type mode modty)

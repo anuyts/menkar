@@ -106,9 +106,9 @@ buildPi :: MonadScoper mode modty rel sc =>
   Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildPi gamma fineSeg fineCod = do
-  fineLvl <- term4newImplicit gamma
+  --fineLvl <- term4newImplicit gamma
   fineMode <- mode4newImplicit gamma
-  return $ Expr3 $ TermCons $ ConsUnsafeResize fineMode fineLvl fineLvl $ Pi $ Binding fineSeg fineCod
+  return $ Expr3 $ TermCons $ ConsUniHS fineMode $ Pi $ Binding fineSeg fineCod
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma :: MonadScoper mode modty rel sc =>
@@ -117,9 +117,9 @@ buildSigma :: MonadScoper mode modty rel sc =>
   Term mode modty (VarExt v) ->
   sc (Term mode modty v)
 buildSigma gamma fineSeg fineCod = do
-  fineLvl <- term4newImplicit gamma
+  --fineLvl <- term4newImplicit gamma
   fineMode <- mode4newImplicit gamma
-  return $ Expr3 $ TermCons $ ConsUnsafeResize fineMode fineLvl fineLvl $ Sigma $ Binding fineSeg fineCod
+  return $ Expr3 $ TermCons $ ConsUniHS fineMode $ Sigma $ Binding fineSeg fineCod
   
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda :: MonadScoper mode modty rel sc =>
@@ -273,39 +273,6 @@ mapTelescoped f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescoped (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
 
-{-
-class PresentNames (declSort :: Raw.DeclSort) where
-  presentNames :: MonadScoper mode modty rel sc =>
-    ScCtx name modty v Void ->
-    Raw.DeclNames declSort ->
-    [Maybe Raw.Name]
-instance PresentNames Raw.DeclSortSegment where
-  presentNames gamma (Raw.DeclNamesSegment rawMaybeNames) = rawMaybeNames
-instance PresentNames Raw.DeclSortModule where
-  presentNames gamma (Raw.DeclNamesModule string) = 
-
-{-| @'segmentNamesHandler' gamma@ fails or maps @'SomeNamesForTelescope' rawNames@ to @rawNames@ -}
-segmentNamesHandler :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void ->
-  Raw.DeclNames Raw.DeclSortSegment ->
-  sc [Maybe Raw.Name]
-segmentNamesHandler gamma rawDeclNames = case rawDeclNames of
-  Raw.DeclNamesSegment rawMaybeNames -> return rawMaybeNames
-
-{-| @'nestedEntryNamesHandler' gamma@ fails or maps @'QNameForEntry' (Qualified [] rawName)@ to @[rawName]@ -}
-nestedEntryNamesHandler :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void ->
-  Raw.LHSNames ->
-  sc [Maybe Raw.Name]
-nestedEntryNamesHandler gamma rawLHSNames = case rawLHSNames of
-    (Raw.SomeNamesForTelescope rawNames) -> 
-      assertFalse $ "I thought I was scoping an entry, but it was parsed as a telescope segment: " ++ Raw.unparse rawLHSNames
-    Raw.QNameForEntry (Raw.Qualified [] rawName) -> return $ [Just rawName]
-    Raw.QNameForEntry rawQName ->
-      scopeFail $ "Not supposed to be qualified: " ++ Raw.unparse rawQName
-    Raw.NoNameForConstraint -> assertFalse "Constraints are abolished."
--}
-
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
 type instance ScopeDeclSort (Raw.DeclSortModule False) = DeclSortModule
@@ -382,7 +349,7 @@ partialTelescopedDeclaration gamma rawDecl = do
             Raw.DeclContent rawTy -> do
               fineTy <- do
                 fineLvl <- term4newImplicit gammadelta
-                ElTerm fineLvl <$> expr gammadelta rawTy
+                Type <$> expr gammadelta rawTy
               pdecl'content .= (Compose $ Just $ fineTy)
           --annotations
           fineAnnots <- sequenceA $ annotation gammadelta <$> Raw.decl'annotations rawDecl
