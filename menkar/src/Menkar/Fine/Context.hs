@@ -34,7 +34,7 @@ newtype ScSegment (mode :: * -> *) (modty :: * -> *) (v :: *) = ScSegment (Maybe
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ScSegment mode modty)
 segment2scSegment :: Segment ty mode modty v -> ScSegment mode modty v
-segment2scSegment fineSeg = ScSegment $ segment'name fineSeg
+segment2scSegment fineSeg = ScSegment $ _segment'name fineSeg
 
 {-| Scoping context. Type arguments analogous to @'Ctx'@. -}
 data ScCtx (mode :: * -> *) (modty :: * -> *) (v :: *) (w :: *) where

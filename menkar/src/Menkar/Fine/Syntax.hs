@@ -168,10 +168,28 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 
 data DeclSort = DeclSortVal | DeclSortModule | DeclSortSegment
 
+{-
+data DeclSortToken declSort where
+  DeclSortTokenVal :: DeclSortToken DeclSortVal
+  DeclSortTokenModule :: DeclSortToken DeclSortModule
+  DeclSortTokenSegment :: DeclSortToken DeclSortSegment a
+-}
+
 data DeclName declSort where
   DeclNameVal :: Raw.Name -> DeclName DeclSortVal
   DeclNameModule :: String -> DeclName DeclSortModule
   DeclNameSegment :: Maybe Raw.Name -> DeclName DeclSortSegment
+
+{-
+data DeclType
+     (declSort :: DeclSort)
+     (mode :: * -> *)
+     (modty :: * -> *)
+     (v :: *) where
+  DeclTypeVal :: Type mode modty v -> DeclType DeclSortVal mode modty v
+  DeclTypeModule :: DeclType DeclSortModule mode modty v
+  DeclTypeSegment :: (a -> Type mode modty v) -> DeclType (DeclSortSegment a) mode modty v  
+-}
 
 data Declaration
      {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
@@ -312,10 +330,18 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Pair3 t mode modty)
+  
+data Box3 t (a :: ka) (b :: kb) (c :: kc) = Box3 {unbox3 :: t a b c}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Box3 t mode modty)
 
 data Unit3 (a :: ka) (b :: kb) (c :: kc) = Unit3
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance CanSwallow (Term mode modty) (Unit3 mode modty)
+
+data Void3 (a :: ka) (b :: kb) (c :: kc) where
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance CanSwallow (Term mode modty) (Void3 mode modty)
 
 data Unit1 (a :: ka) = Unit1
   deriving (Functor, Foldable, Traversable, Generic1)
