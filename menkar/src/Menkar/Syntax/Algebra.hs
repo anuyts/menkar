@@ -3,6 +3,8 @@
 
 module Menkar.Syntax.Algebra where
 
+{- OBSOLETE - NOT USED -}
+
 import Data.Functor.Compose
 import qualified Control.Category as C
 import qualified Control.Categorical.Functor as C
