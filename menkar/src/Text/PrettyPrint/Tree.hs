@@ -13,19 +13,37 @@ import Control.Exception.AssertFalse
 
 --type TreeText = Tree String
 
+{-| A @'PrettyTree' l@ is a consecution of zero or more groups, each optionally preceded by a ribbon.
+    A ribbon is just an object of type 'l'. A group is a list of @'PrettyTree'@s.
+
+    The idea is that they are rendered as follows (when @l = String@):
+
+    * If there is only one group that is empty, then the first ribbon is rendered.
+
+    * If all of the text in the first ribbon (if present), the first group, and the second ribbon (if present) fits a single
+    line, then they are collapsed to a single ribbon and the result is rendered.
+
+    * Otherwise, the first ribbon (if present) is printed. Then the trees of the first group are rendered, each starting
+    on a fresh line, with increased indentation. Finally, the remainder of the tree is rendered.
+-}
 data PrettyTree l =
-  {-| first line, sublines, then perhaps a continuation of the block -}
+  {-| Optional first ribbon, trees in the first group, rest of the tree (if any). -}
   PrettyTree (Maybe l) [PrettyTree l] (Maybe (PrettyTree l))
   deriving (Functor, Foldable, Traversable)
 deriving instance Show l => Show (PrettyTree l)
 
+{-| Creates a @'PrettyTree'@ consisting of the given ribbon (if present) followed by an empty group. -}
 ribbonMaybe :: Maybe a -> PrettyTree a
 ribbonMaybe ma = PrettyTree ma [] Nothing
+{-| Creates a @'PrettyTree'@ consisting of the given ribbon, followed by an empty group. -}
 ribbon :: a -> PrettyTree a
 ribbon = ribbonMaybe . Just
+{-| Creates a @'PrettyTree'@ consisting solely of an empty group. -}
 ribbonEmpty :: PrettyTree a
 ribbonEmpty = ribbonMaybe Nothing
 
+{-| Collapses the first ribbon (if present), the first group and the second ribbon (if present) into a single ribbon,
+    preserving the remainder of the tree. -}
 collapseOnce :: Monoid l => PrettyTree l -> PrettyTree l
 collapseOnce (PrettyTree Nothing [] Nothing) = ribbonEmpty
 collapseOnce (PrettyTree Nothing [] (Just rest)) = rest
@@ -33,6 +51,7 @@ collapseOnce tree@(PrettyTree line sublines Nothing) = ribbon $ fold tree
 collapseOnce (PrettyTree line sublines (Just (PrettyTree line' sublines' rest')))
   = PrettyTree (Just $ fold $ PrettyTree line sublines (Just $ ribbonMaybe line')) sublines' rest'
 
+{-| Number of characters in the tree. -}
 lengthHoriz :: Traversable l => PrettyTree (l c) -> Int
 lengthHoriz = sum . fmap length
 
@@ -130,7 +149,7 @@ PrettyTree line sublines (Just rest) \\\ lines = PrettyTree line sublines (Just 
 PrettyTree line sublines Nothing \+\ lines = PrettyTree line (sublines ++ lines) Nothing
 PrettyTree line sublines (Just rest) \+\ lines = PrettyTree line sublines (Just $ rest \+\ lines)
 
--- | New line (non-obligatory)
+-- | New ribbon (non-obligatory)
 (|||) :: PrettyTree a -> PrettyTree a -> PrettyTree a
 PrettyTree line sublines Nothing ||| tree = PrettyTree line sublines (Just tree)
 PrettyTree line sublines (Just rest) ||| tree = PrettyTree line sublines (Just $ rest ||| tree)
