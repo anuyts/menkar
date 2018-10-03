@@ -134,7 +134,7 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (ModedModality mode modty v) {-^ modality by which the eliminee is used -}
     (Term mode modty v) {-^ eliminee -}
     (Eliminator mode modty v) {-^ eliminator -} |
-  TermMeta {-todo: add some info for looking up meta-} (Compose [] (Term mode modty) v) |
+  TermMeta Int (Compose [] (Term mode modty) v) |
   TermSmartElim
     (Term mode modty v) {-^ eliminate -}
     (Compose [] (SmartEliminator mode modty) v) {-^ eliminators -}
@@ -144,13 +144,12 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (TermNV mode modty)
 
 type Term = Expr3 TermNV
-  
 
 ------------------------------------
 
 --data SegmentInfo = SegmentInfo {name :: String}
 
-{-| Used only by the scoper. -}
+{-| Not used in segments. Used by the scoper, and also used for annotation entries. -}
 data Annotation mode modty v =
   AnnotMode (mode v) |
   AnnotModality (modty v) |
