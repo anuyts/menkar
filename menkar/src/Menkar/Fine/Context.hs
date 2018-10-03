@@ -29,7 +29,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (ModuleInScope mode modty)
 -}
 
-newtype ScSegment (mode :: * -> *) (modty :: * -> *) (v :: *) = ScSegment (Maybe Raw.Name)
+newtype ScSegment (mode :: * -> *) (modty :: * -> *) (v :: *) = ScSegment {scSegment'name :: Maybe Raw.Name}
   deriving (Functor, Traversable, Foldable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ScSegment mode modty)
@@ -59,6 +59,15 @@ instance (
   swallow (gamma ::<...> modul) = swallow gamma ::<...> swallow (fmap sequenceA modul)
   swallow (() ::\\ gamma) = () ::\\ swallow gamma
 infixl 3 ::.., ::^^, ::<...>, ::\\
+
+scGetName :: ScCtx mode modty v w -> v -> Maybe Raw.Name
+scGetName ScCtxEmpty v = absurd v
+scGetName (gamma ::.. seg) (VarWkn v) = scGetName gamma v
+scGetName (gamma ::.. seg) (VarLast) = scSegment'name seg
+scGetName (seg ::^^ gamma) (VarLeftWkn v) = scGetName gamma v
+scGetName (seg ::^^ gamma) (VarFirst) = scSegment'name seg
+scGetName (gamma ::<...> modul) (VarInModule v) = scGetName gamma v
+scGetName (() ::\\ gamma) (VarDiv v) = scGetName gamma v
 
 {- | @'Ctx' t mode modty v w@ is the type of contexts with
      types of type @t@,

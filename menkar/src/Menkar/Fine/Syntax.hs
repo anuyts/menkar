@@ -15,7 +15,7 @@ import Control.Exception.AssertFalse
 import Control.Lens
 
 {- Segment info will have to depend on v, because 'resolves' annotations have variables -}
-data MetaInfo where
+--data MetaInfo where
 
 {-
 data DependentModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
@@ -72,6 +72,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (TypeTerm mode modty)
 
 data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  {-| element of the Hofmann-Streicher universe -}
   ConsUniHS
     (mode v) {-^ Type's mode -}
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
@@ -133,7 +134,7 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (ModedModality mode modty v) {-^ modality by which the eliminee is used -}
     (Term mode modty v) {-^ eliminee -}
     (Eliminator mode modty v) {-^ eliminator -} |
-  TermMeta (Compose [] (Term mode modty) v) |
+  TermMeta {-todo: add some info for looking up meta-} (Compose [] (Term mode modty) v) |
   TermSmartElim
     (Term mode modty v) {-^ eliminate -}
     (Compose [] (SmartEliminator mode modty) v) {-^ eliminators -}
@@ -149,6 +150,7 @@ type Term = Expr3 TermNV
 
 --data SegmentInfo = SegmentInfo {name :: String}
 
+{-| Used only by the scoper. -}
 data Annotation mode modty v =
   AnnotMode (mode v) |
   AnnotModality (modty v) |
