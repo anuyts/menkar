@@ -118,7 +118,7 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Binding Term mode modty v) {-^ function's pi type -} 
     (Term mode modty v) {-^ argument -} |
   ElimPair
-    (Binding Term mode modty v) {-^ pair's sigma type -} 
+    --(Binding Term mode modty v) {-^ pair's sigma type -} 
     (Binding Term mode modty v) {-^ motive -}
     (Binding (Binding Term) mode modty v) {-^ clause -} |
   Fst

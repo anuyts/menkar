@@ -9,6 +9,7 @@ import Menkar.Fine.Context.Variable
 import qualified Menkar.Raw as Raw
 import Text.PrettyPrint.Tree
 import Data.Void
+import Data.Maybe
 
 class Fine2Pretty mode modty f where
   fine2pretty :: ScCtx mode modty v Void -> f mode modty v -> PrettyTree String
@@ -89,7 +90,19 @@ elimination2pretty gamma eliminee (App piBinding arg) =
       [
       " .{" ++| fine2pretty gamma arg |++ "}"
       ]
-elimination2pretty gamma eliminee (ElimPair sigmaBinding motive clause) = _
+elimination2pretty gamma eliminee (ElimPair motive clause) =
+  ribbon "ofType" \\\ [
+    " (" ++| fine2pretty gamma (Pi motive) |++ ")",
+    " (" ++ nameFst ++ " , " ++ nameSnd ++ " > " ++| fine2pretty gammaFstSnd body |++ ")",
+    " (" ++| eliminee |++ ")"
+    ]
+    where
+      nameFst = fromMaybe "_" $ Raw.unparse <$> _segment'name (binding'segment clause)
+      nameSnd = fromMaybe "_" $ Raw.unparse <$> _segment'name (binding'segment $ binding'body clause)
+      body = binding'body $ binding'body $ clause
+      gammaFstSnd = gamma
+        ::.. (VarFromCtx <$> segment2scSegment (binding'segment clause))
+        ::.. (VarFromCtx <$> segment2scSegment (binding'segment (binding'body clause)))
 elimination2pretty gamma eliminee eliminator = _elimination2pretty
 -- show eliminator
 
