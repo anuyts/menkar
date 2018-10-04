@@ -21,15 +21,16 @@ deriving instance (Show (mode v), Show (modty v)) => Show (ModedModality mode mo
 
 deriving instance (Show (mode v), Show (modty v)) => Show (ModedContramodality mode modty v)
 
-binding2pretty :: String -> ScCtx mode modty v Void -> Binding mode modty v -> PrettyTree String
+binding2pretty :: Fine2Pretty mode modty rhs =>
+  String -> ScCtx mode modty v Void -> Binding rhs mode modty v -> PrettyTree String
 binding2pretty opstring gamma binding =
   fine2pretty gamma (binding'segment binding)
   \\\ [" " ++ opstring ++ " " ++|
        fine2pretty (gamma ::.. (VarFromCtx <$> segment2scSegment (binding'segment binding))) (binding'body binding)
       ]
-instance Fine2Pretty mode modty Binding where
+instance Fine2Pretty mode modty rhs => Fine2Pretty mode modty (Binding rhs) where
   fine2pretty gamma binding = binding2pretty ">" gamma binding
-instance Show (Binding mode modty Void) where
+instance Fine2Pretty mode modty rhs => Show (Binding rhs mode modty Void) where
   show binding = "[Binding|\n" ++ fine2string ScCtxEmpty binding ++ "\n]"
 
 instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>

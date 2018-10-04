@@ -56,14 +56,20 @@ modedRightAdjoint (ModedContramodality dom cod mod) = (ModedModality cod dom mod
 
 ------------------------------------
 
-data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
+data Binding (rhs :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Binding {
     binding'segment :: Segment Type mode modty v,
-    binding'body :: Term mode modty (VarExt v)
+    binding'body :: rhs mode modty (VarExt v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
-  CanSwallow (Term mode modty) (Binding mode modty)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (rhs mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (rhs mode modty)
+  ) => CanSwallow (Term mode modty) (Binding rhs mode modty)
 
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
@@ -72,8 +78,8 @@ data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
     (mode v) {-^ mode (of both the universe and its elements) -}
     (Term mode modty v) {-^ level it classifies -} |
-  Pi (Binding mode modty v) |
-  Sigma (Binding mode modty v) |
+  Pi (Binding Term mode modty v) |
+  Sigma (Binding Term mode modty v) |
   EmptyType |
   UnitType
   deriving (Functor, Foldable, Traversable, Generic1)
@@ -86,9 +92,9 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (mode v) {-^ Type's mode -}
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
     (TypeTerm mode modty v) {-^ Type -} |
-  Lam (Binding mode modty v) |
+  Lam (Binding Term mode modty v) |
   Pair
-    (Binding mode modty v) {-^ pair's sigma type -} 
+    (Binding Term mode modty v) {-^ pair's sigma type -} 
     (Term mode modty v)
     (Term mode modty v) |
   ConsUnit
@@ -109,16 +115,16 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
     {-(Term mode modty v) {-^ Type -}-} |
   App
-    (Binding mode modty v) {-^ function's pi type -} 
+    (Binding Term mode modty v) {-^ function's pi type -} 
     (Term mode modty v) {-^ argument -} |
   ElimPair
-    (Binding mode modty v) {-^ pair's sigma type -} 
-    (Term mode modty (VarExt v)) {-^ motive -}
-    (Term mode modty (VarExt (VarExt v))) {-^ clause -} |
+    (Binding Term mode modty v) {-^ pair's sigma type -} 
+    (Binding Term mode modty v) {-^ motive -}
+    (Binding (Binding Term) mode modty v) {-^ clause -} |
   Fst
-    (Binding mode modty v) {-^ pair's sigma type -} |
+    (Binding Term mode modty v) {-^ pair's sigma type -} |
   Snd
-    (Binding mode modty v) {-^ pair's sigma type -} |
+    (Binding Term mode modty v) {-^ pair's sigma type -} |
   ElimEmpty
     (Term mode modty (Maybe v)) {-^ motive -}
   deriving (Functor, Foldable, Traversable, Generic1)
