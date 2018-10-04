@@ -135,6 +135,7 @@ renderM tree@(PrettyTree line sublines rest) = do
 
 render :: RenderState -> PrettyTree String -> String
 render state tree = snd $ unwrapRenderer (renderM tree) state
+defaultRenderState = (RenderState 100 "  " "    ")
 
 -------------------------------------------------------
 
