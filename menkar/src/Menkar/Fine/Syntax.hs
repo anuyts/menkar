@@ -38,6 +38,15 @@ data ModedContramodality (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModedContramodality mode modty)
 
+newtype Mode mode modty v = Mode (mode v)
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term mode modty) mode) => CanSwallow (Term mode modty) (Mode mode modty)
+
+newtype Modty mode modty v = Modty (modty v)
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term mode modty) modty) => CanSwallow (Term mode modty) (Modty mode modty)
+
+
 {-
 modedLeftAdjoint :: ModedModality mode modty v -> ModedContramodality mode modty v
 modedLeftAdjoint (ModedModality dom cod mod) = (ModedContramodality cod dom mod)
@@ -49,8 +58,8 @@ modedRightAdjoint (ModedContramodality dom cod mod) = (ModedModality cod dom mod
 
 data Binding (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Binding {
-    bindingSegment :: Segment Type mode modty v,
-    bindingBody :: Term mode modty (VarExt v)
+    binding'segment :: Segment Type mode modty v,
+    binding'body :: Term mode modty (VarExt v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
@@ -98,14 +107,14 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimUnsafeResize
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
-    (Term mode modty v) {-^ Type -} |
+    {-(Term mode modty v) {-^ Type -}-} |
   App
     (Binding mode modty v) {-^ function's pi type -} 
     (Term mode modty v) {-^ argument -} |
   ElimPair
     (Binding mode modty v) {-^ pair's sigma type -} 
-    (Term mode modty (Maybe v)) {-^ motive -}
-    (Term mode modty (Maybe (Maybe v))) {-^ clause -} |
+    (Term mode modty (VarExt v)) {-^ motive -}
+    (Term mode modty (VarExt (VarExt v))) {-^ clause -} |
   Fst
     (Binding mode modty v) {-^ pair's sigma type -} |
   Snd

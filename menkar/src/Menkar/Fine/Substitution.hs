@@ -65,7 +65,7 @@ data Expr3 (e :: ka -> kb -> * -> *) (a :: ka) (b :: kb) (v :: *) =
   Var3 v
   | Expr3 (e a b v)
   deriving (Functor, Foldable, Traversable)
-deriving instance (Show v, Show (e a b v)) => Show (Expr3 e a b v)
+--deriving instance (Show v, Show (e a b v)) => Show (Expr3 e a b v)
 deriving instance (Eq v, Eq (e a b v)) => Eq (Expr3 e a b v)
 
 instance CanSwallow (Expr3 e a b) (e a b) => CanSwallow (Expr3 e a b) (Expr3 e a b) where
