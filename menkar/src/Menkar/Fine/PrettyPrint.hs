@@ -12,6 +12,7 @@ import Data.Void
 import Data.Maybe
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
+import Data.Functor.Const
 
 class Fine2Pretty mode modty f where
   fine2pretty :: ScCtx mode modty v Void -> f mode modty v -> PrettyTree String
@@ -24,19 +25,25 @@ deriving instance (Show (mode v), Show (modty v)) => Show (ModedModality mode mo
 
 deriving instance (Show (mode v), Show (modty v)) => Show (ModedContramodality mode modty v)
 
-binding2pretty :: Fine2Pretty mode modty rhs =>
-  String -> ScCtx mode modty v Void -> Binding rhs mode modty v -> PrettyTree String
+binding2pretty :: (Functor mode, Functor modty,
+                  Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
+                  String -> ScCtx mode modty v Void -> Binding rhs mode modty v -> PrettyTree String
 binding2pretty opstring gamma binding =
   fine2pretty gamma (binding'segment binding)
   \\\ [" " ++ opstring ++ " " ++|
        fine2pretty (gamma ::.. (VarFromCtx <$> segment2scSegment (binding'segment binding))) (binding'body binding)
       ]
-instance Fine2Pretty mode modty rhs => Fine2Pretty mode modty (Binding rhs) where
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
+         Fine2Pretty mode modty (Binding rhs) where
   fine2pretty gamma binding = binding2pretty ">" gamma binding
-instance Fine2Pretty mode modty rhs => Show (Binding rhs mode modty Void) where
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
+         Show (Binding rhs mode modty Void) where
   show binding = "[Binding|\n" ++ fine2string ScCtxEmpty binding ++ "\n]"
 
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty TypeTerm where
   fine2pretty gamma (UniHS d lvl) =
     ribbon "UniHS " \\\ [
@@ -47,11 +54,13 @@ instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
   fine2pretty gamma (Sigma binding) = binding2pretty "><" gamma binding
   fine2pretty gamma (EmptyType) = ribbon "Empty"
   fine2pretty gamma (UnitType) = ribbon "Unit"
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (TypeTerm mode modty Void) where
   show typeterm = "[TypeTerm|\n" ++ fine2string ScCtxEmpty typeterm ++ "\n]"
   
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty ConstructorTerm where
   fine2pretty gamma (ConsUniHS d typeterm) =
     ribbon "withMode" \\\ [
@@ -65,22 +74,26 @@ instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
       " (" ++| fine2pretty gamma tmFst |++ " , " |+| fine2pretty gamma tmSnd |++ ")"
       ]
   fine2pretty gamma ConsUnit = ribbon "unit"
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ConstructorTerm mode modty Void) where
   show consTerm = "[ConstructorTerm|\n" ++ fine2string ScCtxEmpty consTerm ++ "\n]"
 
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty SmartEliminator where
   fine2pretty gamma (SmartElimEnd argSpec) = Raw.unparse' (Raw.ElimEnd argSpec)
   fine2pretty gamma (SmartElimArg Raw.ArgSpecNext term) = ".{" ++| fine2pretty gamma term |++ "}"
   fine2pretty gamma (SmartElimArg Raw.ArgSpecExplicit term) = "(" ++| fine2pretty gamma term |++ ")"
   fine2pretty gamma (SmartElimArg (Raw.ArgSpecNamed name) term) = ".{" ++ name ++ " = " ++| fine2pretty gamma term |++ "}"
   fine2pretty gamma (SmartElimProj projSpec) = Raw.unparse' (Raw.ElimProj projSpec)
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (SmartEliminator mode modty Void) where
   show smartElim = "[SmartEliminator|\n" ++ fine2string ScCtxEmpty smartElim ++ "\n]"
 
-elimination2pretty :: (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+elimination2pretty :: (Functor mode, Functor modty,
+                       Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          ScCtx mode modty v Void -> PrettyTree String -> Eliminator mode modty v -> PrettyTree String
 elimination2pretty gamma eliminee (ElimUnsafeResize) = "UnsafeResize (" ++| eliminee |++ ")"
 elimination2pretty gamma eliminee (App piBinding arg) = 
@@ -113,33 +126,106 @@ elimination2pretty gamma eliminee (ElimEmpty motive) =
     ribbon " absurd",
     " (" ++| eliminee |++ ")"
     ]
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Eliminator mode modty Void) where
   show elim = "[Eliminator| x > " ++ render defaultRenderState (elimination2pretty ScCtxEmpty (ribbon "x") elim)
 
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty Type where
   fine2pretty gamma (Type t) = fine2pretty gamma t
-deriving instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) => Show (Type mode modty Void)
+deriving instance (Functor mode, Functor modty,
+                   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty)
+    => Show (Type mode modty Void)
 
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty TermNV where
   fine2pretty gamma (TermCons consTerm) = fine2pretty gamma consTerm
   fine2pretty gamma (TermElim mod eliminee eliminator) = elimination2pretty gamma (fine2pretty gamma eliminee) eliminator
   fine2pretty gamma (TermMeta i (Compose depcies)) = ribbon ("?" ++ show i) \\\ (fine2pretty gamma <$> depcies)
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (TermNV mode modty Void) where
   show t = fine2string ScCtxEmpty t
 
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
          Fine2Pretty mode modty (Expr3 termNV) where
   fine2pretty gamma (Var3 v) = ribbon $ fromMaybe "_" $ Raw.unparse <$> scGetName gamma v
   fine2pretty gamma (Expr3 t) = fine2pretty gamma t
-instance (Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
          Show (Expr3 termNV mode modty Void) where
   show e = fine2string ScCtxEmpty e
 
+----------------------
+
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Fine2Pretty mode modty Annotation where
+  fine2pretty gamma (AnnotMode d) = "mode " ++| fine2pretty gamma (Mode d)
+  fine2pretty gamma (AnnotModality mu) = "mode " ++| fine2pretty gamma (Modty mu)
+  fine2pretty gamma (AnnotImplicit) = ribbon "~"
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Show (Annotation mode modty Void) where
+  show annot = fine2string ScCtxEmpty annot
+
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Fine2Pretty mode modty Plicity where
+  fine2pretty gamma Explicit = ribbonEmpty
+  fine2pretty gamma Implicit = ribbon "~"
+  fine2pretty gamma (Resolves t) = "resolves " ++| fine2pretty gamma t
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Show (Plicity mode modty Void) where
+  show plic = fine2string ScCtxEmpty plic
+
+declName2pretty :: DeclName declSort -> PrettyTree String
+declName2pretty (DeclNameVal name) = Raw.unparse' name
+declName2pretty (DeclNameModule str) = ribbon str
+declName2pretty (DeclNameSegment maybeName) =  fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName
+instance Show (DeclName declSort) where
+  show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty declName) ++ "\n]"
+
+telescope2pretties :: (Functor mode, Functor modty, Functor (ty mode modty),
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
+         ScCtx mode modty v Void -> Telescope ty mode modty v -> [PrettyTree String]
+telescope2pretties gamma (Telescoped Unit3) = []
+telescope2pretties gamma (seg :|- telescope) =
+  (fine2pretty gamma seg) : telescope2pretties (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) telescope
+instance (Functor mode, Functor modty, Functor (ty mode modty),
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
+         Fine2Pretty mode modty (Telescope ty) where
+  fine2pretty gamma telescope = treeGroup $ telescope2pretties gamma telescope
+
+instance (Functor mode, Functor modty, Functor (ty mode modty),
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
+         Fine2Pretty mode modty (Segment ty) where
+  fine2pretty gamma seg = ribbon " {" \\\
+    annots ///
+    "| " ++| (declName2pretty $ DeclNameSegment $ _segment'name seg) \\\
+    telescope2pretties gamma (telescoped'telescope seg) ///
+    " : " ++| ty
+    where
+      annots =
+        getConst (mapTelescoped (
+            \ wkn gammadelta decl -> Const $ [
+                "[" ++| fine2pretty gammadelta (_decl'plicity decl) |++ "] ",
+                "[mode " ++| fine2pretty gammadelta (Mode $ modDom $ _decl'modty decl) |++ "] ",
+                "[mod " ++| fine2pretty gammadelta (Modty $ modMod $ _decl'modty decl) |++ "] "
+              ]
+          ) gamma seg)
+      ty =
+        getConst (mapTelescoped (
+            \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
+          ) gamma seg)
 
 
+{-
 instance Fine2Pretty mode modty (Telescoped ty rhs) where
   fine2pretty gamma telescoped = _telescoped
+-}

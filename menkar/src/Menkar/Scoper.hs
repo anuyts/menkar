@@ -265,14 +265,6 @@ annotation gamma (Raw.Annotation qstring rawExprs) = do
   fineExprs <- sequenceA $ expr3 gamma <$> rawExprs
   annot4annot gamma qstring fineExprs
 
-{-| @'mapTelescoped' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
-mapTelescoped :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
-  (forall w . (v -> w) -> ScCtx mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
-  (ScCtx mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
-mapTelescoped f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
-mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
-  mapTelescoped (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
-
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
 type instance ScopeDeclSort (Raw.DeclSortModule False) = DeclSortModule

@@ -69,6 +69,16 @@ scGetName (seg ::^^ gamma) (VarFirst) = scSegment'name seg
 scGetName (gamma ::<...> modul) (VarInModule v) = scGetName gamma v
 scGetName (() ::\\ gamma) (VarDiv v) = scGetName gamma v
 
+{-| @'mapTelescoped' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
+mapTelescoped :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
+  (forall w . (v -> w) -> ScCtx mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
+  (ScCtx mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+mapTelescoped f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
+mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
+  mapTelescoped (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
+
+--------------------------
+
 {- | @'Ctx' t mode modty v w@ is the type of contexts with
      types of type @t@,
      modes of type @mode@,

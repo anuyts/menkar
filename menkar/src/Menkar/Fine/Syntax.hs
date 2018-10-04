@@ -297,6 +297,13 @@ deriving instance (
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
 
+{-| @'mapTelescopedSimple' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
+mapTelescopedSimple :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
+  (forall w . (v -> w) -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
+  (Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+mapTelescopedSimple f (Telescoped rhs) = Telescoped <$> f id rhs
+mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (. VarWkn)) stuff
+
 makeLenses ''Declaration
 makeLenses ''PartialDeclaration
 
@@ -372,3 +379,11 @@ deriving instance (
     CanSwallow (Term mode modty) (t mode modty)
   ) =>
   CanSwallow (Term mode modty) (Maybe3 t mode modty)
+
+-------------------
+
+type Telescope ty = Telescoped ty Unit3
+
+telescoped'telescope :: (Functor mode, Functor modty, Functor (ty mode modty)) =>
+  Telescoped ty rhs mode modty v -> Telescope ty mode modty v
+telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit3)
