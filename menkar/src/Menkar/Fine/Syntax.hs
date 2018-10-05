@@ -321,6 +321,7 @@ _val'name :: Val mode modty v -> Raw.Name
 _val'name seg = case _tdecl'name seg of
   DeclNameVal name -> name
 
+{-
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ModuleRHS {
     _module'vals :: Compose (HashMap Raw.Name) (Val mode modty) (VarInModule v),
@@ -329,16 +330,25 @@ data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModuleRHS mode modty)
+-}
+{-| The entries are stored in REVERSE ORDER. -}
+newtype ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) = ModuleRHS (Compose [] (Entry mode modty) (VarInModule v))
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (ModuleRHS mode modty)
 
 type Module = TelescopedDeclaration DeclSortModule Type ModuleRHS
 
-makeLenses ''ModuleRHS
+--makeLenses ''ModuleRHS
 
 newModule :: ModuleRHS mode modty v
-newModule = ModuleRHS (Compose empty) (Compose empty)
+newModule = ModuleRHS $ Compose []
+--newModule = ModuleRHS (Compose empty) (Compose empty)
+
 addToModule :: Entry mode modty (VarInModule v) -> ModuleRHS mode modty v -> ModuleRHS mode modty v
-addToModule (EntryVal val) = set (module'vals . _Wrapped' . at (_val'name val)) $ Just val
-addToModule (EntryModule submodule) = set (module'modules . _Wrapped' . at (_module'name submodule)) $ Just submodule
+addToModule entry (ModuleRHS (Compose entries)) = ModuleRHS $ Compose $ entry : entries
+--addToModule (EntryVal val) = set (module'vals . _Wrapped' . at (_val'name val)) $ Just val
+--addToModule (EntryModule submodule) = set (module'modules . _Wrapped' . at (_module'name submodule)) $ Just submodule
 
 _module'name :: Module mode modty v -> String
 _module'name seg = case _tdecl'name seg of
