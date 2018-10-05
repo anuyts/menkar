@@ -38,7 +38,7 @@ expr3 :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.Expr3 ->
   sc (Term mode modty v)
-expr3 gamma (Raw.ExprQName rawQName) = term4qname gamma rawQName
+expr3 gamma (Raw.ExprQName rawQName) = return $ Expr3 $ TermQName rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = todo
 expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma
@@ -261,9 +261,9 @@ annotation :: MonadScoper mode modty rel sc =>
   Raw.Annotation ->
   sc (Annotation mode modty v)
 annotation gamma (Raw.Annotation (Raw.Qualified [] "~") []) = return AnnotImplicit
-annotation gamma (Raw.Annotation qstring rawExprs) = do
-  fineExprs <- sequenceA $ expr3 gamma <$> rawExprs
-  annot4annot gamma qstring fineExprs
+annotation gamma (Raw.Annotation qstring rawElims) = do
+  fineElims <- sequenceA $ eliminator gamma <$> rawElims
+  annot4annot gamma qstring fineElims
 
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal

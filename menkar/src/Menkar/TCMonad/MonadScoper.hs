@@ -30,7 +30,7 @@ class (
     | sc -> mode, sc -> modty, sc -> rel where
   term4qname :: ScCtx mode modty v Void -> Raw.QName -> sc (Term mode modty v)
   annot4annot :: ScCtx mode modty v Void -> 
-    Raw.Qualified String -> [Term mode modty v] -> sc (Annotation mode modty v)
+    Raw.Qualified String -> [SmartEliminator mode modty v] -> sc (Annotation mode modty v)
   term4newImplicit :: ScCtx mode modty v Void -> sc (Term mode modty v)
   mode4newImplicit :: ScCtx mode modty v Void -> sc (mode v)
   modty4newImplicit :: ScCtx mode modty v Void -> sc (modty v)

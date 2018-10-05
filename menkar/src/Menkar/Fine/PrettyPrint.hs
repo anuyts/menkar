@@ -146,6 +146,11 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (TermCons consTerm) = fine2pretty gamma consTerm
   fine2pretty gamma (TermElim mod eliminee eliminator) = elimination2pretty gamma (fine2pretty gamma eliminee) eliminator
   fine2pretty gamma (TermMeta i (Compose depcies)) = ribbon ("?" ++ show i) \\\ (fine2pretty gamma <$> depcies)
+  fine2pretty gamma (TermQName qname) = Raw.unparse' qname
+  fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) =
+    "(" ++| fine2pretty gamma eliminee
+      \\\ (" " ++|) . fine2pretty gamma <$> eliminators
+      /// ") ~> (" ++| fine2pretty gamma result |++ ")"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (TermNV mode modty Void) where
