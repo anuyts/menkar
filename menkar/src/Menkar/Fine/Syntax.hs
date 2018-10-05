@@ -387,3 +387,5 @@ type Telescope ty = Telescoped ty Unit3
 telescoped'telescope :: (Functor mode, Functor modty, Functor (ty mode modty)) =>
   Telescoped ty rhs mode modty v -> Telescope ty mode modty v
 telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit3)
+
+type LHS declSort ty = TelescopedDeclaration declSort ty Unit3
