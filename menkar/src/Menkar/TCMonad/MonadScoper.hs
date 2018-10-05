@@ -28,7 +28,6 @@ class (
     (rel :: * -> *)
     (sc :: * -> *)
     | sc -> mode, sc -> modty, sc -> rel where
-  term4qname :: ScCtx mode modty v Void -> Raw.QName -> sc (Term mode modty v)
   annot4annot :: ScCtx mode modty v Void -> 
     Raw.Qualified String -> [SmartEliminator mode modty v] -> sc (Annotation mode modty v)
   term4newImplicit :: ScCtx mode modty v Void -> sc (Term mode modty v)
@@ -41,7 +40,6 @@ type4newImplicit :: MonadScoper mode modty rel sc =>
 type4newImplicit gamma = Type <$> term4newImplicit gamma
 
 instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
-  term4qname gamma qname = lift $ term4qname gamma qname
   annot4annot gamma qstring args = lift $ annot4annot gamma qstring args
   term4newImplicit gamma = lift $ term4newImplicit gamma
   mode4newImplicit gamma = lift $ mode4newImplicit gamma

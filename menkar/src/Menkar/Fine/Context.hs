@@ -69,6 +69,15 @@ scGetName (seg ::^^ gamma) (VarFirst) = scSegment'name seg
 scGetName (gamma ::<...> modul) (VarInModule v) = scGetName gamma v
 scGetName (() ::\\ gamma) (VarDiv v) = scGetName gamma v
 
+scListVariablesRev :: ScCtx mode modty v w -> [v]
+scListVariablesRev ScCtxEmpty = []
+scListVariablesRev (gamma ::.. _) = VarLast : (VarWkn <$> scListVariablesRev gamma)
+scListVariablesRev (_ ::^^ gamma) = (VarLeftWkn <$> scListVariablesRev gamma) ++ [VarFirst]
+scListVariablesRev (gamma ::<...> _) = VarInModule <$> scListVariablesRev gamma
+scListVariablesRev (() ::\\ gamma) = VarDiv <$> scListVariablesRev gamma
+scListVariables :: ScCtx mode modty v w -> [v]
+scListVariables = reverse . scListVariablesRev
+
 {-| @'mapTelescoped' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescoped :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
   (forall w . (v -> w) -> ScCtx mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
