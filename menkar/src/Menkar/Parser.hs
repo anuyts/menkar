@@ -606,9 +606,16 @@ entry = MP.label "entry" $ do
   anRHS <- rhs header
   return $ Raw.AnyEntry $ Raw.EntryLR header anLHS anRHS
 
+toplevelEntry :: CanParse m => m Raw.AnyEntry
+toplevelEntry = MP.label "entry" $ do
+  keyword "module"
+  anLHS <- lhs Raw.HeaderToplevelModule
+  anRHS <- rhs Raw.HeaderToplevelModule
+  return $ Raw.AnyEntry $ Raw.EntryLR Raw.HeaderToplevelModule anLHS anRHS
+
 file :: CanParse m => m Raw.File
 file = MP.between manySpace MP.eof $ do
-  Raw.AnyEntry themodule <- entry
+  Raw.AnyEntry themodule <- toplevelEntry
   case Raw.entry'header themodule of
     Raw.HeaderToplevelModule -> return $ Raw.File themodule
     _ -> fail $ "Top level entry should be a module : " ++ Raw.unparse themodule
