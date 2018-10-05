@@ -374,7 +374,7 @@ data Box3 t (a :: ka) (b :: kb) (c :: kc) = Box3 {unbox3 :: t a b c}
 deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Box3 t mode modty)
 
 data Unit3 (a :: ka) (b :: kb) (c :: kc) = Unit3
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, Show)
 deriving instance CanSwallow (Term mode modty) (Unit3 mode modty)
 
 data Void3 (a :: ka) (b :: kb) (c :: kc) where
@@ -382,7 +382,7 @@ data Void3 (a :: ka) (b :: kb) (c :: kc) where
 deriving instance CanSwallow (Term mode modty) (Void3 mode modty)
 
 data Unit1 (a :: ka) = Unit1
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, Show)
 deriving instance CanSwallow (Term mode modty) (Unit1)
 
 newtype Maybe3 t (a :: ka) (b :: kb) (c :: kc) = Maybe3 (Compose Maybe (t a b) c)

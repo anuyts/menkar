@@ -301,12 +301,12 @@ instance (Functor mode, Functor modty,
          Show (Module mode modty Void) where
   show modul = "[Module|\n" ++ fine2string ScCtxEmpty modul ++ "\n]"
 
-
-
-
-
-
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty Entry where
-  fine2pretty gamma entry = _entry
+  fine2pretty gamma (EntryVal val) = fine2pretty gamma val
+  fine2pretty gamma (EntryModule modul) = fine2pretty gamma modul
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Show (Entry mode modty Void) where
+  show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry ++ "\n]"
