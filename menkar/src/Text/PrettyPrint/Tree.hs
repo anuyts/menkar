@@ -100,7 +100,7 @@ renderM (PrettyTree (Just line) [] Nothing) = printLn line
 renderM tree@(PrettyTree line sublines rest) = do
   widthLeft <- askWidthLeft
   let collapsedTree@(PrettyTree lineMaybe' sublines' rest') = collapseOnce tree
-  let line' = fromMaybe unreachable lineMaybe'
+  let line' = fromMaybe "" lineMaybe'
   if length line' <= widthLeft
     --then return ()
     then renderM collapsedTree
@@ -159,7 +159,11 @@ PrettyTree line sublines (Just rest) ||| tree = PrettyTree line sublines (Just $
 (///) :: PrettyTree a -> PrettyTree a -> PrettyTree a
 (///) = (|||)
 
-infixl 3 \\\, |||, ///, \+\
+-- | Same as '|+|'
+(/+/) :: Monoid a => PrettyTree a -> PrettyTree a -> PrettyTree a
+(/+/) = (|+|)
+
+infixl 3 \\\, |||, ///, \+\, /+/
 
 -------------------------------------------------------
 

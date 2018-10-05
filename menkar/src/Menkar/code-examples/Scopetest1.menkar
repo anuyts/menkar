@@ -1,0 +1,8 @@
+/* */
+module Scopetest where {
+
+val aBool : Bool = true
+val id {~ | A : Set} {a : A} : A = a
+val twice {~ | A : Set} {f : A -> A} : A -> A = a > f (f a)
+
+}

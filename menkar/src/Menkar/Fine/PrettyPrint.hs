@@ -145,12 +145,12 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty TermNV where
   fine2pretty gamma (TermCons consTerm) = fine2pretty gamma consTerm
   fine2pretty gamma (TermElim mod eliminee eliminator) = elimination2pretty gamma (fine2pretty gamma eliminee) eliminator
-  fine2pretty gamma (TermMeta i (Compose depcies)) = ribbon ("?" ++ show i) \\\ (fine2pretty gamma <$> depcies)
+  fine2pretty gamma (TermMeta i (Compose depcies)) = ribbon ("?" ++ show i) \\\ ((" " ++|) . fine2pretty gamma <$> depcies)
   fine2pretty gamma (TermQName qname) = Raw.unparse' qname
   fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) =
-    "(" ++| fine2pretty gamma eliminee
-      \\\ (" " ++|) . fine2pretty gamma <$> eliminators
-      /// ") ~> (" ++| fine2pretty gamma result |++ ")"
+    fine2pretty gamma eliminee
+      |+| treeGroup ((" " ++|) . fine2pretty gamma <$> eliminators)
+      |++ " `yielding " |+| fine2pretty gamma result
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (TermNV mode modty Void) where
@@ -159,7 +159,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
          Fine2Pretty mode modty (Expr3 termNV) where
-  fine2pretty gamma (Var3 v) = ribbon $ fromMaybe "_" $ Raw.unparse <$> scGetName gamma v
+  fine2pretty gamma (Var3 v) = fromMaybe (ribbon "_") $ Raw.unparse' <$> scGetName gamma v
   fine2pretty gamma (Expr3 t) = fine2pretty gamma t
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
@@ -218,7 +218,7 @@ tdeclAnnots2pretties :: (Functor mode, Functor modty, Functor (ty mode modty),
 tdeclAnnots2pretties gamma tdecl =
         getConst (mapTelescoped (
             \ wkn gammadelta decl -> Const $ [
-                "[" ++| fine2pretty gammadelta (_decl'plicity decl) |++ "] ",
+                fine2pretty gammadelta (_decl'plicity decl),
                 "[mode " ++| fine2pretty gammadelta (Mode $ modDom $ _decl'modty decl) |++ "] ",
                 "[mod " ++| fine2pretty gammadelta (Modty $ modMod $ _decl'modty decl) |++ "] "
               ]
@@ -231,7 +231,7 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
     prettyAnnots ///
     "| " ++| (declName2pretty $ DeclNameSegment $ _segment'name seg) \\\
     telescope2pretties gamma (telescoped'telescope seg) ///
-    " : " ++| prettyType
+    " : " ++| prettyType |++ "}"
     where
       prettyAnnots = tdeclAnnots2pretties gamma seg
       prettyType =
@@ -278,8 +278,9 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty ModuleRHS where
-  fine2pretty gamma moduleRHS = ribbon "where {"
-    \\\ fine2pretty (gamma ::<...> (VarFromCtx <$> moduleRHS)) <$> (view moduleRHS'entries moduleRHS)
+  fine2pretty gamma moduleRHS = ribbon " where {"
+    \\\ ((fine2pretty (gamma ::<...> (VarFromCtx <$> moduleRHS)) <$> (reverse $ view moduleRHS'entries moduleRHS))
+          >>= (\ entry -> [entry, ribbon "        "]))
     /// ribbon "}"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>

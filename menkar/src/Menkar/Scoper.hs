@@ -20,6 +20,8 @@ import Data.Functor.Identity
 import Data.Coerce
 import Control.Lens
 
+---------------------------
+
 {- SEARCH FOR TODOS -}
 
 {-| @'eliminator' gamma rawElim@ scopes @rawElim@ to a fine smart eliminator. -}
