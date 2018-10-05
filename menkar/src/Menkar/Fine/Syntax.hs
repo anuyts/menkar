@@ -332,14 +332,13 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (ModuleRHS mode modty)
 -}
 {-| The entries are stored in REVERSE ORDER. -}
-newtype ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) = ModuleRHS (Compose [] (Entry mode modty) (VarInModule v))
+newtype ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  ModuleRHS {_moduleRHS'content :: (Compose [] (Entry mode modty) (VarInModule v))}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModuleRHS mode modty)
 
 type Module = TelescopedDeclaration DeclSortModule Type ModuleRHS
-
---makeLenses ''ModuleRHS
 
 newModule :: ModuleRHS mode modty v
 newModule = ModuleRHS $ Compose []
@@ -358,6 +357,11 @@ data Entry (mode :: * -> *) (modty :: * -> *) (v :: *) = EntryVal (Val mode modt
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Entry mode modty)
+
+makeLenses ''ModuleRHS
+
+moduleRHS'entries :: Lens' (ModuleRHS mode modty v) [Entry mode modty (VarInModule v)]
+moduleRHS'entries = moduleRHS'content . _Wrapped'
 
 ------------------------------------
   

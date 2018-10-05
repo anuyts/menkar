@@ -13,6 +13,7 @@ import Data.Maybe
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
+import Control.Lens
 
 class Fine2Pretty mode modty f where
   fine2pretty :: ScCtx mode modty v Void -> f mode modty v -> PrettyTree String
@@ -272,4 +273,40 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty ModuleRHS where
-  fine2pretty gamma moduleRHS = _moduleRHS
+  fine2pretty gamma moduleRHS = ribbon "where {"
+    \\\ fine2pretty (gamma ::<...> (VarFromCtx <$> moduleRHS)) <$> (view moduleRHS'entries moduleRHS)
+    /// ribbon "}"
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Show (ModuleRHS mode modty Void) where
+  show moduleRHS = "[ModuleRHS|\n" ++ fine2string ScCtxEmpty moduleRHS ++ "\n]"
+
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Fine2Pretty mode modty Module where
+  fine2pretty gamma modul =
+    ribbon "module "
+    \\\ prettyAnnots
+    /// (declName2pretty $ _tdecl'name modul)
+    \\\ telescope2pretties gamma (telescoped'telescope modul)
+    /// prettyValRHS
+    where
+      prettyAnnots = tdeclAnnots2pretties gamma modul
+      prettyValRHS = 
+        getConst (mapTelescoped (
+            \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
+          ) gamma modul)
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Show (Module mode modty Void) where
+  show modul = "[Module|\n" ++ fine2string ScCtxEmpty modul ++ "\n]"
+
+
+
+
+
+
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Fine2Pretty mode modty Entry where
+  fine2pretty gamma entry = _entry
