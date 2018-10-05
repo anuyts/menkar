@@ -382,6 +382,8 @@ eliminator = MP.label "eliminator" $
   (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
 opEliminator :: CanParse m => m Raw.Eliminator
 opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
+annotEliminator :: CanParse m => m Raw.Eliminator
+annotEliminator = MP.label "annotation eliminator" $ argExplicit <|> argNext <?|> argNamed
 
 argEndNext :: CanParse m => m Raw.Eliminator
 argEndNext = Raw.ElimEnd Raw.ArgSpecNext <$ loneDots
@@ -399,6 +401,8 @@ eliminators = MP.label "eliminators" $
   (++) <$> manyTry eliminator <*> (fromMaybe [] <$> optionalTry ((: []) <$> eliminatorEnd))
 opEliminators :: CanParse m => m [Raw.Eliminator]
 opEliminators = MP.label "operator eliminators" $ manyTry opEliminator
+annotEliminators :: CanParse m => m [Raw.Eliminator]
+annotEliminators = MP.label "annotation eliminators" $ manyTry annotEliminator
 
 elimination :: CanParse m => m Raw.Elimination
 elimination = Raw.Elimination <$> expr3 <*> eliminators
@@ -448,7 +452,7 @@ atomicAnnotation = (\qword -> Raw.Annotation qword []) <$> qWord
 compoundAnnotation :: CanParse m => m Raw.Annotation
 compoundAnnotation = brackets $ do
   qword <- qWord
-  content <- many expr3
+  content <- annotEliminators
   return $ Raw.Annotation qword content
 
 annotation :: CanParse m => m Raw.Annotation

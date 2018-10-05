@@ -93,8 +93,8 @@ instance Unparsable Expr where
 
 instance Unparsable Annotation where
   unparse' (Annotation qname []) = unparse' qname
-  unparse' (Annotation qname exprs) = "[" ++| unparse' qname
-                                            \\\ ((" " ++|) . unparse' <$> exprs)
+  unparse' (Annotation qname elims) = "[" ++| unparse' qname
+                                            \\\ ((" " ++|) . unparse' <$> elims)
                                             /// ribbon "]"
   parserName _ = "annotation"
   
