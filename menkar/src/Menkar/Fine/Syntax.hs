@@ -154,6 +154,9 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
   TermSmartElim
     (Term mode modty v) {-^ eliminee -}
     (Compose [] (SmartEliminator mode modty) v) {-^ eliminators -}
+    (Term mode modty v) {-^ result -} |
+  TermGoal
+    String {-^ goal's name -}
     (Term mode modty v) {-^ result -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>

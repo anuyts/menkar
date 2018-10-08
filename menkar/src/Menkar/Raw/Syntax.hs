@@ -31,7 +31,8 @@ data Expr3 =
   ExprQName QName |
   ExprParens Expr |
   ExprNatLiteral Nat |
-  ExprImplicit
+  ExprImplicit |
+  ExprGoal String
   --deriving Show
 
 data Elimination = Elimination Expr3 [Eliminator] --deriving Show

@@ -58,6 +58,7 @@ instance Unparsable Expr3 where
   unparse' (ExprParens expr) = "(" ++| unparse' expr |++ ")"
   unparse' (ExprNatLiteral n) = ribbon $ show n
   unparse' ExprImplicit = ribbon "_"
+  unparse' (ExprGoal str) = ribbon $ '?' : str
   parserName _ = "expr3"
 
 unparseOpElimination :: Elimination -> PrettyTree String

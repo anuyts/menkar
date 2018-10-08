@@ -44,6 +44,9 @@ expr3 gamma (Raw.ExprQName rawQName) = return $ Expr3 $ TermQName rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = todo
 expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma
+expr3 gamma (Raw.ExprGoal str) = do
+  result <- term4newImplicit gamma
+  return $ Expr3 $ TermGoal str result
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
 elimination :: MonadScoper mode modty rel sc =>

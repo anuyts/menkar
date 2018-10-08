@@ -61,7 +61,7 @@ infixl 3 <?|>
 -- characters ----------------------------------------------
 
 data CharType =
-  SpaceChar | LetterChar | DigitChar | LooseChar | MiscChar | OpenChar | CloseChar
+  SpaceChar | LetterChar | DigitChar | LooseChar | QuestChar | MiscChar | OpenChar | CloseChar
   deriving (Show, Eq)
 
 looseChars :: [Char]
@@ -73,6 +73,7 @@ describeCharType ct = case ct of
   LetterChar -> "letter character (unicode)"
   DigitChar -> "digit"
   LooseChar -> "one of " ++ looseChars
+  QuestChar -> "question mark"
   MiscChar -> "miscellaneous unicode character"
   OpenChar -> "opening delimiter (unicode)"
   CloseChar -> "closing delimiter (unicode)"
@@ -83,6 +84,7 @@ charType c
   | isDigit c = DigitChar
   | isLetter c = LetterChar
   | elem c looseChars = LooseChar
+  | c == '?' = QuestChar
   | otherwise = case generalCategory c of
       OpenPunctuation -> OpenChar
       ClosePunctuation -> CloseChar
@@ -178,6 +180,8 @@ underscorePrecise :: CanParse m => m ()
 underscorePrecise = void $ MP.string "_"
 dotPrecise :: CanParse m => m ()
 dotPrecise = void $ MP.string "."
+questionMarkPrecise :: CanParse m => m ()
+questionMarkPrecise = void $ MP.string "?"
 
 loneUnderscore :: CanParse m => m ()
 loneUnderscore = loneLexeme underscorePrecise
@@ -199,7 +203,7 @@ charByType :: CanParse m => CharType -> m Char
 charByType ct = MP.label (describeCharType ct) $ MP.satisfy (\ c -> charType c == ct)
 
 nameChar :: CanParse m => m Char
-nameChar = charByType LetterChar <|> charByType DigitChar <|> charByType MiscChar
+nameChar = charByType LetterChar <|> charByType DigitChar <|> charByType MiscChar <|> charByType QuestChar
 nameNonOpChar :: CanParse m => m Char
 nameNonOpChar = charByType LetterChar <|> charByType DigitChar
 opChar :: CanParse m => m Char
@@ -276,6 +280,9 @@ unqName = MP.label "unqualified identifier" $ nonStickyLexeme namePrecise
     msg = "You have either neglected to leave a space after this identifier, or you have used a" ++
       " qualified identifier where an unqualified one was expected."
   -}
+           
+goal :: CanParse m => m String
+goal = questionMarkPrecise *> unqWord
 
 qualified :: CanParse m => m a -> m (Raw.Qualified a)
 qualified p = lexeme $ do
@@ -356,7 +363,8 @@ expr3 = MP.label "atomic expression" $
   (Raw.ExprParens <$> parens expr) <|>
   (Raw.ExprImplicit <$ loneUnderscore) <?|>
   (Raw.ExprQName <$> qName) <?|>
-  (Raw.ExprNatLiteral <$> natLiteralNonSticky)
+  (Raw.ExprNatLiteral <$> natLiteralNonSticky) <?|>
+  (Raw.ExprGoal <$> goal)
 
 argNext :: CanParse m => m Raw.Eliminator
 argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
