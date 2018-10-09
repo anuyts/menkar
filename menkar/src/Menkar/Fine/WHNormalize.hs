@@ -37,6 +37,16 @@ whnormalizeElim gamma d1 d2 mu eliminee e = do
               VarWkn (VarDiv w) -> Var3 w
               _ -> unreachable
         in whnormalize gamma d2 (join $ subst <$> binding'body binding)
+      --sigma cases
+      (Pair sigmaBinding tmFst tmSnd, Fst sigmaBinding') -> whnormalize gamma d2 (runVarDiv <$> tmFst)
+      (Pair sigmaBinding tmFst tmSnd, Snd sigmaBinding') -> whnormalize gamma d2 (runVarDiv <$> tmSnd)
+      (Pair sigmaBinding tmFst tmSnd, ElimPair motive clause) ->
+        let subst v = case v of
+              VarLast -> runVarDiv <$> tmSnd
+              VarWkn VarLast -> runVarDiv <$> tmFst
+              VarWkn (VarWkn w) -> Var3 w
+              _ -> unreachable
+        in whnormalize gamma d2 (join $ subst <$> binding'body (binding'body clause))
       --empty type cases (none)
       --unit cases (none)
       --nonsensical cases
