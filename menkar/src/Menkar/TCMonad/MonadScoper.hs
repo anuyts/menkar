@@ -11,12 +11,6 @@ import qualified Menkar.Raw.Syntax as Raw
 import Control.Monad.State.Lazy
 import Data.Void
 
-data Constraint mode modty rel = Constraint {
-    constraintJudgement :: Judgement mode modty rel,
-    constraintParent :: Maybe (Constraint mode modty rel),
-    constraintReason :: String
-  }
-
 class (
     Monad sc,
     Traversable mode,

@@ -13,8 +13,19 @@ import Data.Functor.Identity
 --import Data.Functor.Compose
 
 data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
+
+  -- | @'JudType' gamma d@ means @gamma |-{d} ctx@
+  JudCtx ::
+    Ctx Type mode modty v Void ->
+    mode v ->
+    Judgement mode modty rel
+  JudCtxRel ::
+    Ctx (Pair3 Type) mode modty v Void ->
+    mode v ->
+    Judgement mode modty rel
   
   -- | @'JudType' gamma d tyT@ means @gamma |-{d} tyT type@
+  -- | Premises: @'JudCtx'@
   JudType ::
     Ctx Type mode modty v Void ->
     mode v ->
@@ -28,6 +39,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Judgement mode modty rel
     
   -- | @'JudTerm' gamma d t tyT@ means @gamma |-{d} t : tyT@.
+  -- | Premises: @'JudCtx', 'JudType'@
   JudTerm ::
     Ctx Type mode modty v Void ->
     mode v ->
@@ -43,6 +55,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Judgement mode modty rel
     
   -- | @'JudEta' gamma d t tyT@ means @gamma |-{d} t == some-eta-expansion : tyT@.
+  -- | Premises: @'JudCtx', 'JudType', 'JudTerm'@
   JudEta ::
     Ctx Type mode modty v Void ->
     mode v -> 
@@ -51,6 +64,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Judgement mode modty rel
     
   -- | @'JudSmartElim' gamma d t tyT es r@ means @gamma |-{d} (t : tyT) es ~> r@.
+  -- | Premises: @'JudCtx gamma d', 'JudType gamma d tyT', 'JudTerm gamma d t tyT', 'JudTerm gamma d r _'@
   JudSmartElim ::
     Ctx Type mode modty v Void ->
     mode v -> 
@@ -61,6 +75,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Judgement mode modty rel
     
   -- | @'JudGoal' gamma d goalname t tyT@ means that goal @goalname@ equals term @t@.
+  -- | Premises: @'JudTerm'@
   JudGoal ::
     Ctx Type mode modty v Void ->
     mode v -> 
@@ -70,6 +85,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Judgement mode modty rel
     
   -- | @'JudResolve' gamma d t r tyT@ means @gamma |-{d} t ~> r : tyT@ where @t@ is a resolution call.
+  -- | Premises?
   JudResolve ::
     Ctx Type mode modty v Void ->
     mode v ->
