@@ -300,6 +300,10 @@ deriving instance (
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
 
+joinTelescoped :: Telescoped ty (Telescoped ty rhs) mode modty v -> Telescoped ty rhs mode modty v
+joinTelescoped (Telescoped tr) = tr
+joinTelescoped (seg :|- ttr) = seg :|- joinTelescoped ttr
+
 {-| @'mapTelescopedSimple' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
 mapTelescopedSimple :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
   (forall w . (v -> w) -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
@@ -310,7 +314,8 @@ mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (
 makeLenses ''Declaration
 makeLenses ''PartialDeclaration
 
-data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) = ValRHS (Term mode modty v) (Type mode modty v)
+data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  ValRHS {_val'term :: Term mode modty v, _val'type :: Type mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ValRHS mode modty)
