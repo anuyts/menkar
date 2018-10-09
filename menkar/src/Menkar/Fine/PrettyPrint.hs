@@ -218,7 +218,7 @@ tdeclAnnots2pretties :: (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          ScCtx mode modty v Void -> TelescopedDeclaration declSort ty content mode modty v -> [PrettyTree String]
 tdeclAnnots2pretties gamma tdecl =
-        getConst (mapTelescoped (
+        getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ [
                 fine2pretty gammadelta (_decl'plicity decl),
                 "[mode " ++| fine2pretty gammadelta (Mode $ modDom $ _decl'modty decl) |++ "] ",
@@ -237,7 +237,7 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
     where
       prettyAnnots = tdeclAnnots2pretties gamma seg
       prettyType =
-        getConst (mapTelescoped (
+        getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
           ) gamma seg)
 instance (Functor mode, Functor modty, Functor (ty mode modty),
@@ -269,7 +269,7 @@ instance (Functor mode, Functor modty,
     where
       prettyAnnots = tdeclAnnots2pretties gamma val
       prettyValRHS = 
-        getConst (mapTelescoped (
+        getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
           ) gamma val)
 instance (Functor mode, Functor modty,
@@ -301,7 +301,7 @@ instance (Functor mode, Functor modty,
     where
       prettyAnnots = tdeclAnnots2pretties gamma modul
       prettyValRHS = 
-        getConst (mapTelescoped (
+        getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
           ) gamma modul)
 instance (Functor mode, Functor modty,

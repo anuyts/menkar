@@ -286,7 +286,7 @@ buildTelescopedDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawD
   (forall w . ScCtx mode modty w Void -> sc (content mode modty w)) ->
   TelescopedPartialDeclaration rawDeclSort Type content mode modty v ->
   sc [TelescopedDeclaration fineDeclSort Type content mode modty v]
-buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTelescoped (
+buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTelescopedSc (
     \ wkn gammadelta partDecl -> do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
@@ -335,7 +335,7 @@ partialTelescopedDeclaration :: MonadScoper mode modty rel sc =>
   sc (TelescopedPartialDeclaration rawDeclSort Type Type mode modty v)
 partialTelescopedDeclaration gamma rawDecl = do
   fineDelta <- telescope gamma $ Raw.decl'telescope rawDecl
-  mapTelescoped (
+  mapTelescopedSc (
       \ wkn gammadelta Unit3 -> (`execStateT` newPartialDeclaration) $ do
           --names
           let rawNames = Raw.decl'names rawDecl
@@ -428,7 +428,7 @@ val :: MonadScoper mode modty rel sc =>
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
   [fineLHS] <- buildTelescopedDeclaration gamma type4newImplicit partialLHS
-  mapTelescoped (
+  mapTelescopedSc (
       \wkn gammadelta -> decl'content $ \fineTy -> do
         fineTm <- expr gammadelta rawExpr
         return $ ValRHS fineTm fineTy
@@ -466,13 +466,13 @@ modul :: MonadScoper mode modty rel sc =>
   sc (Module mode modty v)
 modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  partialLHSUntyped <- mapTelescoped (
+  partialLHSUntyped <- mapTelescopedSc (
       \wkn gammadelta -> pdecl'content . _Wrapped $ \ maybeType -> case maybeType of
         Nothing -> return (Just Unit3)
         Just ty -> scopeFail $ "Modules do not have a type: " ++ Raw.unparse rawLHS
     ) gamma partialLHS
   [fineLHS] <- buildTelescopedDeclaration gamma (\gammadelta -> return Unit3) partialLHSUntyped
-  mapTelescoped (
+  mapTelescopedSc (
       \wkn gammadelta -> decl'content $ \ Unit3 -> entriesInModule gammadelta rawEntries newModule
     ) gamma fineLHS
 --modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
