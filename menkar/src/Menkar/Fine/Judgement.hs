@@ -13,6 +13,7 @@ import Data.Functor.Identity
 --import Data.Functor.Compose
 
 data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
+  
   -- | @'JudType' gamma d tyT@ means @gamma |-{d} tyT type@
   JudType ::
     Ctx Type mode modty v Void ->
@@ -25,6 +26,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     mode v ->
     Pair3 Type mode modty v ->
     Judgement mode modty rel
+    
   -- | @'JudTerm' gamma d t tyT@ means @gamma |-{d} t : tyT@.
   JudTerm ::
     Ctx Type mode modty v Void ->
@@ -39,6 +41,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Pair3 Term mode modty v ->
     Pair3 Type mode modty v ->
     Judgement mode modty rel
+    
   -- | @'JudEta' gamma d t tyT@ means @gamma |-{d} t == some-eta-expansion : tyT@.
   JudEta ::
     Ctx Type mode modty v Void ->
@@ -46,6 +49,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
+    
   -- | @'JudSmartElim' gamma d t tyT es r@ means @gamma |-{d} (t : tyT) es ~> r@.
   JudSmartElim ::
     Ctx Type mode modty v Void ->
@@ -55,6 +59,16 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     [SmartEliminator mode modty v] ->
     Term mode modty v ->
     Judgement mode modty rel
+    
+  -- | @'JudGoal' gamma d goalname t tyT@ means that goal @goalname@ equals term @t@.
+  JudGoal ::
+    Ctx Type mode modty v Void ->
+    mode v -> 
+    String ->
+    Term mode modty v ->
+    Type mode modty v ->
+    Judgement mode modty rel
+    
   -- | @'JudResolve' gamma d t r tyT@ means @gamma |-{d} t ~> r : tyT@ where @t@ is a resolution call.
   JudResolve ::
     Ctx Type mode modty v Void ->
@@ -63,6 +77,6 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
+    
   -- JudAccuracy: "This term should be known up to that accuracy"
-  -- JudReport: "This term is that goal and should be reported on" (maybe this is not a judgement, but something in the monad).
 
