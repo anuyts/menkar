@@ -153,6 +153,7 @@ instance (Functor mode, Functor modty,
       |++ " `yielding " |+| fine2pretty gamma result
   fine2pretty gamma (TermGoal str result) =
     "?" ++ str ++ " `yielding " ++| fine2pretty gamma result
+  fine2pretty gamma (TermProblem t) = "(! " ++| fine2pretty gamma t |++ "!)"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (TermNV mode modty Void) where

@@ -3,6 +3,8 @@
 module Menkar.Fine.Context.Variable where
 
 import Data.Bifunctor
+import Control.Exception.AssertFalse
+import Data.Void
 
 --data VarWkn v = VarLast | VarWkn v deriving (Show, Functor, Foldable, Traversable)
 newtype VarExt v = VarExt {runVarWkn :: Maybe v} deriving (Show, Functor, Foldable, Traversable)
@@ -19,6 +21,10 @@ newtype VarOpenCtx v w = VarOpenCtx {runVarOpenCtx :: Either v w} deriving (Show
 pattern VarFromCtx v = VarOpenCtx (Left v)
 pattern VarBeforeCtx w = VarOpenCtx (Right w)
 {- # COMPLETE VarFromCtx, VarBeforeCtx #-}
+unVarFromCtx :: VarOpenCtx v Void -> v
+unVarFromCtx (VarFromCtx v) = v
+unVarFromCtx (VarBeforeCtx w) = absurd w
+unVarFromCtx _ = unreachable
 
 newtype VarDiv v = VarDiv {runVarDiv :: v} deriving (Show, Functor, Foldable, Traversable)
 

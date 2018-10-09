@@ -157,7 +157,9 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Term mode modty v) {-^ result -} |
   TermGoal
     String {-^ goal's name -}
-    (Term mode modty v) {-^ result -}
+    (Term mode modty v) {-^ result -} |
+  TermProblem {-^ Wrapper of terms that make no sense. -}
+    (Term mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (TermNV mode modty)
