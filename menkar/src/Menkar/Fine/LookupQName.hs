@@ -70,5 +70,4 @@ lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
   Just t -> wkn $ Just t
   Nothing -> wkn $ lookupQName gamma qname
   where wkn = fmap (fmap (bimap VarInModule id))
-lookupQName (dkappa :\\ gamma) qname = wkn $ lookupQName gamma qname
-  where wkn = fmap (fmap (bimap VarDiv id))
+lookupQName (dkappa :\\ gamma) qname = lookupQName gamma qname

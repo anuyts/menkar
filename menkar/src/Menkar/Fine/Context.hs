@@ -43,7 +43,7 @@ data ScCtx (mode :: * -> *) (modty :: * -> *) (v :: *) (w :: *) where
   (::..) :: ScCtx mode modty v w -> ScSegment mode modty (VarOpenCtx v w) -> ScCtx mode modty (VarExt v) w
   (::^^) :: ScSegment mode modty w -> ScCtx mode modty v (VarExt w) -> ScCtx mode modty (VarLeftExt v) w
   (::<...>) :: ScCtx mode modty v w -> ModuleRHS mode modty (VarOpenCtx v w) -> ScCtx mode modty (VarInModule v) w
-  (::\\) :: () -> ScCtx mode modty v w -> ScCtx mode modty (VarDiv v) w
+  (::\\) :: () -> ScCtx mode modty v w -> ScCtx mode modty v w
 deriving instance (Functor mode, Functor modty) => Functor (ScCtx mode modty v)
 deriving instance (Foldable mode, Foldable modty) => Foldable (ScCtx mode modty v)
 deriving instance (Traversable mode, Traversable modty) => Traversable (ScCtx mode modty v)
@@ -68,14 +68,14 @@ scGetName (gamma ::.. seg) (VarLast) = scSegment'name seg
 scGetName (seg ::^^ gamma) (VarLeftWkn v) = scGetName gamma v
 scGetName (seg ::^^ gamma) (VarFirst) = scSegment'name seg
 scGetName (gamma ::<...> modul) (VarInModule v) = scGetName gamma v
-scGetName (() ::\\ gamma) (VarDiv v) = scGetName gamma v
+scGetName (() ::\\ gamma) v = scGetName gamma v
 
 scListVariablesRev :: ScCtx mode modty v w -> [v]
 scListVariablesRev ScCtxEmpty = []
 scListVariablesRev (gamma ::.. _) = VarLast : (VarWkn <$> scListVariablesRev gamma)
 scListVariablesRev (_ ::^^ gamma) = (VarLeftWkn <$> scListVariablesRev gamma) ++ [VarFirst]
 scListVariablesRev (gamma ::<...> _) = VarInModule <$> scListVariablesRev gamma
-scListVariablesRev (() ::\\ gamma) = VarDiv <$> scListVariablesRev gamma
+scListVariablesRev (() ::\\ gamma) = scListVariablesRev gamma
 scListVariables :: ScCtx mode modty v w -> [v]
 scListVariables = reverse . scListVariablesRev
 
@@ -115,7 +115,7 @@ data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *
   {-| Context extended with siblings defined in a certain module. -}
   (:<...>) :: Ctx t mode modty v w -> ModuleRHS mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarInModule v) w
   {-| Context divided by a modality. -}
-  (:\\) :: ModedContramodality mode modty (VarOpenCtx v w) -> Ctx t mode modty v w -> Ctx t mode modty (VarDiv v) w
+  (:\\) :: ModedContramodality mode modty (VarOpenCtx v w) -> Ctx t mode modty v w -> Ctx t mode modty v w
 infixl 3 :.., :^^, :<...>, :\\
 deriving instance (Functor mode, Functor modty, Functor (t mode modty)) => Functor (Ctx t mode modty v)
 deriving instance (Foldable mode, Foldable modty, Foldable (t mode modty)) => Foldable (Ctx t mode modty v)
@@ -150,4 +150,4 @@ getSegment (segT :^^ gamma) (VarLeftWkn v) = (<$> getSegment gamma v) $
            VarBeforeCtx VarLast -> VarFromCtx $ VarFirst
            VarFromCtx v -> VarFromCtx $ VarLeftWkn v
 getSegment (segT :<...> _) (VarInModule v) = bimap VarInModule id <$> getSegment segT v
-getSegment (kappa :\\ gamma) (VarDiv v) = bimap VarDiv id <$> todo
+getSegment (kappa :\\ gamma) v = todo

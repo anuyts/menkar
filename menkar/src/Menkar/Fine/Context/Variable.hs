@@ -26,6 +26,6 @@ unVarFromCtx (VarFromCtx v) = v
 unVarFromCtx (VarBeforeCtx w) = absurd w
 unVarFromCtx _ = unreachable
 
-newtype VarDiv v = VarDiv {runVarDiv :: v} deriving (Show, Functor, Foldable, Traversable)
+--newtype VarDiv v = VarDiv {runVarDiv :: v} deriving (Show, Functor, Foldable, Traversable)
 
 newtype VarInModule v = VarInModule {runVarInModule :: v} deriving (Show, Functor, Foldable, Traversable)

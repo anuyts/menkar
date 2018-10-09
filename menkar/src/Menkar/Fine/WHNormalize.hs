@@ -24,33 +24,34 @@ whnormalizeElim :: (Functor mode, Functor modty, CanSwallow (Term mode modty) mo
   Eliminator mode modty v ->
   Writer [Int] (Term mode modty v)
 whnormalizeElim gamma d1 d2 mu eliminee e = do
-  whnEliminee <- whnormalize ((VarFromCtx <$> ModedContramodality d2 mu) :\\ gamma) (VarDiv <$> d1) (VarDiv <$> eliminee)
+  whnEliminee <- whnormalize ((VarFromCtx <$> ModedContramodality d2 mu) :\\ gamma) d1 eliminee
   case whnEliminee of
-    Var3 (VarDiv v) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (Var3 v) e
-    Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
-    Expr3 (TermProblem _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
+    Var3 v -> return $ Expr3 $ TermElim (ModedModality d1 mu) (Var3 v) e
+    Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) whnEliminee e
+      -- careful with glue/weld!
+    Expr3 (TermProblem _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) whnEliminee e
     Expr3 (TermCons t) -> case (t, e) of
       --function case
       (Lam binding, App piBinding arg) ->
         let subst v = case v of
+              VarWkn w -> Var3 w
               VarLast -> arg
-              VarWkn (VarDiv w) -> Var3 w
               _ -> unreachable
         in whnormalize gamma d2 (join $ subst <$> binding'body binding)
       --sigma cases
-      (Pair sigmaBinding tmFst tmSnd, Fst sigmaBinding') -> whnormalize gamma d2 (runVarDiv <$> tmFst)
-      (Pair sigmaBinding tmFst tmSnd, Snd sigmaBinding') -> whnormalize gamma d2 (runVarDiv <$> tmSnd)
+      (Pair sigmaBinding tmFst tmSnd, Fst sigmaBinding') -> whnormalize gamma d2 tmFst
+      (Pair sigmaBinding tmFst tmSnd, Snd sigmaBinding') -> whnormalize gamma d2 tmSnd
       (Pair sigmaBinding tmFst tmSnd, ElimPair motive clause) ->
         let subst v = case v of
-              VarLast -> runVarDiv <$> tmSnd
-              VarWkn VarLast -> runVarDiv <$> tmFst
               VarWkn (VarWkn w) -> Var3 w
+              VarWkn VarLast -> tmFst
+              VarLast -> tmSnd
               _ -> unreachable
         in whnormalize gamma d2 (join $ subst <$> binding'body (binding'body clause))
       --empty type cases (none)
       --unit cases (none)
       --nonsensical cases
-      (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
+      (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim (ModedModality d1 mu) whnEliminee e
     Expr3 _ -> unreachable
 
 whnormalizeNV :: (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
