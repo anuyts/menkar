@@ -9,24 +9,49 @@ import Data.Void
 import Control.Monad.Writer
 import Control.Exception.AssertFalse
 
+{- Note about eta-rules:
+   * For unit, there is no eliminator, so we need not normalize elements of Unit to unit.
+   * For pairs, applying a projection to a non-constructor term yields the desired term anyway.
+   * For non-projectible pairs, there was no eta-rule anyway.
+   In summary, we don't eta-expand.
+-}
+whnormalizeElim :: (Functor mode, Functor modty) =>
+  Ctx Type mode modty v Void ->
+  mode v {-^ eliminee's mode -} ->
+  mode v {-^ result mode -} ->
+  modty v ->
+  Term mode modty v {-^ eliminee -} ->
+  Eliminator mode modty v ->
+  Writer [Int] (Term mode modty v)
+whnormalizeElim gamma d1 d2 mu eliminee e = do
+  whnEliminee <- whnormalize ((VarFromCtx <$> ModedContramodality d2 mu) :\\ gamma) (VarDiv <$> d1) (VarDiv <$> eliminee)
+  case whnEliminee of
+    Var3 (VarDiv v) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (Var3 v) e
+    Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
+    Expr3 (TermProblem _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
+    Expr3 (TermCons t) -> case (t, e) of
+      (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
+    Expr3 _ -> unreachable
+
 whnormalizeNV :: (Functor mode, Functor modty) =>
   Ctx Type mode modty v Void ->
+  mode v ->
   TermNV mode modty v ->
-  Type mode modty v ->
   Writer [Int] (Term mode modty v)
-whnormalizeNV gamma t@(TermCons _) ty = return . Expr3 $ t   -- Mind glue and weld!
-whnormalizeNV gamma (TermElim dmu t es) ty = _normElim
-whnormalizeNV gamma t@(TermMeta i depcies) ty = Expr3 t <$ tell [i]
-whnormalizeNV gamma (TermQName qname) ty = case lookupQName gamma qname of
+whnormalizeNV gamma d t@(TermCons _) = return . Expr3 $ t   -- Mind glue and weld!
+whnormalizeNV gamma d (TermElim dmu t e) = whnormalizeElim gamma (modality'dom dmu) d (modality'mod dmu) t e
+whnormalizeNV gamma d t@(TermMeta i depcies) = Expr3 t <$ tell [i]
+whnormalizeNV gamma d (TermQName qname) = case lookupQName gamma qname of
   Nothing -> return $ Expr3 $ TermProblem $ Expr3 $ TermQName qname
-  Just t -> whnormalize gamma (unVarFromCtx <$> t) ty
-whnormalizeNV gamma (TermSmartElim eliminee eliminators result) ty = whnormalize gamma result ty
-whnormalizeNV gamma (TermGoal str result) ty = whnormalize gamma result ty
+  Just t -> whnormalize gamma d (unVarFromCtx <$> t)
+whnormalizeNV gamma d (TermSmartElim eliminee eliminators result) = whnormalize gamma d result
+whnormalizeNV gamma d (TermGoal str result) = whnormalize gamma d result
+whnormalizeNV gamma d t@(TermProblem _) = return $ Expr3 t
 
 whnormalize :: (Functor mode, Functor modty) =>
   Ctx Type mode modty v Void ->
+  mode v -> 
   Term mode modty v ->
-  Type mode modty v ->
   Writer [Int] (Term mode modty v)
-whnormalize gamma (Var3 v) ty = return $ Var3 v
-whnormalize gamma (Expr3 t) ty = whnormalizeNV gamma t ty
+whnormalize gamma d (Var3 v) = return $ Var3 v
+whnormalize gamma d (Expr3 t) = whnormalizeNV gamma d t

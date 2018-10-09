@@ -27,13 +27,13 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 -}
 
 data ModedModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  ModedModality {modDom :: mode v, modMod :: modty v}
+  ModedModality {modality'dom :: mode v, modality'mod :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModedModality mode modty)
 
 data ModedContramodality (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  ModedContramodality {contramodDom :: mode v, contramodRightAdjoint :: modty v}
+  ModedContramodality {contramodality'dom :: mode v, contramodality'rightAdjoint :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModedContramodality mode modty)

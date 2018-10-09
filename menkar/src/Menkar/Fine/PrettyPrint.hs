@@ -222,8 +222,8 @@ tdeclAnnots2pretties gamma tdecl =
         getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ [
                 fine2pretty gammadelta (_decl'plicity decl),
-                "[mode " ++| fine2pretty gammadelta (Mode $ modDom $ _decl'modty decl) |++ "] ",
-                "[mod " ++| fine2pretty gammadelta (Modty $ modMod $ _decl'modty decl) |++ "] "
+                "[mode " ++| fine2pretty gammadelta (Mode $ modality'dom $ _decl'modty decl) |++ "] ",
+                "[mod " ++| fine2pretty gammadelta (Modty $ modality'mod $ _decl'modty decl) |++ "] "
               ]
           ) gamma tdecl)
 
