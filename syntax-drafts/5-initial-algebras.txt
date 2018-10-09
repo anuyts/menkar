@@ -1,0 +1,130 @@
+/*	New:
+	* Segments are not telescoped. (I.e. no nesting of segments - turns out I wasn't even really using this.)
+*/
+
+module [depth dsuc d] InitialOfFunctor
+	{pseudo | d : Depth}
+	{F : {~ irr | l : Nat} -> Uni d l -> Uni d l}
+	{str |
+		F' :
+		{~ irr | lA lB : Nat}
+		{~ par | A : Uni d lA}
+		{~ par | B : Uni d lB}
+		{f : A -> B}
+		-> F l A -> F l B
+	}
+	{str rewrite | /*preferrably use extension types instead of rewrite rules*/
+		F'-id :
+		{irr | lA : Nat}
+		{par | A : Uni d lA}
+		-> F' ({a : A} > a) := ({fa : F A} > fa)
+	}
+	{str rewrite |
+		F'-comp :
+		{irr | lA lB lC : Nat}
+		{par | A : Uni d lA}
+		{par | B : Uni d lB}
+		{par | C : Uni d lC}
+		{f : A -> B}
+		{g : B -> C}
+		{fa : F A}
+		-> F' g (F' f fa) := F' (a > g (f a)) fa
+	}
+where {
+
+	val IsAlg {~ irr | l : Nat} {A : Uni d l} : Uni d l = F A -> A
+
+	val IsMph {~ irr | lA lB : Nat}
+		{~| A : Uni d lA}
+		{~| B : Uni d lB}
+		{str | mkA : IsAlg A}
+		{str | mkB : IsAlg B}
+		{str | f : A -> B}
+		: Uni d (max lA lB)
+		= f . mkA == mkB . F' f
+
+	val Mu {irr | l : Nat} : Uni d (suc l) = {par | X : Set [d] l} {mkX : IsAlg X} -> X
+
+	val [str] fold {~ irr | l : Nat}
+		{par | X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu l -> X
+		= m > m X mkX
+
+	val [str] mkMu {~ irr | l : Nat} : IsAlg (Mu l) = fm X mkX mkX > (F' (fold mkX) fm)
+
+	val [str] mfold {~ irr | l : Nat} {par | X : Uni [d] l}
+	: IsMph mkMu mkX (fold mkX)
+	= refl
+
+	val Mu' {irr | l : Nat} : Uni d (suc l) = data {
+		mkMu' : F Mu' -> Mu'
+	}
+
+	val [str] fold' {~ irr | l : Nat}
+		{par | X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu' l -> X
+		//pattern matching lambda! (separate cases with pipe)
+		= case {
+			/*Of course this is nonsense: F is not recognized as covariant*/
+			mkMu' (fm > fx) > mkX fx
+		}
+
+	val [str] mfold' {~ irr | l : Nat} {par | X : Uni d l}
+	: IsMph mkMu' mkX (fold' mkX)
+	= refl
+}
+
+//-----------------------------------------
+
+val _ {~ pseudo | d : Depth} {~ irr | l : Nat} {~ par | X : Uni d l} {~| x : X} : X = x
+
+//maybe pseudos cannot be implicit except for primitives
+
+//-----------------------------------------
+
+val [depth 1] Eq {~ irr | l : Nat} {X : Uni 0 l} : Uni 0 l = X -> X -> Bool
+
+resolution [str] eq {~ irr | l : Nat} {par | X : Uni 0 l} : Eq X
+
+// eq {~ irr | l : Nat} {par | X : Uni 0 l} {(~ eq) | eq' : Eq X} : Eq X
+// i.e. eq X is the instance for X.
+
+val [syntax x == y]
+_== {~ irr | l : Nat} {~ par | X : Uni 0 l} {(~ eq) | eq' : Eq X} {str | x y : X} : Bool = eq _ x y
+
+val [depth 0] [resolves eq (Bool -> X)]
+eqBool-> {~ irr | l' : Nat} {~ par | X : Uni 0 l'} {(~ eq) | _ : Eq X} : Eq (Bool -> X)
+	= f > g > (f true == g true) && (f false == g false)
+
+//-----------------------------------------
+
+/*this doesn't even require special syntax!
+IX A (P ? T , f)
+FX A (P ? T , f) = IX ({t : P -> T} >< Ext A ({p : P} > f (t p))) ({p : P} > (T , ta > ta .1 p))
+
+IX A $ case {i == 0 ? A , id | i == 1 ? B , f}
+FX B $ case {i == 0 ? A , f | i == 1 ? B , id}
+
+Assumption:
+FX Unit (P ? T , _) = IX (P -> T) (P ? T )
+Assertion:
+IX Empty (P ? T ? case {})
+*/
+
+//-----------------------------------------
+
+val Stream {irr | l : Nat} {A : Uni d l} : Uni d l
+	//= {par | X : Uni d l} >< (X -> A) >< (X -> X) >< X
+        = {par | X : Uni d l} {hd : X -> A} {tl : X -> X} {state : X} >< TT
+        //= Record {par | X : Uni d l} {hd : X -> A} {tl : X -> X} {state : X}
+val [str] count {n : Nat} : Uni 0 0
+	//= (Nat , (x > x) , suc , n)
+	= (Nat , (x > x) , suc , n , tt)
+
+//-----------------------------------------
+
+val transport {~ | A : Uni l} {~ | a a' : A} {P : A -> Uni l} {p : P a} {e : a == a'} : P a'
+	= let {matcher transportP {~ | x x' : A} {e : x == x'} : P x -> P x' where {case refl = q > q}}
+	  in transportP e p
