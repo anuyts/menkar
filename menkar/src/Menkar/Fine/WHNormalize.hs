@@ -15,7 +15,7 @@ import Control.Exception.AssertFalse
    * For non-projectible pairs, there was no eta-rule anyway.
    In summary, we don't eta-expand.
 -}
-whnormalizeElim :: (Functor mode, Functor modty) =>
+whnormalizeElim :: (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   Ctx Type mode modty v Void ->
   mode v {-^ eliminee's mode -} ->
   mode v {-^ result mode -} ->
@@ -30,10 +30,20 @@ whnormalizeElim gamma d1 d2 mu eliminee e = do
     Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
     Expr3 (TermProblem _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
     Expr3 (TermCons t) -> case (t, e) of
+      --function case
+      (Lam binding, App piBinding arg) ->
+        let subst v = case v of
+              VarLast -> arg
+              VarWkn (VarDiv w) -> Var3 w
+              _ -> unreachable
+        in whnormalize gamma d2 (join $ subst <$> binding'body binding)
+      --empty type cases (none)
+      --unit cases (none)
+      --nonsensical cases
       (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim (ModedModality d1 mu) (runVarDiv <$> whnEliminee) e
     Expr3 _ -> unreachable
 
-whnormalizeNV :: (Functor mode, Functor modty) =>
+whnormalizeNV :: (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   Ctx Type mode modty v Void ->
   mode v ->
   TermNV mode modty v ->
@@ -48,7 +58,7 @@ whnormalizeNV gamma d (TermSmartElim eliminee eliminators result) = whnormalize 
 whnormalizeNV gamma d (TermGoal str result) = whnormalize gamma d result
 whnormalizeNV gamma d t@(TermProblem _) = return $ Expr3 t
 
-whnormalize :: (Functor mode, Functor modty) =>
+whnormalize :: (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   Ctx Type mode modty v Void ->
   mode v -> 
   Term mode modty v ->
