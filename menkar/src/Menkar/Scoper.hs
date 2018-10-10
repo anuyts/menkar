@@ -394,7 +394,7 @@ partialSegment gamma rawSeg = do
   telescopedPartSeg <- partialTelescopedDeclaration gamma rawSeg
   case telescopedPartSeg of
     Telescoped partSeg -> return partSeg
-    _ -> unreachable
+    _ -> unreachable -- nested segments encountered
 
 {-| Chain a list of fine segments to a fine telescope. -}
 segments2telescoped :: --MonadScoper mode modty rel sc =>

@@ -215,16 +215,21 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
          Show (Telescope ty mode modty Void) where
   show theta = "[Telescope|\n" ++ fine2string ScCtxEmpty theta ++ "\n]"
 
+declAnnots2pretties :: (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         ScCtx mode modty v Void -> Declaration declSort content mode modty v -> [PrettyTree String]
+declAnnots2pretties gamma decl = [
+                fine2pretty gamma (_decl'plicity decl),
+                "[" ++| fine2pretty gamma (Mode $ modality'dom $ _decl'modty decl) |++ "] ",
+                "[" ++| fine2pretty gamma (Modty $ modality'mod $ _decl'modty decl) |++ "] "
+              ]
+
 tdeclAnnots2pretties :: (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          ScCtx mode modty v Void -> TelescopedDeclaration declSort ty content mode modty v -> [PrettyTree String]
 tdeclAnnots2pretties gamma tdecl =
         getConst (mapTelescopedSc (
-            \ wkn gammadelta decl -> Const $ [
-                fine2pretty gammadelta (_decl'plicity decl),
-                "[" ++| fine2pretty gammadelta (Mode $ modality'dom $ _decl'modty decl) |++ "] ",
-                "[" ++| fine2pretty gammadelta (Modty $ modality'mod $ _decl'modty decl) |++ "] "
-              ]
+            \ wkn gammadelta decl -> Const $ declAnnots2pretties gammadelta decl
           ) gamma tdecl)
 
 instance (Functor mode, Functor modty, Functor (ty mode modty),
@@ -232,15 +237,10 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty (Segment ty) where
   fine2pretty gamma seg = ribbon " {" \\\
     prettyAnnots ///
-    "| " ++| (declName2pretty $ DeclNameSegment $ _segment'name seg) \\\
-    telescope2pretties gamma (telescoped'telescope seg) ///
-    " : " ++| prettyType |++ "}"
+    "| " ++| (declName2pretty $ DeclNameSegment $ _segment'name seg) |++ " : " |+| prettyType |++ "}"
     where
-      prettyAnnots = tdeclAnnots2pretties gamma seg
-      prettyType =
-        getConst (mapTelescopedSc (
-            \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
-          ) gamma seg)
+      prettyAnnots = declAnnots2pretties gamma seg
+      prettyType = fine2pretty gamma (_decl'content seg)
 instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          Show (Segment ty mode modty Void) where
