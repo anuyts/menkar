@@ -10,6 +10,7 @@ import Data.Maybe
 import Control.Lens
 import Data.Functor.Identity
 import Control.Exception.AssertFalse
+import Data.Void
 
 ----------------------------
 
@@ -23,13 +24,17 @@ telescoped2pi (seg :|- telescopedTerm) = Expr3 $ TermCons $ ConsUniHS $ Pi $ Bin
 
 ----------------------------
 
+{-
 lookupQNameEntryList :: (Functor mode, Functor modty) =>
-  [Entry mode modty v] -> Raw.QName -> Maybe (Term mode modty v)
+  [Entry mode modty v] -> Raw.QName -> Maybe (Term mode modty v, Type mode modty v, ModedModality mode modty v)
 lookupQNameEntryList [] qname = Nothing
 lookupQNameEntryList (EntryVal val : entries) qname
-  | qname == Raw.Qualified [] (_val'name val) = Just $ telescoped2lambda $ runIdentity $
+  | qname == Raw.Qualified [] (_val'name val) = Just $ runIdentity $
                                                 mapTelescopedSimple (
-                                                  \ wkn -> Identity . _val'term . _decl'content
+                                                  \ wkn valRHS -> Identity $
+                                                                  (telescoped2lambda $ _val'term $ _decl'content valRHS,
+                                                                   Type $ telescoped2pi $ _val'type $ _decl'content valRHS,
+                                                                   _decl'modty valRHS)
                                                 ) val
   | otherwise = lookupQNameEntryList entries qname
 lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
@@ -40,41 +45,62 @@ lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
         \ wkn declModule -> lookupQNameModule (_decl'content declModule) (Raw.Qualified qual name))
       modul
     else lookupQNameEntryList entries qname
+-}
 
-lookupQNameModule :: (Functor mode, Functor modty) =>
+----------------------------
+
+lookupQNameEntryListTerm :: (Functor mode, Functor modty) =>
+  [Entry mode modty v] -> Raw.QName -> Maybe (Term mode modty v)
+lookupQNameEntryListTerm [] qname = Nothing
+lookupQNameEntryListTerm (EntryVal val : entries) qname
+  | qname == Raw.Qualified [] (_val'name val) = Just $ telescoped2lambda $ runIdentity $
+                                                mapTelescopedSimple (
+                                                  \ wkn -> Identity . _val'term . _decl'content
+                                                ) val
+  | otherwise = lookupQNameEntryListTerm entries qname
+lookupQNameEntryListTerm (EntryModule modul : entries) qname = case qname of
+  Raw.Qualified [] _ -> lookupQNameEntryListTerm entries qname
+  Raw.Qualified (moduleStr : qual) name ->
+    if moduleStr == _module'name modul
+    then telescoped2lambda <$> mapTelescopedSimple (
+        \ wkn declModule -> lookupQNameModuleTerm (_decl'content declModule) (Raw.Qualified qual name))
+      modul
+    else lookupQNameEntryListTerm entries qname
+
+lookupQNameModuleTerm :: (Functor mode, Functor modty) =>
   ModuleRHS mode modty v -> Raw.QName -> Maybe (Term mode modty v)
-lookupQNameModule modul qname =
-  lookupQNameEntryList (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
+lookupQNameModuleTerm modul qname =
+  lookupQNameEntryListTerm (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
-lookupQName :: (Functor mode, Functor modty, Functor (ty mode modty)) =>
+lookupQNameTerm :: (Functor mode, Functor modty, Functor (ty mode modty)) =>
   Ctx ty mode modty v w -> Raw.QName -> Maybe (Term mode modty (VarOpenCtx v w))
-lookupQName CtxEmpty qname = Nothing
-lookupQName (gamma :.. seg) qname = case _segment'name seg of
-  Nothing -> wkn $ lookupQName gamma qname
+lookupQNameTerm CtxEmpty qname = Nothing
+lookupQNameTerm (gamma :.. seg) qname = case _segment'name seg of
+  Nothing -> wkn $ lookupQNameTerm gamma qname
   Just varname -> case qname of
     Raw.Qualified [] name -> if name == varname
                                 then Just $ Var3 $ VarFromCtx VarLast
-                                else wkn $ lookupQName gamma qname
-    _ -> wkn $ lookupQName gamma qname
+                                else wkn $ lookupQNameTerm gamma qname
+    _ -> wkn $ lookupQNameTerm gamma qname
   where wkn = fmap (fmap (bimap VarWkn id))
-lookupQName (seg :^^ gamma) qname = case _segment'name seg of
-  Nothing -> wkn $ lookupQName gamma qname
+lookupQNameTerm (seg :^^ gamma) qname = case _segment'name seg of
+  Nothing -> wkn $ lookupQNameTerm gamma qname
   Just varname -> case qname of
     Raw.Qualified [] name -> if name == varname
                                 then Just $ Var3 $ VarFromCtx VarFirst
-                                else wkn $ lookupQName gamma qname
-    _ -> wkn $ lookupQName gamma qname
+                                else wkn $ lookupQNameTerm gamma qname
+    _ -> wkn $ lookupQNameTerm gamma qname
   where wkn = fmap (fmap wkn')
         wkn' u = case u of
            VarBeforeCtx (VarWkn w) -> VarBeforeCtx w
            VarBeforeCtx VarLast -> VarFromCtx $ VarFirst
            VarFromCtx v -> VarFromCtx $ VarLeftWkn v
            _ -> unreachable
-lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
+lookupQNameTerm (gamma :<...> modul) qname = case lookupQNameModuleTerm modul qname of
   Just t -> wkn $ Just t
-  Nothing -> wkn $ lookupQName gamma qname
+  Nothing -> wkn $ lookupQNameTerm gamma qname
   where wkn = fmap (fmap (bimap VarInModule id))
-lookupQName (dkappa :\\ gamma) qname = lookupQName gamma qname
+lookupQNameTerm (dkappa :\\ gamma) qname = lookupQNameTerm gamma qname
 
 ---------------------------------
 
@@ -130,3 +156,21 @@ lookupQNameType (gamma :<...> modul) qname = case lookupQNameModuleType modul qn
   Nothing -> wkn $ lookupQNameType gamma qname
   where wkn = fmap (fmap (bimap VarInModule id))
 lookupQNameType (dkappa :\\ gamma) qname = lookupQNameType gamma qname
+
+------------------------
+
+lookupVarType :: (Functor mode, Functor modty) =>
+  Ctx Type mode modty v w -> v -> Type mode modty (VarOpenCtx v w)
+lookupVarType CtxEmpty v = absurd v
+lookupVarType (gamma :.. seg) (VarLast) = bimap VarWkn id <$> _segment'content seg
+lookupVarType (gamma :.. seg) (VarWkn v) = bimap VarWkn id <$> lookupVarType gamma v
+lookupVarType (gamma :.. seg) _ = unreachable
+lookupVarType (seg :^^ gamma) (VarFirst) = VarBeforeCtx <$> _segment'content seg
+lookupVarType (seg :^^ gamma) (VarLeftWkn v) = wkn <$> lookupVarType gamma v
+  where wkn (VarFromCtx v) = VarFromCtx (VarLeftWkn v)
+        wkn (VarBeforeCtx (VarWkn v)) = VarBeforeCtx v
+        wkn (VarBeforeCtx VarLast) = VarFromCtx VarFirst
+        wkn _ = unreachable
+lookupVarType (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lookupVarType gamma v
+lookupVarType (dkappa :\\ gamma) v = lookupVarType gamma v
+lookupVarType gamma v = unreachable
