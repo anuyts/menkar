@@ -92,7 +92,7 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
       Raw.ExprImplicit -> return $ Nothing
       _ -> scopeFail $
            "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
-    let fineSeg = Telescoped $ Declaration {
+    let fineSeg = Declaration {
           _decl'name = DeclNameSegment maybeName,
           _decl'modty = ModedModality d mu,
           _decl'plicity = Explicit,
@@ -275,19 +275,18 @@ type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
 type instance ScopeDeclSort (Raw.DeclSortModule False) = DeclSortModule
 type instance ScopeDeclSort Raw.DeclSortSegment = DeclSortSegment
 
-{- | @'buildTelescopedDeclaration' gamma generateContent partTDecl@ builds a list of telescoped declarations out of @partTDecl@.
+{- | @'buildDeclaration' gamma generateContent partTDecl@ builds a list of telescoped declarations out of @partDecl@.
 
      For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
-buildTelescopedDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
+buildDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
   ScCtx mode modty v Void ->
   {-| How to generate content if absent in the partial telescoped declaration. -}
-  (forall w . ScCtx mode modty w Void -> sc (content mode modty w)) ->
-  TelescopedPartialDeclaration rawDeclSort Type content mode modty v ->
-  sc [TelescopedDeclaration fineDeclSort Type content mode modty v]
-buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTelescopedSc (
-    \ wkn gammadelta partDecl -> do
+  sc (content mode modty v) ->
+  PartialDeclaration rawDeclSort content mode modty v ->
+  sc [Declaration fineDeclSort content mode modty v]
+buildDeclaration gammadelta generateContent partDecl = runListT $ do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
@@ -300,7 +299,7 @@ buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTeles
               Compose Nothing -> Explicit
         content <- case _pdecl'content partDecl of
           Compose (Just ty') -> return ty'
-          Compose Nothing -> lift $ generateContent gammadelta
+          Compose Nothing -> lift $ generateContent
             --type4newImplicit gammadelta {- TODO adapt this for general telescoped declarations. -}
         name <- case _pdecl'names partDecl of
           Nothing -> assertFalse $ "Nameless partial declaration!"
@@ -315,6 +314,20 @@ buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTeles
           _decl'plicity = plic,
           _decl'content = content
           }
+
+{- | @'buildTelescopedDeclaration' gamma generateContent partTDecl@ builds a list of telescoped declarations out of @partTDecl@.
+
+     For now, arguments written between the same accolads, are required to have the same type.
+     The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
+-}
+buildTelescopedDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
+  ScCtx mode modty v Void ->
+  {-| How to generate content if absent in the partial telescoped declaration. -}
+  (forall w . ScCtx mode modty w Void -> sc (content mode modty w)) ->
+  TelescopedPartialDeclaration rawDeclSort Type content mode modty v ->
+  sc [TelescopedDeclaration fineDeclSort Type content mode modty v]
+buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTelescopedSc (
+    \ wkn gammadelta partDecl -> ListT $ buildDeclaration gammadelta (generateContent gammadelta) partDecl
   ) gamma partTDecl
 
 {- | @'buildSegment' gamma partSeg@ builds a list of segments out of @partSeg@.
@@ -326,7 +339,7 @@ buildSegment :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   PartialSegment Type mode modty v ->
   sc [Segment Type mode modty v]
-buildSegment gamma partSeg = buildTelescopedDeclaration gamma type4newImplicit partSeg
+buildSegment gamma partSeg = buildDeclaration gamma (type4newImplicit gamma) partSeg
 
 {-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ to a partial telescoped declaration. -}
 partialTelescopedDeclaration :: MonadScoper mode modty rel sc =>
@@ -377,7 +390,11 @@ partialSegment :: MonadScoper mode modty rel sc =>
   Raw.Declaration Raw.DeclSortSegment ->
   --sc [Segment Type mode modty v]
   sc (PartialSegment Type mode modty v)
-partialSegment gamma rawSeg = partialTelescopedDeclaration gamma rawSeg
+partialSegment gamma rawSeg = do
+  telescopedPartSeg <- partialTelescopedDeclaration gamma rawSeg
+  case telescopedPartSeg of
+    Telescoped partSeg -> return partSeg
+    _ -> unreachable
 
 {-| Chain a list of fine segments to a fine telescope. -}
 segments2telescoped :: --MonadScoper mode modty rel sc =>
