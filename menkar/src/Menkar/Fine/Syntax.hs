@@ -270,16 +270,16 @@ newPartialDeclaration = PartialDeclaration {
   }
 
 type TelescopedDeclaration declSort ty content = Telescoped ty (Declaration declSort content)
-type Segment ty = TelescopedDeclaration DeclSortSegment ty ty
+type Segment ty = Declaration DeclSortSegment ty
 
 type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
-type PartialSegment ty = TelescopedPartialDeclaration Raw.DeclSortSegment ty ty
+type PartialSegment ty = PartialDeclaration Raw.DeclSortSegment ty
 
 _tdecl'name :: TelescopedDeclaration declSort ty content mode modty v -> DeclName declSort
 _tdecl'name (Telescoped decl) = _decl'name decl
 _tdecl'name (seg :|- tdecl) = _tdecl'name tdecl
 _segment'name :: Segment ty mode modty v -> Maybe Raw.Name
-_segment'name seg = case _tdecl'name seg of
+_segment'name seg = case _decl'name seg of
   DeclNameSegment maybeName -> maybeName
 
 data Telescoped
