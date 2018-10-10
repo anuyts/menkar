@@ -6,7 +6,7 @@ import Menkar.Fine.Judgement
 import Menkar.Fine.Context.Variable
 import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw
-import Menkar.TCMonad.MonadScoper
+import Data.Void
 
 data Constraint mode modty rel = Constraint {
     constraint'judgement :: Judgement mode modty rel,
@@ -15,8 +15,16 @@ data Constraint mode modty rel = Constraint {
     constraint'id :: Int
   }
 
-class (MonadScoper mode modty rel tc) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
-  newConstraintID :: tc Int
+class (
+    Monad tc,
+    Traversable mode,
+    Traversable modty,
+    Traversable rel
+  ) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
+  term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
+  mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
+  modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
+  id4newConstraint :: tc Int
   addConstraint :: Constraint mode modty rel -> tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()

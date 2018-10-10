@@ -7,13 +7,17 @@ import Menkar.Fine.Context.Variable
 import Menkar.Fine.Judgement
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TCMonad.MonadTC
+import Data.Void
 
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
 
 checkConstraint :: MonadTC mode modty rel tc => Constraint mode modty rel -> tc ()
-checkConstraint constraint = case constraint'judgement constraint of
-{-JudCtx gamma d -> case gamma of
+
+checkConstraint parent = case constraint'judgement parent of
+  
+  {-
+  JudCtx gamma d -> case gamma of
     CtxEmpty -> return ()
     gamma2 :.. seg -> do
       let ty = _decl'content seg
@@ -25,9 +29,22 @@ checkConstraint constraint = case constraint'judgement constraint of
       addConstraint $ Constraint
             (JudType gamma3 d2 ty)
             constraint
-            "Type of last variable in context."
+            "Checking type of last variable in context."
             i
     seg :^^ gamma2 -> tcFail $ "For now, left extension of context is not supported by the type-checker."
     gamma2 :<...> modul -> 
-    _ -> _checkJudCtx-} -- contexts start empty and grow only in well-typed ways.
+    _ -> _checkJudCtx
+  -} -- contexts start empty and grow only in well-typed ways.
+
+  JudType gamma d (Type ty) -> do
+    lvl <- term4newImplicit gamma
+    i <- id4newConstraint
+    addConstraint $ Constraint
+      (JudTerm gamma d ty (Type $ Expr3 $ TermCons $ ConsUniHS d $ UniHS d lvl))
+      (Just parent)
+      "Checking that type lives in a Hofmann-Streicher universe."
+      i
+
+  
+  
   _ -> _checkConstraint
