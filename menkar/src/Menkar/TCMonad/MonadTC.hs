@@ -9,10 +9,10 @@ import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TCMonad.MonadScoper
 
 data Constraint mode modty rel = Constraint {
-    constraintJudgement :: Judgement mode modty rel,
-    constraintParent :: Maybe (Constraint mode modty rel),
-    constraintReason :: String,
-    constraintID :: Int
+    constraint'judgement :: Judgement mode modty rel,
+    constraint'parent :: Maybe (Constraint mode modty rel),
+    constraint'reason :: String,
+    constraint'id :: Int
   }
 
 class (MonadScoper mode modty rel tc) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
@@ -23,3 +23,4 @@ class (MonadScoper mode modty rel tc) => MonadTC mode modty rel tc | tc -> mode,
   solveMeta :: Int -> [Term mode modty v] -> Term mode modty v -> tc ()
   {-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   blockOnMetas :: Constraint mode modty rel -> [Int] -> tc ()
+  tcFail :: String -> tc ()

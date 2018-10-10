@@ -14,6 +14,7 @@ import Data.Functor.Identity
 
 data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
 
+  {-
   -- | @'JudType' gamma d@ means @gamma |-{d} ctx@
   JudCtx ::
     Ctx Type mode modty v Void ->
@@ -23,6 +24,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Ctx (Pair3 Type) mode modty v Void ->
     mode v ->
     Judgement mode modty rel
+  -}
   
   -- | @'JudType' gamma d tyT@ means @gamma |-{d} tyT type@
   -- | Premises: @'JudCtx'@
