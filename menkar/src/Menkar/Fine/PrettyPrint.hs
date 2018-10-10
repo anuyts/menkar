@@ -96,7 +96,7 @@ instance (Functor mode, Functor modty,
 elimination2pretty :: (Functor mode, Functor modty,
                        Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          ScCtx mode modty v Void -> PrettyTree String -> Eliminator mode modty v -> PrettyTree String
-elimination2pretty gamma eliminee (ElimUnsafeResize) = "UnsafeResize (" ++| eliminee |++ ")"
+--elimination2pretty gamma eliminee (ElimUnsafeResize) = "UnsafeResize (" ++| eliminee |++ ")"
 elimination2pretty gamma eliminee (App piBinding arg) = 
     ribbon "(ofType" \\\ [
       " (" ++| fine2pretty gamma (Pi piBinding) |++ ")",
