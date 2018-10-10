@@ -37,7 +37,7 @@ fresh = state $ \ i -> (i, i+1)
 instance Fine2Pretty U1 U1 Mode where
   fine2pretty gamma (Mode U1) = ribbon "data"
 instance Fine2Pretty U1 U1 Modty where
-  fine2pretty gamma (Modty U1) = ribbon "map"
+  fine2pretty gamma (Modty U1) = ribbon "hoc"
 
 instance MonadScoper U1 U1 U1 SimpleScoper where
   annot4annot gamma qstring args = case (qstring, args) of

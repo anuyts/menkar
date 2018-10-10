@@ -515,12 +515,12 @@ segment :: CanParse m => m Raw.Segment
 segment = MP.label "telescope segment" $ accols $ do
       annots <- fromMaybe [] <$> optionalTry annotationClause
       names <- Raw.DeclNamesSegment <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore))
-      context <- telescopeMany
+      --context <- telescopeMany
       maybeType <- optional $ keyword ":" *> expr
       return $ Raw.Segment $ Raw.Declaration {
         Raw.decl'annotations = annots,
         Raw.decl'names = names,
-        Raw.decl'telescope = context,
+        Raw.decl'telescope = Raw.Telescope [],
         Raw.decl'content = fromMaybe Raw.DeclContentEmpty $ Raw.DeclContent <$> maybeType
       }
 

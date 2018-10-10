@@ -174,8 +174,8 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty Annotation where
-  fine2pretty gamma (AnnotMode d) = "mode " ++| fine2pretty gamma (Mode d)
-  fine2pretty gamma (AnnotModality mu) = "mode " ++| fine2pretty gamma (Modty mu)
+  fine2pretty gamma (AnnotMode d) = fine2pretty gamma (Mode d)
+  fine2pretty gamma (AnnotModality mu) = fine2pretty gamma (Modty mu)
   fine2pretty gamma (AnnotImplicit) = ribbon "~"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -222,8 +222,8 @@ tdeclAnnots2pretties gamma tdecl =
         getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ [
                 fine2pretty gammadelta (_decl'plicity decl),
-                "[mode " ++| fine2pretty gammadelta (Mode $ modality'dom $ _decl'modty decl) |++ "] ",
-                "[mod " ++| fine2pretty gammadelta (Modty $ modality'mod $ _decl'modty decl) |++ "] "
+                "[" ++| fine2pretty gammadelta (Mode $ modality'dom $ _decl'modty decl) |++ "] ",
+                "[" ++| fine2pretty gammadelta (Modty $ modality'mod $ _decl'modty decl) |++ "] "
               ]
           ) gamma tdecl)
 
