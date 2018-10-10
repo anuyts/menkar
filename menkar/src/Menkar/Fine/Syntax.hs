@@ -111,9 +111,9 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (SmartEliminator mode modty)
 
 data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  ElimUnsafeResize
+  {-ElimUnsafeResize
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
-    {-(Term mode modty v) {-^ Type -}-} |
+    {-(Term mode modty v) {-^ Type -}-} |-}
   App
     (Binding Term mode modty v) {-^ function's pi type -} 
     (Term mode modty v) {-^ argument -} |

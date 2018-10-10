@@ -31,12 +31,12 @@ whnormalizeElim gamma d1 d2 mu eliminee e = do
       -- careful with glue/weld!
     Expr3 (TermProblem _) -> return $ Expr3 $ TermElim (ModedModality d1 mu) whnEliminee e
     Expr3 (TermCons t) -> case (t, e) of
-      --Hofmann-Streicher universe code case
+      {- -Hofmann-Streicher universe code case
       (ConsUniHS d1' typeTerm, ElimUnsafeResize) -> return $ Expr3 $ TermCons $ ConsUniHS d1' $ case typeTerm of
         UniHS d1'' lvl -> UniHS d1'' lvl
         Pi (Binding seg body) ->
           Pi (Binding _seg (Expr3 $ TermElim (VarWkn <$> ModedModality d1 mu) body ElimUnsafeResize))
-        _ -> _
+        _ -> _ -}
       --function case
       (Lam binding, App piBinding arg) ->
         let subst v = case v of
