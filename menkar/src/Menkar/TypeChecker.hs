@@ -12,6 +12,19 @@ import Data.Void
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
 
+checkConstraintTerm :: MonadTC mode modty rel tc =>
+    Ctx Type mode modty v Void ->
+    mode v ->
+    Term mode modty v ->
+    Type mode modty v ->
+    tc ()
+
+checkConstraintTerm gamma d (Var3 v) (Type ty) = _checkVar
+
+checkConstraintTerm gamma d t (Type ty) = _checkConstraintTerm
+
+-------
+
 checkConstraint :: MonadTC mode modty rel tc => Constraint mode modty rel -> tc ()
 
 checkConstraint parent = case constraint'judgement parent of
@@ -45,6 +58,6 @@ checkConstraint parent = case constraint'judgement parent of
       "Checking that type lives in a Hofmann-Streicher universe."
       i
 
-  
+  JudTerm gamma d t ty -> checkConstraintTerm gamma d t ty
   
   _ -> _checkConstraint
