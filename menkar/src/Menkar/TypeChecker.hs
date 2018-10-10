@@ -53,7 +53,7 @@ checkConstraint parent = case constraint'judgement parent of
     lvl <- term4newImplicit gamma
     i <- id4newConstraint
     addConstraint $ Constraint
-      (JudTerm gamma d ty (Type $ Expr3 $ TermCons $ ConsUniHS d $ UniHS d lvl))
+      (JudTerm gamma d ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d lvl))
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
       i

@@ -112,8 +112,8 @@ buildPi :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 buildPi gamma fineSeg fineCod = do
   --fineLvl <- term4newImplicit gamma
-  fineMode <- mode4newImplicit gamma
-  return $ Expr3 $ TermCons $ ConsUniHS fineMode $ Pi $ Binding fineSeg fineCod
+  --fineMode <- mode4newImplicit gamma
+  return $ Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding fineSeg fineCod
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma :: MonadScoper mode modty rel sc =>
@@ -123,8 +123,8 @@ buildSigma :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 buildSigma gamma fineSeg fineCod = do
   --fineLvl <- term4newImplicit gamma
-  fineMode <- mode4newImplicit gamma
-  return $ Expr3 $ TermCons $ ConsUniHS fineMode $ Sigma $ Binding fineSeg fineCod
+  --fineMode <- mode4newImplicit gamma
+  return $ Expr3 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg fineCod
   
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda :: MonadScoper mode modty rel sc =>

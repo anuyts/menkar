@@ -31,4 +31,4 @@ class (
   solveMeta :: Int -> [Term mode modty v] -> Term mode modty v -> tc ()
   {-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   blockOnMetas :: Constraint mode modty rel -> [Int] -> tc ()
-  tcFail :: String -> tc ()
+  tcFail :: Constraint mode modty rel -> String -> tc ()

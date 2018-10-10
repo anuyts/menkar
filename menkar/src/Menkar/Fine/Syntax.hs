@@ -89,7 +89,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   {-| element of the Hofmann-Streicher universe -}
   ConsUniHS
-    (mode v) {-^ Type's mode -}
+    --(mode v) {-^ Type's mode -}
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
     (TypeTerm mode modty v) {-^ Type -} |
   Lam (Binding Term mode modty v) |
@@ -281,6 +281,7 @@ _tdecl'name (seg :|- tdecl) = _tdecl'name tdecl
 _segment'name :: Segment ty mode modty v -> Maybe Raw.Name
 _segment'name seg = case _decl'name seg of
   DeclNameSegment maybeName -> maybeName
+_segment'content = _decl'content
 
 data Telescoped
      (ty :: (* -> *) -> (* -> *) -> * -> *)

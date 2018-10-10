@@ -17,6 +17,10 @@ telescoped2lambda :: Telescoped Type Term mode modty v -> Term mode modty v
 telescoped2lambda (Telescoped t) = t
 telescoped2lambda (seg :|- telescopedTerm) = Expr3 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedTerm)
 
+telescoped2pi :: Telescoped Type Type mode modty v -> Term mode modty v
+telescoped2pi (Telescoped (Type t)) = t
+telescoped2pi (seg :|- telescopedTerm) = Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedTerm)
+
 ----------------------------
 
 lookupQNameEntryList :: (Functor mode, Functor modty) =>
@@ -71,3 +75,58 @@ lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
   Nothing -> wkn $ lookupQName gamma qname
   where wkn = fmap (fmap (bimap VarInModule id))
 lookupQName (dkappa :\\ gamma) qname = lookupQName gamma qname
+
+---------------------------------
+
+lookupQNameEntryListType :: (Functor mode, Functor modty) =>
+  [Entry mode modty v] -> Raw.QName -> Maybe (Type mode modty v)
+lookupQNameEntryListType [] qname = Nothing
+lookupQNameEntryListType (EntryVal val : entries) qname
+  | qname == Raw.Qualified [] (_val'name val) = Just $ Type . telescoped2pi $ runIdentity $
+                                                mapTelescopedSimple (
+                                                  \ wkn -> Identity . _val'type . _decl'content
+                                                ) val
+  | otherwise = lookupQNameEntryListType entries qname
+lookupQNameEntryListType (EntryModule modul : entries) qname = case qname of
+  Raw.Qualified [] _ -> lookupQNameEntryListType entries qname
+  Raw.Qualified (moduleStr : qual) name ->
+    if moduleStr == _module'name modul
+    then Type . telescoped2pi <$> mapTelescopedSimple (
+        \ wkn declModule -> lookupQNameModuleType (_decl'content declModule) (Raw.Qualified qual name))
+      modul
+    else lookupQNameEntryListType entries qname
+
+lookupQNameModuleType :: (Functor mode, Functor modty) =>
+  ModuleRHS mode modty v -> Raw.QName -> Maybe (Type mode modty v)
+lookupQNameModuleType modul qname =
+  lookupQNameEntryListType (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
+
+lookupQNameType :: (Functor mode, Functor modty) =>
+  Ctx Type mode modty v w -> Raw.QName -> Maybe (Type mode modty (VarOpenCtx v w))
+lookupQNameType CtxEmpty qname = Nothing
+lookupQNameType (gamma :.. seg) qname = case _segment'name seg of
+  Nothing -> wkn $ lookupQNameType gamma qname
+  Just varname -> case qname of
+    Raw.Qualified [] name -> if name == varname
+                                then wkn $ Just $ _segment'content seg
+                                else wkn $ lookupQNameType gamma qname
+    _ -> wkn $ lookupQNameType gamma qname
+  where wkn = fmap (fmap (bimap VarWkn id))
+lookupQNameType (seg :^^ gamma) qname = case _segment'name seg of
+  Nothing -> wkn $ lookupQNameType gamma qname
+  Just varname -> case qname of
+    Raw.Qualified [] name -> if name == varname
+                                then Just $ VarBeforeCtx <$> _segment'content seg
+                                else wkn $ lookupQNameType gamma qname
+    _ -> wkn $ lookupQNameType gamma qname
+  where wkn = fmap (fmap wkn')
+        wkn' u = case u of
+           VarBeforeCtx (VarWkn w) -> VarBeforeCtx w
+           VarBeforeCtx VarLast -> VarFromCtx $ VarFirst
+           VarFromCtx v -> VarFromCtx $ VarLeftWkn v
+           _ -> unreachable
+lookupQNameType (gamma :<...> modul) qname = case lookupQNameModuleType modul qname of
+  Just t -> wkn $ Just t
+  Nothing -> wkn $ lookupQNameType gamma qname
+  where wkn = fmap (fmap (bimap VarInModule id))
+lookupQNameType (dkappa :\\ gamma) qname = lookupQNameType gamma qname

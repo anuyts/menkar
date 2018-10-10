@@ -63,11 +63,11 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty ConstructorTerm where
-  fine2pretty gamma (ConsUniHS d typeterm) =
-    ribbon "withMode" \\\ [
+  fine2pretty gamma (ConsUniHS typeterm) = fine2pretty gamma typeterm
+    {-ribbon "withMode" \\\ [
       " " ++| fine2pretty gamma (Mode d),
       " (" ++| fine2pretty gamma typeterm |++ ")"
-      ]
+      ]-}
   fine2pretty gamma (Lam binding) = binding2pretty ">" gamma binding
   fine2pretty gamma (Pair binding tmFst tmSnd) =
     ribbon "ofType" \\\ [
