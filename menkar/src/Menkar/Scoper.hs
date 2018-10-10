@@ -192,8 +192,10 @@ telescopeOperation gamma rawTheta
     ("><", Just rawCod) -> binder buildSigma gamma (Raw.untelescope rawTheta) rawCod
     ("->", Just rawCod) -> binder buildPi gamma (Raw.untelescope rawTheta) rawCod
                            -- rawCod does not refer to an unbaked fish.
-    (_, Nothing) -> scopeFail $ "Binder body/codomain is missing."
-    _    -> scopeFail $ "Illegal operator name: " ++ opString
+    (_, Nothing) -> scopeFail $ "Binder body/codomain is missing: " ++ Raw.unparse
+      (Raw.ExprOps (Raw.OperandTelescope rawTheta) $ Just (rawOp, maybeRawExprR))
+    _    -> scopeFail $ "Illegal operator name '" ++ opString ++ "': " ++ Raw.unparse
+      (Raw.ExprOps (Raw.OperandTelescope rawTheta) $ Just (rawOp, maybeRawExprR))
 telescopeOperation gamma theta rawOp maybeRawExprR =
   scopeFail $ "Binding operator is not an unqualified name: " ++ Raw.unparse rawOp
 
