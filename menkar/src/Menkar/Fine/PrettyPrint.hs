@@ -197,15 +197,22 @@ declName2pretty :: DeclName declSort -> PrettyTree String
 declName2pretty (DeclNameVal name) = Raw.unparse' name
 declName2pretty (DeclNameModule str) = ribbon str
 declName2pretty (DeclNameSegment maybeName) =  fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName
+declName2pretty (DeclNameValSpec) = ribbon "<VALSPECNAME>"
 instance Show (DeclName declSort) where
   show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty declName) ++ "\n]"
 
+{-| Prettyprints a telescope. -}
 telescope2pretties :: (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          ScCtx mode modty v Void -> Telescope ty mode modty v -> [PrettyTree String]
 telescope2pretties gamma (Telescoped Unit3) = []
 telescope2pretties gamma (seg :|- telescope) =
   (fine2pretty gamma seg) : telescope2pretties (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) telescope
+telescope2pretties gamma (mu :** telescope) =
+  [fine2pretty gamma (Modty $ modality'mod mu) |++ " {" \\\
+    telescope2pretties (() ::\\ gamma) telescope /+/
+    ribbon "}"
+  ]
 instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          Fine2Pretty mode modty (Telescope ty) where

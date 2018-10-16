@@ -154,6 +154,7 @@ binder2 :: MonadScoper mode modty rel sc =>
 binder2 build gamma (Telescoped Unit3) rawArgs rawBody = binder build gamma rawArgs rawBody
 binder2 build gamma (fineSeg :|- fineSegs) rawArgs rawBody =
   build gamma fineSeg =<< binder2 build (gamma ::.. (VarFromCtx <$> segment2scSegment fineSeg)) fineSegs rawArgs rawBody
+binder2 build gamma (mu :** fineSegs) rawArgs rawBody = unreachable
 
 {-| @'binder' build gamma rawArgs rawBody@ scopes the Menkar expression
     @<rawArgs> **> rawBody@ to a term, where
@@ -426,6 +427,7 @@ telescope2 :: MonadScoper mode modty rel sc =>
 telescope2 gamma (Telescoped Unit3) rawTele = telescope gamma rawTele
 telescope2 gamma (fineSeg :|- fineSegs) rawTele =
   (fineSeg :|-) <$> telescope2 (gamma ::.. (VarFromCtx <$> segment2scSegment fineSeg)) fineSegs rawTele
+telescope2 gamma (mu :** fineSegs) rawTele = unreachable
 
 telescope :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->

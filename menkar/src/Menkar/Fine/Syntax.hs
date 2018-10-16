@@ -279,6 +279,7 @@ type PartialSegment ty = PartialDeclaration Raw.DeclSortSegment ty
 _tdecl'name :: TelescopedDeclaration declSort ty content mode modty v -> DeclName declSort
 _tdecl'name (Telescoped decl) = _decl'name decl
 _tdecl'name (seg :|- tdecl) = _tdecl'name tdecl
+_tdecl'name (mu :** tdecl) = _tdecl'name tdecl
 _segment'name :: Segment ty mode modty v -> Maybe Raw.Name
 _segment'name seg = case _decl'name seg of
   DeclNameSegment maybeName -> maybeName
@@ -291,7 +292,8 @@ data Telescoped
      (modty :: * -> *)
      (v :: *) =
   Telescoped (rhs mode modty v) |
-  Segment ty mode modty v :|- Telescoped ty rhs mode modty (VarExt v)
+  Segment ty mode modty v :|- Telescoped ty rhs mode modty (VarExt v) |
+  ModedModality mode modty v :** Telescoped ty rhs mode modty v
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
     Functor mode,
@@ -307,6 +309,7 @@ deriving instance (
 joinTelescoped :: Telescoped ty (Telescoped ty rhs) mode modty v -> Telescoped ty rhs mode modty v
 joinTelescoped (Telescoped tr) = tr
 joinTelescoped (seg :|- ttr) = seg :|- joinTelescoped ttr
+joinTelescoped (mu :** ttr) = mu :** joinTelescoped ttr
 
 {-| @'mapTelescopedSimple' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
 mapTelescopedSimple :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
@@ -314,6 +317,7 @@ mapTelescopedSimple :: (Functor h, Functor mode, Functor modty, Functor (ty mode
   (Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
 mapTelescopedSimple f (Telescoped rhs) = Telescoped <$> f id rhs
 mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (. VarWkn)) stuff
+mapTelescopedSimple f (mu :** stuff) = (mu :**) <$> mapTelescopedSimple f stuff
 
 makeLenses ''Declaration
 makeLenses ''PartialDeclaration
