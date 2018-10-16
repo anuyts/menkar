@@ -283,26 +283,31 @@ type instance ScopeDeclSort Raw.DeclSortSegment = DeclSortSegment
      For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
-buildDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
+buildDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawDeclSort ~ fineDeclSort, Functor (ty mode modty)) =>
   ScCtx mode modty v Void ->
   {-| How to generate content if absent in the partial telescoped declaration. -}
-  sc (content mode modty v) ->
-  PartialDeclaration rawDeclSort content mode modty v ->
-  sc [Declaration fineDeclSort content mode modty v]
-buildDeclaration gammadelta generateContent partDecl = runListT $ do
+  (forall w . ScCtx mode modty w Void -> sc (content mode modty w)) ->
+  TelescopedPartialDeclaration rawDeclSort ty content mode modty v ->
+  sc [Declaration fineDeclSort (Telescoped ty content) mode modty v]
+buildDeclaration gamma generateContent partDecl = runListT $ do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
-          Compose Nothing -> mode4newImplicit gammadelta
+          Compose Nothing -> mode4newImplicit gamma
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
-          Compose Nothing -> modty4newImplicit gammadelta
+          Compose Nothing -> modty4newImplicit gamma
         let plic = case _pdecl'plicity partDecl of
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit
-        content <- case _pdecl'content partDecl of
+        telescopedContent <- mapTelescopedSc (
+            \ wkn gammadelta (Maybe3 content) -> case content of
+              Compose (Just content') -> return content'
+              Compose (Nothing) -> lift $ generateContent gammadelta
+          ) gamma $ _pdecl'content partDecl
+          {-case _pdecl'content partDecl of
           Compose (Just ty') -> return ty'
-          Compose Nothing -> lift $ generateContent
+          Compose Nothing -> lift $ generateContent-}
             --type4newImplicit gammadelta {- TODO adapt this for general telescoped declarations. -}
         name <- case _pdecl'names partDecl of
           Nothing -> assertFalse $ "Nameless partial declaration!"
@@ -315,7 +320,7 @@ buildDeclaration gammadelta generateContent partDecl = runListT $ do
           _decl'name = name,
           _decl'modty = ModedModality d mu,
           _decl'plicity = plic,
-          _decl'content = content
+          _decl'content = telescopedContent
           }
 
 {-
@@ -344,20 +349,25 @@ buildSegment :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   PartialSegment Type mode modty v ->
   sc [Segment Type mode modty v]
-buildSegment gamma partSeg = buildDeclaration gamma (type4newImplicit gamma) partSeg
-
+buildSegment gamma partSeg = runListT $ do
+  teleSeg <- ListT $ buildDeclaration gamma type4newImplicit partSeg
+  return $ flip (over decl'content) teleSeg $ \ case
+    Telescoped seg -> seg
+    (seg' :|- seg) -> absurd3 $ _segment'content seg'
+    (mu :** seg) -> unreachable
+    
 {-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ to a partial telescoped declaration. -}
 partialTelescopedDeclaration :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.Declaration rawDeclSort ->
-  sc (PartialDeclaration rawDeclSort (Telescoped Type (Maybe3 Type)) mode modty v)
+  sc (TelescopedPartialDeclaration rawDeclSort Type Type mode modty v)
 partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclaration) $ do
   --telescope
   fineDelta <- telescope gamma $ Raw.decl'telescope rawDecl
   --names
   pdecl'names .= (Just $ Raw.decl'names rawDecl)
   --type
-  fineContent <- Compose . Just <$> mapTelescopedSc (
+  fineContent <- mapTelescopedSc (
       \wkn gammadelta Unit3 -> case Raw.decl'content rawDecl of
         Raw.DeclContentEmpty -> return $ Maybe3 $ Compose $ Nothing
         Raw.DeclContent rawTy -> Maybe3 . Compose . Just <$> do
@@ -396,10 +406,9 @@ partialSegment :: MonadScoper mode modty rel sc =>
   sc (PartialSegment Type mode modty v)
 partialSegment gamma rawSeg = do
   telescopedPartSeg <- partialTelescopedDeclaration gamma rawSeg
-  case getCompose $ _pdecl'content telescopedPartSeg of
-    Nothing -> unreachable -- partialTelescopedDeclaration doesn't output this
-    Just (Telescoped (Maybe3 ty)) -> flip pdecl'content telescopedPartSeg $ \_ -> return ty
-    Just _ -> unreachable -- nested segments encountered
+  case _pdecl'content telescopedPartSeg of
+    Telescoped (Maybe3 ty) -> flip pdecl'content telescopedPartSeg $ \_ -> return $ Telescoped $ Maybe3 ty
+    _ -> unreachable -- nested segments encountered
 
 {-
   case telescopedPartSeg of
@@ -456,13 +465,12 @@ val :: MonadScoper mode modty rel sc =>
   sc (Val mode modty v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  [fineLHS] <- buildTelescopedDeclaration gamma type4newImplicit partialLHS
-  mapTelescopedSc (
-      \wkn gammadelta -> decl'content $ \fineTy -> do
+  [fineLHS] <- buildDeclaration gamma type4newImplicit partialLHS
+  flip decl'content fineLHS $ mapTelescopedSc (
+      \wkn gammadelta fineTy -> do
         fineTm <- expr gammadelta rawExpr
         return $ ValRHS fineTm fineTy
-    ) gamma fineLHS
---val gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
+    ) gamma
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule :: MonadScoper mode modty rel sc =>
@@ -495,15 +503,15 @@ modul :: MonadScoper mode modty rel sc =>
   sc (Module mode modty v)
 modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  partialLHSUntyped <- mapTelescopedSc (
-      \wkn gammadelta -> pdecl'content . _Wrapped $ \ maybeType -> case maybeType of
-        Nothing -> return (Just Unit3)
-        Just ty -> scopeFail $ "Modules do not have a type: " ++ Raw.unparse rawLHS
-    ) gamma partialLHS
-  [fineLHS] <- buildTelescopedDeclaration gamma (\gammadelta -> return Unit3) partialLHSUntyped
-  mapTelescopedSc (
-      \wkn gammadelta -> decl'content $ \ Unit3 -> entriesInModule gammadelta rawEntries newModule
-    ) gamma fineLHS
+  partialLHSUntyped <- flip pdecl'content partialLHS $ mapTelescopedSc (
+      \wkn gammadelta (Maybe3 maybeFineTy) -> case maybeFineTy of
+        Compose Nothing -> return $ Maybe3 $ Compose Nothing
+        Compose (Just fineTy) -> scopeFail $ "Modules do not have a type: " ++ Raw.unparse rawLHS
+    ) gamma
+  [fineLHS] <- buildDeclaration gamma (\gammadelta -> return Unit3) partialLHSUntyped
+  flip decl'content fineLHS $ mapTelescopedSc (
+      \wkn gammadelta Unit3 -> entriesInModule gammadelta rawEntries newModule
+    ) gamma
 --modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
 entry :: MonadScoper mode modty rel sc =>

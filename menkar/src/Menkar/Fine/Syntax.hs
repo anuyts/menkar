@@ -13,6 +13,42 @@ import Data.Functor.Identity
 import Data.Maybe
 import Control.Exception.AssertFalse
 import Control.Lens
+import Data.Void
+
+-------------------
+
+data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Pair3 t mode modty)
+  
+data Box3 t (a :: ka) (b :: kb) (c :: kc) = Box3 {unbox3 :: t a b c}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Box3 t mode modty)
+
+data Unit3 (a :: ka) (b :: kb) (c :: kc) = Unit3
+  deriving (Functor, Foldable, Traversable, Generic1, Show)
+deriving instance CanSwallow (Term mode modty) (Unit3 mode modty)
+
+data Void3 (a :: ka) (b :: kb) (c :: kc) = Void3 Void
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance CanSwallow (Term mode modty) (Void3 mode modty)
+absurd3 :: Void3 a b c -> d
+absurd3 (Void3 v) = absurd v
+
+data Unit1 (a :: ka) = Unit1
+  deriving (Functor, Foldable, Traversable, Generic1, Show)
+deriving instance CanSwallow (Term mode modty) (Unit1)
+
+newtype Maybe3 t (a :: ka) (b :: kb) (c :: kc) = Maybe3 (Compose Maybe (t a b) c)
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (t mode modty)
+  ) =>
+  CanSwallow (Term mode modty) (Maybe3 t mode modty)
+
+-------------------
 
 {- Segment info will have to depend on v, because 'resolves' annotations have variables -}
 --data MetaInfo where
@@ -237,44 +273,47 @@ deriving instance (
     CanSwallow (Term mode modty) (content mode modty)
   ) => CanSwallow (Term mode modty) (Declaration declSort content mode modty)
 
-data PartialDeclaration
+data TelescopedPartialDeclaration
      {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
      (declSort :: Raw.DeclSort)
+     (ty :: (* -> *) -> (* -> *) -> * -> *)
      (content :: (* -> *) -> (* -> *) -> * -> *)
      (mode :: * -> *)
      (modty :: * -> *)
      (v :: *) =
-  PartialDeclaration {
+  TelescopedPartialDeclaration {
     _pdecl'names :: Maybe (Raw.DeclNames declSort),
     _pdecl'mode :: Compose Maybe mode v,
     _pdecl'modty :: Compose Maybe modty v,
     _pdecl'plicity :: Compose Maybe (Plicity mode modty) v,
-    _pdecl'content :: Compose Maybe (content mode modty) v
+    _pdecl'content :: Telescoped ty (Maybe3 content) mode modty v
     }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
     Functor mode,
     Functor modty,
+    Functor (ty mode modty),
     Functor (content mode modty),
     CanSwallow (Term mode modty) mode,
     CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty mode modty),
     CanSwallow (Term mode modty) (content mode modty)
-  ) => CanSwallow (Term mode modty) (PartialDeclaration declSort content mode modty)
+  ) => CanSwallow (Term mode modty) (TelescopedPartialDeclaration declSort ty content mode modty)
   
-newPartialDeclaration :: PartialDeclaration declSort content mode modty v
-newPartialDeclaration = PartialDeclaration {
+newPartialDeclaration :: TelescopedPartialDeclaration declSort ty content mode modty v
+newPartialDeclaration = TelescopedPartialDeclaration {
   _pdecl'names = Nothing,
   _pdecl'mode = Compose Nothing,
   _pdecl'modty = Compose Nothing,
   _pdecl'plicity = Compose Nothing,
-  _pdecl'content = Compose Nothing
+  _pdecl'content = Telescoped $ Maybe3 $ Compose $ Nothing
   }
 
 --type TelescopedDeclaration declSort ty content = Telescoped ty (Declaration declSort content)
 type Segment ty = Declaration DeclSortSegment ty
 
 --type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
-type PartialSegment ty = PartialDeclaration Raw.DeclSortSegment ty
+type PartialSegment ty = TelescopedPartialDeclaration Raw.DeclSortSegment Void3 ty
 
 {-
 _tdecl'name :: TelescopedDeclaration declSort ty content mode modty v -> DeclName declSort
@@ -321,15 +360,15 @@ mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (
 mapTelescopedSimple f (mu :** stuff) = (mu :**) <$> mapTelescopedSimple f stuff
 
 makeLenses ''Declaration
-makeLenses ''PartialDeclaration
+makeLenses ''TelescopedPartialDeclaration
 
-{-
 data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ValRHS {_val'term :: Term mode modty v, _val'type :: Type mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ValRHS mode modty)
 
+{-
 type Val = TelescopedDeclaration DeclSortVal Type ValRHS
 --newtype Val (mode :: * -> *) (modty :: * -> *) (v :: *) = Val (Segment Type ValRHS mode modty v)
 --  deriving (Functor, Foldable, Traversable, Generic1)
@@ -339,7 +378,7 @@ _val'name :: Val mode modty v -> Raw.Name
 _val'name seg = case _tdecl'name seg of
   DeclNameVal name -> name
 -}
-type Val = Declaration DeclSortVal (Telescoped Type Term)
+type Val = Declaration DeclSortVal (Telescoped Type ValRHS)
 
 {-
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
@@ -386,37 +425,6 @@ moduleRHS'entries = moduleRHS'content . _Wrapped'
 
 ------------------------------------
   
-data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c}
-  deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Pair3 t mode modty)
-  
-data Box3 t (a :: ka) (b :: kb) (c :: kc) = Box3 {unbox3 :: t a b c}
-  deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (CanSwallow (Term mode modty) (t mode modty)) => CanSwallow (Term mode modty) (Box3 t mode modty)
-
-data Unit3 (a :: ka) (b :: kb) (c :: kc) = Unit3
-  deriving (Functor, Foldable, Traversable, Generic1, Show)
-deriving instance CanSwallow (Term mode modty) (Unit3 mode modty)
-
-data Void3 (a :: ka) (b :: kb) (c :: kc) where
-  deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance CanSwallow (Term mode modty) (Void3 mode modty)
-
-data Unit1 (a :: ka) = Unit1
-  deriving (Functor, Foldable, Traversable, Generic1, Show)
-deriving instance CanSwallow (Term mode modty) (Unit1)
-
-newtype Maybe3 t (a :: ka) (b :: kb) (c :: kc) = Maybe3 (Compose Maybe (t a b) c)
-  deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (t mode modty)
-  ) =>
-  CanSwallow (Term mode modty) (Maybe3 t mode modty)
-
--------------------
-
 type Telescope ty = Telescoped ty Unit3
 
 telescoped'telescope :: (Functor mode, Functor modty, Functor (ty mode modty)) =>
