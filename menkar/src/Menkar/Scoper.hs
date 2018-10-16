@@ -278,7 +278,7 @@ type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
 type instance ScopeDeclSort (Raw.DeclSortModule False) = DeclSortModule
 type instance ScopeDeclSort Raw.DeclSortSegment = DeclSortSegment
 
-{- | @'buildDeclaration' gamma generateContent partTDecl@ builds a list of telescoped declarations out of @partDecl@.
+{- | @'buildDeclaration' gamma generateContent partDecl@ builds a list of telescoped declarations out of @partDecl@.
 
      For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
@@ -318,6 +318,7 @@ buildDeclaration gammadelta generateContent partDecl = runListT $ do
           _decl'content = content
           }
 
+{-
 {- | @'buildTelescopedDeclaration' gamma generateContent partTDecl@ builds a list of telescoped declarations out of @partTDecl@.
 
      For now, arguments written between the same accolads, are required to have the same type.
@@ -332,6 +333,7 @@ buildTelescopedDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawD
 buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTelescopedSc (
     \ wkn gammadelta partDecl -> ListT $ buildDeclaration gammadelta (generateContent gammadelta) partDecl
   ) gamma partTDecl
+-}
 
 {- | @'buildSegment' gamma partSeg@ builds a list of segments out of @partSeg@.
 
@@ -348,25 +350,24 @@ buildSegment gamma partSeg = buildDeclaration gamma (type4newImplicit gamma) par
 partialTelescopedDeclaration :: MonadScoper mode modty rel sc =>
   ScCtx mode modty v Void ->
   Raw.Declaration rawDeclSort ->
-  sc (TelescopedPartialDeclaration rawDeclSort Type Type mode modty v)
-partialTelescopedDeclaration gamma rawDecl = do
+  sc (PartialDeclaration rawDeclSort (Telescoped Type (Maybe3 Type)) mode modty v)
+partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclaration) $ do
+  --telescope
   fineDelta <- telescope gamma $ Raw.decl'telescope rawDecl
-  mapTelescopedSc (
-      \ wkn gammadelta Unit3 -> (`execStateT` newPartialDeclaration) $ do
-          --names
-          let rawNames = Raw.decl'names rawDecl
-          pdecl'names .= Just rawNames
-          --type
-          case Raw.decl'content rawDecl of
-            Raw.DeclContentEmpty -> return ()
-            Raw.DeclContent rawTy -> do
-              fineTy <- do
-                fineLvl <- term4newImplicit gammadelta
-                Type <$> expr gammadelta rawTy
-              pdecl'content .= (Compose $ Just $ fineTy)
-          --annotations
-          fineAnnots <- sequenceA $ annotation gammadelta <$> Raw.decl'annotations rawDecl
-          forM_ fineAnnots $
+  --names
+  pdecl'names .= (Just $ Raw.decl'names rawDecl)
+  --type
+  fineContent <- Compose . Just <$> mapTelescopedSc (
+      \wkn gammadelta Unit3 -> case Raw.decl'content rawDecl of
+        Raw.DeclContentEmpty -> return $ Maybe3 $ Compose $ Nothing
+        Raw.DeclContent rawTy -> Maybe3 . Compose . Just <$> do
+          fineLvl <- term4newImplicit gammadelta
+          Type <$> expr gammadelta rawTy
+    ) gamma fineDelta
+  pdecl'content .= fineContent
+  --annotations
+  fineAnnots <- sequenceA $ annotation gamma <$> Raw.decl'annotations rawDecl
+  forM_ fineAnnots $
             \ fineAnnot ->
               case fineAnnot of
                 AnnotMode fineMode -> do
@@ -385,7 +386,7 @@ partialTelescopedDeclaration gamma rawDecl = do
                   case maybeOldFinePlicity of
                     Just oldFinePlicity -> scopeFail $ "Encountered multiple visibility annotations: " ++ Raw.unparse rawDecl
                     Nothing -> pdecl'plicity._Wrapped' .= Just Implicit
-    ) gamma fineDelta
+  return ()
 
 {-| @'partialSegment' gamma rawSeg@ scopes @rawSeg@ to a partial segment. -}
 partialSegment :: MonadScoper mode modty rel sc =>
@@ -395,9 +396,16 @@ partialSegment :: MonadScoper mode modty rel sc =>
   sc (PartialSegment Type mode modty v)
 partialSegment gamma rawSeg = do
   telescopedPartSeg <- partialTelescopedDeclaration gamma rawSeg
+  case getCompose $ _pdecl'content telescopedPartSeg of
+    Nothing -> unreachable -- partialTelescopedDeclaration doesn't output this
+    Just (Telescoped (Maybe3 ty)) -> flip pdecl'content telescopedPartSeg $ \_ -> return ty
+    Just _ -> unreachable -- nested segments encountered
+
+{-
   case telescopedPartSeg of
     Telescoped partSeg -> return partSeg
     _ -> unreachable -- nested segments encountered
+-}
 
 {-| Chain a list of fine segments to a fine telescope. -}
 segments2telescoped :: --MonadScoper mode modty rel sc =>
