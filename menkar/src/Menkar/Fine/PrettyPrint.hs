@@ -255,7 +255,6 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
          Show (Segment ty mode modty Void) where
   show seg = "[Segment|\n" ++ fine2string ScCtxEmpty seg ++ "\n]"
 
-{-
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty ValRHS where
@@ -267,7 +266,6 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ValRHS mode modty Void) where
   show valRHS = "[ValRHS|\n" ++ fine2string ScCtxEmpty valRHS ++ "\n]"
--}
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
