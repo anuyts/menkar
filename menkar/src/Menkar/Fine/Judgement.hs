@@ -39,6 +39,20 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     mode v ->
     Pair3 Type mode modty v ->
     Judgement mode modty rel
+  
+  -- | @'JudValSpec' gamma d (delta :|- tyT)@ means @gamma . delta |-{d} ctx@ and @gamma . delta |-{d} tyT type@.
+  -- | Premises: @'JudCtx' gamma d@
+  JudValSpec ::
+    Ctx Type mode modty v Void ->
+    mode v ->
+    ValSpec mode modty v ->
+    Judgement mode modty rel
+  JudValSpecRel ::
+    rel v ->
+    Ctx (Pair3 Type) mode modty v Void ->
+    mode v ->
+    Pair3 ValSpec mode modty v ->
+    Judgement mode modty rel
     
   -- | @'JudTerm' gamma d t tyT@ means @gamma |-{d} t : tyT@.
   -- | Premises: @'JudCtx', 'JudType'@
@@ -54,6 +68,22 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     mode v ->
     Pair3 Term mode modty v ->
     Pair3 Type mode modty v ->
+    Judgement mode modty rel
+    
+  -- | @'JudPseudoTerm' gamma d t (delta :|- tyT)@ means @gamma . delta |-{d} t delta : tyT@.
+  -- | Premises: @'JudCtx', 'JudType'@
+  JudPseudoTerm ::
+    Ctx Type mode modty v Void ->
+    mode v ->
+    Term mode modty v ->
+    ValSpec mode modty v ->
+    Judgement mode modty rel
+  JudPseudoTermRel ::
+    rel v ->
+    Ctx (Pair3 Type) mode modty v Void ->
+    mode v ->
+    Pair3 Term mode modty v ->
+    Pair3 ValSpec mode modty v ->
     Judgement mode modty rel
     
   -- | @'JudEta' gamma d t tyT@ means @gamma |-{d} t == some-eta-expansion : tyT@.

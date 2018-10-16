@@ -188,7 +188,7 @@ data Plicity mode modty v =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Plicity mode modty)
 
-data DeclSort = DeclSortVal | DeclSortModule | DeclSortSegment
+data DeclSort = DeclSortVal | DeclSortModule | DeclSortSegment | DeclSortValSpec
 
 {-
 data DeclSortToken declSort where
@@ -201,6 +201,7 @@ data DeclName declSort where
   DeclNameVal :: Raw.Name -> DeclName DeclSortVal
   DeclNameModule :: String -> DeclName DeclSortModule
   DeclNameSegment :: Maybe Raw.Name -> DeclName DeclSortSegment
+  DeclNameValSpec :: DeclName DeclSortValSpec
 
 {-
 data DeclType
@@ -331,6 +332,8 @@ type Val = TelescopedDeclaration DeclSortVal Type ValRHS
 _val'name :: Val mode modty v -> Raw.Name
 _val'name seg = case _tdecl'name seg of
   DeclNameVal name -> name
+
+type ValSpec = TelescopedDeclaration DeclSortValSpec Type Type
 
 {-
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
