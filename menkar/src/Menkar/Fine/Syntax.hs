@@ -270,16 +270,17 @@ newPartialDeclaration = PartialDeclaration {
   _pdecl'content = Compose Nothing
   }
 
-type TelescopedDeclaration declSort ty content = Telescoped ty (Declaration declSort content)
+--type TelescopedDeclaration declSort ty content = Telescoped ty (Declaration declSort content)
 type Segment ty = Declaration DeclSortSegment ty
 
-type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
+--type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
 type PartialSegment ty = PartialDeclaration Raw.DeclSortSegment ty
 
+{-
 _tdecl'name :: TelescopedDeclaration declSort ty content mode modty v -> DeclName declSort
 _tdecl'name (Telescoped decl) = _decl'name decl
 _tdecl'name (seg :|- tdecl) = _tdecl'name tdecl
-_tdecl'name (mu :** tdecl) = _tdecl'name tdecl
+_tdecl'name (mu :** tdecl) = _tdecl'name tdecl -}
 _segment'name :: Segment ty mode modty v -> Maybe Raw.Name
 _segment'name seg = case _decl'name seg of
   DeclNameSegment maybeName -> maybeName
@@ -322,6 +323,7 @@ mapTelescopedSimple f (mu :** stuff) = (mu :**) <$> mapTelescopedSimple f stuff
 makeLenses ''Declaration
 makeLenses ''PartialDeclaration
 
+{-
 data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ValRHS {_val'term :: Term mode modty v, _val'type :: Type mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
@@ -336,8 +338,8 @@ type Val = TelescopedDeclaration DeclSortVal Type ValRHS
 _val'name :: Val mode modty v -> Raw.Name
 _val'name seg = case _tdecl'name seg of
   DeclNameVal name -> name
-
-type ValSpec = TelescopedDeclaration DeclSortValSpec Type Type
+-}
+type Val = Declaration DeclSortVal (Telescoped Type Term)
 
 {-
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
@@ -356,7 +358,8 @@ newtype ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ModuleRHS mode modty)
 
-type Module = TelescopedDeclaration DeclSortModule Type ModuleRHS
+--type Module = TelescopedDeclaration DeclSortModule Type ModuleRHS
+type Module = Declaration DeclSortModule (Telescoped Type ModuleRHS)
 
 newModule :: ModuleRHS mode modty v
 newModule = ModuleRHS $ Compose []
@@ -368,7 +371,7 @@ addToModule entry (ModuleRHS (Compose entries)) = ModuleRHS $ Compose $ entry : 
 --addToModule (EntryModule submodule) = set (module'modules . _Wrapped' . at (_module'name submodule)) $ Just submodule
 
 _module'name :: Module mode modty v -> String
-_module'name seg = case _tdecl'name seg of
+_module'name modul = case _decl'name modul of
   DeclNameModule name -> name
 
 data Entry (mode :: * -> *) (modty :: * -> *) (v :: *) = EntryVal (Val mode modty v) | EntryModule (Module mode modty v)
@@ -420,4 +423,5 @@ telescoped'telescope :: (Functor mode, Functor modty, Functor (ty mode modty)) =
   Telescoped ty rhs mode modty v -> Telescope ty mode modty v
 telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit3)
 
-type LHS declSort ty = TelescopedDeclaration declSort ty Unit3
+--type LHS declSort ty = TelescopedDeclaration declSort ty Unit3
+type LHS declSort ty = Declaration declSort (Telescope ty)

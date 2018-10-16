@@ -231,6 +231,7 @@ declAnnots2pretties gamma decl = [
                 "[" ++| fine2pretty gamma (Modty $ modality'mod $ _decl'modty decl) |++ "] "
               ]
 
+{-
 tdeclAnnots2pretties :: (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          ScCtx mode modty v Void -> TelescopedDeclaration declSort ty content mode modty v -> [PrettyTree String]
@@ -238,6 +239,7 @@ tdeclAnnots2pretties gamma tdecl =
         getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ declAnnots2pretties gammadelta decl
           ) gamma tdecl)
+-}
 
 instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
@@ -253,6 +255,7 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
          Show (Segment ty mode modty Void) where
   show seg = "[Segment|\n" ++ fine2string ScCtxEmpty seg ++ "\n]"
 
+{-
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty ValRHS where
@@ -264,22 +267,22 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ValRHS mode modty Void) where
   show valRHS = "[ValRHS|\n" ++ fine2string ScCtxEmpty valRHS ++ "\n]"
+-}
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty Val where
   fine2pretty gamma val =
     ribbon "val "
-    \\\ prettyAnnots
-    /// (declName2pretty $ _tdecl'name val)
-    \\\ telescope2pretties gamma (telescoped'telescope val)
+    \\\ declAnnots2pretties gamma val
+    /// (declName2pretty $ _decl'name val)
+    \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content val)
     /// prettyValRHS
     where
-      prettyAnnots = tdeclAnnots2pretties gamma val
       prettyValRHS = 
         getConst (mapTelescopedSc (
-            \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
-          ) gamma val)
+            \ wkn gammadelta t -> Const $ fine2pretty gammadelta t
+          ) gamma $ _decl'content val)
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Val mode modty Void) where
@@ -302,16 +305,15 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Module where
   fine2pretty gamma modul =
     ribbon "module "
-    \\\ prettyAnnots
-    /// (declName2pretty $ _tdecl'name modul)
-    \\\ telescope2pretties gamma (telescoped'telescope modul)
-    /// prettyValRHS
+    \\\ declAnnots2pretties gamma modul
+    /// (declName2pretty $ _decl'name modul)
+    \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content modul)
+    /// prettyModuleRHS
     where
-      prettyAnnots = tdeclAnnots2pretties gamma modul
-      prettyValRHS = 
+      prettyModuleRHS = 
         getConst (mapTelescopedSc (
-            \ wkn gammadelta decl -> Const $ fine2pretty gammadelta (_decl'content decl)
-          ) gamma modul)
+            \ wkn gammadelta modulRHS -> Const $ fine2pretty gammadelta modulRHS
+          ) gamma $ _decl'content modul)
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Module mode modty Void) where
