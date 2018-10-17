@@ -130,9 +130,7 @@ data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Sigma (Binding Term mode modty v) |
   EmptyType |
   UnitType |
-  BoxType
-    (ModedModality mode modty v) {-^ box's modality -}
-    (Term mode modty v) {-^ box's type -}
+  BoxType (Segment Type mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (TypeTerm mode modty)
@@ -150,8 +148,7 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Term mode modty v) |
   ConsUnit |
   ConsBox
-    (ModedModality mode modty v) {-^ box's modality -}
-    (Term mode modty v) {-^ box's type -}
+    (Segment Type mode modty v) {-^ box's type -}
     (Term mode modty v) {-^ box's content -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
@@ -183,8 +180,7 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimEmpty
     (Binding Term mode modty v) {-^ motive -} |
   Unbox
-    (ModedModality mode modty v) {-^ box's modality -}
-    (Term mode modty v) {-^ box's type -}
+    (Segment Type mode modty v) {-^ box's type -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)

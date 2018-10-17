@@ -55,6 +55,7 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (Sigma binding) = binding2pretty "><" gamma binding
   fine2pretty gamma (EmptyType) = ribbon "Empty"
   fine2pretty gamma (UnitType) = ribbon "Unit"
+  fine2pretty gamma (BoxType tySeg) = "Box " ++| fine2pretty gamma tySeg
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (TypeTerm mode modty Void) where
@@ -71,10 +72,15 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (Lam binding) = binding2pretty ">" gamma binding
   fine2pretty gamma (Pair binding tmFst tmSnd) =
     ribbon "ofType" \\\ [
-      " " ++| fine2pretty gamma (Sigma binding),
+      " (" ++| fine2pretty gamma (Sigma binding) |++ ")",
       " (" ++| fine2pretty gamma tmFst |++ " , " |+| fine2pretty gamma tmSnd |++ ")"
       ]
   fine2pretty gamma ConsUnit = ribbon "unit"
+  fine2pretty gamma (ConsBox tySeg tmUnbox) =
+    ribbon "ofType" \\\ [
+      " (" ++| fine2pretty gamma (BoxType tySeg) |++ ")",
+      " (box .{" ++| fine2pretty gamma tmUnbox |++ "} ...)"
+      ]
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ConstructorTerm mode modty Void) where
@@ -127,6 +133,7 @@ elimination2pretty gamma eliminee (ElimEmpty motive) =
     ribbon " absurd",
     " (" ++| eliminee |++ ")"
     ]
+elimination2pretty gamma eliminee (Unbox boxSeg) = todo
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Eliminator mode modty Void) where
