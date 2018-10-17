@@ -106,7 +106,7 @@ mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
 -}
 data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *) (v :: *) (w :: *) where
   {-| Empty context. -}
-  CtxEmpty :: Ctx t mode modty Void w
+  CtxEmpty :: mode w -> Ctx t mode modty Void w
   {-| Extended context -}
   (:..) :: Ctx t mode modty v w -> Segment t mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarExt v) w
   {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
@@ -115,7 +115,7 @@ data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *
   {-| Context extended with siblings defined in a certain module. -}
   (:<...>) :: Ctx t mode modty v w -> ModuleRHS mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarInModule v) w
   {-| Context divided by a modality. -}
-  (:\\) :: ModedContramodality mode modty (VarOpenCtx v w) -> Ctx t mode modty v w -> Ctx t mode modty v w
+  (:\\) :: ModedModality mode modty (VarOpenCtx v w) -> Ctx t mode modty v w -> Ctx t mode modty v w
 infixl 3 :.., :^^, :<...>, :\\
 deriving instance (Functor mode, Functor modty, Functor (t mode modty)) => Functor (Ctx t mode modty v)
 deriving instance (Foldable mode, Foldable modty, Foldable (t mode modty)) => Foldable (Ctx t mode modty v)
@@ -129,12 +129,13 @@ instance (
     CanSwallow (Term mode modty) (t mode modty)
   ) =>
     CanSwallow (Term mode modty) (Ctx t mode modty v) where
-  swallow CtxEmpty = CtxEmpty
+  swallow (CtxEmpty d) = CtxEmpty $ swallow d
   swallow (gamma :.. seg) = swallow gamma :.. swallow (fmap sequenceA seg)
   swallow (seg :^^ gamma) = swallow seg :^^ swallow (fmap sequenceA gamma)
   swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
   swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
 
+{-
 -- TODO: you need a left division here!
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
 -- because `f <$> (g <$> x)` is much less efficient than `f . g <$> x`.
@@ -151,3 +152,4 @@ getSegment (segT :^^ gamma) (VarLeftWkn v) = (<$> getSegment gamma v) $
            VarFromCtx v -> VarFromCtx $ VarLeftWkn v
 getSegment (segT :<...> _) (VarInModule v) = bimap VarInModule id <$> getSegment segT v
 getSegment (kappa :\\ gamma) v = todo
+-}
