@@ -17,7 +17,6 @@ import Data.Void
 
 ----------------------------
 
--- TODOMOD: you need to use a box for :**
 telescoped2lambda :: Telescoped Type ValRHS mode modty v -> Term mode modty v
 telescoped2lambda (Telescoped valRHS) = _val'term valRHS
 telescoped2lambda (seg :|- telescopedValRHS) = Expr3 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedValRHS)
@@ -25,7 +24,6 @@ telescoped2lambda (dmu :** telescopedValRHS) = Expr3 $ TermCons $ ConsBox
   (Declaration (DeclNameSegment Nothing) dmu Explicit (Type $ telescoped2pi telescopedValRHS))
   (telescoped2lambda telescopedValRHS)
 
--- TODOMOD: you need to use a box for :**
 telescoped2pi :: Telescoped Type ValRHS mode modty v -> Term mode modty v
 telescoped2pi (Telescoped valRHS) = case _val'type valRHS of Type ty -> ty
 telescoped2pi (seg :|- telescopedValRHS) = Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedValRHS)
@@ -179,7 +177,6 @@ lookupQNameType (dkappa :\\ gamma) qname = lookupQNameType gamma qname
 
 ----------------------------
 
--- TODOMOD: you need to add a modality application to the telescope, based on the entry's annotation
 lookupQNameEntryList :: (Functor mode, Functor modty) =>
   [Entry mode modty v] -> Raw.QName -> Maybe (ValRHS mode modty v)
 lookupQNameEntryList [] qname = Nothing
@@ -204,8 +201,6 @@ lookupQNameModule :: (Functor mode, Functor modty) =>
 lookupQNameModule modul qname =
   lookupQNameEntryList (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
--- TODOMOD: you need to change output type to @Maybe (LeftDivided ValRHS mode modty (VarOpenCtx v w))@
--- TODOMOD: you need to do a left-division in the :\\ case.
 lookupQName :: (Multimode mode modty) =>
   Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided ValRHS mode modty (VarOpenCtx v w))
 lookupQName (CtxEmpty _) qname = Nothing
@@ -241,7 +236,14 @@ lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
   where wkn :: (Functor f) => f (VarOpenCtx v' w) -> f (VarOpenCtx (VarInModule v') w)
         wkn = fmap (bimap VarInModule id)
         d = ctx'mode $ gamma :<...> modul
-lookupQName (dmu :\\ gamma) qname = lookupQName gamma qname
+lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
+  Nothing -> Nothing
+  Just (LeftDivided dOrig dmu' seg) ->
+    let d = modality'dom dmu
+        mu = modality'mod dmu
+        d' = modality'dom dmu'
+        mu' = modality'mod dmu'
+    in Just $ LeftDivided dOrig (ModedModality d (compMod mu' d' mu)) seg
 
 ------------------------
 
