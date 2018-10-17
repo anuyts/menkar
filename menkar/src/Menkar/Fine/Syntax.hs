@@ -82,6 +82,18 @@ newtype Modty mode modty v = Modty (modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term mode modty) modty) => CanSwallow (Term mode modty) (Modty mode modty)
 
+data LeftDivided content mode modty v =
+  LeftDivided {_leftDivided'contramodality :: ModedContramodality mode modty v, _leftDivided'content :: content mode modty v}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (content mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (content mode modty)
+  ) => CanSwallow (Term mode modty) (LeftDivided content mode modty)
+
 
 {-
 modedLeftAdjoint :: ModedModality mode modty v -> ModedContramodality mode modty v
@@ -117,7 +129,10 @@ data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Pi (Binding Term mode modty v) |
   Sigma (Binding Term mode modty v) |
   EmptyType |
-  UnitType
+  UnitType |
+  BoxType
+    (ModedModality mode modty v) {-^ box's modality -}
+    (Term mode modty v) {-^ box's type -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (TypeTerm mode modty)
@@ -133,7 +148,11 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Binding Term mode modty v) {-^ pair's sigma type -} 
     (Term mode modty v)
     (Term mode modty v) |
-  ConsUnit
+  ConsUnit |
+  ConsBox
+    (ModedModality mode modty v) {-^ box's modality -}
+    (Term mode modty v) {-^ box's type -}
+    (Term mode modty v) {-^ box's content -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ConstructorTerm mode modty)
@@ -162,7 +181,10 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Snd
     (Binding Term mode modty v) {-^ pair's sigma type -} |
   ElimEmpty
-    (Binding Term mode modty v) {-^ motive -}
+    (Binding Term mode modty v) {-^ motive -} |
+  Unbox
+    (ModedModality mode modty v) {-^ box's modality -}
+    (Term mode modty v) {-^ box's type -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)
@@ -379,6 +401,9 @@ _val'name seg = case _tdecl'name seg of
   DeclNameVal name -> name
 -}
 type Val = Declaration DeclSortVal (Telescoped Type ValRHS)
+_val'name :: Val mode modty v -> Raw.Name
+_val'name val = case _decl'name val of
+  DeclNameVal name -> name
 
 {-
 data ModuleRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =

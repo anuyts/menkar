@@ -12,15 +12,27 @@ import Data.Functor.Identity
 import Control.Exception.AssertFalse
 import Data.Void
 
+-- TODOMOD means todo for modalities
+
 ----------------------------
 
+-- TODOMOD: you need to use a box for :**
 telescoped2lambda :: Telescoped Type Term mode modty v -> Term mode modty v
 telescoped2lambda (Telescoped t) = t
 telescoped2lambda (seg :|- telescopedTerm) = Expr3 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedTerm)
+telescoped2lambda (dmu :** telescopedTerm) = telescoped2lambda telescopedTerm
 
+-- TODOMOD: you need to use a box for :**
 telescoped2pi :: Telescoped Type Type mode modty v -> Term mode modty v
 telescoped2pi (Telescoped (Type t)) = t
 telescoped2pi (seg :|- telescopedTerm) = Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedTerm)
+telescoped2pi (dmu :** telescopedTerm) = telescoped2pi telescopedTerm
+
+telescoped2quantified :: (Functor mode, Functor modty) =>
+  Telescoped Type ValRHS mode modty v -> ValRHS mode modty v
+telescoped2quantified telescopedVal = ValRHS
+  (telescoped2lambda $ runIdentity $ mapTelescopedSimple (\wkn -> Identity . _val'term) $ telescopedVal)
+  (Type $ telescoped2pi $ runIdentity $ mapTelescopedSimple (\wkn -> Identity . _val'type) $ telescopedVal)
 
 ----------------------------
 
@@ -49,6 +61,7 @@ lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
 
 ----------------------------
 
+{-
 lookupQNameEntryListTerm :: (Functor mode, Functor modty) =>
   [Entry mode modty v] -> Raw.QName -> Maybe (Term mode modty v)
 lookupQNameEntryListTerm [] qname = Nothing
@@ -156,9 +169,72 @@ lookupQNameType (gamma :<...> modul) qname = case lookupQNameModuleType modul qn
   Nothing -> wkn $ lookupQNameType gamma qname
   where wkn = fmap (fmap (bimap VarInModule id))
 lookupQNameType (dkappa :\\ gamma) qname = lookupQNameType gamma qname
+-}
+
+----------------------------
+
+-- TODOMOD: you need to add a modality application to the telescope, based on the entry's annotation
+lookupQNameEntryList :: (Functor mode, Functor modty) =>
+  [Entry mode modty v] -> Raw.QName -> Maybe (ValRHS mode modty v)
+lookupQNameEntryList [] qname = Nothing
+lookupQNameEntryList (EntryVal val : entries) qname
+  | qname == Raw.Qualified [] (_val'name val) = Just $ telescoped2quantified $ _decl'content val
+  | otherwise = lookupQNameEntryList entries qname
+lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
+  Raw.Qualified [] _ -> lookupQNameEntryList entries qname
+  Raw.Qualified (moduleStr : qual) name ->
+    if moduleStr == _module'name modul
+    then fmap telescoped2quantified $ mapTelescopedSimple (
+        \ wkn moduleRHS -> lookupQNameModule moduleRHS qname
+      ) $ _decl'content modul
+
+    {-Type . telescoped2pi <$> mapTelescopedSimple (
+        \ wkn declModule -> lookupQNameModuleType (_decl'content declModule) (Raw.Qualified qual name))
+      modul-}
+    else lookupQNameEntryList entries qname
+
+lookupQNameModule :: (Functor mode, Functor modty) =>
+  ModuleRHS mode modty v -> Raw.QName -> Maybe (ValRHS mode modty v)
+lookupQNameModule modul qname =
+  lookupQNameEntryList (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
+
+-- TODOMOD: you need to change output type to @Maybe (LeftDivided ValRHS mode modty (VarOpenCtx v w))@
+-- TODOMOD: you need to do a left-division in the :\\ case.
+lookupQName :: (Functor mode, Functor modty) =>
+  Ctx Type mode modty v w -> Raw.QName -> Maybe (ValRHS mode modty (VarOpenCtx v w))
+lookupQName CtxEmpty qname = Nothing
+lookupQName (gamma :.. seg) qname = case _segment'name seg of
+  Nothing -> wkn <$> lookupQName gamma qname
+  Just varname -> case qname of
+    Raw.Qualified [] name -> if name == varname
+                                then Just $ (ValRHS (Var3 $ VarFromCtx $ VarLast) (wkn $ _segment'content seg))
+                                else wkn <$> lookupQName gamma qname
+    _ -> wkn <$> lookupQName gamma qname
+  where wkn :: (Functor f) => f (VarOpenCtx v' w') -> f (VarOpenCtx (VarExt v') w')
+        wkn = fmap (bimap VarWkn id)
+lookupQName (seg :^^ gamma) qname = case _segment'name seg of
+  Nothing -> wkn <$> lookupQName gamma qname
+  Just varname -> case qname of
+    Raw.Qualified [] name -> if name == varname
+                                then Just $ ValRHS (Var3 $ VarFromCtx $ VarFirst) (VarBeforeCtx <$> _segment'content seg)
+                                else wkn <$> lookupQName gamma qname
+    _ -> wkn <$> lookupQName gamma qname
+  where wkn :: (Functor f) => f (VarOpenCtx v' (VarExt w')) -> f (VarOpenCtx (VarLeftExt v') w')
+        wkn = fmap wkn'
+        wkn' u = case u of
+           VarBeforeCtx (VarWkn w) -> VarBeforeCtx w
+           VarBeforeCtx VarLast -> VarFromCtx $ VarFirst
+           VarFromCtx v -> VarFromCtx $ VarLeftWkn v
+           _ -> unreachable
+lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
+  Just t -> Just $ wkn $ t
+  Nothing -> wkn <$> lookupQName gamma qname
+  where wkn = fmap (bimap VarInModule id)
+lookupQName (dkappa :\\ gamma) qname = lookupQName gamma qname
 
 ------------------------
 
+-- TODOMOD: you need to change output type to @LeftDivided Type mode modty (VarOpenCtx v w)@
 lookupVarType :: (Functor mode, Functor modty) =>
   Ctx Type mode modty v w -> v -> Type mode modty (VarOpenCtx v w)
 lookupVarType CtxEmpty v = absurd v
