@@ -139,12 +139,7 @@ instance (
 mode'ctx :: Multimode mode modty => Ctx ty mode modty v w -> mode (VarOpenCtx v w)
 mode'ctx (CtxEmpty d) = VarBeforeCtx <$> d
 mode'ctx (gamma :.. seg) = bimap VarWkn id <$> mode'ctx gamma
-mode'ctx (seg :^^ gamma) = wkn <$> mode'ctx gamma
-  where wkn u = case u of
-           VarBeforeCtx (VarWkn w) -> VarBeforeCtx w
-           VarBeforeCtx VarLast -> VarFromCtx $ VarFirst
-           VarFromCtx v -> VarFromCtx $ VarLeftWkn v
-           _ -> unreachable
+mode'ctx (seg :^^ gamma) = varLeftEat <$> mode'ctx gamma
 mode'ctx (gamma :<...> modul) = bimap VarInModule id <$> mode'ctx gamma
 mode'ctx (dmu :\\ gamma) = modality'dom dmu
 

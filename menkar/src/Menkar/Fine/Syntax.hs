@@ -82,8 +82,10 @@ newtype Modty mode modty v = Modty (modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term mode modty) modty) => CanSwallow (Term mode modty) (Modty mode modty)
 
-data LeftDivided content mode modty v =
-  LeftDivided {_leftDivided'contramodality :: ModedContramodality mode modty v, _leftDivided'content :: content mode modty v}
+data LeftDivided content mode modty v = LeftDivided {
+    _leftDivided'originalMode :: mode v,
+    _leftDivided'modality :: ModedModality mode modty v,
+    _leftDivided'content :: content mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
     Functor mode,

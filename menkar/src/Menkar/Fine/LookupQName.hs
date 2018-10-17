@@ -205,7 +205,7 @@ lookupQNameModule modul qname =
 -- TODOMOD: you need to do a left-division in the :\\ case.
 lookupQName :: (Functor mode, Functor modty) =>
   Ctx Type mode modty v w -> Raw.QName -> Maybe (ValRHS mode modty (VarOpenCtx v w))
-lookupQName CtxEmpty qname = Nothing
+lookupQName (CtxEmpty _) qname = Nothing
 lookupQName (gamma :.. seg) qname = case _segment'name seg of
   Nothing -> wkn <$> lookupQName gamma qname
   Just varname -> case qname of
@@ -223,12 +223,7 @@ lookupQName (seg :^^ gamma) qname = case _segment'name seg of
                                 else wkn <$> lookupQName gamma qname
     _ -> wkn <$> lookupQName gamma qname
   where wkn :: (Functor f) => f (VarOpenCtx v' (VarExt w')) -> f (VarOpenCtx (VarLeftExt v') w')
-        wkn = fmap wkn'
-        wkn' u = case u of
-           VarBeforeCtx (VarWkn w) -> VarBeforeCtx w
-           VarBeforeCtx VarLast -> VarFromCtx $ VarFirst
-           VarFromCtx v -> VarFromCtx $ VarLeftWkn v
-           _ -> unreachable
+        wkn = fmap varLeftEat
 lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
   Just t -> Just $ wkn $ t
   Nothing -> wkn <$> lookupQName gamma qname
@@ -243,10 +238,11 @@ lookupQNameTerm gamma qname = _val'term <$> lookupQName gamma qname
 
 ------------------------
 
+{-
 -- TODOMOD: you need to change output type to @LeftDivided Type mode modty (VarOpenCtx v w)@
 lookupVarType :: (Functor mode, Functor modty) =>
   Ctx Type mode modty v w -> v -> Type mode modty (VarOpenCtx v w)
-lookupVarType CtxEmpty v = absurd v
+lookupVarType (CtxEmpty _) v = absurd v
 lookupVarType (gamma :.. seg) (VarLast) = bimap VarWkn id <$> _segment'content seg
 lookupVarType (gamma :.. seg) (VarWkn v) = bimap VarWkn id <$> lookupVarType gamma v
 lookupVarType (gamma :.. seg) _ = unreachable
@@ -259,12 +255,23 @@ lookupVarType (seg :^^ gamma) (VarLeftWkn v) = wkn <$> lookupVarType gamma v
 lookupVarType (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lookupVarType gamma v
 lookupVarType (dkappa :\\ gamma) v = lookupVarType gamma v
 lookupVarType gamma v = unreachable
-
-{-
-lookupVar :: (Multimode mode modty) =>
-  Ctx Type mode modty v w -> mode (VarOpenCtx v w) -> v -> LeftDivided (Segment Type) mode modty (VarOpenCtx v w)
-lookupVar CtxEmpty d v = absurd v
-lookupVar (gamma :.. seg) d (VarLast) = LeftDivided (ModedContramodality d (idMod d))$ bimap VarWkn id <$> seg
-lookupVar
-lookupVar gamma d v = _lookupVar
 -}
+
+lookupVar :: (Multimode mode modty) =>
+  Ctx Type mode modty v w -> v -> LeftDivided (Segment Type) mode modty (VarOpenCtx v w)
+lookupVar (CtxEmpty d) v = absurd v
+lookupVar (gamma :.. seg) (VarLast) = LeftDivided d (ModedModality d (idMod d)) $ bimap VarWkn id <$> seg
+  where d = mode'ctx (gamma :.. seg)
+lookupVar (gamma :.. seg) (VarWkn v) = bimap VarWkn id <$> lookupVar gamma v
+lookupVar (gamma :.. seg) _ = unreachable
+lookupVar (seg :^^ gamma) (VarFirst) = LeftDivided d (ModedModality d (idMod d)) $ VarBeforeCtx <$> seg
+  where d = mode'ctx (seg :^^ gamma)
+lookupVar (seg :^^ gamma) (VarLeftWkn v) = varLeftEat <$> lookupVar gamma v
+lookupVar (seg :^^ gamma) _ = unreachable
+lookupVar (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lookupVar gamma v
+lookupVar (dmu :\\ gamma) v = LeftDivided dOrig (ModedModality d (compMod mu' d' mu)) seg
+  where LeftDivided dOrig dmu' seg = lookupVar gamma v
+        d = modality'dom dmu
+        mu = modality'mod dmu
+        d' = modality'dom dmu'
+        mu' = modality'mod dmu'
