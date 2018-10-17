@@ -6,6 +6,7 @@ module Menkar.Fine.Context where
 import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context.Variable
+import Menkar.Fine.Multimode
 import Data.Void
 import Control.Exception.AssertFalse
 import qualified Menkar.Raw.Syntax as Raw
@@ -134,6 +135,18 @@ instance (
   swallow (seg :^^ gamma) = swallow seg :^^ swallow (fmap sequenceA gamma)
   swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
   swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
+
+mode'ctx :: Multimode mode modty => Ctx ty mode modty v w -> mode (VarOpenCtx v w)
+mode'ctx (CtxEmpty d) = VarBeforeCtx <$> d
+mode'ctx (gamma :.. seg) = bimap VarWkn id <$> mode'ctx gamma
+mode'ctx (seg :^^ gamma) = wkn <$> mode'ctx gamma
+  where wkn u = case u of
+           VarBeforeCtx (VarWkn w) -> VarBeforeCtx w
+           VarBeforeCtx VarLast -> VarFromCtx $ VarFirst
+           VarFromCtx v -> VarFromCtx $ VarLeftWkn v
+           _ -> unreachable
+mode'ctx (gamma :<...> modul) = bimap VarInModule id <$> mode'ctx gamma
+mode'ctx (dmu :\\ gamma) = modality'dom dmu
 
 {-
 -- TODO: you need a left division here!
