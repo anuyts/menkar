@@ -136,12 +136,12 @@ instance (
   swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
   swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
 
-mode'ctx :: Multimode mode modty => Ctx ty mode modty v w -> mode (VarOpenCtx v w)
-mode'ctx (CtxEmpty d) = VarBeforeCtx <$> d
-mode'ctx (gamma :.. seg) = bimap VarWkn id <$> mode'ctx gamma
-mode'ctx (seg :^^ gamma) = varLeftEat <$> mode'ctx gamma
-mode'ctx (gamma :<...> modul) = bimap VarInModule id <$> mode'ctx gamma
-mode'ctx (dmu :\\ gamma) = modality'dom dmu
+ctx'mode :: Multimode mode modty => Ctx ty mode modty v w -> mode (VarOpenCtx v w)
+ctx'mode (CtxEmpty d) = VarBeforeCtx <$> d
+ctx'mode (gamma :.. seg) = bimap VarWkn id <$> ctx'mode gamma
+ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
+ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
+ctx'mode (dmu :\\ gamma) = modality'dom dmu
 
 {-
 -- TODO: you need a left division here!

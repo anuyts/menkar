@@ -456,3 +456,5 @@ telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit
 
 --type LHS declSort ty = TelescopedDeclaration declSort ty Unit3
 type LHS declSort ty = Declaration declSort (Telescope ty)
+
+makeLenses ''LeftDivided
