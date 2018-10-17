@@ -15,82 +15,72 @@ import Data.Functor.Identity
 data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
 
   {-
-  -- | @'JudType' gamma d@ means @gamma |-{d} ctx@
+  -- | @'JudType' gamma@ means @gamma |- ctx@
   JudCtx ::
     Ctx Type mode modty v Void ->
-    mode v ->
     Judgement mode modty rel
   JudCtxRel ::
     Ctx (Pair3 Type) mode modty v Void ->
-    mode v ->
     Judgement mode modty rel
   -}
   
-  -- | @'JudType' gamma d tyT@ means @gamma |-{d} tyT type@
+  -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
   -- | Premises: @'JudCtx'@
   JudType ::
     Ctx Type mode modty v Void ->
-    mode v ->
     Type mode modty v ->
     Judgement mode modty rel
   JudTypeRel ::
     rel v ->
     Ctx (Pair3 Type) mode modty v Void ->
-    mode v ->
     Pair3 Type mode modty v ->
     Judgement mode modty rel
     
-  -- | @'JudTerm' gamma d t tyT@ means @gamma |-{d} t : tyT@.
+  -- | @'JudTerm' gamma t tyT@ means @gamma |- t : tyT@.
   -- | Premises: @'JudCtx', 'JudType'@
   JudTerm ::
     Ctx Type mode modty v Void ->
-    mode v ->
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
   JudTermRel ::
     rel v ->
     Ctx (Pair3 Type) mode modty v Void ->
-    mode v ->
     Pair3 Term mode modty v ->
     Pair3 Type mode modty v ->
     Judgement mode modty rel
     
-  -- | @'JudEta' gamma d t tyT@ means @gamma |-{d} t == some-eta-expansion : tyT@.
+  -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.
   -- | Premises: @'JudCtx', 'JudType', 'JudTerm'@
   JudEta ::
     Ctx Type mode modty v Void ->
-    mode v -> 
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
     
-  -- | @'JudSmartElim' gamma d t tyT es r@ means @gamma |-{d} (t : tyT) es ~> r@.
-  -- | Premises: @'JudCtx gamma d', 'JudType gamma d tyT', 'JudTerm gamma d t tyT', 'JudTerm gamma d r _'@
+  -- | @'JudSmartElim' gamma t tyT es r@ means @gamma |- (t : tyT) es ~> r@.
+  -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
   JudSmartElim ::
     Ctx Type mode modty v Void ->
-    mode v -> 
     Term mode modty v ->
     Type mode modty v ->
     [SmartEliminator mode modty v] ->
     Term mode modty v ->
     Judgement mode modty rel
     
-  -- | @'JudGoal' gamma d goalname t tyT@ means that goal @goalname@ equals term @t@.
+  -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
   -- | Premises: @'JudTerm'@
   JudGoal ::
     Ctx Type mode modty v Void ->
-    mode v -> 
     String ->
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
     
-  -- | @'JudResolve' gamma d t r tyT@ means @gamma |-{d} t ~> r : tyT@ where @t@ is a resolution call.
+  -- | @'JudResolve' gamma t r tyT@ means @gamma |- t ~> r : tyT@ where @t@ is a resolution call.
   -- | Premises?
   JudResolve ::
     Ctx Type mode modty v Void ->
-    mode v ->
     {- resolution call goes here -> -}
     Term mode modty v ->
     Type mode modty v ->
