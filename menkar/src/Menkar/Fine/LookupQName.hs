@@ -4,6 +4,7 @@ import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context.Variable
 import Menkar.Fine.Context
+import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw
 import Data.Bifunctor
 import Data.Maybe
@@ -236,6 +237,12 @@ lookupQName (dkappa :\\ gamma) qname = lookupQName gamma qname
 
 ------------------------
 
+lookupQNameTerm :: (Functor mode, Functor modty, Functor (Type mode modty)) =>
+  Ctx Type mode modty v w -> Raw.QName -> Maybe (Term mode modty (VarOpenCtx v w))
+lookupQNameTerm gamma qname = _val'term <$> lookupQName gamma qname
+
+------------------------
+
 -- TODOMOD: you need to change output type to @LeftDivided Type mode modty (VarOpenCtx v w)@
 lookupVarType :: (Functor mode, Functor modty) =>
   Ctx Type mode modty v w -> v -> Type mode modty (VarOpenCtx v w)
@@ -253,6 +260,11 @@ lookupVarType (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lo
 lookupVarType (dkappa :\\ gamma) v = lookupVarType gamma v
 lookupVarType gamma v = unreachable
 
-lookupQNameTerm :: (Functor mode, Functor modty, Functor (Type mode modty)) =>
-  Ctx Type mode modty v w -> Raw.QName -> Maybe (Term mode modty (VarOpenCtx v w))
-lookupQNameTerm gamma qname = _val'term <$> lookupQName gamma qname
+{-
+lookupVar :: (Multimode mode modty) =>
+  Ctx Type mode modty v w -> mode (VarOpenCtx v w) -> v -> LeftDivided (Segment Type) mode modty (VarOpenCtx v w)
+lookupVar CtxEmpty d v = absurd v
+lookupVar (gamma :.. seg) d (VarLast) = LeftDivided (ModedContramodality d (idMod d))$ bimap VarWkn id <$> seg
+lookupVar
+lookupVar gamma d v = _lookupVar
+-}
