@@ -9,12 +9,16 @@ import Data.Void
 import Control.Monad.Writer
 import Control.Exception.AssertFalse
 
+--TODOMOD means todo for modalities
+
 {- Note about eta-rules:
    * For unit, there is no eliminator, so we need not normalize elements of Unit to unit.
    * For pairs, applying a projection to a non-constructor term yields the desired term anyway.
    * For non-projectible pairs, there was no eta-rule anyway.
    In summary, we don't eta-expand.
 -}
+--TODOMOD normalize tmFst in different context
+--TODOMOD normalize unboxed term in different context
 whnormalizeElim :: (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   Ctx Type mode modty v Void ->
   mode v {-^ eliminee's mode -} ->
@@ -56,6 +60,8 @@ whnormalizeElim gamma d1 d2 mu eliminee e = do
         in whnormalize gamma d2 (join $ subst <$> binding'body (binding'body clause))
       --empty type cases (none)
       --unit cases (none)
+      --box cases
+      (ConsBox dmu ty tm, Unbox dmu' ty') -> whnormalize gamma d2 tm
       --nonsensical cases
       (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim (ModedModality d1 mu) whnEliminee e
     Expr3 _ -> unreachable
@@ -68,7 +74,7 @@ whnormalizeNV :: (Functor mode, Functor modty, CanSwallow (Term mode modty) mode
 whnormalizeNV gamma d t@(TermCons _) = return . Expr3 $ t   -- Mind glue and weld!
 whnormalizeNV gamma d (TermElim dmu t e) = whnormalizeElim gamma (modality'dom dmu) d (modality'mod dmu) t e
 whnormalizeNV gamma d t@(TermMeta i depcies) = Expr3 t <$ tell [i]
-whnormalizeNV gamma d (TermQName qname) = case lookupQName gamma qname of
+whnormalizeNV gamma d (TermQName qname) = case lookupQNameTerm gamma qname of
   Nothing -> return $ Expr3 $ TermProblem $ Expr3 $ TermQName qname
   Just t -> whnormalize gamma d (unVarFromCtx <$> t)
 whnormalizeNV gamma d (TermSmartElim eliminee eliminators result) = whnormalize gamma d result

@@ -114,9 +114,11 @@ lookupQNameTerm (gamma :<...> modul) qname = case lookupQNameModuleTerm modul qn
   Nothing -> wkn $ lookupQNameTerm gamma qname
   where wkn = fmap (fmap (bimap VarInModule id))
 lookupQNameTerm (dkappa :\\ gamma) qname = lookupQNameTerm gamma qname
+-}
 
 ---------------------------------
 
+{-
 lookupQNameEntryListType :: (Functor mode, Functor modty) =>
   [Entry mode modty v] -> Raw.QName -> Maybe (Type mode modty v)
 lookupQNameEntryListType [] qname = Nothing
@@ -250,3 +252,7 @@ lookupVarType (seg :^^ gamma) (VarLeftWkn v) = wkn <$> lookupVarType gamma v
 lookupVarType (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lookupVarType gamma v
 lookupVarType (dkappa :\\ gamma) v = lookupVarType gamma v
 lookupVarType gamma v = unreachable
+
+lookupQNameTerm :: (Functor mode, Functor modty, Functor (Type mode modty)) =>
+  Ctx Type mode modty v w -> Raw.QName -> Maybe (Term mode modty (VarOpenCtx v w))
+lookupQNameTerm gamma qname = _val'term <$> lookupQName gamma qname
