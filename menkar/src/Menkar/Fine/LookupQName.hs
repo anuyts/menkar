@@ -18,22 +18,25 @@ import Data.Void
 ----------------------------
 
 -- TODOMOD: you need to use a box for :**
-telescoped2lambda :: Telescoped Type Term mode modty v -> Term mode modty v
-telescoped2lambda (Telescoped t) = t
-telescoped2lambda (seg :|- telescopedTerm) = Expr3 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedTerm)
-telescoped2lambda (dmu :** telescopedTerm) = telescoped2lambda telescopedTerm
+telescoped2lambda :: Telescoped Type ValRHS mode modty v -> Term mode modty v
+telescoped2lambda (Telescoped valRHS) = _val'term valRHS
+telescoped2lambda (seg :|- telescopedValRHS) = Expr3 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedValRHS)
+telescoped2lambda (dmu :** telescopedValRHS) = Expr3 $ TermCons $ ConsBox
+  (Declaration (DeclNameSegment Nothing) dmu Explicit (Type $ telescoped2pi telescopedValRHS))
+  (telescoped2lambda telescopedValRHS)
 
 -- TODOMOD: you need to use a box for :**
-telescoped2pi :: Telescoped Type Type mode modty v -> Term mode modty v
-telescoped2pi (Telescoped (Type t)) = t
-telescoped2pi (seg :|- telescopedTerm) = Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedTerm)
-telescoped2pi (dmu :** telescopedTerm) = telescoped2pi telescopedTerm
+telescoped2pi :: Telescoped Type ValRHS mode modty v -> Term mode modty v
+telescoped2pi (Telescoped valRHS) = case _val'type valRHS of Type ty -> ty
+telescoped2pi (seg :|- telescopedValRHS) = Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedValRHS)
+telescoped2pi (dmu :** telescopedValRHS) = Expr3 $ TermCons $ ConsUniHS $ BoxType $
+  Declaration (DeclNameSegment Nothing) dmu Explicit (Type $ telescoped2pi telescopedValRHS)
 
 telescoped2quantified :: (Functor mode, Functor modty) =>
   Telescoped Type ValRHS mode modty v -> ValRHS mode modty v
 telescoped2quantified telescopedVal = ValRHS
-  (telescoped2lambda $ runIdentity $ mapTelescopedSimple (\wkn -> Identity . _val'term) $ telescopedVal)
-  (Type $ telescoped2pi $ runIdentity $ mapTelescopedSimple (\wkn -> Identity . _val'type) $ telescopedVal)
+  (telescoped2lambda $ telescopedVal)
+  (Type $ telescoped2pi $ telescopedVal)
 
 ----------------------------
 
