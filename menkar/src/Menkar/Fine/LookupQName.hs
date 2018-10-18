@@ -181,21 +181,16 @@ lookupQNameEntryList :: (Functor mode, Functor modty) =>
   [Entry mode modty v] -> Raw.QName -> Maybe (ValRHS mode modty v)
 lookupQNameEntryList [] qname = Nothing
 lookupQNameEntryList (EntryVal val : entries) qname
-  | qname == Raw.Qualified [] (_val'name val) = Just $ telescoped2quantified $ _decl'content val
+  | qname == Raw.Qualified [] (_val'name val) = Just $ telescoped2quantified $ _decl'modty val :** _decl'content val
   | otherwise = lookupQNameEntryList entries qname
 lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
   Raw.Qualified [] _ -> lookupQNameEntryList entries qname
   Raw.Qualified (moduleStr : qual) name ->
     if moduleStr == _module'name modul
-    then fmap telescoped2quantified $ mapTelescopedSimple (
+    then fmap (telescoped2quantified . (_decl'modty modul :**)) $ mapTelescopedSimple (
         \ wkn moduleRHS -> lookupQNameModule moduleRHS qname
       ) $ _decl'content modul
-
-    {-Type . telescoped2pi <$> mapTelescopedSimple (
-        \ wkn declModule -> lookupQNameModuleType (_decl'content declModule) (Raw.Qualified qual name))
-      modul-}
     else lookupQNameEntryList entries qname
-
 lookupQNameModule :: (Functor mode, Functor modty) =>
   ModuleRHS mode modty v -> Raw.QName -> Maybe (ValRHS mode modty v)
 lookupQNameModule modul qname =
