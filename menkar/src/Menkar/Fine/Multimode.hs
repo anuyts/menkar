@@ -10,3 +10,10 @@ class (
   ) => Multimode mode modty where
   idMod :: mode v -> modty v
   compMod :: modty v -> mode v -> modty v -> modty v
+
+class (
+    Multimode mode modty,
+    Functor rel,
+    CanSwallow (Term mode modty) rel
+  ) => Degrees mode modty rel | rel -> mode, rel -> modty where
+  eqDeg :: rel v

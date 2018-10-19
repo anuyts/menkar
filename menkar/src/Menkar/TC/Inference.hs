@@ -14,20 +14,39 @@ import Data.Void
 -- CMODTY means you need to check a modality
 
 checkConstraintTerm :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     Term mode modty v ->
     Type mode modty v ->
     tc ()
 
-checkConstraintTerm gamma (Var3 v) (Type ty) = do
-  let ldivseg = lookupVar gamma v
-  _checkVar
+checkConstraintTerm parent gamma (Var3 v) (Type ty) = do
+  let ldivSeg = lookupVar gamma v
+  varAccessible <- leqMod
+    (modality'mod . _decl'modty . _leftDivided'content $ ldivSeg)
+    (modality'mod . _leftDivided'modality $ ldivSeg)
+  if varAccessible
+    then do
+      i <- newConstraintID
+      addConstraint $ Constraint
+        (JudTypeRel
+          eqDeg
+          (mapCtx (\ty -> Pair3 ty ty) gamma)
+          (Pair3
+            (unVarFromCtx <$> (_decl'content . _leftDivided'content $ ldivSeg))
+            (Type ty)
+          )
+        )
+        (Just parent)
+        "Checking whether expected type equals actual type."
+        i
+    else tcFail parent $ "Variable cannot be used here: modality restrictions are too strong."
 
-checkConstraintTerm gamma t (Type ty) = _checkConstraintTerm
+checkConstraintTerm parent gamma t (Type ty) = _checkConstraintTerm
 
 -------
 
-checkConstraint :: Multimode mode modty => MonadTC mode modty rel tc => Constraint mode modty rel -> tc ()
+checkConstraint :: (MonadTC mode modty rel tc) => Constraint mode modty rel -> tc ()
 
 checkConstraint parent = case constraint'judgement parent of
   
@@ -60,6 +79,6 @@ checkConstraint parent = case constraint'judgement parent of
       "Checking that type lives in a Hofmann-Streicher universe."
       i
 
-  JudTerm gamma t ty -> checkConstraintTerm gamma t ty
+  JudTerm gamma t ty -> checkConstraintTerm parent gamma t ty
   
   _ -> _checkConstraint

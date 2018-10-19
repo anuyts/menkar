@@ -15,7 +15,7 @@ data Constraint mode modty rel = Constraint {
   }
 
 class (
-    Multimode mode modty,
+    Degrees mode modty rel,
     Monad tc,
     Traversable mode,
     Traversable modty,
@@ -32,3 +32,4 @@ class (
   {-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   blockOnMetas :: Constraint mode modty rel -> [Int] -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc ()
+  leqMod :: modty v -> modty v -> tc Bool
