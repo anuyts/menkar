@@ -1,9 +1,8 @@
-module Menkar.TCMonad.MonadTC where
+module Menkar.TC.Monad where
 
-import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
-import Menkar.Fine.Context.Variable
+import Menkar.Basic.Context
 import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw
 import Data.Void

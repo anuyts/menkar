@@ -1,7 +1,6 @@
 module Menkar.Fine.Multimode where
 
 import Menkar.Fine.Syntax
-import Menkar.Fine.Substitution
 
 class (
     Functor mode,

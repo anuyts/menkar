@@ -1,12 +1,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Menkar.Fine.PrettyPrint where
+module Menkar.PrettyPrint.Fine.Syntax where
 
 import Menkar.Fine.Syntax
-import Menkar.Fine.Substitution
+import Menkar.Basic.Context
 import Menkar.Fine.Context
-import Menkar.Fine.Context.Variable
 import qualified Menkar.Raw as Raw
+import qualified Menkar.PrettyPrint.Raw as Raw
 import Text.PrettyPrint.Tree
 import Data.Void
 import Data.Maybe

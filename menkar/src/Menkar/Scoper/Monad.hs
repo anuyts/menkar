@@ -1,11 +1,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Menkar.TCMonad.MonadScoper where
+module Menkar.Scoper.Monad where
 
-import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
---import Menkar.Fine.Judgement
-import Menkar.Fine.Context.Variable
+import Menkar.Basic.Context
 import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw
 import Control.Monad.State.Lazy

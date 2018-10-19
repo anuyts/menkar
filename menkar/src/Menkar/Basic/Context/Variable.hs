@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, NoDeriveAnyClass #-}
 
-module Menkar.Fine.Context.Variable where
+module Menkar.Basic.Context.Variable where
 
 import Data.Bifunctor
 import Control.Exception.AssertFalse

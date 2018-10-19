@@ -6,6 +6,7 @@ import qualified Text.Megaparsec as MP
 import qualified Text.Megaparsec.Char as MP
 import qualified Text.Megaparsec.Expr as MP
 import qualified Menkar.Raw as Raw
+import qualified Menkar.PrettyPrint.Raw as Raw
 import qualified Text.Megaparsec.Char.Lexer as MPL
 import Control.Monad.Identity
 import Control.Applicative

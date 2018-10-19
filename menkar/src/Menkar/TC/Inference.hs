@@ -1,12 +1,11 @@
-module Menkar.TypeChecker where
+module Menkar.TC.Inference where
 
 import Menkar.Fine.Syntax
-import Menkar.Fine.Substitution
+import Menkar.Basic.Context
 import Menkar.Fine.Context
-import Menkar.Fine.Context.Variable
 import Menkar.Fine.Judgement
 import qualified Menkar.Raw.Syntax as Raw
-import Menkar.TCMonad.MonadTC
+import Menkar.TC.Monad
 import Data.Void
 
 -- CMODE means you need to check a mode

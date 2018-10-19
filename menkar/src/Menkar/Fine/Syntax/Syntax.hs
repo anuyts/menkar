@@ -1,10 +1,10 @@
 {- # LANGUAGE DataKinds, KindSignatures, GADTs, TypeOperators, RankNTypes, #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Menkar.Fine.Syntax where
+module Menkar.Fine.Syntax.Syntax where
 
-import Menkar.Fine.Substitution hiding (Expr (..))
-import Menkar.Fine.Context.Variable
+import Menkar.Fine.Syntax.Substitution hiding (Expr (..))
+import Menkar.Basic.Context.Variable
 import GHC.Generics
 import qualified Menkar.Raw.Syntax as Raw
 import Data.Functor.Compose

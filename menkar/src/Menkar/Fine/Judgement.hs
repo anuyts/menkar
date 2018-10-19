@@ -1,11 +1,11 @@
 module Menkar.Fine.Judgement where
 
-import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
+import qualified Menkar.Raw.Syntax as Raw
+
 import Data.Void
 import Control.Exception.AssertFalse
-import qualified Menkar.Raw.Syntax as Raw
 import Data.Bifunctor
 import Data.Maybe
 import GHC.Generics

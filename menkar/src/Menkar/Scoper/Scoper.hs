@@ -1,14 +1,14 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, ApplicativeDo, MultiParamTypeClasses #-}
 
-module Menkar.Scoper where
+module Menkar.Scoper.Scoper where
 
 import Prelude hiding (pi)
-import Menkar.TCMonad.MonadScoper
+import Menkar.Scoper.Monad
 import qualified Menkar.Raw as Raw
+import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
-import Menkar.Fine.Substitution
-import Menkar.Fine.Context.Variable
+import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Control.Exception.AssertFalse
 import Control.Monad.State.Lazy

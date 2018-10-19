@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Menkar.Raw.PrettyPrint where
+module Menkar.PrettyPrint.Raw.Syntax where
 
 import Control.Exception.AssertFalse
 import Menkar.Raw.Syntax

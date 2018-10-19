@@ -1,15 +1,15 @@
 {-# LANGUAGE NoDeriveAnyClass, GeneralizedNewtypeDeriving #-}
 
-module Menkar.TCMonad.MonadScoper.Simple where
+module Menkar.Scoper.Monad.Simple where
 
-import Menkar.TCMonad.MonadScoper
+import Menkar.Scoper.Monad
 import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
-import Menkar.Fine.Context.Variable
+import Menkar.Basic.Context
 import Menkar.Fine.Context
-import Menkar.Fine.Substitution
-import Menkar.Fine.PrettyPrint
+import Menkar.PrettyPrint.Fine
 import qualified Menkar.Raw as Raw
+import qualified Menkar.PrettyPrint.Raw as Raw
 import Control.Monad.State.Lazy
 import GHC.Generics (U1 (..))
 import Text.PrettyPrint.Tree
@@ -17,7 +17,7 @@ import Data.Functor.Compose
 import Data.Void
 
 import qualified Menkar.Parser as P -- for testscope
-import Menkar.Scoper -- for testscope
+import Menkar.Scoper.Scoper -- for testscope
 
 {-
 type SimpleScoper = StateT Int (Either String)

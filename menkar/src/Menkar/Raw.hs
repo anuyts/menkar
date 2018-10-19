@@ -1,6 +1,5 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Menkar.Raw (module Menkar.Raw.Syntax, module Menkar.Raw.PrettyPrint) where
+module Menkar.Raw (module Menkar.Raw.Syntax) where
 
 import Menkar.Raw.Syntax
-import Menkar.Raw.PrettyPrint

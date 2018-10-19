@@ -3,9 +3,8 @@
 
 module Menkar.Fine.Context where
 
-import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
-import Menkar.Fine.Context.Variable
+import Menkar.Basic.Context.Variable
 import Menkar.Fine.Multimode
 import Data.Void
 import Control.Exception.AssertFalse
