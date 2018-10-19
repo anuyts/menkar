@@ -6,7 +6,7 @@ import Prelude hiding (pi)
 import Menkar.TCMonad.MonadScoper
 import qualified Menkar.Raw as Raw
 import Menkar.Fine.Syntax
-import Menkar.Fine.Judgement
+--import Menkar.Fine.Judgement
 import Menkar.Fine.Substitution
 import Menkar.Fine.Context.Variable
 import Menkar.Fine.Context

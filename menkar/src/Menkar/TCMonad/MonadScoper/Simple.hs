@@ -4,7 +4,7 @@ module Menkar.TCMonad.MonadScoper.Simple where
 
 import Menkar.TCMonad.MonadScoper
 import Menkar.Fine.Syntax
-import Menkar.Fine.Judgement
+--import Menkar.Fine.Judgement
 import Menkar.Fine.Context.Variable
 import Menkar.Fine.Context
 import Menkar.Fine.Substitution
