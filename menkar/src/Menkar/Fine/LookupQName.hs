@@ -1,8 +1,6 @@
 module Menkar.Fine.LookupQName where
 
-import Menkar.Fine.Substitution
 import Menkar.Fine.Syntax
-import Menkar.Fine.Context.Variable
 import Menkar.Fine.Context
 import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw

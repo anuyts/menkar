@@ -5,6 +5,7 @@ import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
 import Menkar.Fine.Multimode
+import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Data.Void
@@ -18,7 +19,9 @@ checkConstraintTerm :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 
-checkConstraintTerm gamma (Var3 v) (Type ty) = _checkVar
+checkConstraintTerm gamma (Var3 v) (Type ty) = do
+  let ldivseg = lookupVar gamma v
+  _checkVar
 
 checkConstraintTerm gamma t (Type ty) = _checkConstraintTerm
 
@@ -50,7 +53,7 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudType gamma (Type ty) -> do
     lvl <- term4newImplicit gamma
-    i <- id4newConstraint
+    i <- newConstraintID
     addConstraint $ Constraint
       (JudTerm gamma ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl))
       (Just parent)

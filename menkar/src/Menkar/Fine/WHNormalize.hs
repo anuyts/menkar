@@ -1,8 +1,6 @@
 module Menkar.Fine.WHNormalize where
 
 import Menkar.Fine.Syntax
-import Menkar.Fine.Substitution
-import Menkar.Fine.Context.Variable
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Data.Void
@@ -61,7 +59,7 @@ whnormalizeElim gamma d1 d2 mu eliminee e = do
       --empty type cases (none)
       --unit cases (none)
       --box cases
-      (ConsBox seg tm, Unbox seg' ty') -> whnormalize gamma d2 tm
+      (ConsBox seg tm, Unbox seg') -> whnormalize gamma d2 tm
       --nonsensical cases
       (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim (ModedModality d1 mu) whnEliminee e
     Expr3 _ -> unreachable
