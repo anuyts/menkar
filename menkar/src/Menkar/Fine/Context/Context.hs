@@ -70,6 +70,38 @@ ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
 ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
 ctx'mode (dmu :\\ gamma) = modality'dom dmu
 
+mapSegment :: (
+    Functor mode,
+    Functor modty,
+    Functor (ty0 mode modty),
+    Functor (ty1 mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty0 mode modty),
+    CanSwallow (Term mode modty) (ty1 mode modty)
+  ) =>
+  (forall mode' modty' v' . ty0 mode' modty' v' -> ty1 mode' modty' v') ->
+  Segment ty0 mode modty v -> Segment ty1 mode modty v
+mapSegment f seg = over decl'content f seg
+  
+mapCtx :: (
+    Functor mode,
+    Functor modty,
+    Functor (ty0 mode modty),
+    Functor (ty1 mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty0 mode modty),
+    CanSwallow (Term mode modty) (ty1 mode modty)
+  ) =>
+  (forall mode' modty' v' . ty0 mode' modty' v' -> ty1 mode' modty' v') ->
+  Ctx ty0 mode modty v w -> Ctx ty1 mode modty v w
+mapCtx f (CtxEmpty d) = CtxEmpty d
+mapCtx f (gamma :.. seg) = mapCtx f gamma :.. mapSegment f seg
+mapCtx f (seg :^^ gamma) = mapSegment f seg :^^ mapCtx f gamma
+mapCtx f (gamma :<...> modul) = mapCtx f gamma :<...> modul
+mapCtx f (dmu :\\ gamma) = dmu :\\ mapCtx f gamma
+
 {-
 -- TODO: you need a left division here!
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
