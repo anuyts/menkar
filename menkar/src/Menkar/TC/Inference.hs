@@ -13,13 +13,24 @@ import Data.Void
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
 
+-------
+
+checkConstraintTermNV :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
+    Ctx Type mode modty v Void ->
+    TermNV mode modty v ->
+    Type mode modty v ->
+    tc ()
+checkConstraintTermNV parent gamma t (Type ty) = _checkConstraintTermNV
+
+-------
+
 checkConstraintTerm :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     Term mode modty v ->
     Type mode modty v ->
     tc ()
-
 checkConstraintTerm parent gamma (Var3 v) (Type ty) = do
   let ldivSeg = lookupVar gamma v
   varAccessible <- leqMod
@@ -41,8 +52,7 @@ checkConstraintTerm parent gamma (Var3 v) (Type ty) = do
         "Checking whether expected type equals actual type."
         i
     else tcFail parent $ "Variable cannot be used here: modality restrictions are too strong."
-
-checkConstraintTerm parent gamma t (Type ty) = _checkConstraintTerm
+checkConstraintTerm parent gamma (Expr3 t) ty = checkConstraintTermNV parent gamma t ty
 
 -------
 
