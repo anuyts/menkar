@@ -4,6 +4,7 @@ import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
+import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Data.Void
@@ -13,18 +14,17 @@ import Data.Void
 
 checkConstraintTerm :: MonadTC mode modty rel tc =>
     Ctx Type mode modty v Void ->
-    mode v ->
     Term mode modty v ->
     Type mode modty v ->
     tc ()
 
-checkConstraintTerm gamma d (Var3 v) (Type ty) = _checkVar
+checkConstraintTerm gamma (Var3 v) (Type ty) = _checkVar
 
-checkConstraintTerm gamma d t (Type ty) = _checkConstraintTerm
+checkConstraintTerm gamma t (Type ty) = _checkConstraintTerm
 
 -------
 
-checkConstraint :: MonadTC mode modty rel tc => Constraint mode modty rel -> tc ()
+checkConstraint :: Multimode mode modty => MonadTC mode modty rel tc => Constraint mode modty rel -> tc ()
 
 checkConstraint parent = case constraint'judgement parent of
   
@@ -48,15 +48,15 @@ checkConstraint parent = case constraint'judgement parent of
     _ -> _checkJudCtx
   -} -- contexts start empty and grow only in well-typed ways.
 
-  JudType gamma d (Type ty) -> do
+  JudType gamma (Type ty) -> do
     lvl <- term4newImplicit gamma
     i <- id4newConstraint
     addConstraint $ Constraint
-      (JudTerm gamma d ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d lvl))
+      (JudTerm gamma ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl))
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
       i
 
-  JudTerm gamma d t ty -> checkConstraintTerm gamma d t ty
+  JudTerm gamma t ty -> checkConstraintTerm gamma t ty
   
   _ -> _checkConstraint
