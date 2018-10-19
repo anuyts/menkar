@@ -6,7 +6,7 @@ import Menkar.Scoper.Monad
 import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
 import Menkar.Basic.Context
-import Menkar.Fine.Context
+import Menkar.Scoper.Context
 import Menkar.PrettyPrint.Fine
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw

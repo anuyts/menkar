@@ -9,7 +9,7 @@ import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
 import Menkar.Basic.Context
-import Menkar.Fine.Context
+import Menkar.Scoper.Context
 import Control.Exception.AssertFalse
 import Control.Monad.State.Lazy
 import Control.Monad.List
