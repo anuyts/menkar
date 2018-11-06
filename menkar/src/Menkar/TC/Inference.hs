@@ -8,8 +8,10 @@ import Menkar.Fine.Multimode
 import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
+
 import Data.Void
 import Control.Lens
+import Data.Functor.Compose
 
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
@@ -36,7 +38,7 @@ checkConstraintTermNV :: MonadTC mode modty rel tc =>
     tc ()
 --checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
 checkConstraintTermNV parent gamma (TermMeta meta depcies) (Type ty) =
-  blockOnMetas parent [meta]
+  blockOnMetas [meta] parent
 checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
   case over leftDivided'content telescoped2modalQuantified <$> lookupQName gamma qname of
     Nothing -> tcFail parent $ "Not in scope (or misspelled)."
@@ -60,13 +62,37 @@ checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
             "Checking whether actual type equals expected type."
             i
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
+checkConstraintTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) ty = do
+  -----
+  i <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm gamma result ty)
+    (Just parent)
+    "Smart elimination should reduce to value of the appropriate type."
+    i
+  -----
+  j <- newConstraintID
+  addConstraint $ Constraint
+    (JudSmartElim gamma eliminee ty eliminators result)
+    (Just parent)
+    "Smart elimination should reduce to its result."
+    j
 checkConstraintTermNV parent gamma (TermGoal goalname result) ty = do
+  -----
   i <- newConstraintID
   addConstraint $ Constraint
     (JudTerm gamma result ty)
     (Just parent)
     "Goal should take value of the appropriate type."
     i
+  -----
+  j <- newConstraintID
+  blockOnMetas [] $ Constraint
+      (JudGoal gamma goalname result ty)
+      (Just parent)
+      "Goal should take some value."
+      j
+checkConstraintTermNV parent gamma (TermProblem t) (Type ty) = tcFail parent $ "Erroneous term."
 checkConstraintTermNV parent gamma t (Type ty) = _checkConstraintTermNV
 
 -------

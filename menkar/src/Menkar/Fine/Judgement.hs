@@ -62,10 +62,10 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
   -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
   JudSmartElim ::
     Ctx Type mode modty v Void ->
-    Term mode modty v ->
+    Term mode modty v {-^ eliminee -} ->
     Type mode modty v ->
-    [SmartEliminator mode modty v] ->
-    Term mode modty v ->
+    [SmartEliminator mode modty v] {-^ eliminators -} ->
+    Term mode modty v {-^ result -} ->
     Judgement mode modty rel
     
   -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
