@@ -35,6 +35,8 @@ checkConstraintTermNV :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 --checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
+checkConstraintTermNV parent gamma (TermMeta meta depcies) (Type ty) =
+  blockOnMetas parent [meta]
 checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
   case over leftDivided'content telescoped2modalQuantified <$> lookupQName gamma qname of
     Nothing -> tcFail parent $ "Not in scope (or misspelled)."
@@ -58,6 +60,13 @@ checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
             "Checking whether actual type equals expected type."
             i
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
+checkConstraintTermNV parent gamma (TermGoal goalname result) ty = do
+  i <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm gamma result ty)
+    (Just parent)
+    "Goal should take value of the appropriate type."
+    i
 checkConstraintTermNV parent gamma t (Type ty) = _checkConstraintTermNV
 
 -------
