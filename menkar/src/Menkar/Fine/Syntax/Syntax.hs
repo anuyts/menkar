@@ -344,6 +344,7 @@ _segment'name :: Segment ty mode modty v -> Maybe Raw.Name
 _segment'name seg = case _decl'name seg of
   DeclNameSegment maybeName -> maybeName
 _segment'content = _decl'content
+_segment'modty = _decl'modty
 
 data Telescoped
      (ty :: (* -> *) -> (* -> *) -> * -> *)

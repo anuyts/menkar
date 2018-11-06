@@ -176,34 +176,35 @@ lookupQNameType (dkappa :\\ gamma) qname = lookupQNameType gamma qname
 ----------------------------
 
 lookupQNameEntryList :: (Functor mode, Functor modty) =>
-  [Entry mode modty v] -> Raw.QName -> Maybe (ValRHS mode modty v)
+  [Entry mode modty v] -> Raw.QName -> Maybe (Telescoped Type ValRHS mode modty v)
 lookupQNameEntryList [] qname = Nothing
 lookupQNameEntryList (EntryVal val : entries) qname
-  | qname == Raw.Qualified [] (_val'name val) = Just $ telescoped2quantified $ _decl'modty val :** _decl'content val
+  | qname == Raw.Qualified [] (_val'name val) = Just $ _decl'modty val :** _decl'content val
   | otherwise = lookupQNameEntryList entries qname
 lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
   Raw.Qualified [] _ -> lookupQNameEntryList entries qname
   Raw.Qualified (moduleStr : qual) name ->
     if moduleStr == _module'name modul
-    then fmap (telescoped2quantified . (_decl'modty modul :**)) $ mapTelescopedSimple (
+    then fmap ((_decl'modty modul :**) . joinTelescoped) $ mapTelescopedSimple (
         \ wkn moduleRHS -> lookupQNameModule moduleRHS qname
       ) $ _decl'content modul
     else lookupQNameEntryList entries qname
+    
 lookupQNameModule :: (Functor mode, Functor modty) =>
-  ModuleRHS mode modty v -> Raw.QName -> Maybe (ValRHS mode modty v)
+  ModuleRHS mode modty v -> Raw.QName -> Maybe (Telescoped Type ValRHS mode modty v)
 lookupQNameModule modul qname =
   lookupQNameEntryList (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
 lookupQName :: (Multimode mode modty) =>
-  Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided ValRHS mode modty (VarOpenCtx v w))
+  Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided (Telescoped Type ValRHS) mode modty (VarOpenCtx v w))
 lookupQName (CtxEmpty _) qname = Nothing
 lookupQName (gamma :.. seg) qname = case _segment'name seg of
   Nothing -> wkn <$> lookupQName gamma qname
   Just varname -> case qname of
     Raw.Qualified [] name -> if name == varname
-                                then Just $ LeftDivided
-                                     d (ModedModality d (idMod d))
-                                     (ValRHS (Var3 $ VarFromCtx $ VarLast) (wkn $ _segment'content seg))
+                                then Just $ LeftDivided d (ModedModality d (idMod d)) $
+                                     (wkn $ _segment'modty seg)
+                                     :** Telescoped (ValRHS (Var3 $ VarFromCtx $ VarLast) (wkn $ _segment'content seg))
                                 else wkn <$> lookupQName gamma qname
     _ -> wkn <$> lookupQName gamma qname
   where wkn :: (Functor f) => f (VarOpenCtx v' w') -> f (VarOpenCtx (VarExt v') w')
@@ -213,9 +214,10 @@ lookupQName (seg :^^ gamma) qname = case _segment'name seg of
   Nothing -> wkn <$> lookupQName gamma qname
   Just varname -> case qname of
     Raw.Qualified [] name -> if name == varname
-                                then Just $ LeftDivided
-                                     d (ModedModality d (idMod d))
-                                     (ValRHS (Var3 $ VarFromCtx $ VarFirst) (VarBeforeCtx <$> _segment'content seg))
+                                then Just $ LeftDivided d (ModedModality d (idMod d)) $
+                                     (VarBeforeCtx <$> _segment'modty seg)
+                                     :** Telescoped
+                                       (ValRHS (Var3 $ VarFromCtx $ VarFirst) (VarBeforeCtx <$> _segment'content seg))
                                 else wkn <$> lookupQName gamma qname
     _ -> wkn <$> lookupQName gamma qname
   where wkn :: (Functor f) => f (VarOpenCtx v' (VarExt w')) -> f (VarOpenCtx (VarLeftExt v') w')
@@ -240,9 +242,11 @@ lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
 
 ------------------------
 
+{-
 lookupQNameTerm :: (Multimode mode modty, Functor (Type mode modty)) =>
-  Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided Term mode modty (VarOpenCtx v w))
+  Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided (Telescoped Type Term) mode modty (VarOpenCtx v w))
 lookupQNameTerm gamma qname = over leftDivided'content _val'term <$> lookupQName gamma qname
+-}
 
 ------------------------
 
