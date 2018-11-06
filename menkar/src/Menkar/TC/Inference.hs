@@ -9,6 +9,7 @@ import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Data.Void
+import Control.Lens
 
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
@@ -35,13 +36,28 @@ checkConstraintTermNV :: MonadTC mode modty rel tc =>
     tc ()
 --checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
 checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
-  case lookupQName gamma qname of
+  case over leftDivided'content telescoped2modalQuantified <$> lookupQName gamma qname of
     Nothing -> tcFail parent $ "Not in scope (or misspelled)."
-    Just ldivValRHS -> do
-      --varAccessible <- leqMod
-        --(modality'mod . _decl'modty . _leftDivided'content $ ldivValRHS)
-        --(modality'mod . _leftDivided'modality $ ldivValRHS)
-      _
+    Just ldivModAppliedVal -> do
+      varAccessible <- leqMod
+        (modality'mod . _modApplied'modality . _leftDivided'content $ ldivModAppliedVal)
+        (modality'mod . _leftDivided'modality $ ldivModAppliedVal)
+      if varAccessible
+        then do
+          i <- newConstraintID
+          addConstraint $ Constraint
+            (JudTypeRel
+              eqDeg
+              (mapCtx (\ty -> Pair3 ty ty) gamma)
+              (Pair3
+                (unVarFromCtx <$> (_val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedVal))
+                (Type ty)
+              )
+            )
+            (Just parent)
+            "Checking whether actual type equals expected type."
+            i
+        else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkConstraintTermNV parent gamma t (Type ty) = _checkConstraintTermNV
 
 -------
@@ -70,7 +86,7 @@ checkConstraintTerm parent gamma (Var3 v) (Type ty) = do
           )
         )
         (Just parent)
-        "Checking whether expected type equals actual type."
+        "Checking whether actual type equals expected type."
         i
     else tcFail parent $ "Variable cannot be used here: modality restrictions are too strong."
 checkConstraintTerm parent gamma (Expr3 t) ty = checkConstraintTermNV parent gamma t ty
