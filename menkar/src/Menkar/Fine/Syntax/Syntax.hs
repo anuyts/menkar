@@ -96,6 +96,19 @@ deriving instance (
     CanSwallow (Term mode modty) (content mode modty)
   ) => CanSwallow (Term mode modty) (LeftDivided content mode modty)
 
+data ModApplied content mode modty v = ModApplied {
+    _modApplied'modality :: ModedModality mode modty v,
+    _modApplied'content :: content mode modty v}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (content mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (content mode modty)
+  ) => CanSwallow (Term mode modty) (ModApplied content mode modty)
+
 
 {-
 modedLeftAdjoint :: ModedModality mode modty v -> ModedContramodality mode modty v
