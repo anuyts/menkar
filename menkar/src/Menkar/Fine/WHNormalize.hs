@@ -70,9 +70,13 @@ whnormalizeNV :: Multimode mode modty =>
 whnormalizeNV gamma t@(TermCons _) = return . Expr3 $ t   -- Mind glue and weld!
 whnormalizeNV gamma (TermElim dmu t e) = whnormalizeElim gamma dmu t e
 whnormalizeNV gamma t@(TermMeta i depcies) = Expr3 t <$ tell [i]
-whnormalizeNV gamma (TermQName qname) = case lookupQNameTerm gamma qname of
+whnormalizeNV gamma (TermQName qname) = case lookupQName gamma qname of
   Nothing -> return $ Expr3 $ TermProblem $ Expr3 $ TermQName qname
-  Just leftDividedTerm -> whnormalize gamma (unVarFromCtx <$> _leftDivided'content leftDividedTerm)
+  Just leftDividedTelescopedVal ->
+    let telescopedVal = _leftDivided'content leftDividedTelescopedVal
+        ModApplied _ quantifiedVal = telescoped2modalQuantified telescopedVal
+        quantifiedTerm = _val'term quantifiedVal
+    in  whnormalize gamma (unVarFromCtx <$> quantifiedTerm)
 whnormalizeNV gamma (TermSmartElim eliminee eliminators result) = whnormalize gamma result
 whnormalizeNV gamma (TermGoal str result) = whnormalize gamma result
 whnormalizeNV gamma t@(TermProblem _) = return $ Expr3 t

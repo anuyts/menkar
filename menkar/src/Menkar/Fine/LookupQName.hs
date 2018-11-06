@@ -249,11 +249,15 @@ lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
 
 ------------------------
 
-{-
 lookupQNameTerm :: (Multimode mode modty, Functor (Type mode modty)) =>
   Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided (Telescoped Type Term) mode modty (VarOpenCtx v w))
-lookupQNameTerm gamma qname = over leftDivided'content _val'term <$> lookupQName gamma qname
--}
+lookupQNameTerm gamma qname =
+  over leftDivided'content
+    (runIdentity . mapTelescopedSimple (\wkn val -> Identity $ _val'term val))
+  <$> lookupQName gamma qname
+
+  
+  --over leftDivided'content (_val'term . _modApplied'content . telescoped2modalQuantified) <$> lookupQName gamma qname
 
 ------------------------
 
