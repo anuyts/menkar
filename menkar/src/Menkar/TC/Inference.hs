@@ -15,12 +15,33 @@ import Data.Void
 
 -------
 
+{-
+checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
+    Ctx Type mode modty v Void ->
+    ConstructorTerm mode modty v ->
+    Type mode modty v ->
+    tc ()
+checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
+-}
+
+-------
+    
 checkConstraintTermNV :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     TermNV mode modty v ->
     Type mode modty v ->
     tc ()
+--checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
+checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
+  case lookupQName gamma qname of
+    Nothing -> tcFail parent $ "Not in scope (or misspelled)."
+    Just ldivValRHS -> do
+      --varAccessible <- leqMod
+        --(modality'mod . _decl'modty . _leftDivided'content $ ldivValRHS)
+        --(modality'mod . _leftDivided'modality $ ldivValRHS)
+      _
 checkConstraintTermNV parent gamma t (Type ty) = _checkConstraintTermNV
 
 -------
