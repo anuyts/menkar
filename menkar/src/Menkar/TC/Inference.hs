@@ -223,7 +223,41 @@ checkConstraintConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstraintConstructorTerm parent gamma ConsUnit ty = do
-  _
+  -- CMODE
+  ----------
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ UnitType) ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstraintConstructorTerm parent gamma (ConsBox typeSegment t) ty = do
+  let boxType = Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType typeSegment
+  ----------
+  addNewConstraint
+    (JudType gamma boxType)
+    (Just parent)
+    "Checking the type"
+  ----------
+  addNewConstraint
+    (JudTerm
+      ((_segment'modty $ VarFromCtx <$> typeSegment) :\\ gamma)
+      t
+      (_segment'content $ typeSegment)
+    )
+    (Just parent)
+    "Type-checking box content."
+  ----------
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 boxType ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
 checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 
 -------
