@@ -26,21 +26,32 @@ checkConstraintUniHSConstructor :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
+  -- CMODE d
+  -----
+  j <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm
+      (ModedModality dataMode irrMod :\\ gamma)
+      lvl
+      (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+    )
+    (Just parent)
+    "Checking the level."
+    j
+  -----
   i <- newConstraintID
   addConstraint $ Constraint
     (JudTypeRel
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
       (Pair3
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d (_lvlsuc lvl))
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d (Expr3 $ TermCons $ ConsSuc $ lvl))
         ty
       )
     )
     (Just parent)
     "Checking whether actual type equals expected type."
     i
-  -- CMODE d
-  todo -- CHECK THE LEVEL
 checkConstraintUniHSConstructor parent gamma (Pi binding) ty = _ --do
   --lvl <- term4newImplicit
 checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor

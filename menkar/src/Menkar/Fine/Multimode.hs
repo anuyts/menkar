@@ -13,6 +13,7 @@ class (
   wildMode :: mode v -- to be abolished!
   flatMod :: modty v
   irrMod :: modty v
+  dataMode :: mode v
 
 class (
     Multimode mode modty,
