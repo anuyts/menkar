@@ -208,7 +208,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (Eliminator mode modty)
 
 -- | This doesn't seem particularly useful.
-newtype Type (mode :: * -> *) (modty :: * -> *) (v :: *) = Type (Term mode modty v)
+newtype Type (mode :: * -> *) (modty :: * -> *) (v :: *) = Type {unType :: Term mode modty v}
   {-ElType {-^ Constructor'ish -} 
     (UniHSConstructor mode modty v) {-^ Type -} |
   ElTerm {-^ Eliminator'ish -}

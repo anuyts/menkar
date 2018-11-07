@@ -37,6 +37,18 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Judgement mode modty rel
   -}
 
+  {-
+  JudSegment ::
+    Ctx Type mode modty v Void ->
+    Segment mode modty v ->
+    Judgement mode modty rel
+  JudSegmentRel ::
+    rel v ->
+    Ctx (Pair3 Type) mode modty v Void ->
+    Pair3 (Segment Type) mode modty v ->
+    Judgement mode modty rel
+  -}
+
   -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
   -- | Premises: @'JudCtx'@
   JudType ::

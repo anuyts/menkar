@@ -61,8 +61,42 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
     i
-checkConstraintUniHSConstructor parent gamma (Pi binding) ty = _ --do
-  --lvl <- term4newImplicit
+checkConstraintUniHSConstructor parent gamma (Pi binding) ty = do
+  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
+  ---------
+  i <- newConstraintID
+  addConstraint $ Constraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 currentUni ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+    i
+  ----------
+  j <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm
+      ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
+      (unType $ _segment'content $ binding'segment $ binding)
+      currentUni
+    )
+    (Just parent)
+    "Checking type of the domain."
+    j
+  ----------
+  k <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm
+      (gamma :.. (VarFromCtx <$> binding'segment binding))
+      (binding'body binding)
+      (VarWkn <$> currentUni)
+    )
+    (Just parent)
+    "Checking the type of the codomain."
+    k
 checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor
 
 checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
