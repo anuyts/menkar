@@ -119,20 +119,25 @@ modedRightAdjoint (ModedContramodality dom cod mod) = (ModedModality cod dom mod
 
 ------------------------------------
 
-data Binding (rhs :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *) (v :: *) =
+data Binding
+    (lhs :: (* -> *) -> (* -> *) -> * -> *)
+    (rhs :: (* -> *) -> (* -> *) -> * -> *)
+    (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Binding {
-    binding'segment :: Segment Type mode modty v,
+    binding'segment :: Segment lhs mode modty v,
     binding'body :: rhs mode modty (VarExt v)
   }
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (
     Functor mode,
     Functor modty,
+    Functor (lhs mode modty),
     Functor (rhs mode modty),
     CanSwallow (Term mode modty) mode,
     CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (lhs mode modty),
     CanSwallow (Term mode modty) (rhs mode modty)
-  ) => CanSwallow (Term mode modty) (Binding rhs mode modty)
+  ) => CanSwallow (Term mode modty) (Binding lhs rhs mode modty)
 
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
@@ -141,8 +146,8 @@ data UniHSConstructor (mode :: * -> *) (modty :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
     (mode v) {-^ mode (of both the universe and its elements) -}
     (Term mode modty v) {-^ level it classifies -} |
-  Pi (Binding Term mode modty v) |
-  Sigma (Binding Term mode modty v) |
+  Pi (Binding Type Term mode modty v) |
+  Sigma (Binding Type Term mode modty v) |
   EmptyType |
   UnitType |
   BoxType (Segment Type mode modty v) |
@@ -157,9 +162,9 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
     --(mode v) {-^ Type's mode -}
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
     (UniHSConstructor mode modty v) {-^ Type -} |
-  Lam (Binding Term mode modty v) |
+  Lam (Binding Type Term mode modty v) |
   Pair
-    (Binding Term mode modty v) {-^ pair's sigma type -} 
+    (Binding Type Term mode modty v) {-^ pair's sigma type -} 
     (Term mode modty v)
     (Term mode modty v) |
   ConsUnit |
@@ -180,29 +185,25 @@ data SmartEliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (SmartEliminator mode modty)
 
+
 data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   {-ElimUnsafeResize
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
     {-(Term mode modty v) {-^ Type -}-} |-}
-  App
-    (Binding Term mode modty v) {-^ function's pi type -} 
-    (Term mode modty v) {-^ argument -} |
-  ElimPair
-    --(Binding Term mode modty v) {-^ pair's sigma type -} 
-    (Binding Term mode modty v) {-^ motive -}
-    (Binding (Binding Term) mode modty v) {-^ clause -} |
-  Fst
-    (Binding Term mode modty v) {-^ pair's sigma type -} |
-  Snd
-    (Binding Term mode modty v) {-^ pair's sigma type -} |
-  ElimEmpty
-    (Binding Term mode modty v) {-^ motive -} |
-  Unbox
-    (Segment Type mode modty v) {-^ box's type -} |
-  ElimNat 
-    (Term mode modty (VarExt v)) {-^ motive -}
-    (Term mode modty v) {-^ clause for zero -}
-    (Term mode modty (VarExt (VarExt v))) {-^ clause for suc -}
+  App {
+    _eliminator'argument :: (Term mode modty v)} |
+  ElimSigma {
+    _eliminator'motive :: (Binding Unit3 Term mode modty v),
+    _eliminator'clausePair :: (Binding Unit3 (Binding Unit3 Term) mode modty v)} |
+  Fst |
+  Snd |
+  ElimEmpty {
+    _eliminator'motive :: (Binding Unit3 Term mode modty v)} |
+  Unbox |
+  ElimNat {
+    _eliminator'motive :: (Binding Unit3 Term mode modty v),
+    _eliminator'clauseZero :: Term mode modty v,
+    _eliminator'clauseSuc :: (Binding Unit3 (Binding Unit3 Term) mode modty v)}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)
@@ -221,9 +222,12 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 
 data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
   TermCons (ConstructorTerm mode modty v) |
+  {-| It is an error to construct a @'TermNV'@ using @'TermElim'@ with an eliminator that
+      doesn't match the SHAPE of the eliminee's type -}
   TermElim
     (ModedModality mode modty v) {-^ modality by which the eliminee is used -}
     (Term mode modty v) {-^ eliminee -}
+    (Type mode modty v) {-^ eliminee's type -}
     (Eliminator mode modty v) {-^ eliminator -} |
   TermMeta Int (Compose [] (Term mode modty) v) |
   TermQName Raw.QName |
