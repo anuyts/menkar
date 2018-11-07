@@ -23,7 +23,20 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Ctx (Pair3 Type) mode modty v Void ->
     Judgement mode modty rel
   -}
-  
+
+  {-
+  -- | @'JudMode' gamma d@ means that @d@ is a valid mode in context @gamma@.
+  -- | Premises: @'JudCtx'@
+  JudMode ::
+    Ctx Type mode modty v Void ->
+    Mode mode modty v ->
+    Judgement mode modty rel
+  JudModeRel ::
+    Ctx (Pair3 Type) mode modty v Void ->
+    Pair3 Mode mode modty v ->
+    Judgement mode modty rel
+  -}
+
   -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
   -- | Premises: @'JudCtx'@
   JudType ::

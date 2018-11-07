@@ -11,6 +11,8 @@ class (
   idMod :: mode v -> modty v
   compMod :: modty v -> mode v -> modty v -> modty v
   wildMode :: mode v -- to be abolished!
+  flatMod :: modty v
+  irrMod :: modty v
 
 class (
     Multimode mode modty,
