@@ -213,6 +213,17 @@ checkConstraintConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
     (JudTerm gamma t2 (Type $ join $ subst <$> binding'body sigmaBinding))
     (Just parent)
     "Type-checking second component."
+  ----------
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 sigmaType ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstraintConstructorTerm parent gamma ConsUnit ty = do
+  _
 checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 
 -------
