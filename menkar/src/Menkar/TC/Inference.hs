@@ -97,6 +97,8 @@ checkConstraintUniHSConstructor parent gamma (Pi binding) ty = do
     (Just parent)
     "Checking the type of the codomain."
     k
+checkConstraintUniHSConstructor parent gamma (Sigma binding) ty =
+  checkConstraintUniHSConstructor parent gamma (Pi binding) ty
 checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor
 
 checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
