@@ -19,6 +19,73 @@ import Data.Functor.Compose
 
 -------
 
+checkPiOrSigma :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
+    Ctx Type mode modty v Void ->
+    Binding Term mode modty v ->
+    Type mode modty v ->
+    tc ()
+checkPiOrSigma parent gamma binding ty = do
+  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
+  ---------
+  i <- newConstraintID
+  addConstraint $ Constraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 currentUni ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+    i
+  ----------
+  j <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm
+      ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
+      (unType $ _segment'content $ binding'segment $ binding)
+      currentUni
+    )
+    (Just parent)
+    "Checking type of the domain."
+    j
+  ----------
+  k <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm
+      (gamma :.. (VarFromCtx <$> binding'segment binding))
+      (binding'body binding)
+      (VarWkn <$> currentUni)
+    )
+    (Just parent)
+    "Checking the type of the codomain."
+    k
+
+-------
+
+checkUni :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
+    Ctx Type mode modty v Void ->
+    Type mode modty v ->
+    tc ()
+checkUni parent gamma ty = do
+  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
+  ---------
+  i <- newConstraintID
+  addConstraint $ Constraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 currentUni ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+    i
+
+-------
+
 checkConstraintUniHSConstructor :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
@@ -61,7 +128,11 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
     i
-checkConstraintUniHSConstructor parent gamma (Pi binding) ty = do
+checkConstraintUniHSConstructor parent gamma (Pi binding) ty = checkPiOrSigma parent gamma binding ty
+checkConstraintUniHSConstructor parent gamma (Sigma binding) ty = checkPiOrSigma parent gamma binding ty
+checkConstraintUniHSConstructor parent gamma (EmptyType) ty = checkUni parent gamma ty
+checkConstraintUniHSConstructor parent gamma (UnitType) ty = checkUni parent gamma ty
+checkConstraintUniHSConstructor parent gamma (BoxType seg) ty = do
   lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
@@ -79,27 +150,16 @@ checkConstraintUniHSConstructor parent gamma (Pi binding) ty = do
   j <- newConstraintID
   addConstraint $ Constraint
     (JudTerm
-      ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
-      (unType $ _segment'content $ binding'segment $ binding)
+      ((_segment'modty $ VarFromCtx <$> seg) :\\ gamma)
+      (unType $ _segment'content $ seg)
       currentUni
     )
     (Just parent)
-    "Checking type of the domain."
+    "Checking type of the inner type."
     j
-  ----------
-  k <- newConstraintID
-  addConstraint $ Constraint
-    (JudTerm
-      (gamma :.. (VarFromCtx <$> binding'segment binding))
-      (binding'body binding)
-      (VarWkn <$> currentUni)
-    )
-    (Just parent)
-    "Checking the type of the codomain."
-    k
-checkConstraintUniHSConstructor parent gamma (Sigma binding) ty =
-  checkConstraintUniHSConstructor parent gamma (Pi binding) ty
-checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor
+checkConstraintUniHSConstructor parent gamma (NatType) ty = checkUni parent gamma ty
+--checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor
+-- CMODE do we allow Empty, Unit and Nat in arbitrary mode? I guess not...
 
 checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
