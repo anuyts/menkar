@@ -8,6 +8,7 @@ import Menkar.Fine.Multimode
 import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
+import Control.Exception.AssertFalse
 
 import Data.Void
 import Control.Lens
@@ -39,6 +40,7 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
     "Checking whether actual type equals expected type."
     i
   -- CMODE d
+  todo -- CHECK THE LEVEL
 checkConstraintUniHSConstructor parent gamma (Pi binding) ty = _ --do
   --lvl <- term4newImplicit
 checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor
@@ -67,8 +69,17 @@ checkConstraintTermNV :: MonadTC mode modty rel tc =>
     tc ()
 checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
 checkConstraintTermNV parent gamma (TermElim dmu eliminee eliminator) (Type ty) = _checkConstraintTermElim
-checkConstraintTermNV parent gamma (TermMeta meta depcies) (Type ty) =
-  blockOnMetas [meta] parent
+checkConstraintTermNV parent gamma (TermMeta meta (Compose depcies)) ty = do
+  maybeT <- getMeta meta depcies
+  case maybeT of
+    Nothing -> blockOnMetas [meta] parent
+    Just t -> do
+      i <- newConstraintID
+      checkConstraint $ Constraint
+        (JudTerm gamma t ty)
+        (Just parent)
+        "Look up meta."
+        i
 checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
   case over leftDivided'content telescoped2modalQuantified <$> lookupQName gamma qname of
     Nothing -> tcFail parent $ "Not in scope (or misspelled)."

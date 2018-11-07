@@ -30,6 +30,7 @@ class (
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()
   solveMeta :: Int -> [Term mode modty v] -> Term mode modty v -> tc ()
+  getMeta :: Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
   {-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc ()
