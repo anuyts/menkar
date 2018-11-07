@@ -29,8 +29,7 @@ checkPiOrSigma parent gamma binding ty = do
   lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
-  i <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTypeRel
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
@@ -38,10 +37,8 @@ checkPiOrSigma parent gamma binding ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
-    i
   ----------
-  j <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTerm
       ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
       (unType $ _segment'content $ binding'segment $ binding)
@@ -49,10 +46,8 @@ checkPiOrSigma parent gamma binding ty = do
     )
     (Just parent)
     "Checking type of the domain."
-    j
   ----------
-  k <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> binding'segment binding))
       (binding'body binding)
@@ -60,7 +55,6 @@ checkPiOrSigma parent gamma binding ty = do
     )
     (Just parent)
     "Checking the type of the codomain."
-    k
 
 -------
 
@@ -73,8 +67,7 @@ checkUni parent gamma ty = do
   lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
-  i <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTypeRel
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
@@ -82,7 +75,6 @@ checkUni parent gamma ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
-    i
 
 -------
 
@@ -95,8 +87,7 @@ checkConstraintUniHSConstructor :: MonadTC mode modty rel tc =>
 checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
   -- CMODE d
   -----
-  j <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTerm
       (ModedModality dataMode irrMod :\\ gamma)
       lvl
@@ -104,7 +95,6 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
     )
     (Just parent)
     "Checking the level."
-    j
   -----
   anyLvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
   let biggerLvl =
@@ -115,8 +105,7 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
           (Expr3 $ TermCons $ ConsUniHS $ NatType)
           anyLvl
           (Expr3 . TermCons . ConsSuc $ Var3 VarLast)
-  i <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTypeRel
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
@@ -127,7 +116,6 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
-    i
 checkConstraintUniHSConstructor parent gamma (Pi binding) ty = checkPiOrSigma parent gamma binding ty
 checkConstraintUniHSConstructor parent gamma (Sigma binding) ty = checkPiOrSigma parent gamma binding ty
 checkConstraintUniHSConstructor parent gamma (EmptyType) ty = checkUni parent gamma ty
@@ -136,8 +124,7 @@ checkConstraintUniHSConstructor parent gamma (BoxType seg) ty = do
   lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
-  i <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTypeRel
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
@@ -145,10 +132,8 @@ checkConstraintUniHSConstructor parent gamma (BoxType seg) ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
-    i
   ----------
-  j <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTerm
       ((_segment'modty $ VarFromCtx <$> seg) :\\ gamma)
       (unType $ _segment'content $ seg)
@@ -156,7 +141,6 @@ checkConstraintUniHSConstructor parent gamma (BoxType seg) ty = do
     )
     (Just parent)
     "Checking type of the inner type."
-    j
 checkConstraintUniHSConstructor parent gamma (NatType) ty = checkUni parent gamma ty
 --checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor
 -- CMODE do we allow Empty, Unit and Nat in arbitrary mode? I guess not...
@@ -168,12 +152,12 @@ checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkConstraintConstructorTerm parent gamma (ConsUniHS t) ty = checkConstraintUniHSConstructor parent gamma t ty
-checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 {-checkConstraintConstructorTerm parent gamma (Lam binding) ty = do
   tDom <- term4newImplicit gamma
   let seg = _ $ binding'segment binding
   i <- newConstraintID
   _-}
+checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 
 -------
     
@@ -205,8 +189,7 @@ checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
         (modality'mod . _leftDivided'modality $ ldivModAppliedVal)
       if varAccessible
         then do
-          i <- newConstraintID
-          addConstraint $ Constraint
+          addNewConstraint
             (JudTypeRel
               eqDeg
               (mapCtx (\ty -> Pair3 ty ty) gamma)
@@ -217,39 +200,30 @@ checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
             )
             (Just parent)
             "Checking whether actual type equals expected type."
-            i
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkConstraintTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) ty = do
   tyEliminee <- Type <$> term4newImplicit gamma
   -----
-  k <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTerm gamma eliminee tyEliminee)
     (Just parent)
     "Type-check the eliminee"
-    k
   -----
-  i <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTerm gamma result ty)
     (Just parent)
     "Smart elimination should reduce to value of the appropriate type."
-    i
   -----
-  j <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudSmartElim gamma eliminee tyEliminee eliminators result)
     (Just parent)
     "Smart elimination should reduce to its result."
-    j
 checkConstraintTermNV parent gamma (TermGoal goalname result) ty = do
   -----
-  i <- newConstraintID
-  addConstraint $ Constraint
+  addNewConstraint
     (JudTerm gamma result ty)
     (Just parent)
     "Goal should take value of the appropriate type."
-    i
   -----
   j <- newConstraintID
   blockOnMetas [] $ Constraint
@@ -274,8 +248,7 @@ checkConstraintTerm parent gamma (Var3 v) (Type ty) = do
     (modality'mod . _leftDivided'modality $ ldivSeg)
   if varAccessible
     then do
-      i <- newConstraintID
-      addConstraint $ Constraint
+      addNewConstraint
         (JudTypeRel
           eqDeg
           (mapCtx (\ty -> Pair3 ty ty) gamma)
@@ -286,7 +259,6 @@ checkConstraintTerm parent gamma (Var3 v) (Type ty) = do
         )
         (Just parent)
         "Checking whether actual type equals expected type."
-        i
     else tcFail parent $ "Variable cannot be used here: modality restrictions are too strong."
 checkConstraintTerm parent gamma (Expr3 t) ty = checkConstraintTermNV parent gamma t ty
 
@@ -318,12 +290,10 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudType gamma (Type ty) -> do
     lvl <- term4newImplicit gamma
-    i <- newConstraintID
-    addConstraint $ Constraint
+    addNewConstraint
       (JudTerm gamma ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl))
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
-      i
 
   JudTerm gamma t ty -> checkConstraintTerm parent gamma t ty
   

@@ -35,3 +35,12 @@ class (
   blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc ()
   leqMod :: modty v -> modty v -> tc Bool
+
+addNewConstraint :: MonadTC mode modty rel tc =>
+  Judgement mode modty rel ->
+  Maybe (Constraint mode modty rel) ->
+  String ->
+  tc()
+addNewConstraint judgement parent reason = do
+  i <- newConstraintID
+  addConstraint $ Constraint judgement parent reason i

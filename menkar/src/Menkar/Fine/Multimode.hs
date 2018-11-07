@@ -22,6 +22,8 @@ class (
   ) => Degrees mode modty rel | rel -> mode, rel -> modty where
   eqDeg :: rel v
 
+--------------
+
 idModedModality :: (Multimode mode modty) => mode v -> ModedModality mode modty v
 idModedModality d = ModedModality d (idMod d)
 
