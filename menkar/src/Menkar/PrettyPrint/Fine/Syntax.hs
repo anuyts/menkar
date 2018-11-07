@@ -28,7 +28,7 @@ deriving instance (Show (mode v), Show (modty v)) => Show (ModedContramodality m
 
 binding2pretty :: (Functor mode, Functor modty,
                   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
-                  String -> ScCtx mode modty v Void -> Binding rhs mode modty v -> PrettyTree String
+                  String -> ScCtx mode modty v Void -> Binding Type rhs mode modty v -> PrettyTree String
 binding2pretty opstring gamma binding =
   fine2pretty gamma (binding'segment binding)
   \\\ [" " ++ opstring ++ " " ++|
@@ -36,11 +36,11 @@ binding2pretty opstring gamma binding =
       ]
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
-         Fine2Pretty mode modty (Binding rhs) where
+         Fine2Pretty mode modty (Binding Type rhs) where
   fine2pretty gamma binding = binding2pretty ">" gamma binding
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
-         Show (Binding rhs mode modty Void) where
+         Show (Binding Type rhs mode modty Void) where
   show binding = "[Binding|\n" ++ fine2string ScCtxEmpty binding ++ "\n]"
 
 instance (Functor mode, Functor modty,
@@ -104,7 +104,13 @@ instance (Functor mode, Functor modty,
 
 elimination2pretty :: (Functor mode, Functor modty,
                        Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
-         ScCtx mode modty v Void -> PrettyTree String -> Eliminator mode modty v -> PrettyTree String
+         ScCtx mode modty v Void ->
+         ModedModality mode modty v ->
+         Term mode modty v ->
+         Type mode modty v ->
+         Eliminator mode modty v ->
+         PrettyTree String
+{-
 --elimination2pretty gamma eliminee (ElimUnsafeResize) = "UnsafeResize (" ++| eliminee |++ ")"
 elimination2pretty gamma eliminee (App piBinding arg) = 
     ribbon "(ofType" \\\ [
@@ -115,7 +121,7 @@ elimination2pretty gamma eliminee (App piBinding arg) =
       [
       " .{" ++| fine2pretty gamma arg |++ "}"
       ]
-elimination2pretty gamma eliminee (ElimPair motive clause) =
+elimination2pretty gamma eliminee (ElimSigma motive clause) =
   ribbon "ofType" \\\ [
     " (" ++| fine2pretty gamma (Pi motive) |++ ")",
     " (" ++ nameFst ++ " , " ++ nameSnd ++ " > " ++| fine2pretty gammaFstSnd body |++ ")",
@@ -138,11 +144,24 @@ elimination2pretty gamma eliminee (ElimEmpty motive) =
     ]
 elimination2pretty gamma eliminee (Unbox boxSeg) = todo
 elimination2pretty gamma eliminee (ElimNat motive cz cs) = todo
+-}
+elimination2pretty gamma dmu eliminee tyEliminee (App arg) = 
+    ribbon "(ofType" \\\ [
+      " (" ++| fine2pretty gamma tyEliminee |++ ")",
+      " (" ++| fine2pretty gamma eliminee |++ ")"
+      ] ///
+    ribbon ")" \\\
+      [
+      " .{" ++| fine2pretty gamma arg |++ "}"
+      ]
+elimination2pretty gamma dmu eliminee tyEliminee eliminator = _elimination2pretty
 
+{-
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Eliminator mode modty Void) where
   show elim = "[Eliminator| x > " ++ render defaultRenderState (elimination2pretty ScCtxEmpty (ribbon "x") elim)
+-}
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -156,7 +175,8 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty TermNV where
   fine2pretty gamma (TermCons consTerm) = fine2pretty gamma consTerm
-  fine2pretty gamma (TermElim mod eliminee eliminator) = elimination2pretty gamma (fine2pretty gamma eliminee) eliminator
+  fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) =
+    elimination2pretty gamma mod eliminee tyEliminee eliminator
   fine2pretty gamma (TermMeta i (Compose depcies)) = ribbon ("?" ++ show i) \\\ ((" " ++|) . fine2pretty gamma <$> depcies)
   fine2pretty gamma (TermQName qname) = Raw.unparse' qname
   fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) =
