@@ -258,7 +258,34 @@ checkConstraintConstructorTerm parent gamma (ConsBox typeSegment t) ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
-checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
+checkConstraintConstructorTerm parent gamma ConsZero ty = do
+  -- CMODE
+  ----------
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstraintConstructorTerm parent gamma (ConsSuc t) ty = do
+  -- CMODE
+  ----------
+  addNewConstraint
+    (JudTerm gamma t (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType))
+    (Just parent)
+    "Type-checking predecessor."
+  ----------
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+--checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 
 -------
     
