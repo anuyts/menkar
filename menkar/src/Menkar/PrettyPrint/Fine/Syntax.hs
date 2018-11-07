@@ -45,7 +45,7 @@ instance (Functor mode, Functor modty,
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
-         Fine2Pretty mode modty TypeTerm where
+         Fine2Pretty mode modty UniHSConstructor where
   fine2pretty gamma (UniHS d lvl) =
     ribbon "UniHS " \\\ [
       fine2pretty gamma (Mode d),
@@ -58,8 +58,8 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (BoxType tySeg) = "Box " ++| fine2pretty gamma tySeg
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
-         Show (TypeTerm mode modty Void) where
-  show typeterm = "[TypeTerm|\n" ++ fine2string ScCtxEmpty typeterm ++ "\n]"
+         Show (UniHSConstructor mode modty Void) where
+  show typeterm = "[UniHSConstructor|\n" ++ fine2string ScCtxEmpty typeterm ++ "\n]"
   
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>

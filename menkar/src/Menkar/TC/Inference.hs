@@ -18,13 +18,13 @@ import Data.Functor.Compose
 
 -------
 
-checkConstraintTypeTerm :: MonadTC mode modty rel tc =>
+checkConstraintUniHSConstructor :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
-    TypeTerm mode modty v ->
+    UniHSConstructor mode modty v ->
     Type mode modty v ->
     tc ()
-checkConstraintTypeTerm parent gamma (UniHS d lvl) ty = do
+checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
   i <- newConstraintID
   addConstraint $ Constraint
     (JudTypeRel
@@ -39,9 +39,9 @@ checkConstraintTypeTerm parent gamma (UniHS d lvl) ty = do
     "Checking whether actual type equals expected type."
     i
   -- CMODE d
-checkConstraintTypeTerm parent gamma (Pi binding) ty = _ --do
+checkConstraintUniHSConstructor parent gamma (Pi binding) ty = _ --do
   --lvl <- term4newImplicit
-checkConstraintTypeTerm parent gamma t ty = _checkConstraintTypeTerm
+checkConstraintUniHSConstructor parent gamma t ty = _checkConstraintUniHSConstructor
 
 checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
@@ -49,7 +49,7 @@ checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
     ConstructorTerm mode modty v ->
     Type mode modty v ->
     tc ()
-checkConstraintConstructorTerm parent gamma (ConsUniHS t) ty = checkConstraintTypeTerm parent gamma t ty
+checkConstraintConstructorTerm parent gamma (ConsUniHS t) ty = checkConstraintUniHSConstructor parent gamma t ty
 checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 {-checkConstraintConstructorTerm parent gamma (Lam binding) ty = do
   tDom <- term4newImplicit gamma
@@ -93,6 +93,14 @@ checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
             i
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkConstraintTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) ty = do
+  tyEliminee <- Type <$> term4newImplicit gamma
+  -----
+  k <- newConstraintID
+  addConstraint $ Constraint
+    (JudTerm gamma eliminee tyEliminee)
+    (Just parent)
+    "Type-check the eliminee"
+    k
   -----
   i <- newConstraintID
   addConstraint $ Constraint
@@ -103,7 +111,7 @@ checkConstraintTermNV parent gamma (TermSmartElim eliminee (Compose eliminators)
   -----
   j <- newConstraintID
   addConstraint $ Constraint
-    (JudSmartElim gamma eliminee ty eliminators result)
+    (JudSmartElim gamma eliminee tyEliminee eliminators result)
     (Just parent)
     "Smart elimination should reduce to its result."
     j

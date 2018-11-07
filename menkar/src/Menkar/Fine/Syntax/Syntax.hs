@@ -137,7 +137,7 @@ deriving instance (
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
 -}
-data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
+data UniHSConstructor (mode :: * -> *) (modty :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
     (mode v) {-^ mode (of both the universe and its elements) -}
     (Term mode modty v) {-^ level it classifies -} |
@@ -148,14 +148,14 @@ data TypeTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   BoxType (Segment Type mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
-  CanSwallow (Term mode modty) (TypeTerm mode modty)
+  CanSwallow (Term mode modty) (UniHSConstructor mode modty)
 
 data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   {-| element of the Hofmann-Streicher universe -}
   ConsUniHS
     --(mode v) {-^ Type's mode -}
     --(Term mode modty v) {-^ Type's unsafely assigned level -}
-    (TypeTerm mode modty v) {-^ Type -} |
+    (UniHSConstructor mode modty v) {-^ Type -} |
   Lam (Binding Term mode modty v) |
   Pair
     (Binding Term mode modty v) {-^ pair's sigma type -} 
@@ -203,7 +203,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 -- | This doesn't seem particularly useful.
 newtype Type (mode :: * -> *) (modty :: * -> *) (v :: *) = Type (Term mode modty v)
   {-ElType {-^ Constructor'ish -} 
-    (TypeTerm mode modty v) {-^ Type -} |
+    (UniHSConstructor mode modty v) {-^ Type -} |
   ElTerm {-^ Eliminator'ish -}
     (Term mode modty v) {-^ Type -}-}
   deriving (Functor, Foldable, Traversable, Generic1)
