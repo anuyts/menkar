@@ -69,7 +69,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Judgement mode modty rel
     
   -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
-  -- | Premises: @'JudTerm'@
+  -- | Premises: @'JudTerm' gamma t tyT@
   JudGoal ::
     Ctx Type mode modty v Void ->
     String ->

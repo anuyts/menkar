@@ -24,6 +24,7 @@ class (
   term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
   mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
   modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
+  genVarName :: tc Raw.Name
   newConstraintID :: tc Int
   addConstraint :: Constraint mode modty rel -> tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}

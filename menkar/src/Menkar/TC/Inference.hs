@@ -18,15 +18,44 @@ import Data.Functor.Compose
 
 -------
 
-{-
+checkConstraintTypeTerm :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
+    Ctx Type mode modty v Void ->
+    TypeTerm mode modty v ->
+    Type mode modty v ->
+    tc ()
+checkConstraintTypeTerm parent gamma (UniHS d lvl) ty = do
+  i <- newConstraintID
+  addConstraint $ Constraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d (_lvlsuc lvl))
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+    i
+  -- CMODE d
+checkConstraintTypeTerm parent gamma (Pi binding) ty = _ --do
+  --lvl <- term4newImplicit
+checkConstraintTypeTerm parent gamma t ty = _checkConstraintTypeTerm
+
 checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     ConstructorTerm mode modty v ->
     Type mode modty v ->
     tc ()
+checkConstraintConstructorTerm parent gamma (ConsUniHS t) ty = checkConstraintTypeTerm parent gamma t ty
 checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
--}
+{-checkConstraintConstructorTerm parent gamma (Lam binding) ty = do
+  tDom <- term4newImplicit gamma
+  let seg = _ $ binding'segment binding
+  i <- newConstraintID
+  _-}
 
 -------
     
@@ -36,7 +65,8 @@ checkConstraintTermNV :: MonadTC mode modty rel tc =>
     TermNV mode modty v ->
     Type mode modty v ->
     tc ()
---checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
+checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
+checkConstraintTermNV parent gamma (TermElim dmu eliminee eliminator) (Type ty) = _checkConstraintTermElim
 checkConstraintTermNV parent gamma (TermMeta meta depcies) (Type ty) =
   blockOnMetas [meta] parent
 checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
@@ -93,7 +123,6 @@ checkConstraintTermNV parent gamma (TermGoal goalname result) ty = do
       "Goal should take some value."
       j
 checkConstraintTermNV parent gamma (TermProblem t) (Type ty) = tcFail parent $ "Erroneous term."
-checkConstraintTermNV parent gamma t (Type ty) = _checkConstraintTermNV
 
 -------
 
