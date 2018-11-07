@@ -26,6 +26,8 @@ checkPiOrSigma :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkPiOrSigma parent gamma binding ty = do
+  -- CMODE
+  -- CMODTY
   lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
@@ -152,11 +154,43 @@ checkConstraintConstructorTerm :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkConstraintConstructorTerm parent gamma (ConsUniHS t) ty = checkConstraintUniHSConstructor parent gamma t ty
-{-checkConstraintConstructorTerm parent gamma (Lam binding) ty = do
-  tDom <- term4newImplicit gamma
-  let seg = _ $ binding'segment binding
-  i <- newConstraintID
-  _-}
+checkConstraintConstructorTerm parent gamma (Lam binding) ty = do
+  -- CMODE
+  -- CMODTY
+  ----------
+  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
+  ----------
+  addNewConstraint
+    (JudTerm
+      ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
+      (unType $ _segment'content $ binding'segment $ binding)
+      currentUni
+    )
+    (Just parent)
+    "Checking type of the domain."
+  ----------
+  codomain <- term4newImplicit (gamma :.. (VarFromCtx <$> binding'segment binding))
+  addNewConstraint
+    (JudTerm
+      (gamma :.. (VarFromCtx <$> binding'segment binding))
+      (binding'body binding)
+      (Type codomain)
+    )
+    (Just parent)
+    "Type-checking the body."
+  ----------
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding (binding'segment binding) codomain)
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
 checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 
 -------
