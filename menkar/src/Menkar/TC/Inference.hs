@@ -39,13 +39,22 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
     "Checking the level."
     j
   -----
+  anyLvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  let biggerLvl =
+        -- biggerLvl = suc (lvl + anyLvl)
+        Expr3 . TermCons . ConsSuc $
+        Expr3 $ TermElim (idModedModality dataMode) lvl $
+        ElimNat
+          (Expr3 $ TermCons $ ConsUniHS $ NatType)
+          anyLvl
+          (Expr3 . TermCons . ConsSuc $ Var3 VarLast)
   i <- newConstraintID
   addConstraint $ Constraint
     (JudTypeRel
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
       (Pair3
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d (Expr3 $ TermCons $ ConsSuc $ lvl))
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d biggerLvl)
         ty
       )
     )
