@@ -13,6 +13,7 @@ import Control.Exception.AssertFalse
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
+import Control.Monad
 
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
@@ -158,17 +159,13 @@ checkConstraintConstructorTerm parent gamma (Lam binding) ty = do
   -- CMODE
   -- CMODTY
   ----------
-  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
-  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
-  ----------
   addNewConstraint
-    (JudTerm
+    (JudType
       ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
-      (unType $ _segment'content $ binding'segment $ binding)
-      currentUni
+      (_segment'content $ binding'segment $ binding)
     )
     (Just parent)
-    "Checking type of the domain."
+    "Checking the domain."
   ----------
   codomain <- term4newImplicit (gamma :.. (VarFromCtx <$> binding'segment binding))
   addNewConstraint
@@ -191,6 +188,31 @@ checkConstraintConstructorTerm parent gamma (Lam binding) ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
+checkConstraintConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
+  let sigmaType = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
+  ----------
+  addNewConstraint
+    (JudType gamma sigmaType)
+    (Just parent)
+    "Checking the type"
+  ----------
+  addNewConstraint
+    (JudTerm
+      ((_segment'modty $ binding'segment $ VarFromCtx <$> sigmaBinding) :\\ gamma)
+      t1
+      (_segment'content $ binding'segment $ sigmaBinding)
+    )
+    (Just parent)
+    "Type-checking first component."
+  ----------
+  let subst :: VarExt _ -> Term _ _ _
+      subst VarLast = t1
+      subst (VarWkn v) = Var3 v
+      subst v = unreachable
+  addNewConstraint
+    (JudTerm gamma t2 (Type $ join $ subst <$> binding'body sigmaBinding))
+    (Just parent)
+    "Type-checking second component."
 checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 
 -------
