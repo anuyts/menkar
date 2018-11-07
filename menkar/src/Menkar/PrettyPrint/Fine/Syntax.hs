@@ -56,6 +56,7 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (EmptyType) = ribbon "Empty"
   fine2pretty gamma (UnitType) = ribbon "Unit"
   fine2pretty gamma (BoxType tySeg) = "Box " ++| fine2pretty gamma tySeg
+  fine2pretty gamma (NatType) = ribbon "Nat"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (UniHSConstructor mode modty Void) where
@@ -81,6 +82,8 @@ instance (Functor mode, Functor modty,
       " (" ++| fine2pretty gamma (BoxType tySeg) |++ ")",
       " (box .{" ++| fine2pretty gamma tmUnbox |++ "} ...)"
       ]
+  fine2pretty gamma (ConsZero) = ribbon "zero"
+  fine2pretty gamma (ConsSuc t) = "suc .{" ++| fine2pretty gamma t |++ "}"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ConstructorTerm mode modty Void) where
@@ -134,6 +137,8 @@ elimination2pretty gamma eliminee (ElimEmpty motive) =
     " (" ++| eliminee |++ ")"
     ]
 elimination2pretty gamma eliminee (Unbox boxSeg) = todo
+elimination2pretty gamma eliminee (ElimNat motive cz cs) = todo
+
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Eliminator mode modty Void) where

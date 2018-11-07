@@ -145,7 +145,8 @@ data UniHSConstructor (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Sigma (Binding Term mode modty v) |
   EmptyType |
   UnitType |
-  BoxType (Segment Type mode modty v)
+  BoxType (Segment Type mode modty v) |
+  NatType
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (UniHSConstructor mode modty)
@@ -164,7 +165,9 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ConsUnit |
   ConsBox
     (Segment Type mode modty v) {-^ box's type -}
-    (Term mode modty v) {-^ box's content -}
+    (Term mode modty v) {-^ box's content -} |
+  ConsZero |
+  ConsSuc (Term mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ConstructorTerm mode modty)
@@ -195,7 +198,11 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimEmpty
     (Binding Term mode modty v) {-^ motive -} |
   Unbox
-    (Segment Type mode modty v) {-^ box's type -}
+    (Segment Type mode modty v) {-^ box's type -} |
+  ElimNat 
+    (Term mode modty (VarExt v)) {-^ motive -}
+    (Term mode modty v) {-^ clause for zero -}
+    (Term mode modty (VarExt (VarExt v))) {-^ clause for suc -}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)

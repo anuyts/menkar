@@ -59,6 +59,16 @@ whnormalizeElim gamma dmu eliminee e = do
       --unit cases (none)
       --box cases
       (ConsBox seg tm, Unbox seg') -> whnormalize gamma tm
+      --nat cases
+      (ConsZero, ElimNat motive cz cs) -> whnormalize gamma cz
+      (ConsSuc t, ElimNat motive cz cs) -> whnormalize gamma $
+        let subst :: VarExt (VarExt _) -> Term _ _ _
+            subst VarLast = Expr3 $ TermElim dmu t (ElimNat motive cz cs)
+            subst (VarWkn VarLast) = t
+            subst (VarWkn (VarWkn v)) = Var3 v
+            subst (VarWkn v) = unreachable
+            subst v = unreachable
+        in  join $ subst <$> cs
       --nonsensical cases
       (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee e
     Expr3 _ -> unreachable
