@@ -22,7 +22,17 @@ class Fine2Pretty mode modty f where
 
 ---------------------------
 
-deriving instance (Show (mode v), Show (modty v)) => Show (ModedModality mode modty v)
+instance (Functor mode, Functor modty,
+                  Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Fine2Pretty mode modty ModedModality where
+  fine2pretty gamma (ModedModality d mu) = ribbonEmpty \\\ [
+                "[" ++| fine2pretty gamma (Mode $ d) |++ "] ",
+                "[" ++| fine2pretty gamma (Modty $ mu) |++ "] "
+              ]
+instance (Functor mode, Functor modty,
+                  Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+         Show (ModedModality mode modty Void) where
+  show dmu = "[ModedModality|\n" ++ fine2string ScCtxEmpty dmu ++ "\n]"
 
 deriving instance (Show (mode v), Show (modty v)) => Show (ModedContramodality mode modty v)
 
@@ -145,7 +155,7 @@ elimination2pretty gamma eliminee (ElimEmpty motive) =
 elimination2pretty gamma eliminee (Unbox boxSeg) = todo
 elimination2pretty gamma eliminee (ElimNat motive cz cs) = todo
 -}
-elimination2pretty gamma dmu eliminee tyEliminee (App arg) = 
+elimination2pretty gamma dmu eliminee tyEliminee (App arg) =
     ribbon "(ofType" \\\ [
       " (" ++| fine2pretty gamma tyEliminee |++ ")",
       " (" ++| fine2pretty gamma eliminee |++ ")"
@@ -154,6 +164,9 @@ elimination2pretty gamma dmu eliminee tyEliminee (App arg) =
       [
       " .{" ++| fine2pretty gamma arg |++ "}"
       ]
+--elimination2pretty gamma dmu eliminee tyEliminee (ElimSigma motive clausePair) =
+--  ribbon "let {" \\\ [
+--    "elim f : {" ++| fine2pretty gamma dmu |++ " | "
 elimination2pretty gamma dmu eliminee tyEliminee eliminator = _elimination2pretty
 
 {-
