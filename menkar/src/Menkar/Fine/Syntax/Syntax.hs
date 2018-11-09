@@ -138,6 +138,23 @@ deriving instance (
     CanSwallow (Term mode modty) (lhs mode modty),
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (Binding lhs rhs mode modty)
+  
+data NamedBinding
+    (rhs :: (* -> *) -> (* -> *) -> * -> *)
+    (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  NamedBinding {
+    _namedBinding'name :: Maybe Raw.Name,
+    _namedBinding'body :: rhs mode modty (VarExt v)
+  }
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (
+    Functor mode,
+    Functor modty,
+    Functor (rhs mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (rhs mode modty)
+  ) => CanSwallow (Term mode modty) (NamedBinding rhs mode modty)
 
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
@@ -193,17 +210,17 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   App {
     _eliminator'argument :: (Term mode modty v)} |
   ElimSigma {
-    _eliminator'motive :: (Binding Unit3 Term mode modty v),
-    _eliminator'clausePair :: (Binding Unit3 (Binding Unit3 Term) mode modty v)} |
+    _eliminator'motive :: (NamedBinding Term mode modty v),
+    _eliminator'clausePair :: (NamedBinding (NamedBinding Term) mode modty v)} |
   Fst |
   Snd |
   ElimEmpty {
-    _eliminator'motive :: (Binding Unit3 Term mode modty v)} |
+    _eliminator'motive :: (NamedBinding Term mode modty v)} |
   Unbox |
   ElimNat {
-    _eliminator'motive :: (Binding Unit3 Term mode modty v),
+    _eliminator'motive :: (NamedBinding Term mode modty v),
     _eliminator'clauseZero :: Term mode modty v,
-    _eliminator'clauseSuc :: (Binding Unit3 (Binding Unit3 Term) mode modty v)}
+    _eliminator'clauseSuc :: (NamedBinding (NamedBinding Term) mode modty v)}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)
@@ -483,3 +500,4 @@ telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit
 type LHS declSort ty = Declaration declSort (Telescope ty)
 
 makeLenses ''LeftDivided
+makeLenses ''NamedBinding

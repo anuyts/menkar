@@ -164,9 +164,19 @@ elimination2pretty gamma dmu eliminee tyEliminee (App arg) =
       [
       " .{" ++| fine2pretty gamma arg |++ "}"
       ]
---elimination2pretty gamma dmu eliminee tyEliminee (ElimSigma motive clausePair) =
---  ribbon "let {" \\\ [
---    "elim f : {" ++| fine2pretty gamma dmu |++ " | "
+elimination2pretty gamma dmu eliminee tyEliminee (ElimSigma motive clausePair) =
+  ribbon "let {" \\\ [
+    ribbon "elim f" \\\ [
+        " : " ++| fine2pretty gamma (Pi (Binding
+                                      (Declaration (DeclNameSegment $ _namedBinding'name motive) dmu Explicit tyEliminee)
+                                      (_namedBinding'body motive)
+                                    )),
+        fine2pretty gamma $ ModuleRHS $ Compose $ [
+                _letEntry
+            ]
+        ]
+    ] ///
+  "} in f .{" ++| fine2pretty gamma eliminee |++ "}"
 elimination2pretty gamma dmu eliminee tyEliminee eliminator = _elimination2pretty
 
 {-
