@@ -172,12 +172,12 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimSigma motive clausePair) =
                                       (_namedBinding'body motive)
                                     )),
         fine2pretty gamma $ ModuleRHS $ Compose $ [
-                _letEntry
+                todo
             ]
         ]
     ] ///
   "} in f .{" ++| fine2pretty gamma eliminee |++ "}"
-elimination2pretty gamma dmu eliminee tyEliminee eliminator = _elimination2pretty
+elimination2pretty gamma dmu eliminee tyEliminee eliminator = todo
 
 {-
 instance (Functor mode, Functor modty,
