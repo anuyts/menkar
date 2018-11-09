@@ -55,7 +55,7 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
               VarWkn VarLast -> tmFst
               VarLast -> tmSnd
               _ -> unreachable
-        in whnormalize gamma (join $ subst <$> binding'body (binding'body clause))
+        in whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause))
       --empty type cases (none)
       --unit cases (none)
       --box cases
@@ -69,7 +69,7 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
             subst (VarWkn (VarWkn v)) = Var3 v
             subst (VarWkn v) = unreachable
             subst v = unreachable
-        in  join $ subst <$> binding'body (binding'body cs)
+        in  join $ subst <$> _namedBinding'body (_namedBinding'body cs)
       --nonsensical cases
       (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
     Expr3 _ -> unreachable
