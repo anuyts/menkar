@@ -23,7 +23,7 @@ import Control.Monad
 checkPiOrSigma :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
-    Binding Term mode modty v ->
+    Binding Type Term mode modty v ->
     Type mode modty v ->
     tc ()
 checkPiOrSigma parent gamma binding ty = do
@@ -103,11 +103,11 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
   let biggerLvl =
         -- biggerLvl = suc (lvl + anyLvl)
         Expr3 . TermCons . ConsSuc $
-        Expr3 $ TermElim (idModedModality dataMode) lvl $
+        Expr3 $ TermElim (idModedModality dataMode) lvl (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
         ElimNat
-          (Expr3 $ TermCons $ ConsUniHS $ NatType)
+          (NamedBinding Nothing $ Expr3 $ TermCons $ ConsUniHS $ NatType)
           anyLvl
-          (Expr3 . TermCons . ConsSuc $ Var3 VarLast)
+          (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr3 . TermCons . ConsSuc $ Var3 VarLast)
   addNewConstraint
     (JudTypeRel
       eqDeg
@@ -296,7 +296,7 @@ checkConstraintTermNV :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
-checkConstraintTermNV parent gamma (TermElim dmu eliminee eliminator) (Type ty) = _checkConstraintTermElim
+checkConstraintTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) (Type ty) = _checkConstraintTermElim
 checkConstraintTermNV parent gamma (TermMeta meta (Compose depcies)) ty = do
   maybeT <- getMeta meta depcies
   case maybeT of
