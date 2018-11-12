@@ -288,6 +288,19 @@ checkConstraintConstructorTerm parent gamma (ConsSuc t) ty = do
 --checkConstraintConstructorTerm parent gamma c (Type ty) = _checkConstraintConstructorTerm
 
 -------
+
+checkConstraintEliminator :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
+    Ctx Type mode modty v Void ->
+    ModedModality mode modty v ->
+    Term mode modty v ->
+    Type mode modty v ->
+    Eliminator mode modty v ->
+    Type mode modty v ->
+    tc ()
+checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty = _checkConstraintEliminator
+
+-------
     
 checkConstraintTermNV :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
@@ -296,7 +309,17 @@ checkConstraintTermNV :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkConstraintTermNV parent gamma (TermCons c) ty = checkConstraintConstructorTerm parent gamma c ty
-checkConstraintTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) (Type ty) = _checkConstraintTermElim
+checkConstraintTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
+  -- CMODE CMODTY
+  addNewConstraint
+    (JudType ((VarFromCtx <$> dmu) :\\ gamma) tyEliminee)
+    (Just parent)
+    "Checking type of eliminee."
+  addNewConstraint
+    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) eliminee tyEliminee)
+    (Just parent)
+    "Type-checking eliminee."
+  checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty
 checkConstraintTermNV parent gamma (TermMeta meta (Compose depcies)) ty = do
   maybeT <- getMeta meta depcies
   case maybeT of
