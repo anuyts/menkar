@@ -1,6 +1,7 @@
 module Menkar.Scoper.Context.Context where
 
 import Menkar.Basic.Context
+import Menkar.Fine.Context
 import Menkar.Fine.Syntax
 import qualified Menkar.Raw.Syntax as Raw
 
@@ -54,6 +55,12 @@ instance (
   swallow (gamma ::<...> modul) = swallow gamma ::<...> swallow (fmap sequenceA modul)
   swallow (() ::\\ gamma) = () ::\\ swallow gamma
 infixl 3 ::.., ::^^, ::<...>, ::\\
+ctx2scCtx :: Ctx ty mode modty v w -> ScCtx mode modty v w
+ctx2scCtx (CtxEmpty d) = ScCtxEmpty
+ctx2scCtx (gamma :.. seg) = ctx2scCtx gamma ::.. segment2scSegment seg
+ctx2scCtx (seg :^^ gamma) = segment2scSegment seg ::^^ ctx2scCtx gamma
+ctx2scCtx (gamma :<...> modul) = ctx2scCtx gamma ::<...> modul
+ctx2scCtx (dmu :\\ gamma) = () ::\\ ctx2scCtx gamma
 
 scGetName :: ScCtx mode modty v w -> v -> Maybe Raw.Name
 scGetName ScCtxEmpty v = absurd v
@@ -84,4 +91,3 @@ mapTelescopedSc f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescopedSc (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
 mapTelescopedSc f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescopedSc f (() ::\\ gamma) stuff
-

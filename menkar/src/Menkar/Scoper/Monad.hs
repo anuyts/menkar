@@ -4,7 +4,7 @@ module Menkar.Scoper.Monad where
 
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
-import Menkar.Scoper.Context
+import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw
 import Control.Monad.State.Lazy
 import Data.Void
@@ -20,15 +20,15 @@ class (
     (rel :: * -> *)
     (sc :: * -> *)
     | sc -> mode, sc -> modty, sc -> rel where
-  annot4annot :: ScCtx mode modty v Void -> 
+  annot4annot :: Ctx Type mode modty v Void -> 
     Raw.Qualified String -> [SmartEliminator mode modty v] -> sc (Annotation mode modty v)
-  term4newImplicit :: ScCtx mode modty v Void -> sc (Term mode modty v)
-  mode4newImplicit :: ScCtx mode modty v Void -> sc (mode v)
-  modty4newImplicit :: ScCtx mode modty v Void -> sc (modty v)
+  term4newImplicit :: Ctx Type mode modty v Void -> sc (Term mode modty v)
+  mode4newImplicit :: Ctx Type mode modty v Void -> sc (mode v)
+  modty4newImplicit :: Ctx Type mode modty v Void -> sc (modty v)
   scopeFail :: String -> sc a
 
 type4newImplicit :: MonadScoper mode modty rel sc =>
-  ScCtx mode modty v Void -> sc (Type mode modty v)
+  Ctx Type mode modty v Void -> sc (Type mode modty v)
 type4newImplicit gamma = Type <$> term4newImplicit gamma
 
 instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where

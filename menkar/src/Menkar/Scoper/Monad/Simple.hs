@@ -7,6 +7,7 @@ import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
 import Menkar.Basic.Context
 import Menkar.Scoper.Context
+import Menkar.Fine.Context
 import Menkar.PrettyPrint.Fine
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
@@ -43,11 +44,11 @@ instance MonadScoper U1 U1 U1 SimpleScoper where
   annot4annot gamma qstring args = case (qstring, args) of
     (Raw.Qualified [] "~", []) -> return AnnotImplicit
     _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
-             Raw.unparse' qstring \\\ fine2pretty gamma <$> args
+             Raw.unparse' qstring \\\ fine2pretty (ctx2scCtx gamma) <$> args
            )
   term4newImplicit gamma = do
     i <- fresh
-    return $ Expr3 $ TermMeta i $ Compose $ Var3 <$> scListVariables gamma
+    return $ Expr3 $ TermMeta i $ Compose $ Var3 <$> scListVariables (ctx2scCtx gamma)
   mode4newImplicit gamma = return U1
   modty4newImplicit gamma = return U1
   scopeFail msg = SimpleScoper $ lift $ Left msg
@@ -59,4 +60,4 @@ testscope filename = do
   errorOrRawFile <- P.testparse filename
   return $ case errorOrRawFile of
     Left error -> Left $ error
-    Right rawFile -> Right $ evalSimpleScoper $ file ScCtxEmpty rawFile
+    Right rawFile -> Right $ evalSimpleScoper $ file (CtxEmpty U1) rawFile

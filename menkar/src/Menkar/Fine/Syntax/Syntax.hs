@@ -374,7 +374,8 @@ newPartialDeclaration = TelescopedPartialDeclaration {
 type Segment ty = Declaration DeclSortSegment ty
 
 --type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
-type PartialSegment ty = TelescopedPartialDeclaration Raw.DeclSortSegment Void3 ty
+-- | Partial segments should have an untelescoped type.
+type PartialSegment ty = TelescopedPartialDeclaration Raw.DeclSortSegment Type ty
 
 {-
 _tdecl'name :: TelescopedDeclaration declSort ty content mode modty v -> DeclName declSort
