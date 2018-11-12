@@ -298,6 +298,29 @@ checkConstraintEliminator :: MonadTC mode modty rel tc =>
     Eliminator mode modty v ->
     Type mode modty v ->
     tc ()
+checkConstraintEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (ConsUniHS (Pi binding))))) (App arg) ty = do
+  let dmu = _segment'modty $ binding'segment $ binding
+  let dom = _segment'content $ binding'segment binding
+  addNewConstraint
+    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) arg dom)
+    (Just parent)
+    "Type-checking argument."
+  let subst :: VarExt _ -> Term _ _ _
+      subst VarLast = arg
+      subst (VarWkn v) = Var3 v
+      subst _ = unreachable
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3
+        (Type $ join $ subst <$> binding'body binding)
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstraintEliminator parent gamma dmu eliminee tyEliminee (App arg) ty = unreachable
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty = _checkConstraintEliminator
 
 -------
