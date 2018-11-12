@@ -3,6 +3,7 @@
 module Menkar.Scoper.Scoper where
 
 import Prelude hiding (pi)
+
 import Menkar.Scoper.Monad
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
@@ -12,6 +13,7 @@ import Menkar.Basic.Context
 --import Menkar.Scoper.Context
 import Menkar.Fine.Context
 import Control.Exception.AssertFalse
+
 import Control.Monad.State.Lazy
 import Control.Monad.List
 import Data.Functor.Compose
@@ -20,6 +22,7 @@ import Data.HashMap.Lazy
 import Data.Functor.Identity
 import Data.Coerce
 import Control.Lens
+import Data.Number.Nat
 
 ---------------------------
 
@@ -36,6 +39,12 @@ eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
   return $ SmartElimArg argSpec fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
+natLiteral :: MonadScoper mode modty rel sc =>
+  Nat -> sc (Term mode modty v)
+natLiteral n
+  | n == 0 = return $ Expr3 $ TermCons $ ConsZero
+  | otherwise = Expr3 . TermCons . ConsSuc <$> natLiteral (n - 1) 
+
 {-| @'expr3' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 expr3 :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
@@ -43,7 +52,7 @@ expr3 :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 expr3 gamma (Raw.ExprQName rawQName) = return $ Expr3 $ TermQName rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
-expr3 gamma (Raw.ExprNatLiteral n) = todo
+expr3 gamma (Raw.ExprNatLiteral n) = natLiteral n
 expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma
 expr3 gamma (Raw.ExprGoal str) = do
   result <- term4newImplicit gamma
