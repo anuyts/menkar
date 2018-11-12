@@ -247,7 +247,7 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Type mode modty v) {-^ eliminee's type -}
     (Eliminator mode modty v) {-^ eliminator -} |
   TermMeta Int (Compose [] (Term mode modty) v) |
-  TermQName Raw.QName |
+  TermQName Raw.QName (LeftDivided (Telescoped Type ValRHS) mode modty v) |
   TermSmartElim
     (Term mode modty v) {-^ eliminee -}
     (Compose [] (SmartEliminator mode modty) v) {-^ eliminators -}
@@ -422,9 +422,6 @@ mapTelescopedSimple f (Telescoped rhs) = Telescoped <$> f id rhs
 mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (. VarWkn)) stuff
 mapTelescopedSimple f (mu :** stuff) = (mu :**) <$> mapTelescopedSimple f stuff
 
-makeLenses ''Declaration
-makeLenses ''TelescopedPartialDeclaration
-
 data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ValRHS {_val'term :: Term mode modty v, _val'type :: Type mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
@@ -500,5 +497,8 @@ telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit
 --type LHS declSort ty = TelescopedDeclaration declSort ty Unit3
 type LHS declSort ty = Declaration declSort (Telescope ty)
 
+
+makeLenses ''Declaration
+makeLenses ''TelescopedPartialDeclaration
 makeLenses ''LeftDivided
 makeLenses ''NamedBinding

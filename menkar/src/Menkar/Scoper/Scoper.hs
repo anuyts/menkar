@@ -12,6 +12,7 @@ import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 --import Menkar.Scoper.Context
 import Menkar.Fine.Context
+import Menkar.Fine.LookupQName
 import Control.Exception.AssertFalse
 
 import Control.Monad.State.Lazy
@@ -43,14 +44,24 @@ natLiteral :: MonadScoper mode modty rel sc =>
   Nat -> sc (Term mode modty v)
 natLiteral n
   | n == 0 = return $ Expr3 $ TermCons $ ConsZero
-  | otherwise = Expr3 . TermCons . ConsSuc <$> natLiteral (n - 1) 
+  | otherwise = Expr3 . TermCons . ConsSuc <$> natLiteral (n - 1)
 
+qname :: MonadScoper mode modty rel sc =>
+  Ctx Type mode modty v Void ->
+  Raw.QName ->
+  sc (Term mode modty v)
+qname gamma rawQName =
+  let maybeLdivTelescopedVal = lookupQName gamma rawQName
+  in case maybeLdivTelescopedVal of
+       Nothing -> scopeFail $ "Not in scope: " ++ Raw.unparse rawQName
+       Just ldivTelescopedVal -> return $ Expr3 $ TermQName rawQName $ unVarFromCtx <$> ldivTelescopedVal
+  
 {-| @'expr3' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 expr3 :: MonadScoper mode modty rel sc =>
   Ctx Type mode modty v Void ->
   Raw.Expr3 ->
   sc (Term mode modty v)
-expr3 gamma (Raw.ExprQName rawQName) = return $ Expr3 $ TermQName rawQName
+expr3 gamma (Raw.ExprQName rawQName) = qname gamma rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = natLiteral n
 expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma

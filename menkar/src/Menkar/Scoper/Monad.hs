@@ -5,6 +5,7 @@ module Menkar.Scoper.Monad where
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
+import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw
 import Control.Monad.State.Lazy
 import Data.Void
@@ -13,7 +14,8 @@ class (
     Monad sc,
     Traversable mode,
     Traversable modty,
-    Traversable rel
+    Traversable rel,
+    Multimode mode modty
   ) => MonadScoper
     (mode :: * -> *)
     (modty :: * -> *)
