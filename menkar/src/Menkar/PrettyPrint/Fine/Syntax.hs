@@ -201,7 +201,7 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) =
     elimination2pretty gamma mod eliminee tyEliminee eliminator
   fine2pretty gamma (TermMeta i (Compose depcies)) = ribbon ("?" ++ show i) \\\ ((" " ++|) . fine2pretty gamma <$> depcies)
-  fine2pretty gamma (TermQName qname) = Raw.unparse' qname
+  fine2pretty gamma (TermQName qname lookupresult) = Raw.unparse' qname
   fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) =
     "(" ++| fine2pretty gamma eliminee |++ ")"
       |+| treeGroup ((" " ++|) . fine2pretty gamma <$> eliminators)

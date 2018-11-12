@@ -8,6 +8,7 @@ import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.PrettyPrint.Aux.Context
 import Menkar.Fine.Context
+import Menkar.Fine.Multimode
 import Menkar.PrettyPrint.Fine
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
@@ -39,6 +40,14 @@ instance Fine2Pretty U1 U1 Mode where
   fine2pretty gamma (Mode U1) = ribbon "data"
 instance Fine2Pretty U1 U1 Modty where
   fine2pretty gamma (Modty U1) = ribbon "hoc"
+
+instance Multimode U1 U1 where
+  idMod U1 = U1
+  compMod U1 U1 U1 = U1
+  wildMode = U1
+  flatMod = U1
+  irrMod = U1
+  dataMode = U1
 
 instance MonadScoper U1 U1 U1 SimpleScoper where
   annot4annot gamma qstring args = case (qstring, args) of
