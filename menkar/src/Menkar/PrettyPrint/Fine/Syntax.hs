@@ -4,7 +4,7 @@ module Menkar.PrettyPrint.Fine.Syntax where
 
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
-import Menkar.Scoper.Context
+import Menkar.PrettyPrint.Aux.Context
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Text.PrettyPrint.Tree

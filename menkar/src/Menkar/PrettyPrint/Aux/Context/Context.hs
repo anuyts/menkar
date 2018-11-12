@@ -1,4 +1,4 @@
-module Menkar.Scoper.Context.Context where
+module Menkar.PrettyPrint.Aux.Context.Context where
 
 import Menkar.Basic.Context
 import Menkar.Fine.Context
@@ -11,6 +11,8 @@ import GHC.Generics
 import Data.Void
 
 -------------------------------------------------------------
+
+-- The names "Sc*" do not make sense. It would be more sensible to use PP*, but whatever.
 
 {-
 data ModuleInScope (mode :: * -> *) (modty :: * -> *) (v :: *) =
