@@ -308,14 +308,12 @@ checkConstraintTermNV parent gamma (TermMeta meta (Compose depcies)) ty = do
         (Just parent)
         "Look up meta."
         i
-checkConstraintTermNV parent gamma (TermQName qname) (Type ty) =
-  case over leftDivided'content telescoped2modalQuantified <$> lookupQName gamma qname of
-    Nothing -> tcFail parent $ "Not in scope (or misspelled)."
-    Just ldivModAppliedVal -> do
-      varAccessible <- leqMod
+checkConstraintTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
+  let ldivModAppliedVal = VarFromCtx <$> over leftDivided'content telescoped2modalQuantified lookupresult
+  varAccessible <- leqMod
         (modality'mod . _modApplied'modality . _leftDivided'content $ ldivModAppliedVal)
         (modality'mod . _leftDivided'modality $ ldivModAppliedVal)
-      if varAccessible
+  if varAccessible
         then do
           addNewConstraint
             (JudTypeRel
