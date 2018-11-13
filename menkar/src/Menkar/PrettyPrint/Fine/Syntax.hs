@@ -164,7 +164,7 @@ elimination2pretty gamma dmu eliminee tyEliminee (App arg) =
       [
       " .{" ++| fine2pretty gamma arg |++ "}"
       ]
-elimination2pretty gamma dmu eliminee tyEliminee (ElimSigma motive clausePair) =
+elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clausePair)) =
   ribbon "let {" \\\ [
     ribbon "elim f" \\\ [
         " : " ++| fine2pretty gamma (Pi (Binding

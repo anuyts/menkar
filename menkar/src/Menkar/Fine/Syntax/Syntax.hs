@@ -202,6 +202,13 @@ data SmartEliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (SmartEliminator mode modty)
 
+data DependentEliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
+  ElimSigma (NamedBinding (NamedBinding Term) mode modty v) |
+  ElimEmpty |
+  ElimNat (Term mode modty v) (NamedBinding (NamedBinding Term) mode modty v)
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
+  CanSwallow (Term mode modty) (DependentEliminator mode modty)
 
 data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   {-ElimUnsafeResize
@@ -209,18 +216,12 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
     {-(Term mode modty v) {-^ Type -}-} |-}
   App {
     _eliminator'argument :: (Term mode modty v)} |
-  ElimSigma {
-    _eliminator'motive :: (NamedBinding Term mode modty v),
-    _eliminator'clausePair :: (NamedBinding (NamedBinding Term) mode modty v)} |
   Fst |
   Snd |
-  ElimEmpty {
-    _eliminator'motive :: (NamedBinding Term mode modty v)} |
   Unbox |
-  ElimNat {
+  ElimDep {
     _eliminator'motive :: (NamedBinding Term mode modty v),
-    _eliminator'clauseZero :: Term mode modty v,
-    _eliminator'clauseSuc :: (NamedBinding (NamedBinding Term) mode modty v)}
+    _eliminator'clauses :: DependentEliminator mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)

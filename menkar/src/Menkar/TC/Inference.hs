@@ -104,8 +104,8 @@ checkConstraintUniHSConstructor parent gamma (UniHS d lvl) ty = do
         -- biggerLvl = suc (lvl + anyLvl)
         Expr3 . TermCons . ConsSuc $
         Expr3 $ TermElim (idModedModality dataMode) lvl (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
+        ElimDep (NamedBinding Nothing $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
         ElimNat
-          (NamedBinding Nothing $ Expr3 $ TermCons $ ConsUniHS $ NatType)
           anyLvl
           (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr3 . TermCons . ConsSuc $ Var3 VarLast)
   addNewConstraint

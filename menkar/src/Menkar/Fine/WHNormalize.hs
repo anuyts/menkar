@@ -49,7 +49,7 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
       --sigma cases
       (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize gamma tmFst
       (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize gamma tmSnd
-      (Pair sigmaBinding tmFst tmSnd, ElimSigma motive clause) ->
+      (Pair sigmaBinding tmFst tmSnd, ElimDep motive (ElimSigma clause)) ->
         let subst v = case v of
               VarWkn (VarWkn w) -> Var3 w
               VarWkn VarLast -> tmFst
@@ -61,10 +61,10 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
       --box cases
       (ConsBox seg tm, Unbox) -> whnormalize gamma tm
       --nat cases
-      (ConsZero, ElimNat motive cz cs) -> whnormalize gamma cz
-      (ConsSuc t, ElimNat motive cz cs) -> whnormalize gamma $
+      (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize gamma cz
+      (ConsSuc t, ElimDep motive (ElimNat cz cs)) -> whnormalize gamma $
         let subst :: VarExt (VarExt _) -> Term _ _ _
-            subst VarLast = Expr3 $ TermElim dmu t tyEliminee (ElimNat motive cz cs)
+            subst VarLast = Expr3 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
             subst (VarWkn VarLast) = t
             subst (VarWkn (VarWkn v)) = Var3 v
             subst (VarWkn v) = unreachable
