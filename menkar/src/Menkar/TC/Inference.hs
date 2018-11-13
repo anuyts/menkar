@@ -321,6 +321,7 @@ checkConstraintEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (Cons
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee (App arg) ty = unreachable
+-- dependent elims: type-check motive and take them separately
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty = _checkConstraintEliminator
 
 -------
@@ -343,14 +344,19 @@ checkConstraintTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator)
     (Just parent)
     "Type-checking eliminee."
   checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty
-checkConstraintTermNV parent gamma (TermMeta meta (Compose depcies)) ty = do
+checkConstraintTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
   maybeT <- getMeta meta depcies
   case maybeT of
-    Nothing -> blockOnMetas [meta] parent
-    Just t -> do
+    Nothing -> do
+      addNewConstraint
+        (JudEta gamma (Expr3 t) ty)
+        (Just parent)
+        "Eta-expand meta if possible."
+      blockOnMetas [meta] parent
+    Just t' -> do
       i <- newConstraintID
       checkConstraint $ Constraint
-        (JudTerm gamma t ty)
+        (JudTerm gamma t' ty)
         (Just parent)
         "Look up meta."
         i
