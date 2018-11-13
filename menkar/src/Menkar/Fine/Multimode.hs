@@ -14,6 +14,7 @@ class (
   flatMod :: modty v
   irrMod :: modty v
   dataMode :: mode v
+  approxLeftAdjointProj :: ModedModality mode modty v -> mode v {-^ the codomain -} -> modty v
 
 class (
     Multimode mode modty,

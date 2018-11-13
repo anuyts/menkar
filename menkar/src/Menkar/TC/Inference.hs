@@ -321,6 +321,41 @@ checkConstraintEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (Cons
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee (App arg) ty = unreachable
+checkConstraintEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (ConsUniHS (Sigma binding))))) Fst ty = do
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3
+        (_segment'content $ binding'segment binding)
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstraintEliminator parent gamma dmu eliminee tyEliminee Fst ty = unreachable
+checkConstraintEliminator parent gamma dmu eliminee
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (Sigma binding))))) Snd ty = do
+  let dFst = modality'dom $ _segment'modty $ binding'segment $ binding
+      muSigma = modality'mod $ _segment'modty $ binding'segment $ binding
+      dSnd = unVarFromCtx <$> ctx'mode gamma
+      muProj = approxLeftAdjointProj (ModedModality dFst muSigma) dSnd
+      subst :: VarExt _ -> Term _ _ _
+      subst VarLast = Expr3 $ TermElim (ModedModality dSnd muProj) eliminee tyEliminee Fst
+      subst (VarWkn v) = Var3 v
+      subst _ = unreachable
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3
+        (Type $ join $ subst <$> binding'body binding)
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstraintEliminator parent gamma dmu eliminee tyEliminee Snd ty = unreachable
 -- dependent elims: type-check motive and take them separately
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty = _checkConstraintEliminator
 
