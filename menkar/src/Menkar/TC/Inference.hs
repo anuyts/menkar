@@ -51,8 +51,7 @@ checkConstraint parent = case constraint'judgement parent of
   -} -- contexts start empty and grow only in well-typed ways.
 
   JudType gamma (Type ty) -> do
-    --lvl <- term4newImplicit gamma
-    let lvl = Expr3 $ TermCons $ ConsOmega
+    lvl <- term4newImplicit gamma
     addNewConstraint
       (JudTerm gamma ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl))
       (Just parent)
