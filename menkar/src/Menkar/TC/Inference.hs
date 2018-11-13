@@ -328,6 +328,28 @@ checkConstraintDependentEliminator parent gamma dmu eliminee
 checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimSigma clause) ty = unreachable
 checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg))))) motive (ElimBox clause) ty = do
+  let segContent :: Segment Type _ _ _
+      segContent = Declaration
+                     (DeclNameSegment $ _namedBinding'name clause)
+                     (compModedModality dmu (_segment'modty boxSeg))
+                     Explicit
+                     (_segment'content boxSeg)
+  let subst :: VarExt _ -> Term _ _ (VarExt _)
+      subst VarLast = Expr3 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var3 VarLast
+      subst (VarWkn v) = Var3 $ VarWkn v
+      subst _ = unreachable
+  addNewConstraint
+    (JudTerm
+      (gamma :.. (VarFromCtx <$> segContent))
+      (_namedBinding'body $ clause)
+      (Type $ join $ subst <$> (_namedBinding'body motive))
+    )
+    (Just parent)
+    "Type-checking box content."
+checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee motive (ElimBox clause) ty = unreachable
+checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee@(Type (Expr3 (TermCons (ConsUniHS EmptyType)))) motive (ElimEmpty) ty = return ()
 checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimEmpty) ty = unreachable

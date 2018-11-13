@@ -204,6 +204,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
 
 data DependentEliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ElimSigma (NamedBinding (NamedBinding Term) mode modty v) |
+  ElimBox (NamedBinding Term mode modty v) |
   ElimEmpty |
   ElimNat (Term mode modty v) (NamedBinding (NamedBinding Term) mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
