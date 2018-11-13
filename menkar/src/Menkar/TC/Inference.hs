@@ -9,6 +9,7 @@ import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Control.Exception.AssertFalse
+import Menkar.TC.Inference.Term
 
 import Data.Void
 import Control.Lens
