@@ -399,7 +399,34 @@ checkConstraintEliminator parent gamma dmu eliminee
     "Checking whether actual type equals expected type."
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee Unbox ty = unreachable
 -- dependent elims: type-check motive and take them separately
-checkConstraintEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty =
+checkConstraintEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty = do
+  addNewConstraint
+    (JudType
+      (gamma :.. VarFromCtx <$> Declaration
+        (DeclNameSegment $ _namedBinding'name motive)
+        dmu
+        Explicit
+        tyEliminee
+      )
+      (Type $ _namedBinding'body motive)
+    )
+    (Just parent)
+    "Type-checking motive."
+  let subst :: VarExt _ -> Term _ _ _
+      subst VarLast = eliminee
+      subst (VarWkn v) = Var3 v
+      subst _ = unreachable
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3
+        (Type $ join $ subst <$> _namedBinding'body motive)
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
   checkConstraintDependentEliminator parent gamma dmu eliminee tyEliminee motive clauses ty
 
 -------
