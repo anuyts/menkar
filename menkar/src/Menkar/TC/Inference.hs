@@ -300,13 +300,35 @@ checkConstraintDependentEliminator :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkConstraintDependentEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (Sigma binding))))) motive (ElimSigma clause) ty =
-  _
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding))))) motive (ElimSigma clause) ty = do
+  let segFst :: Segment Type _ _ _
+      segFst = Declaration
+                 (DeclNameSegment $ _namedBinding'name clause)
+                 (compModedModality dmu (_segment'modty $ binding'segment $ sigmaBinding))
+                 Explicit
+                 (_segment'content $ binding'segment $ sigmaBinding)
+  let segSnd :: Segment Type _ _ (VarExt _)
+      segSnd = Declaration
+                 (DeclNameSegment $ _namedBinding'name $ _namedBinding'body clause)
+                 (VarWkn <$> dmu)
+                 Explicit
+                 (Type $ binding'body sigmaBinding)
+  let subst :: VarExt _ -> Term _ _ (VarExt (VarExt _))
+      subst VarLast = Expr3 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var3 $ VarWkn VarLast) (Var3 VarLast)
+      subst (VarWkn v) = Var3 $ VarWkn $ VarWkn v
+      subst _ = unreachable
+  addNewConstraint
+    (JudTerm
+      (gamma :.. (VarFromCtx <$> segFst) :.. (VarFromCtx <$> segSnd))
+      (_namedBinding'body $ _namedBinding'body $ clause)
+      (Type $ join $ subst <$> (_namedBinding'body motive))
+    )
+    (Just parent)
+    "Type-checking pair clause."
 checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimSigma clause) ty = unreachable
 checkConstraintDependentEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS EmptyType)))) motive (ElimEmpty) ty =
-  _
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS EmptyType)))) motive (ElimEmpty) ty = return ()
 checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimEmpty) ty = unreachable
 checkConstraintDependentEliminator parent gamma dmu eliminee
