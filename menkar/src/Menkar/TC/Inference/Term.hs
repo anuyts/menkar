@@ -284,6 +284,17 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
 --checkConstructorTerm parent gamma c (Type ty) = _checkConstructorTerm
+checkConstructorTerm parent gamma ConsOmega ty = do
+  -- CMODE
+  ----------
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
 
 -------
 

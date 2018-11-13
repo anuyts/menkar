@@ -94,6 +94,7 @@ instance (Functor mode, Functor modty,
       ]
   fine2pretty gamma (ConsZero) = ribbon "zero"
   fine2pretty gamma (ConsSuc t) = "suc .{" ++| fine2pretty gamma t |++ "}"
+  fine2pretty gamma (ConsOmega) = ribbon "\969"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ConstructorTerm mode modty Void) where
