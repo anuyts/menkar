@@ -346,7 +346,7 @@ checkConstraintDependentEliminator parent gamma dmu eliminee
       (Type $ join $ subst <$> (_namedBinding'body motive))
     )
     (Just parent)
-    "Type-checking box content."
+    "Type-checking box clause."
 checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimBox clause) ty = unreachable
 checkConstraintDependentEliminator parent gamma dmu eliminee
@@ -354,8 +354,39 @@ checkConstraintDependentEliminator parent gamma dmu eliminee
 checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimEmpty) ty = unreachable
 checkConstraintDependentEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS NatType)))) motive (ElimNat cz cs) ty =
-  _
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS NatType)))) motive (ElimNat cz cs) ty = do
+  let substZ :: VarExt _ -> Term _ _ _
+      substZ VarLast = Expr3 $ TermCons $ ConsZero
+      substZ (VarWkn v) = Var3 v
+      substZ _ = unreachable
+  addNewConstraint
+    (JudTerm gamma cz (Type $ join $ substZ <$> _namedBinding'body motive))
+    (Just parent)
+    "Type-checking zero clause."
+  let segPred :: Segment Type _ _ _
+      segPred = Declaration
+                  (DeclNameSegment $ _namedBinding'name cs)
+                  dmu
+                  Explicit
+                  (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+  let segHyp :: Segment Type _ _ (VarExt _)
+      segHyp = Declaration
+                  (DeclNameSegment $ _namedBinding'name $ _namedBinding'body cs)
+                  (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
+                  Explicit
+                  (Type $ _namedBinding'body motive)
+  let substS :: VarExt _ -> Term _ _ (VarExt (VarExt _))
+      substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
+      substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
+      substS _ = unreachable
+  addNewConstraint
+    (JudTerm
+      (gamma :.. (VarFromCtx <$> segPred) :.. (VarFromCtx <$> segHyp))
+      (_namedBinding'body $ _namedBinding'body $ cs)
+      (Type $ join $ substS <$> _namedBinding'body motive)
+    )
+    (Just parent)
+    "Type-checking successor clause."
 checkConstraintDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimNat cz cs) ty = unreachable
 
