@@ -289,6 +289,34 @@ checkConstraintConstructorTerm parent gamma (ConsSuc t) ty = do
 
 -------
 
+checkConstraintDependentEliminator :: MonadTC mode modty rel tc =>
+    Constraint mode modty rel ->
+    Ctx Type mode modty v Void ->
+    ModedModality mode modty v ->
+    Term mode modty v ->
+    Type mode modty v ->
+    NamedBinding Term mode modty v ->
+    DependentEliminator mode modty v ->
+    Type mode modty v ->
+    tc ()
+checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (Sigma binding))))) motive (ElimSigma clause) ty =
+  _
+checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee motive (ElimSigma clause) ty = unreachable
+checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS EmptyType)))) motive (ElimEmpty) ty =
+  _
+checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee motive (ElimEmpty) ty = unreachable
+checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS NatType)))) motive (ElimNat cz cs) ty =
+  _
+checkConstraintDependentEliminator parent gamma dmu eliminee
+    tyEliminee motive (ElimNat cz cs) ty = unreachable
+
+-------
+
 checkConstraintEliminator :: MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
@@ -371,7 +399,8 @@ checkConstraintEliminator parent gamma dmu eliminee
     "Checking whether actual type equals expected type."
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee Unbox ty = unreachable
 -- dependent elims: type-check motive and take them separately
-checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty = _checkConstraintEliminator
+checkConstraintEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty =
+  checkConstraintDependentEliminator parent gamma dmu eliminee tyEliminee motive clauses ty
 
 -------
     
