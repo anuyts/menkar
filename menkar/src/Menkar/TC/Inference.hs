@@ -356,6 +356,20 @@ checkConstraintEliminator parent gamma dmu eliminee
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee Snd ty = unreachable
+checkConstraintEliminator parent gamma dmu eliminee
+    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (BoxType segment))))) Unbox ty = do
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (Pair3
+        (_segment'content segment)
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstraintEliminator parent gamma dmu eliminee tyEliminee Unbox ty = unreachable
 -- dependent elims: type-check motive and take them separately
 checkConstraintEliminator parent gamma dmu eliminee tyEliminee eliminator ty = _checkConstraintEliminator
 
