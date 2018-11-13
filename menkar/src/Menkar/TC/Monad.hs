@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Menkar.TC.Monad where
 
 import Menkar.Fine.Syntax
@@ -5,7 +7,9 @@ import Menkar.Fine.Judgement
 import Menkar.Fine.Context
 import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw
+
 import Data.Void
+import Control.Monad.Trans.Class
 
 data Constraint mode modty rel = Constraint {
     constraint'judgement :: Judgement mode modty rel,
@@ -44,3 +48,17 @@ addNewConstraint :: MonadTC mode modty rel tc =>
 addNewConstraint judgement parent reason = do
   i <- newConstraintID
   addConstraint $ Constraint judgement parent reason i
+
+instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mode modty rel (mT tc) where
+  term4newImplicit gamma = lift $ term4newImplicit gamma
+  mode4newImplicit gamma = lift $ mode4newImplicit gamma
+  modty4newImplicit gamma = lift $ modty4newImplicit gamma
+  genVarName = lift $ genVarName
+  newConstraintID = lift $ newConstraintID
+  addConstraint c = lift $ addConstraint c
+  addConstraintReluctantly c = lift $ addConstraintReluctantly c
+  solveMeta meta depcies solution = lift $ solveMeta meta depcies solution
+  getMeta meta depcies = lift $ getMeta meta depcies
+  blockOnMetas metas c = lift $ blockOnMetas metas c
+  tcFail c msg = lift $ tcFail c msg
+  leqMod mu nu = lift $ leqMod mu nu
