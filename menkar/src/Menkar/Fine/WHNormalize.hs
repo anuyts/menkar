@@ -60,16 +60,22 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
       --unit cases (none)
       --box cases
       (ConsBox seg tm, Unbox) -> whnormalize gamma tm
+      (ConsBox seg tm, ElimDep motive (ElimBox clause)) ->
+        let subst :: VarExt _ -> Term _ _ _
+            subst VarLast = tm
+            subst (VarWkn v) = Var3 v
+            subst _ = unreachable
+        in  whnormalize gamma (join $ subst <$> _namedBinding'body clause)
       --nat cases
       (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize gamma cz
-      (ConsSuc t, ElimDep motive (ElimNat cz cs)) -> whnormalize gamma $
+      (ConsSuc t, ElimDep motive (ElimNat cz cs)) ->
         let subst :: VarExt (VarExt _) -> Term _ _ _
             subst VarLast = Expr3 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
             subst (VarWkn VarLast) = t
             subst (VarWkn (VarWkn v)) = Var3 v
             subst (VarWkn v) = unreachable
             subst v = unreachable
-        in  join $ subst <$> _namedBinding'body (_namedBinding'body cs)
+        in  whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs))
       --nonsensical cases
       (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
     Expr3 _ -> unreachable
