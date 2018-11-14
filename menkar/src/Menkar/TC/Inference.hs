@@ -58,5 +58,8 @@ checkConstraint parent = case constraint'judgement parent of
       "Checking that type lives in a Hofmann-Streicher universe."
 
   JudTerm gamma t ty -> checkTerm parent gamma t ty
+
+  -- keep this until the end of time
+  JudGoal gamma goalname t tyT -> blockOnMetas [] parent
   
   _ -> _checkConstraint
