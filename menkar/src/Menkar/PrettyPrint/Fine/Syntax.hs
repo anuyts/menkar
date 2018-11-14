@@ -105,7 +105,8 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (SmartElimEnd argSpec) = Raw.unparse' (Raw.ElimEnd argSpec)
   fine2pretty gamma (SmartElimArg Raw.ArgSpecNext term) = ".{" ++| fine2pretty gamma term |++ "}"
   fine2pretty gamma (SmartElimArg Raw.ArgSpecExplicit term) = "(" ++| fine2pretty gamma term |++ ")"
-  fine2pretty gamma (SmartElimArg (Raw.ArgSpecNamed name) term) = ".{" ++ name ++ " = " ++| fine2pretty gamma term |++ "}"
+  fine2pretty gamma (SmartElimArg (Raw.ArgSpecNamed name) term) =
+    ".{" ++ Raw.unparse name ++ " = " ++| fine2pretty gamma term |++ "}"
   fine2pretty gamma (SmartElimProj projSpec) = Raw.unparse' (Raw.ElimProj projSpec)
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>

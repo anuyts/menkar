@@ -373,13 +373,13 @@ argExplicit :: CanParse m => m Raw.Eliminator
 argExplicit = Raw.ElimArg Raw.ArgSpecExplicit . Raw.expr3to1smart <$> expr3
 argNamed :: CanParse m => m Raw.Eliminator
 argNamed = (dotPrecise *>) $ accols $ do
-  aName <- nameNonOpNonSticky
+  aName <- unqName
   keyword "="
   aValue <- expr
   return $ Raw.ElimArg (Raw.ArgSpecNamed aName) aValue
 
 projectorNamed :: CanParse m => m Raw.ProjSpec
-projectorNamed = Raw.ProjSpecNamed <$> (dotPrecise *> nameNonOpNonSticky)
+projectorNamed = Raw.ProjSpecNamed <$> (dotPrecise *> unqName)
 projectorNumbered :: CanParse m => m Raw.ProjSpec
 projectorNumbered = Raw.ProjSpecNumbered <$> (dotPrecise *> natLiteralNonSticky)
 projectorTail :: CanParse m => m Raw.ProjSpec
@@ -398,7 +398,7 @@ argEndNext :: CanParse m => m Raw.Eliminator
 argEndNext = Raw.ElimEnd Raw.ArgSpecNext <$ loneDots
 argEndNamed :: CanParse m => m Raw.Eliminator
 argEndNamed = (dotPrecise *>) $ accols $ do
-  aName <- nameNonOpNonSticky
+  aName <- unqName
   keyword "="
   loneDots
   return $ Raw.ElimEnd $ Raw.ArgSpecNamed aName

@@ -39,14 +39,14 @@ instance Unparsable a => Unparsable (Qualified a) where
 instance Unparsable Eliminator where
   unparse' (ElimEnd ArgSpecNext) = ribbon "..."
   unparse' (ElimEnd ArgSpecExplicit) = ribbon "...<AT_NEXT_EXPLICIT>"
-  unparse' (ElimEnd (ArgSpecNamed name)) = ribbon $ ".{" ++ name ++ " = ...}"
+  unparse' (ElimEnd (ArgSpecNamed name)) = ".{" ++| unparse' name |++ " = ...}"
   unparse' (ElimArg ArgSpecNext expr) = ".{" ++| unparse' expr |++ "}"
   unparse' (ElimArg ArgSpecExplicit (ExprOps (OperandExpr (ExprElimination (Elimination expr3 []))) Nothing))
     -- special clause for expression that happens to be an expr3
     = unparse' expr3
   unparse' (ElimArg ArgSpecExplicit expr) = "(" ++| unparse' expr |++ ")"
-  unparse' (ElimArg (ArgSpecNamed name) expr) = ".{" ++ name ++ " = " ++| unparse' expr |++ "}"
-  unparse' (ElimProj (ProjSpecNamed name)) = ribbon $ '.' : name
+  unparse' (ElimArg (ArgSpecNamed name) expr) = ".{" ++| unparse' name |++ " = " |+| unparse' expr |++ "}"
+  unparse' (ElimProj (ProjSpecNamed name)) = "." ++| unparse' name
   unparse' (ElimProj (ProjSpecNumbered n)) = ribbon $ '.' : show n
   unparse' (ElimProj (ProjSpecTail n)) = ribbon $ ".." ++ show n
   parserName (ElimEnd _) = "eliminatorEnd"

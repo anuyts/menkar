@@ -13,7 +13,7 @@ data Qualified a = Qualified [String] a deriving (Functor, Foldable, Traversable
 
 type QName = Qualified Name
 
-data ArgSpec = ArgSpecNext | ArgSpecExplicit | ArgSpecNamed String deriving Show
+data ArgSpec = ArgSpecNext | ArgSpecExplicit | ArgSpecNamed Name --deriving Show
 
-data ProjSpec = ProjSpecNamed String | ProjSpecNumbered Nat | ProjSpecTail Nat deriving Show
+data ProjSpec = ProjSpecNamed Name | ProjSpecNumbered Nat | ProjSpecTail Nat --deriving Show
 

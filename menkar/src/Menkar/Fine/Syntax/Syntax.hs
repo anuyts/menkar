@@ -389,6 +389,7 @@ _segment'name seg = case _decl'name seg of
   DeclNameSegment maybeName -> maybeName
 _segment'content = _decl'content
 _segment'modty = _decl'modty
+_segment'plicity = _decl'plicity
 
 data Telescoped
      (ty :: (* -> *) -> (* -> *) -> * -> *)
