@@ -29,6 +29,21 @@ checkEtaType :: (MonadTC mode modty rel tc) =>
   Term mode modty v ->
   UniHSConstructor mode modty v ->
   tc ()
+checkEtaType parent gamma t (UniHS _ _) = return ()
+checkEtaType parent gamma t (Pi piBinding) = do
+  let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding
+  body <- term4newImplicit (gamma :.. (VarFromCtx <$> binding'segment piBinding))
+  addNewConstraint
+    (JudTermRel
+      eqDeg
+      (duplicateCtx gamma)
+      (Pair3 t (Expr3 $ TermCons $ Lam $ Binding (binding'segment piBinding) body))
+      (Pair3 ty ty)
+    )
+    (Just parent)
+    "Eta-expand"
+checkEtaType parent gamma t EmptyType = return ()
+checkEtaType parent gamma t NatType = return ()
 checkEtaType parent gamma t ty = _checkEtaType
 
 checkEta :: (MonadTC mode modty rel tc) =>
