@@ -23,14 +23,14 @@ import Control.Monad.Writer.Lazy
 
 -------
 
-checkEtaType :: (MonadTC mode modty rel tc) =>
+checkEtaForNormalType :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   Term mode modty v ->
   UniHSConstructor mode modty v ->
   tc ()
-checkEtaType parent gamma t (UniHS _ _) = return ()
-checkEtaType parent gamma t (Pi piBinding) = do
+checkEtaForNormalType parent gamma t (UniHS _ _) = return ()
+checkEtaForNormalType parent gamma t (Pi piBinding) = do
   let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding
   body <- term4newImplicit (gamma :.. (VarFromCtx <$> binding'segment piBinding))
   addNewConstraint
@@ -42,7 +42,7 @@ checkEtaType parent gamma t (Pi piBinding) = do
     )
     (Just parent)
     "Eta-expand"
-checkEtaType parent gamma t (Sigma sigmaBinding) =
+checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
   if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
   then do
     let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
@@ -59,8 +59,8 @@ checkEtaType parent gamma t (Sigma sigmaBinding) =
       "Eta-expand"
   else return ()
   where dmu = _segment'modty $ binding'segment $ sigmaBinding
-checkEtaType parent gamma t EmptyType = return ()
-checkEtaType parent gamma t UnitType =
+checkEtaForNormalType parent gamma t EmptyType = return ()
+checkEtaForNormalType parent gamma t UnitType =
   let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ UnitType
   in  addNewConstraint
         (JudTermRel
@@ -71,7 +71,7 @@ checkEtaType parent gamma t UnitType =
         )
         (Just parent)
         "Eta-expand"
-checkEtaType parent gamma t (BoxType segBox) =
+checkEtaForNormalType parent gamma t (BoxType segBox) =
   if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
   then do
     let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType segBox
@@ -87,7 +87,7 @@ checkEtaType parent gamma t (BoxType segBox) =
       "Eta-expand"
   else return ()
   where dmu = _segment'modty $ segBox
-checkEtaType parent gamma t NatType = return ()
+checkEtaForNormalType parent gamma t NatType = return ()
 
 checkEta :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
@@ -107,7 +107,7 @@ checkEta parent gamma t (Type ty) = do
       case whTy of
         Var3 v -> return ()
         Expr3 whTyNV -> case whTyNV of
-          TermCons (ConsUniHS whTyCons) -> checkEtaType parent' gamma t whTyCons
+          TermCons (ConsUniHS whTyCons) -> checkEtaForNormalType parent' gamma t whTyCons
           TermCons _ -> tcFail parent' $ "Type is not a type."
           TermElim _ _ _ _ -> return ()
           TermMeta _ _ -> unreachable
@@ -126,13 +126,14 @@ checkSmartElim :: (MonadTC mode modty rel tc) =>
   Type mode modty v ->
   [SmartEliminator mode modty v] ->
   Term mode modty v ->
+  Type mode modty v ->
   tc ()
-checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result = do
+checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResult = do
   (whTyEliminee, metas) <- runWriterT $ whnormalize gamma tyEliminee
   case metas of
     [] -> do
       parent' <- Constraint
-                   (JudSmartElim gamma eliminee (Type whTyEliminee) eliminators result)
+                   (JudSmartElim gamma eliminee (Type whTyEliminee) eliminators result tyResult)
                    (Just parent)
                    "Weak-head-normalized type."
                    <$> newConstraintID
@@ -178,8 +179,8 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudEta gamma t tyT -> checkEta parent gamma t tyT
 
-  JudSmartElim gamma eliminee tyEliminee eliminators result ->
-    checkSmartElim parent gamma eliminee tyEliminee eliminators result
+  JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
+    checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
 
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> blockOnMetas [] parent

@@ -49,6 +49,7 @@ instance Multimode U1 U1 where
   irrMod = U1
   dataMode = U1
   approxLeftAdjointProj (ModedModality U1 U1) U1 = U1
+  sigmaHasEta (ModedModality U1 U1) U1 = True
 
 instance MonadScoper U1 U1 U1 SimpleScoper where
   annot4annot gamma qstring args = case (qstring, args) of

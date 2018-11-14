@@ -91,6 +91,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Type mode modty v ->
     [SmartEliminator mode modty v] {-^ eliminators -} ->
     Term mode modty v {-^ result -} ->
+    Type mode modty v ->
     Judgement mode modty rel
     
   -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
