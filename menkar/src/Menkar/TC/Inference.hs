@@ -10,6 +10,7 @@ import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Control.Exception.AssertFalse
 import Menkar.TC.Inference.Term
+import Menkar.TC.Inference.SmartElim
 import Menkar.Fine.WHNormalize
 
 import Data.Void
@@ -115,76 +116,6 @@ checkEta parent gamma t (Type ty) = do
           TermSmartElim _ _ _ -> unreachable
           TermGoal _ _ -> unreachable
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
-    _ -> blockOnMetas metas parent
-    
--------
-
-checkSmartElimDone :: (MonadTC mode modty rel tc) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  tc ()
-checkSmartElimDone parent gamma eliminee tyEliminee result tyResult = do
-      addNewConstraint
-        (JudTypeRel
-          eqDeg
-          (duplicateCtx gamma)
-          (Pair3 tyEliminee tyResult)
-        )
-        (Just parent)
-        "End of elimination: checking if types match."
-      addNewConstraint
-        (JudTermRel
-          eqDeg
-          (duplicateCtx gamma)
-          (Pair3 eliminee result)
-          (Pair3 tyEliminee tyResult)
-        )
-        (Just parent)
-        "End of elimination: checking if types match"
-
-checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Term mode modty v ->
-  Type mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
-  tc ()
-checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result tyResult =
-  case (tyEliminee, eliminators) of
-    (_, SmartElimEnd Raw.ArgSpecExplicit : es) -> case es of
-      [] -> checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
-      _ -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
-    (_, SmartElimEnd Raw.ArgSpecNext : _) -> unreachable
-    (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimEnd (Raw.ArgSpecNamed str) : es) -> case es of
-      [] -> _
-      _ -> tcFail parent $ "Bogus elimination: `.{" ++ str ++ " = ...}` is not the last eliminator."
-    (_, _) -> _checkSmartElim
-
-checkSmartElim :: (MonadTC mode modty rel tc) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Term mode modty v ->
-  Type mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
-  tc ()
-checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResult = do
-  (whTyEliminee, metas) <- runWriterT $ whnormalize gamma tyEliminee
-  case metas of
-    [] -> do
-      parent' <- Constraint
-                   (JudSmartElim gamma eliminee (Type whTyEliminee) eliminators result tyResult)
-                   (Just parent)
-                   "Weak-head-normalized type."
-                   <$> newConstraintID
-      checkSmartElimForNormalType parent' gamma eliminee (Type whTyEliminee) eliminators result tyResult
     _ -> blockOnMetas metas parent
 
 -------
