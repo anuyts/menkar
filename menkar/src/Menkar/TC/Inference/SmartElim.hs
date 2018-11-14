@@ -49,6 +49,35 @@ checkSmartElimDone parent gamma eliminee tyEliminee result tyResult = do
         (Just parent)
         "End of elimination: checking if types match"
 
+insertImplicitArgument :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  Term mode modty v ->
+  Binding Type Term mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResult = do
+  let dmu = _segment'modty $ binding'segment $ piBinding
+  arg <- term4newImplicit (VarFromCtx <$> dmu :\\ gamma)
+  addNewConstraint
+    (JudSmartElim
+      gamma
+      (Expr3 $ TermElim
+        (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
+        eliminee
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding)
+        (App arg)
+      )
+      (Type $ substLast3 arg $ binding'body piBinding)
+      eliminators
+      result
+      tyResult
+    )
+    (Just parent)
+    "Inserting implicit argument."
+
 checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
@@ -74,7 +103,7 @@ checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result 
       then checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
       else case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> tcFail parent $ "No argument of this name expected."
-        Implicit -> _
+        Implicit -> insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResult
         Resolves _ -> todo
     (_, _) -> _checkSmartElim
 

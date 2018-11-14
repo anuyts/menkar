@@ -2,6 +2,9 @@
 
 module Menkar.Fine.Syntax.Substitution where
 
+import Menkar.Basic.Context.Variable
+import Control.Exception.AssertFalse
+
 import Data.Functor.Compose
 import Control.Applicative
 import GHC.Generics
@@ -107,6 +110,15 @@ instance (CanSwallow e f, CanSwallow e g) => CanSwallow e (f :*: g) where
 
 instance (CanSwallow e h, Functor h, Traversable g, Applicative e) => CanSwallow e (h :.: g) where
   swallow (Comp1 hgex) = Comp1 $ swallow $ fmap sequenceA hgex
+
+--------------------------------------------
+
+substLast3 :: (Functor f, CanSwallow (Expr3 e a b) f) => Expr3 e a b v -> f (VarExt v) -> f v
+substLast3 ev fextv = swallow $ substLast' <$> fextv
+  where substLast' :: VarExt _ -> Expr3 _ _ _ _
+        substLast' VarLast = ev
+        substLast' (VarWkn v) = Var3 v
+        substLast' _ = unreachable
 
 --------------------------------------------
 
