@@ -119,6 +119,37 @@ checkEta parent gamma t (Type ty) = do
     
 -------
 
+checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  Term mode modty v ->
+  Term mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result tyResult =
+  case (tyEliminee, eliminators) of
+    (_, SmartElimEnd Raw.ArgSpecExplicit : es) -> do
+      addNewConstraint
+        (JudTypeRel
+          eqDeg
+          (duplicateCtx gamma)
+          (Pair3 (Type tyEliminee) tyResult)
+        )
+        (Just parent)
+        "End of elimination: checking if types match."
+      addNewConstraint
+        (JudTermRel
+          eqDeg
+          (duplicateCtx gamma)
+          (Pair3 eliminee result)
+          (Pair3 (Type tyEliminee) tyResult)
+        )
+        (Just parent)
+        "End of elimination: checking if types match"
+    (_, _) -> _checkSmartElim
+
 checkSmartElim :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
@@ -137,7 +168,7 @@ checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResu
                    (Just parent)
                    "Weak-head-normalized type."
                    <$> newConstraintID
-      _checkSmartElim
+      checkSmartElimForNormalType parent' gamma eliminee whTyEliminee eliminators result tyResult
     _ -> blockOnMetas metas parent
 
 -------
