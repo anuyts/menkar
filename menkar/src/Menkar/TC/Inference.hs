@@ -10,16 +10,26 @@ import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Control.Exception.AssertFalse
 import Menkar.TC.Inference.Term
+import Menkar.Fine.WHNormalize
 
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
+import Control.Monad.Writer.Lazy
 
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
 
 -------
+
+checkEtaType :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  Term mode modty v ->
+  UniHSConstructor mode modty v ->
+  tc ()
+checkEtaType parent gamma t ty = _checkEtaType
 
 checkEta :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
@@ -27,7 +37,27 @@ checkEta :: (MonadTC mode modty rel tc) =>
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-checkEta parent gamma t tyT = _checkEta
+checkEta parent gamma t (Type ty) = do
+  (whTy, metas) <- runWriterT $ whnormalize gamma ty
+  case metas of
+    [] -> do
+      parent' <- Constraint
+                   (JudEta gamma t (Type whTy))
+                   (Just parent)
+                   "Weak-head-normalized type."
+                   <$> newConstraintID
+      case whTy of
+        Var3 v -> return ()
+        Expr3 whTyNV -> case whTyNV of
+          TermCons (ConsUniHS whTyCons) -> checkEtaType parent' gamma t whTyCons
+          TermCons _ -> tcFail parent' $ "Type is not a type."
+          TermElim _ _ _ _ -> return ()
+          TermMeta _ _ -> unreachable
+          TermQName _ _ -> unreachable
+          TermSmartElim _ _ _ -> unreachable
+          TermGoal _ _ -> unreachable
+          TermProblem _ -> tcFail parent' $ "Nonsensical type."
+    _ -> blockOnMetas metas parent
 
 -------
 -- ================================================================================================
