@@ -4,9 +4,12 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Menkar.Fine.Multimode
+import Menkar.TC.Monad
+
 import Data.Void
 import Control.Monad.Writer
 import Control.Exception.AssertFalse
+import Data.Functor.Compose
 
 --TODOMOD means todo for modalities
 
@@ -18,13 +21,13 @@ import Control.Exception.AssertFalse
 -}
 --TODOMOD normalize tmFst in different context
 --TODOMOD normalize unboxed term in different context
-whnormalizeElim :: Multimode mode modty =>
+whnormalizeElim :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ how eliminee is used -} ->
   Term mode modty v {-^ eliminee -} ->
   Type mode modty v {-^ eliminee's type -} ->
   Eliminator mode modty v ->
-  Writer [Int] (Term mode modty v)
+  WriterT [Int] tc (Term mode modty v)
 whnormalizeElim gamma dmu eliminee tyEliminee e = do
   whnEliminee <- whnormalize ((VarFromCtx <$> dmu) :\\ gamma) eliminee
   case whnEliminee of
@@ -80,13 +83,17 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
       (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
     Expr3 _ -> unreachable
 
-whnormalizeNV :: Multimode mode modty =>
+whnormalizeNV :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   TermNV mode modty v ->
-  Writer [Int] (Term mode modty v)
+  WriterT [Int] tc (Term mode modty v)
 whnormalizeNV gamma t@(TermCons _) = return . Expr3 $ t   -- Mind glue and weld!
 whnormalizeNV gamma (TermElim dmu t tyEliminee e) = whnormalizeElim gamma dmu t tyEliminee e
-whnormalizeNV gamma t@(TermMeta i depcies) = Expr3 t <$ tell [i]
+whnormalizeNV gamma t@(TermMeta meta (Compose depcies)) = do
+  maybeSolution <- getMeta meta depcies
+  case maybeSolution of
+    Nothing -> Expr3 t <$ tell [meta]
+    Just solution -> whnormalize gamma solution
 whnormalizeNV gamma (TermQName qname leftDividedTelescopedVal) =
     let telescopedVal = _leftDivided'content leftDividedTelescopedVal
         ModApplied _ quantifiedVal = telescoped2modalQuantified telescopedVal
@@ -96,9 +103,9 @@ whnormalizeNV gamma (TermSmartElim eliminee eliminators result) = whnormalize ga
 whnormalizeNV gamma (TermGoal str result) = whnormalize gamma result
 whnormalizeNV gamma t@(TermProblem _) = return $ Expr3 t
 
-whnormalize :: Multimode mode modty =>
+whnormalize :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   Term mode modty v ->
-  Writer [Int] (Term mode modty v)
+  WriterT [Int] tc (Term mode modty v)
 whnormalize gamma (Var3 v) = return $ Var3 v
 whnormalize gamma (Expr3 t) = whnormalizeNV gamma t
