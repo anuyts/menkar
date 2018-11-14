@@ -103,6 +103,10 @@ whnormalizeNV gamma (TermSmartElim eliminee eliminators result) = whnormalize ga
 whnormalizeNV gamma (TermGoal str result) = whnormalize gamma result
 whnormalizeNV gamma t@(TermProblem _) = return $ Expr3 t
 
+{- | Either weak-head-normalizes the given term and writes nothing,
+     or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
+     writes the indices of all metavariables that could (each in itself) unblock the situation.
+-}
 whnormalize :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   Term mode modty v ->
