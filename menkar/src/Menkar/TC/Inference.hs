@@ -21,6 +21,13 @@ import Control.Monad
 
 -------
 
+checkEta :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkEta parent gamma t tyT = _checkEta
 
 -------
 -- ================================================================================================
@@ -58,6 +65,8 @@ checkConstraint parent = case constraint'judgement parent of
       "Checking that type lives in a Hofmann-Streicher universe."
 
   JudTerm gamma t ty -> checkTerm parent gamma t ty
+
+  JudEta gamma t tyT -> checkEta parent gamma t tyT
 
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> blockOnMetas [] parent
