@@ -71,8 +71,23 @@ checkEtaType parent gamma t UnitType =
         )
         (Just parent)
         "Eta-expand"
+checkEtaType parent gamma t (BoxType segBox) =
+  if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
+  then do
+    let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType segBox
+    tmContent <- term4newImplicit (VarFromCtx <$> dmu :\\ gamma)
+    addNewConstraint
+      (JudTermRel
+        eqDeg
+        (duplicateCtx gamma)
+        (Pair3 t (Expr3 $ TermCons $ ConsBox segBox tmContent))
+        (Pair3 ty ty)
+      )
+      (Just parent)
+      "Eta-expand"
+  else return ()
+  where dmu = _segment'modty $ segBox
 checkEtaType parent gamma t NatType = return ()
-checkEtaType parent gamma t ty = _checkEtaType
 
 checkEta :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
