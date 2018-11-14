@@ -116,6 +116,28 @@ checkEta parent gamma t (Type ty) = do
           TermGoal _ _ -> unreachable
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
     _ -> blockOnMetas metas parent
+    
+-------
+
+checkSmartElim :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  Term mode modty v ->
+  Type mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  tc ()
+checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result = do
+  (whTyEliminee, metas) <- runWriterT $ whnormalize gamma tyEliminee
+  case metas of
+    [] -> do
+      parent' <- Constraint
+                   (JudSmartElim gamma eliminee (Type whTyEliminee) eliminators result)
+                   (Just parent)
+                   "Weak-head-normalized type."
+                   <$> newConstraintID
+      _checkSmartElim
+    _ -> blockOnMetas metas parent
 
 -------
 -- ================================================================================================
@@ -156,7 +178,12 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudEta gamma t tyT -> checkEta parent gamma t tyT
 
+  JudSmartElim gamma eliminee tyEliminee eliminators result ->
+    checkSmartElim parent gamma eliminee tyEliminee eliminators result
+
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> blockOnMetas [] parent
+
+  JudResolve gamma t ty -> unreachable
   
   _ -> _checkConstraint
