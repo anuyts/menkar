@@ -60,6 +60,17 @@ checkEtaType parent gamma t (Sigma sigmaBinding) =
   else return ()
   where dmu = _segment'modty $ binding'segment $ sigmaBinding
 checkEtaType parent gamma t EmptyType = return ()
+checkEtaType parent gamma t UnitType =
+  let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ UnitType
+  in  addNewConstraint
+        (JudTermRel
+          eqDeg
+          (duplicateCtx gamma)
+          (Pair3 t (Expr3 $ TermCons $ ConsUnit))
+          (Pair3 ty ty)
+        )
+        (Just parent)
+        "Eta-expand"
 checkEtaType parent gamma t NatType = return ()
 checkEtaType parent gamma t ty = _checkEtaType
 
