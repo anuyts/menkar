@@ -15,6 +15,7 @@ class (
   irrMod :: modty v
   dataMode :: mode v
   approxLeftAdjointProj :: ModedModality mode modty v -> mode v {-^ the codomain -} -> modty v
+  sigmaHasEta :: ModedModality mode modty v -> mode v {-^ the codomain -} -> Bool
 
 class (
     Multimode mode modty,

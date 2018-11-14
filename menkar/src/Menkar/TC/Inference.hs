@@ -42,6 +42,23 @@ checkEtaType parent gamma t (Pi piBinding) = do
     )
     (Just parent)
     "Eta-expand"
+checkEtaType parent gamma t (Sigma sigmaBinding) =
+  if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
+  then do
+    let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
+    tmFst <- term4newImplicit (VarFromCtx <$> dmu :\\ gamma)
+    tmSnd <- term4newImplicit gamma
+    addNewConstraint
+      (JudTermRel
+        eqDeg
+        (duplicateCtx gamma)
+        (Pair3 t (Expr3 $ TermCons $ Pair sigmaBinding tmFst tmSnd))
+        (Pair3 ty ty)
+      )
+      (Just parent)
+      "Eta-expand"
+  else return ()
+  where dmu = _segment'modty $ binding'segment $ sigmaBinding
 checkEtaType parent gamma t EmptyType = return ()
 checkEtaType parent gamma t NatType = return ()
 checkEtaType parent gamma t ty = _checkEtaType
