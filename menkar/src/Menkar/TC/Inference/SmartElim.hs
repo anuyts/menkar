@@ -171,6 +171,14 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     -- `f .{arg}`
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecNext arg : eliminators') ->
       apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
+    -- `f .{a = arg}`
+    (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg (Raw.ArgSpecNamed name) arg : eliminators') ->
+      if Just name == (_segment'name $ binding'segment $ piBinding)
+      then apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
+      else case (_segment'plicity $ binding'segment $ piBinding) of
+        Explicit -> tcFail parent $ "No argument of this name expected."
+        Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
+        Resolves _ -> todo
     -- `boxA arg`, `boxA .{arg}`, `boxA .{a = arg}`
     (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))), SmartElimArg _ _ : eliminators') ->
       unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
