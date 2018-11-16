@@ -23,9 +23,10 @@ class (
     Degrees mode modty rel,
     MonadScoper mode modty rel tc
   ) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
-  {-| The monad remembers which metas are created by the scoper (namely those without parent judgement).
-      Those metas can remain open after type-checking
-      one definition. However, there should be no constraints about them!
+  {-| After scoping, before type-checking, metas are put to sleep.
+      They awake as soon as the type-checker tries to query one.
+
+      @'newMetaExpr'@ should only be directly used by the SCOPER.
   -}
   newMetaExpr ::
     Maybe (Constraint mode modty rel) -> rel v {-^ Degree up to which it should be solved -}
@@ -59,6 +60,7 @@ addNewConstraint judgement parent reason = do
   i <- newConstraintID
   addConstraint $ Constraint judgement parent reason i
 
+-- | Not to be used by the Scoper.
 newMetaTerm :: MonadTC mode modty rel tc =>
   Maybe (Constraint mode modty rel) ->
   rel v ->
@@ -72,12 +74,15 @@ newMetaTerm maybeParent deg gamma ty reason = do
     (JudTerm gamma t ty)
     maybeParent
     reason
+  {- --The term judgement will trigger eta-expansion.
   addNewConstraint
     (JudEta gamma t ty)
     maybeParent
     (reason ++ " (eta-expansion)")
+  -}
   return t
 
+-- | Not to be used by the Scoper.
 newMetaType :: MonadTC mode modty rel tc =>
   Maybe (Constraint mode modty rel) ->
   rel v ->
