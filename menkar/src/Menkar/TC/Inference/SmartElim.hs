@@ -264,6 +264,17 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     -- `t arg`, `t .{arg}`, `t .{a = arg}`
     (_, SmartElimArg _ _ : eliminators') ->
       autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+    -- `pair .componentName`
+    (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNamed name) : eliminators') ->
+      -- if the given name is the name of the first component
+      if Just name == (_segment'name $ binding'segment $ sigmaBinding)
+      -- then project out the first component and continue
+      then projFst parent gamma dmuElim eliminee sigmaBinding eliminators' result tyResult
+      -- else project out the second component and try again
+      else projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult
+    -- `pair .i`
+    (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNumbered i) : eliminators') ->
+      _projNat
     (_, _) -> _checkSmartElim
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>
