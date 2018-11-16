@@ -526,10 +526,10 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
   maybeT <- getMeta meta depcies
   case maybeT of
     Nothing -> do
-      addNewConstraint
+      {-addNewConstraint
         (JudEta gamma (Expr3 t) ty)
         (Just parent)
-        "Eta-expand meta if possible."
+        "Eta-expand meta if possible."-}
       blockOnMetas [meta] parent
     Just t' -> do
       i <- newConstraintID
