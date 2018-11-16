@@ -63,7 +63,7 @@ unbox :: (MonadTC mode modty rel tc) =>
 unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
   let dmuBox = _segment'modty boxSeg
   let dmuUnbox = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuBox (modality'dom dmuElim))
-  dmuElim' <- modedModality4newImplicit gamma
+  dmuElim' <- newMetaModedModality parent gamma "Mode/modality for remainder of elimination."
   -- CMODE CMOD : dmuElim = dmuElim' o dmuUnbox
   addNewConstraint
     (JudSmartElim
@@ -96,7 +96,7 @@ projFst :: (MonadTC mode modty rel tc) =>
 projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult = do
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuSigma (modality'dom dmuElim))
-  dmuElim' <- modedModality4newImplicit gamma
+  dmuElim' <- newMetaModedModality parent gamma "Mode/modality for remainder of elimination."
   -- CMODE CMOD : dmuElim = dmuElim' o dmuProjFst
   addNewConstraint
     (JudSmartElim
@@ -197,7 +197,9 @@ insertImplicitArgument :: (MonadTC mode modty rel tc) =>
   tc ()
 insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult = do
   let dmuArg = _segment'modty $ binding'segment $ piBinding
-  arg <- term4newImplicit (VarFromCtx <$> dmuArg :\\ gamma)
+  let tyArg = _segment'content $ binding'segment $ piBinding
+  -- CMOD: degree should be multiplied by dmuArg here!
+  arg <- newMetaTerm parent eqDeg (VarFromCtx <$> dmuArg :\\ gamma) tyArg "Inferring implicit argument."
   apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult
 
 autoEliminate :: (MonadTC mode modty rel tc) =>

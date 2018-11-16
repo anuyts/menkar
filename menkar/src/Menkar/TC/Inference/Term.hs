@@ -27,7 +27,12 @@ checkPiOrSigma :: MonadTC mode modty rel tc =>
 checkPiOrSigma parent gamma binding ty = do
   -- CMODE
   -- CMODTY
-  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  lvl <- newMetaTerm
+           parent
+           topDeg
+           (ModedModality dataMode irrMod :\\ gamma)
+           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           "Infer level."
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
   addNewConstraint
@@ -65,7 +70,12 @@ checkUni :: MonadTC mode modty rel tc =>
     Type mode modty v ->
     tc ()
 checkUni parent gamma ty = do
-  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  lvl <- newMetaTerm
+           parent
+           topDeg
+           (ModedModality dataMode irrMod :\\ gamma)
+           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           "Infer level."
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
   addNewConstraint
@@ -97,7 +107,13 @@ checkUniHSConstructor parent gamma (UniHS d lvl) ty = do
     (Just parent)
     "Checking the level."
   -----
-  anyLvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  anyLvl <- newMetaTerm
+           parent
+           topDeg
+           (ModedModality dataMode irrMod :\\ gamma)
+           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           ("Inferring some level. The level of the universe we're checking, " ++
+           "plus this level, plus 1 is the level of the containing universe.")
   let biggerLvl =
         -- biggerLvl = suc (lvl + anyLvl)
         Expr3 . TermCons . ConsSuc $
@@ -122,7 +138,12 @@ checkUniHSConstructor parent gamma (Sigma binding) ty = checkPiOrSigma parent ga
 checkUniHSConstructor parent gamma (EmptyType) ty = checkUni parent gamma ty
 checkUniHSConstructor parent gamma (UnitType) ty = checkUni parent gamma ty
 checkUniHSConstructor parent gamma (BoxType seg) ty = do
-  lvl <- term4newImplicit (ModedModality dataMode irrMod :\\ gamma)
+  lvl <- newMetaTerm
+           parent
+           topDeg
+           (ModedModality dataMode irrMod :\\ gamma)
+           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           "Infer level."
   let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
   ---------
   addNewConstraint
@@ -165,12 +186,16 @@ checkConstructorTerm parent gamma (Lam binding) ty = do
     (Just parent)
     "Checking the domain."
   ----------
-  codomain <- term4newImplicit (gamma :.. (VarFromCtx <$> binding'segment binding))
+  codomain <- newMetaType
+                parent
+                eqDeg
+                (gamma :.. (VarFromCtx <$> binding'segment binding))
+                "Inferring codomain."
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> binding'segment binding))
       (binding'body binding)
-      (Type codomain)
+      codomain
     )
     (Just parent)
     "Type-checking the body."
@@ -180,7 +205,7 @@ checkConstructorTerm parent gamma (Lam binding) ty = do
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
       (Pair3
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding (binding'segment binding) codomain)
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding (binding'segment binding) $ unType codomain)
         ty
       )
     )
@@ -560,7 +585,8 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
             "Checking whether actual type equals expected type."
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) ty = do
-  tyEliminee <- Type <$> term4newImplicit gamma
+  dmuElim <- newMetaModedModality parent (irrModedModality :\\ gamma) "Infer modality of smart elimination."
+  tyEliminee <- newMetaType parent eqDeg (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
   addNewConstraint
     (JudTerm gamma eliminee tyEliminee)
@@ -572,7 +598,6 @@ checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) t
     (Just parent)
     "Smart elimination should reduce to value of the appropriate type."
   -----
-  dmuElim <- modedModality4newImplicit gamma
   addNewConstraint
     (JudSmartElim gamma dmuElim eliminee tyEliminee eliminators result ty)
     (Just parent)

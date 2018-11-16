@@ -23,6 +23,7 @@ class (
     CanSwallow (Term mode modty) rel
   ) => Degrees mode modty rel | rel -> mode, rel -> modty where
   eqDeg :: rel v
+  topDeg :: rel v
 
 --------------
 
@@ -32,3 +33,6 @@ idModedModality d = ModedModality d (idMod d)
 compModedModality :: (Multimode mode modty) =>
   ModedModality mode modty v -> ModedModality mode modty v -> ModedModality mode modty v
 compModedModality (ModedModality d' mu') (ModedModality d mu) = ModedModality d (compMod mu' d' mu)
+
+irrModedModality :: (Multimode mode modty) => ModedModality mode modty v
+irrModedModality = ModedModality dataMode irrMod

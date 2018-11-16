@@ -28,9 +28,16 @@ class (
   {-| The monad remembers which metas are created by the scoper. Those metas can remain open after type-checking
       one definition. However, there should be no constraints about them!
   -}
-  term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
-  mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
-  modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
+  newMetaExpr ::
+    Constraint mode modty rel -> rel v {-^ Degree up to which it should be solved -}
+                              -> Ctx Type mode modty v Void -> String -> tc (Term mode modty v)
+  newMetaMode ::
+    Constraint mode modty rel -> Ctx Type mode modty v Void -> String -> tc (mode v)
+  newMetaModty ::
+    Constraint mode modty rel -> Ctx Type mode modty v Void -> String -> tc (modty v)
+  --term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
+  --mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
+  --modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
   genVarName :: tc Raw.Name
   newConstraintID :: tc Int
   addConstraint :: Constraint mode modty rel -> tc ()
@@ -53,16 +60,56 @@ addNewConstraint judgement parent reason = do
   i <- newConstraintID
   addConstraint $ Constraint judgement parent reason i
 
-modedModality4newImplicit :: MonadTC mode modty rel tc => Ctx ty mode modty v Void -> tc (ModedModality mode modty v)
-modedModality4newImplicit gamma = do
-  d <- mode4newImplicit gamma
-  mu <- modty4newImplicit gamma
+newMetaTerm :: MonadTC mode modty rel tc =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty v Void ->
+  Type mode modty v ->
+  String ->
+  tc (Term mode modty v)
+newMetaTerm parent deg gamma ty reason = do
+  t <- newMetaExpr parent deg gamma reason
+  addNewConstraint
+    (JudTerm gamma t ty)
+    (Just parent)
+    reason
+  addNewConstraint
+    (JudEta gamma t ty)
+    (Just parent)
+    (reason ++ " (eta-expansion)")
+  return t
+
+newMetaType :: MonadTC mode modty rel tc =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty v Void ->
+  String ->
+  tc (Type mode modty v)
+newMetaType parent deg gamma reason = do
+  t <- Type <$> newMetaExpr parent deg gamma reason
+  addNewConstraint
+    (JudType gamma t)
+    (Just parent)
+    reason
+  return t
+
+newMetaModedModality :: MonadTC mode modty rel tc =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  String ->
+  tc (ModedModality mode modty v)
+newMetaModedModality parent gamma reason = do
+  d <- newMetaMode parent gamma reason
+  mu <- newMetaModty parent gamma reason
   return $ ModedModality d mu
 
 instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mode modty rel (mT tc) where
-  term4newImplicit gamma = lift $ term4newImplicit gamma
-  mode4newImplicit gamma = lift $ mode4newImplicit gamma
-  modty4newImplicit gamma = lift $ modty4newImplicit gamma
+  newMetaExpr parent deg gamma reason = lift $ newMetaExpr parent deg gamma reason
+  newMetaMode parent gamma reason = lift $ newMetaMode parent gamma reason
+  newMetaModty parent gamma reason = lift $ newMetaModty parent gamma reason
+  --term4newImplicit gamma = lift $ term4newImplicit gamma
+  --mode4newImplicit gamma = lift $ mode4newImplicit gamma
+  --modty4newImplicit gamma = lift $ modty4newImplicit gamma
   genVarName = lift $ genVarName
   newConstraintID = lift $ newConstraintID
   addConstraint c = lift $ addConstraint c

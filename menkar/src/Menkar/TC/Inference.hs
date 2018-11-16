@@ -33,7 +33,12 @@ checkEtaForNormalType :: (MonadTC mode modty rel tc) =>
 checkEtaForNormalType parent gamma t (UniHS _ _) = return ()
 checkEtaForNormalType parent gamma t (Pi piBinding) = do
   let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding
-  body <- term4newImplicit (gamma :.. (VarFromCtx <$> binding'segment piBinding))
+  body <- newMetaTerm
+            parent
+            eqDeg
+            (gamma :.. (VarFromCtx <$> binding'segment piBinding))
+            (Type $ binding'body piBinding)
+            "Infer function body."
   addNewConstraint
     (JudTermRel
       eqDeg
@@ -44,22 +49,32 @@ checkEtaForNormalType parent gamma t (Pi piBinding) = do
     (Just parent)
     "Eta-expand"
 checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
-  if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
-  then do
-    let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
-    tmFst <- term4newImplicit (VarFromCtx <$> dmu :\\ gamma)
-    tmSnd <- term4newImplicit gamma
-    addNewConstraint
-      (JudTermRel
-        eqDeg
-        (duplicateCtx gamma)
-        (Pair3 t (Expr3 $ TermCons $ Pair sigmaBinding tmFst tmSnd))
-        (Pair3 ty ty)
-      )
-      (Just parent)
-      "Eta-expand"
-  else return ()
-  where dmu = _segment'modty $ binding'segment $ sigmaBinding
+  let dmu = _segment'modty $ binding'segment $ sigmaBinding
+  in  if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
+      then do
+        let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
+        tmFst <- newMetaTerm
+                   parent
+                   eqDeg
+                   (VarFromCtx <$> dmu :\\ gamma)
+                   (_segment'content $ binding'segment $ sigmaBinding)
+                   "Infer first projection."
+        tmSnd <- newMetaTerm
+                   parent
+                   eqDeg
+                   gamma
+                   (Type $ substLast3 tmFst $ binding'body sigmaBinding)
+                   "Infer second projection."
+        addNewConstraint
+          (JudTermRel
+            eqDeg
+            (duplicateCtx gamma)
+            (Pair3 t (Expr3 $ TermCons $ Pair sigmaBinding tmFst tmSnd))
+            (Pair3 ty ty)
+          )
+          (Just parent)
+          "Eta-expand."
+      else return ()
 checkEtaForNormalType parent gamma t EmptyType = return ()
 checkEtaForNormalType parent gamma t UnitType =
   let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ UnitType
@@ -76,7 +91,12 @@ checkEtaForNormalType parent gamma t (BoxType segBox) =
   if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
   then do
     let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType segBox
-    tmContent <- term4newImplicit (VarFromCtx <$> dmu :\\ gamma)
+    tmContent <- newMetaTerm
+                   parent
+                   eqDeg
+                   (VarFromCtx <$> dmu :\\ gamma)
+                   (_segment'content segBox)
+                   "Infer box content."
     addNewConstraint
       (JudTermRel
         eqDeg
@@ -147,7 +167,12 @@ checkConstraint parent = case constraint'judgement parent of
   -} -- contexts start empty and grow only in well-typed ways.
 
   JudType gamma (Type ty) -> do
-    lvl <- term4newImplicit gamma
+    lvl <- newMetaTerm
+             parent
+             topDeg
+             (ModedModality dataMode irrMod :\\ gamma)
+             (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+             "Infer level."
     addNewConstraint
       (JudTerm gamma ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl))
       (Just parent)
