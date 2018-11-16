@@ -50,6 +50,12 @@ addNewConstraint judgement parent reason = do
   i <- newConstraintID
   addConstraint $ Constraint judgement parent reason i
 
+modedModality4newImplicit :: MonadTC mode modty rel tc => Ctx ty mode modty v Void -> tc (ModedModality mode modty v)
+modedModality4newImplicit gamma = do
+  d <- mode4newImplicit gamma
+  mu <- modty4newImplicit gamma
+  return $ ModedModality d mu
+
 instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mode modty rel (mT tc) where
   term4newImplicit gamma = lift $ term4newImplicit gamma
   mode4newImplicit gamma = lift $ mode4newImplicit gamma

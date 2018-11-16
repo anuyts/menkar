@@ -60,7 +60,28 @@ unbox ::  (MonadTC mode modty rel tc) =>
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = _unbox
+unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
+  let dmuBox = _segment'modty boxSeg
+  let dmuUnbox = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuBox (modality'dom dmuElim))
+  dmuElim' <- modedModality4newImplicit gamma
+  -- CMODE CMOD : dmuElim = dmuElim' o dmuUnbox
+  addNewConstraint
+    (JudSmartElim
+      gamma
+      dmuElim'
+      (Expr3 $ TermElim
+        (dmuUnbox)
+        eliminee
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType boxSeg)
+        Unbox
+      )
+      (_segment'content boxSeg)
+      eliminators
+      result
+      tyResult
+    )
+    (Just parent)
+    "Unboxing."
 
 insertImplicitArgument :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
@@ -73,8 +94,8 @@ insertImplicitArgument :: (MonadTC mode modty rel tc) =>
   Type mode modty v ->
   tc ()
 insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult = do
-  let dmu = _segment'modty $ binding'segment $ piBinding
-  arg <- term4newImplicit (VarFromCtx <$> dmu :\\ gamma)
+  let dmuArg = _segment'modty $ binding'segment $ piBinding
+  arg <- term4newImplicit (VarFromCtx <$> dmuArg :\\ gamma)
   addNewConstraint
     (JudSmartElim
       gamma
@@ -137,8 +158,10 @@ checkSmartElim :: (MonadTC mode modty rel tc) =>
   Type mode modty v ->
   tc ()
 checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators result tyResult = do
+  -- whnormalize the type
   (whTyEliminee, metas) <- runWriterT $ whnormalize gamma tyEliminee
   case metas of
+    -- the type whnormalizes
     [] -> do
       parent' <- Constraint
                    (JudSmartElim gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult)
@@ -146,5 +169,6 @@ checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators resul
                    "Weak-head-normalized type."
                    <$> newConstraintID
       checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult
+    -- the type does not whnormalize
     _ -> blockOnMetas metas parent
 
