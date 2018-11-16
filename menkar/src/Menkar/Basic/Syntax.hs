@@ -2,7 +2,7 @@ module Menkar.Basic.Syntax where
 
 import GHC.Generics
 import Data.Hashable
-import Data.Number.Nat
+import Data.Number.Nat1
 
 data Opness = NonOp | Op deriving (Show, Eq, Generic, Hashable)
 
@@ -15,5 +15,5 @@ type QName = Qualified Name
 
 data ArgSpec = ArgSpecNext | ArgSpecExplicit | ArgSpecNamed Name --deriving Show
 
-data ProjSpec = ProjSpecNamed Name | ProjSpecNumbered Nat | ProjSpecTail Nat --deriving Show
+data ProjSpec = ProjSpecNamed Name | ProjSpecNumbered Nat1 | ProjSpecTail Nat1 --deriving Show
 

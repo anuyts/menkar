@@ -274,7 +274,12 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
       else projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult
     -- `pair .i`
     (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNumbered i) : eliminators') ->
-      _projNat
+      if i == 1
+      -- then project out the first component and continue
+      then projFst parent gamma dmuElim eliminee sigmaBinding eliminators' result tyResult
+      -- else project out the second component and decrement
+      else let decEliminators = SmartElimProj (Raw.ProjSpecNumbered $ i - 1) : eliminators'
+           in  projSnd parent gamma dmuElim eliminee sigmaBinding decEliminators result tyResult
     (_, _) -> _checkSmartElim
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>
