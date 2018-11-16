@@ -24,7 +24,7 @@ class (
     Traversable mode,
     Traversable modty,
     Traversable rel,
-    Multimode mode modty
+    Degrees mode modty rel
   ) => MonadScoper
     (mode :: * -> *)
     (modty :: * -> *)
@@ -122,7 +122,7 @@ newMetaType maybeParent deg gamma reason = do
     reason
   return t
 
-newMetaModedModality :: MonadTC mode modty rel tc =>
+newMetaModedModality :: MonadScoper mode modty rel tc =>
   Maybe (Constraint mode modty rel) ->
   Ctx Type mode modty v Void ->
   String ->

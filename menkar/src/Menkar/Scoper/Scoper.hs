@@ -4,7 +4,7 @@ module Menkar.Scoper.Scoper where
 
 import Prelude hiding (pi)
 
-import Menkar.Scoper.Monad
+import Menkar.TC.Monad
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.Fine.Syntax
@@ -14,6 +14,7 @@ import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Control.Exception.AssertFalse
+import Menkar.Fine.Multimode
 
 import Control.Monad.State.Lazy
 import Control.Monad.List
@@ -64,9 +65,9 @@ expr3 :: MonadScoper mode modty rel sc =>
 expr3 gamma (Raw.ExprQName rawQName) = qname gamma rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = natLiteral n
-expr3 gamma (Raw.ExprImplicit) = term4newImplicit gamma
+expr3 gamma (Raw.ExprImplicit) = newMetaExpr Nothing eqDeg gamma "Infer explicitly omitted value."
 expr3 gamma (Raw.ExprGoal str) = do
-  result <- term4newImplicit gamma
+  result <- newMetaExpr Nothing eqDeg gamma "Infer goal's value."
   return $ Expr3 $ TermGoal str result
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
@@ -75,10 +76,10 @@ elimination :: MonadScoper mode modty rel sc =>
   Raw.Elimination ->
   sc (Term mode modty v)
 elimination gamma (Raw.Elimination rawExpr rawElims) = do
-  fineExpr <- expr3 gamma rawExpr
+  fineExpr <- expr3 gamma rawExpr -- CMOD: Fix context
   --fineTy <- type4newImplicit gamma
-  fineElims <- sequenceA (eliminator gamma <$> rawElims)
-  fineResult <- term4newImplicit gamma
+  fineElims <- sequenceA (eliminator gamma <$> rawElims) -- CMOD: Fix modalities
+  fineResult <- newMetaExpr Nothing eqDeg gamma "Infer result of smart elimination."
   return . Expr3 $ TermSmartElim fineExpr (Compose fineElims) fineResult
   --theMode <- mode4newImplicit gamma
   {-pushConstraint $ Constraint {
@@ -105,9 +106,8 @@ simpleLambda :: MonadScoper mode modty rel sc =>
   sc (Term mode modty v)
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
-    d <- mode4newImplicit gamma
-    mu <- modty4newImplicit gamma
-    fineTy <- type4newImplicit gamma
+    dmu <- newMetaModedModality Nothing (irrModedModality :\\ gamma) "Infer domain mode/modality."
+    fineTy <- Type <$> newMetaExpr Nothing eqDeg (VarFromCtx <$> dmu :\\ gamma) "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
       Raw.ExprImplicit -> return $ Nothing
@@ -115,7 +115,7 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
            "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
     let fineSeg = Declaration {
           _decl'name = DeclNameSegment maybeName,
-          _decl'modty = ModedModality d mu,
+          _decl'modty = dmu,
           _decl'plicity = Explicit,
           _decl'content = fineTy
         }
@@ -314,10 +314,10 @@ buildDeclaration gamma generateContent partDecl = runListT $ do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
-          Compose Nothing -> mode4newImplicit gamma
+          Compose Nothing -> newMetaMode Nothing (irrModedModality :\\ gamma) "Infer mode."
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
-          Compose Nothing -> modty4newImplicit gamma
+          Compose Nothing -> newMetaModty Nothing (irrModedModality :\\ gamma) "Infer modality."
         let plic = case _pdecl'plicity partDecl of
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit
@@ -371,7 +371,8 @@ buildSegment :: MonadScoper mode modty rel sc =>
   PartialSegment Type mode modty v ->
   sc [Segment Type mode modty v]
 buildSegment gamma partSeg = runListT $ do
-  teleSeg <- ListT $ buildDeclaration gamma type4newImplicit partSeg
+  teleSeg <- let gen gamma = Type <$> newMetaExpr Nothing eqDeg gamma "Infer type."
+             in  ListT $ buildDeclaration gamma gen partSeg
   return $ flip (over decl'content) teleSeg $ \ case
     Telescoped seg -> seg
     (seg' :|- seg) -> unreachable
@@ -392,7 +393,7 @@ partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclarat
       \wkn gammadelta Unit3 -> case Raw.decl'content rawDecl of
         Raw.DeclContentEmpty -> return $ Maybe3 $ Compose $ Nothing
         Raw.DeclContent rawTy -> Maybe3 . Compose . Just <$> do
-          fineLvl <- term4newImplicit gammadelta
+          --fineLvl <- term4newImplicit gammadelta
           Type <$> expr gammadelta rawTy
     ) gamma fineDelta
   pdecl'content .= fineContent
@@ -486,7 +487,8 @@ val :: MonadScoper mode modty rel sc =>
   sc (Val mode modty v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  [fineLHS] <- buildDeclaration gamma type4newImplicit partialLHS
+  [fineLHS] <- let gen gamma = Type <$> newMetaExpr Nothing eqDeg gamma "Infer type."
+               in  buildDeclaration gamma gen partialLHS
   flip decl'content fineLHS $ mapTelescoped (
       \wkn gammadelta fineTy -> do
         fineTm <- expr gammadelta rawExpr
