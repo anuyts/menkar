@@ -168,6 +168,9 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
         Explicit -> apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
         Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
         Resolves _ -> todo
+    -- `boxA arg`, `boxA .{arg}`, `boxA .{a = arg}`
+    (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))), SmartElimArg _ _ : eliminators') ->
+      unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
     (_, _) -> _checkSmartElim
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>
