@@ -83,6 +83,39 @@ unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
     (Just parent)
     "Unboxing."
 
+projFst :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
+  Term mode modty v ->
+  Binding Type Term mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult = do
+  let dmuSigma = _segment'modty $ binding'segment sigmaBinding
+  let dmuProjFst = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuSigma (modality'dom dmuElim))
+  dmuElim' <- modedModality4newImplicit gamma
+  -- CMODE CMOD : dmuElim = dmuElim' o dmuProjFst
+  addNewConstraint
+    (JudSmartElim
+      gamma
+      dmuElim'
+      (Expr3 $ TermElim
+        (dmuProjFst)
+        eliminee
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding)
+        Fst
+      )
+      (_segment'content $ binding'segment sigmaBinding)
+      eliminators
+      result
+      tyResult
+    )
+    (Just parent)
+    "Unboxing."
+
 apply :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
@@ -162,8 +195,7 @@ checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
   tc ()
 checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators result tyResult =
   case (tyEliminee, eliminators) of
-    -- `t ... .e` (bogus)
-    -- `t .{...} .e` (bogus)
+    -- `t ... e`, `t .{...} e` (bogus)
     (_, SmartElimEnd _ : _ : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     -- `t ...` (end elimination now)
     (_, SmartElimEnd Raw.ArgSpecExplicit : []) ->
