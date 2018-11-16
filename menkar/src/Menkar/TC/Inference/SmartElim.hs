@@ -49,6 +49,17 @@ checkSmartElimDone parent gamma eliminee tyEliminee result tyResult = do
         (Just parent)
         "End of elimination: checking if types match"
 
+unbox ::  (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  Term mode modty v ->
+  Segment Type mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+unbox parent gamma eliminee boxSeg eliminators result tyResult = _unbox
+
 insertImplicitArgument :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
@@ -105,6 +116,9 @@ checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result 
         Explicit -> tcFail parent $ "No argument of this name expected."
         Implicit -> insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResult
         Resolves _ -> todo
+    -- `boxA .{a = ...}` (unbox)
+    (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
+      unbox parent gamma eliminee boxSeg eliminators result tyResult
     (_, _) -> _checkSmartElim
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>

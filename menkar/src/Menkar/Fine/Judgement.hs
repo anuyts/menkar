@@ -87,6 +87,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
   -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
   JudSmartElim ::
     Ctx Type mode modty v Void ->
+    ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
     Term mode modty v {-^ eliminee -} ->
     Type mode modty v ->
     [SmartEliminator mode modty v] {-^ eliminators -} ->
