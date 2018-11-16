@@ -34,7 +34,7 @@ checkEtaForNormalType parent gamma t (UniHS _ _) = return ()
 checkEtaForNormalType parent gamma t (Pi piBinding) = do
   let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding
   body <- newMetaTerm
-            parent
+            (Just parent)
             eqDeg
             (gamma :.. (VarFromCtx <$> binding'segment piBinding))
             (Type $ binding'body piBinding)
@@ -54,13 +54,13 @@ checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
       then do
         let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
         tmFst <- newMetaTerm
-                   parent
+                   (Just parent)
                    eqDeg
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content $ binding'segment $ sigmaBinding)
                    "Infer first projection."
         tmSnd <- newMetaTerm
-                   parent
+                   (Just parent)
                    eqDeg
                    gamma
                    (Type $ substLast3 tmFst $ binding'body sigmaBinding)
@@ -92,7 +92,7 @@ checkEtaForNormalType parent gamma t (BoxType segBox) =
   then do
     let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType segBox
     tmContent <- newMetaTerm
-                   parent
+                   (Just parent)
                    eqDeg
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content segBox)
@@ -168,7 +168,7 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudType gamma (Type ty) -> do
     lvl <- newMetaTerm
-             parent
+             (Just parent)
              topDeg
              (ModedModality dataMode irrMod :\\ gamma)
              (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)

@@ -28,7 +28,7 @@ checkPiOrSigma parent gamma binding ty = do
   -- CMODE
   -- CMODTY
   lvl <- newMetaTerm
-           parent
+           (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
            (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
@@ -71,7 +71,7 @@ checkUni :: MonadTC mode modty rel tc =>
     tc ()
 checkUni parent gamma ty = do
   lvl <- newMetaTerm
-           parent
+           (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
            (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
@@ -108,7 +108,7 @@ checkUniHSConstructor parent gamma (UniHS d lvl) ty = do
     "Checking the level."
   -----
   anyLvl <- newMetaTerm
-           parent
+           (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
            (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
@@ -139,7 +139,7 @@ checkUniHSConstructor parent gamma (EmptyType) ty = checkUni parent gamma ty
 checkUniHSConstructor parent gamma (UnitType) ty = checkUni parent gamma ty
 checkUniHSConstructor parent gamma (BoxType seg) ty = do
   lvl <- newMetaTerm
-           parent
+           (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
            (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
@@ -187,7 +187,7 @@ checkConstructorTerm parent gamma (Lam binding) ty = do
     "Checking the domain."
   ----------
   codomain <- newMetaType
-                parent
+                (Just parent)
                 eqDeg
                 (gamma :.. (VarFromCtx <$> binding'segment binding))
                 "Inferring codomain."
@@ -585,8 +585,8 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
             "Checking whether actual type equals expected type."
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) ty = do
-  dmuElim <- newMetaModedModality parent (irrModedModality :\\ gamma) "Infer modality of smart elimination."
-  tyEliminee <- newMetaType parent eqDeg (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
+  dmuElim <- newMetaModedModality (Just parent) (irrModedModality :\\ gamma) "Infer modality of smart elimination."
+  tyEliminee <- newMetaType (Just parent) eqDeg (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
   addNewConstraint
     (JudTerm gamma eliminee tyEliminee)

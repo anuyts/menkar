@@ -7,6 +7,7 @@ import Menkar.Fine.Judgement
 import Menkar.Fine.Context
 import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw
+import Menkar.Scoper.Monad
 
 import Data.Void
 import Control.Monad.Trans.Class
@@ -20,21 +21,19 @@ data Constraint mode modty rel = Constraint {
 
 class (
     Degrees mode modty rel,
-    Monad tc,
-    Traversable mode,
-    Traversable modty,
-    Traversable rel
+    MonadScoper mode modty rel tc
   ) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
-  {-| The monad remembers which metas are created by the scoper. Those metas can remain open after type-checking
+  {-| The monad remembers which metas are created by the scoper (namely those without parent judgement).
+      Those metas can remain open after type-checking
       one definition. However, there should be no constraints about them!
   -}
   newMetaExpr ::
-    Constraint mode modty rel -> rel v {-^ Degree up to which it should be solved -}
-                              -> Ctx Type mode modty v Void -> String -> tc (Term mode modty v)
+    Maybe (Constraint mode modty rel) -> rel v {-^ Degree up to which it should be solved -}
+                                      -> Ctx Type mode modty v Void -> String -> tc (Term mode modty v)
   newMetaMode ::
-    Constraint mode modty rel -> Ctx Type mode modty v Void -> String -> tc (mode v)
+    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> tc (mode v)
   newMetaModty ::
-    Constraint mode modty rel -> Ctx Type mode modty v Void -> String -> tc (modty v)
+    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> tc (modty v)
   --term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
   --mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
   --modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
@@ -61,40 +60,40 @@ addNewConstraint judgement parent reason = do
   addConstraint $ Constraint judgement parent reason i
 
 newMetaTerm :: MonadTC mode modty rel tc =>
-  Constraint mode modty rel ->
+  Maybe (Constraint mode modty rel) ->
   rel v ->
   Ctx Type mode modty v Void ->
   Type mode modty v ->
   String ->
   tc (Term mode modty v)
-newMetaTerm parent deg gamma ty reason = do
-  t <- newMetaExpr parent deg gamma reason
+newMetaTerm maybeParent deg gamma ty reason = do
+  t <- newMetaExpr maybeParent deg gamma reason
   addNewConstraint
     (JudTerm gamma t ty)
-    (Just parent)
+    maybeParent
     reason
   addNewConstraint
     (JudEta gamma t ty)
-    (Just parent)
+    maybeParent
     (reason ++ " (eta-expansion)")
   return t
 
 newMetaType :: MonadTC mode modty rel tc =>
-  Constraint mode modty rel ->
+  Maybe (Constraint mode modty rel) ->
   rel v ->
   Ctx Type mode modty v Void ->
   String ->
   tc (Type mode modty v)
-newMetaType parent deg gamma reason = do
-  t <- Type <$> newMetaExpr parent deg gamma reason
+newMetaType maybeParent deg gamma reason = do
+  t <- Type <$> newMetaExpr maybeParent deg gamma reason
   addNewConstraint
     (JudType gamma t)
-    (Just parent)
+    maybeParent
     reason
   return t
 
 newMetaModedModality :: MonadTC mode modty rel tc =>
-  Constraint mode modty rel ->
+  Maybe (Constraint mode modty rel) ->
   Ctx Type mode modty v Void ->
   String ->
   tc (ModedModality mode modty v)
@@ -104,9 +103,9 @@ newMetaModedModality parent gamma reason = do
   return $ ModedModality d mu
 
 instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mode modty rel (mT tc) where
-  newMetaExpr parent deg gamma reason = lift $ newMetaExpr parent deg gamma reason
-  newMetaMode parent gamma reason = lift $ newMetaMode parent gamma reason
-  newMetaModty parent gamma reason = lift $ newMetaModty parent gamma reason
+  newMetaExpr maybeParent deg gamma reason = lift $ newMetaExpr maybeParent deg gamma reason
+  newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
+  newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
   --term4newImplicit gamma = lift $ term4newImplicit gamma
   --mode4newImplicit gamma = lift $ mode4newImplicit gamma
   --modty4newImplicit gamma = lift $ modty4newImplicit gamma
