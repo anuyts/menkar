@@ -50,7 +50,7 @@ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult = do
         (Just parent)
         "End of elimination: checking if types match"
 
-unbox ::  (MonadTC mode modty rel tc) =>
+unbox :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -83,19 +83,19 @@ unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
     (Just parent)
     "Unboxing."
 
-insertImplicitArgument :: (MonadTC mode modty rel tc) =>
+apply :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
   Term mode modty v ->
   Binding Type Term mode modty v ->
+  Term mode modty v ->
   [SmartEliminator mode modty v] ->
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult = do
+apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = do
   let dmuArg = _segment'modty $ binding'segment $ piBinding
-  arg <- term4newImplicit (VarFromCtx <$> dmuArg :\\ gamma)
   addNewConstraint
     (JudSmartElim
       gamma
@@ -112,7 +112,22 @@ insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators resul
       tyResult
     )
     (Just parent)
-    "Inserting implicit argument."
+    "Applying function."
+
+insertImplicitArgument :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
+  Term mode modty v ->
+  Binding Type Term mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult = do
+  let dmuArg = _segment'modty $ binding'segment $ piBinding
+  arg <- term4newImplicit (VarFromCtx <$> dmuArg :\\ gamma)
+  apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult
 
 checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
@@ -145,6 +160,14 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     -- `boxA .{a = ...}` (unbox)
     (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
       unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
+    -- `t .{a = ...}` (makes no sense)
+    (_, SmartElimEnd (Raw.ArgSpecNamed name) : []) -> tcFail parent $ "No argument of this name expected."
+    -- `f arg`
+    (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecExplicit arg : eliminators') ->
+      case (_segment'plicity $ binding'segment $ piBinding) of
+        Explicit -> apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
+        Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
+        Resolves _ -> todo
     (_, _) -> _checkSmartElim
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>
