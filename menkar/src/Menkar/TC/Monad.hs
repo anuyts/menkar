@@ -25,6 +25,9 @@ class (
     Traversable modty,
     Traversable rel
   ) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
+  {-| The monad remembers which metas are created by the scoper. Those metas can remain open after type-checking
+      one definition. However, there should be no constraints about them!
+  -}
   term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
   mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
   modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
