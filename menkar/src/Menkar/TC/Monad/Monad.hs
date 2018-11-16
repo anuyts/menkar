@@ -7,7 +7,7 @@ import Menkar.Fine.Judgement
 import Menkar.Fine.Context
 import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw
-import Menkar.Scoper.Monad
+--import Menkar.Scoper.Monad
 
 import Data.Void
 import Control.Monad.Trans.Class
@@ -20,9 +20,19 @@ data Constraint mode modty rel = Constraint {
   }
 
 class (
-    Degrees mode modty rel,
-    MonadScoper mode modty rel tc
-  ) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
+    Monad sc,
+    Traversable mode,
+    Traversable modty,
+    Traversable rel,
+    Multimode mode modty
+  ) => MonadScoper
+    (mode :: * -> *)
+    (modty :: * -> *)
+    (rel :: * -> *)
+    (sc :: * -> *)
+    | sc -> mode, sc -> modty, sc -> rel where
+  annot4annot :: Ctx Type mode modty v Void -> 
+    Raw.Qualified String -> [SmartEliminator mode modty v] -> sc (Annotation mode modty v)
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
@@ -30,11 +40,24 @@ class (
   -}
   newMetaExpr ::
     Maybe (Constraint mode modty rel) -> rel v {-^ Degree up to which it should be solved -}
-                                      -> Ctx Type mode modty v Void -> String -> tc (Term mode modty v)
+                                      -> Ctx Type mode modty v Void -> String -> sc (Term mode modty v)
   newMetaMode ::
-    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> tc (mode v)
+    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> sc (mode v)
   newMetaModty ::
-    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> tc (modty v)
+    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> sc (modty v)
+  scopeFail :: String -> sc a
+
+instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
+  annot4annot gamma qstring args = lift $ annot4annot gamma qstring args
+  newMetaExpr maybeParent deg gamma reason = lift $ newMetaExpr maybeParent deg gamma reason
+  newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
+  newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
+  scopeFail msg = lift $ scopeFail msg
+
+class (
+    Degrees mode modty rel,
+    MonadScoper mode modty rel tc
+  ) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
   --term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
   --mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
   --modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
@@ -110,9 +133,6 @@ newMetaModedModality parent gamma reason = do
   return $ ModedModality d mu
 
 instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mode modty rel (mT tc) where
-  newMetaExpr maybeParent deg gamma reason = lift $ newMetaExpr maybeParent deg gamma reason
-  newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
-  newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
   --term4newImplicit gamma = lift $ term4newImplicit gamma
   --mode4newImplicit gamma = lift $ mode4newImplicit gamma
   --modty4newImplicit gamma = lift $ modty4newImplicit gamma
