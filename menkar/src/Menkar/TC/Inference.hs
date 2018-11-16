@@ -157,8 +157,8 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudEta gamma t tyT -> checkEta parent gamma t tyT
 
-  JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
-    checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
+  JudSmartElim gamma dmuElim eliminee tyEliminee eliminators result tyResult ->
+    checkSmartElim parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
 
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> blockOnMetas [] parent

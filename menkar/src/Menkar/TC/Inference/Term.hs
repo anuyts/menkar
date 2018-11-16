@@ -571,8 +571,9 @@ checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) t
     (Just parent)
     "Smart elimination should reduce to value of the appropriate type."
   -----
+  dmuElim <- modedModality4newImplicit gamma
   addNewConstraint
-    (JudSmartElim gamma eliminee tyEliminee eliminators result ty)
+    (JudSmartElim gamma dmuElim eliminee tyEliminee eliminators result ty)
     (Just parent)
     "Smart elimination should reduce to its result."
 checkTermNV parent gamma (TermGoal goalname result) ty = do

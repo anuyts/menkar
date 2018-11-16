@@ -209,8 +209,9 @@ autoEliminate :: (MonadTC mode modty rel tc) =>
   [SmartEliminator mode modty v] ->
   Term mode modty v ->
   Type mode modty v ->
+  Maybe (tc ()) ->
   tc ()
-autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult = do
+autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult maybeAlternative = do
   case tyEliminee of
     Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))) ->
       case (_segment'plicity $ binding'segment $ piBinding) of
@@ -219,7 +220,9 @@ autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResu
         Resolves _ -> todo
     Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))) ->
       unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
-    _ -> tcFail parent $ "Cannot auto-eliminate."
+    _ -> case maybeAlternative of
+           Nothing -> tcFail parent $ "Cannot auto-eliminate."
+           Just alternative -> alternative 
 
 checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
@@ -244,15 +247,15 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
       then checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
-      else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+      else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `t .{a = ...}`
     (_, SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
-      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `f arg`
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecExplicit arg : eliminators') ->
       case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
-        _ -> autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+        _ -> autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `f .{arg}`
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecNext arg : eliminators') ->
       apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
@@ -260,10 +263,10 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg (Raw.ArgSpecNamed name) arg : eliminators') ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
       then apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
-      else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+      else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `t arg`, `t .{arg}`, `t .{a = arg}`
     (_, SmartElimArg _ _ : eliminators') ->
-      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `pair .componentName`
     (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNamed name) : eliminators') ->
       -- if the given name is the name of the first component
@@ -291,8 +294,10 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
       else let decEliminators = SmartElimProj (Raw.ProjSpecTail $ i - 1) : eliminators'
            in  projSnd parent gamma dmuElim eliminee sigmaBinding decEliminators result tyResult
     (_, SmartElimProj _ : _) ->
-      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
-    (_, []) -> _softEnd
+      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
+    (_, []) ->
+      autoEliminate parent gamma dmuElim eliminee tyEliminee [] result tyResult $
+      Just $ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
