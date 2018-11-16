@@ -25,12 +25,13 @@ import Control.Monad.Writer.Lazy
 checkSmartElimDone :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
   Term mode modty v ->
   Type mode modty v ->
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-checkSmartElimDone parent gamma eliminee tyEliminee result tyResult = do
+checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult = do
       addNewConstraint
         (JudTypeRel
           eqDeg
@@ -52,29 +53,32 @@ checkSmartElimDone parent gamma eliminee tyEliminee result tyResult = do
 unbox ::  (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
   Term mode modty v ->
   Segment Type mode modty v ->
   [SmartEliminator mode modty v] ->
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-unbox parent gamma eliminee boxSeg eliminators result tyResult = _unbox
+unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = _unbox
 
 insertImplicitArgument :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
   Term mode modty v ->
   Binding Type Term mode modty v ->
   [SmartEliminator mode modty v] ->
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResult = do
+insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult = do
   let dmu = _segment'modty $ binding'segment $ piBinding
   arg <- term4newImplicit (VarFromCtx <$> dmu :\\ gamma)
   addNewConstraint
     (JudSmartElim
       gamma
+      dmuElim
       (Expr3 $ TermElim
         (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
         eliminee
@@ -92,53 +96,55 @@ insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResu
 checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
   Term mode modty v ->
   Type mode modty v ->
   [SmartEliminator mode modty v] ->
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result tyResult =
+checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators result tyResult =
   case (tyEliminee, eliminators) of
     -- `t ... .e` (bogus)
     -- `t .{...} .e` (bogus)
     (_, SmartElimEnd _ : _ : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     -- `t ...` (end elimination now)
     (_, SmartElimEnd Raw.ArgSpecExplicit : []) ->
-      checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
+      checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
     -- `t .{...}` (not syntax)
     (_, SmartElimEnd Raw.ArgSpecNext : []) -> unreachable
     -- `f .{a = ...}` (match argument name)
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
-      then checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
+      then checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
       else case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> tcFail parent $ "No argument of this name expected."
-        Implicit -> insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResult
+        Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
         Resolves _ -> todo
     -- `boxA .{a = ...}` (unbox)
     (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
-      unbox parent gamma eliminee boxSeg eliminators result tyResult
+      unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
     (_, _) -> _checkSmartElim
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
   Term mode modty v ->
   Type mode modty v ->
   [SmartEliminator mode modty v] ->
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResult = do
+checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators result tyResult = do
   (whTyEliminee, metas) <- runWriterT $ whnormalize gamma tyEliminee
   case metas of
     [] -> do
       parent' <- Constraint
-                   (JudSmartElim gamma eliminee (Type whTyEliminee) eliminators result tyResult)
+                   (JudSmartElim gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult)
                    (Just parent)
                    "Weak-head-normalized type."
                    <$> newConstraintID
-      checkSmartElimForNormalType parent' gamma eliminee (Type whTyEliminee) eliminators result tyResult
+      checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult
     _ -> blockOnMetas metas parent
 
