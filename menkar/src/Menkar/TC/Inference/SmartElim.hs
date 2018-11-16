@@ -129,6 +129,27 @@ insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators resul
   arg <- term4newImplicit (VarFromCtx <$> dmuArg :\\ gamma)
   apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult
 
+autoEliminate :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
+  Term mode modty v ->
+  Type mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult = do
+  case tyEliminee of
+    Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))) ->
+      case (_segment'plicity $ binding'segment $ piBinding) of
+        Explicit -> tcFail parent $ "Cannot auto-eliminate."
+        Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
+        Resolves _ -> todo
+    Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))) ->
+      unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
+    _ -> tcFail parent $ "Cannot auto-eliminate."
+
 checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
@@ -153,21 +174,15 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
       then checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
-      else case (_segment'plicity $ binding'segment $ piBinding) of
-        Explicit -> tcFail parent $ "No argument of this name expected."
-        Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
-        Resolves _ -> todo
-    -- `boxA .{a = ...}` (unbox)
-    (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
-      unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
-    -- `t .{a = ...}` (makes no sense)
-    (_, SmartElimEnd (Raw.ArgSpecNamed name) : []) -> tcFail parent $ "No argument of this name expected."
+      else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+    -- `t .{a = ...}`
+    (_, SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
+      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
     -- `f arg`
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecExplicit arg : eliminators') ->
       case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
-        Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
-        Resolves _ -> todo
+        _ -> autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
     -- `f .{arg}`
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecNext arg : eliminators') ->
       apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
@@ -175,13 +190,10 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg (Raw.ArgSpecNamed name) arg : eliminators') ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
       then apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
-      else case (_segment'plicity $ binding'segment $ piBinding) of
-        Explicit -> tcFail parent $ "No argument of this name expected."
-        Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
-        Resolves _ -> todo
-    -- `boxA arg`, `boxA .{arg}`, `boxA .{a = arg}`
-    (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))), SmartElimArg _ _ : eliminators') ->
-      unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
+      else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+    -- `t arg`, `t .{arg}`, `t .{a = arg}`
+    (_, SmartElimArg _ _ : eliminators') ->
+      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
     (_, _) -> _checkSmartElim
 
 checkSmartElim :: (MonadTC mode modty rel tc) =>
