@@ -2,7 +2,7 @@
 
 module Menkar.Scoper.Monad.Simple where
 
-import Menkar.Scoper.Monad
+import Menkar.TC.Monad
 import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
 import Menkar.Basic.Context
@@ -51,17 +51,21 @@ instance Multimode U1 U1 where
   approxLeftAdjointProj (ModedModality U1 U1) U1 = U1
   sigmaHasEta (ModedModality U1 U1) U1 = True
 
+instance Degrees U1 U1 U1 where
+  eqDeg = U1
+  topDeg = U1
+
 instance MonadScoper U1 U1 U1 SimpleScoper where
   annot4annot gamma qstring args = case (qstring, args) of
     (Raw.Qualified [] "~", []) -> return AnnotImplicit
     _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
              Raw.unparse' qstring \\\ fine2pretty (ctx2scCtx gamma) <$> args
            )
-  term4newImplicit gamma = do
+  newMetaExpr maybeParent deg gamma reason = do
     i <- fresh
     return $ Expr3 $ TermMeta i $ Compose $ Var3 <$> scListVariables (ctx2scCtx gamma)
-  mode4newImplicit gamma = return U1
-  modty4newImplicit gamma = return U1
+  newMetaMode maybeParent gamma reason = return U1
+  newMetaModty maybeParent gamma reason = return U1
   scopeFail msg = SimpleScoper $ lift $ Left msg
 
 ---------------------------
