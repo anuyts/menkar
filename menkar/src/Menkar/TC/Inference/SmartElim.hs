@@ -114,7 +114,45 @@ projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
       tyResult
     )
     (Just parent)
-    "Unboxing."
+    "First projection."
+
+projSnd :: (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty v Void ->
+  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
+  Term mode modty v ->
+  Binding Type Term mode modty v ->
+  [SmartEliminator mode modty v] ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc ()
+projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult = do
+  let dmuSigma = _segment'modty $ binding'segment sigmaBinding
+  let dmuProjFst = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuSigma (modality'dom dmuElim))
+  let tmFst = (Expr3 $ TermElim
+                (dmuProjFst)
+                eliminee
+                (Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding)
+                Fst
+              )
+  let tmSnd = (Expr3 $ TermElim
+                (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
+                eliminee
+                (Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding)
+                Snd
+              )
+  addNewConstraint
+    (JudSmartElim
+      gamma
+      dmuElim
+      tmSnd
+      (Type $ substLast3 tmFst $ binding'body sigmaBinding)
+      eliminators
+      result
+      tyResult
+    )
+    (Just parent)
+    "Second projection."
 
 apply :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel ->
