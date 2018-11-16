@@ -213,12 +213,12 @@ opChar = charByType MiscChar
 nameStickyChar :: CanParse m => m Char
 nameStickyChar = nameChar <|> MP.char '.'
 
-natLiteralPrecise :: CanParse m => m Nat
+natLiteralPrecise :: (CanParse m, Num n, Read n) => m n
 natLiteralPrecise = do
   --string <- some $ charByType DigitChar
   string <- MP.label "natural number" $ MP.try ((some $ charByType DigitChar) <* MP.notFollowedBy nameChar)
-  return $ (read string :: Nat)
-natLiteralNonSticky :: CanParse m => m Nat
+  return $ (read string)
+natLiteralNonSticky :: (CanParse m, Num n, Read n) => m n
 natLiteralNonSticky = nonStickyLexeme $ natLiteralPrecise
 
 nonStickyLexeme :: CanParse m => m a -> m a
