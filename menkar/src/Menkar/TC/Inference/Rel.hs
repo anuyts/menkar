@@ -201,7 +201,8 @@ checkDependentEliminatorRel parent deg gamma dmu
   tyEliminee1 tyEliminee2
   motive1 motive2
   clauses1 clauses2
-  ty1 ty2 = _checkDependentEliminatorRel
+  ty1 ty2 = {-case (clauses1, clauses2) of
+  ()-} _checkDependentEliminatorRel
 
 checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
