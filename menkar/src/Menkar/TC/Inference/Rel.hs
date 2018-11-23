@@ -213,7 +213,13 @@ checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       "Relating eliminees."
     _checkEliminator
   (TermElim _ _ _ _, _) -> tcFail parent "False."
-  (_, _) -> _checkTermNVRelNormal
+  (TermMeta _ _, _) -> unreachable
+  (TermWildcard, _) -> unreachable
+  (TermQName _ _, _) -> unreachable
+  (TermSmartElim _ _ _, _) -> unreachable
+  (TermGoal _ _, _) -> unreachable
+  (TermProblem t, _) -> tcFail parent "Nonsensical term."
+  --(_, _) -> _checkTermNVRelNormal
 
 checkTermRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
