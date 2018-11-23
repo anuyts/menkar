@@ -107,6 +107,8 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (NatType, _) -> tcFail parent "False."
   --(_, _) -> _checkUniHSConstructorRel
 
+--------------------------------
+
 checkConstructorTermRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -119,6 +121,37 @@ checkConstructorTermRel :: (MonadTC mode modty rel tc, Eq v) =>
 checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
   (ConsUniHS _, _) -> tcFail parent "False."
+  -- Encountering a lambda is not possible: it's well-typed, so the type is a Pi-type, so eta-expansion has fired.
+  (Lam binding, _) -> tcFail parent "LHS is presumed to be well-typed."
+  (_, Lam binding) -> tcFail parent "RHS is presumed to be well-typed."
+  (Pair sigmaBinding1 fst1 snd1, Pair sigmaBinding2 fst2 snd2) -> do
+    let dmu = _segment'modty $ binding'segment $ sigmaBinding1
+        dom1 = _segment'content $ binding'segment $ sigmaBinding1
+        dom2 = _segment'content $ binding'segment $ sigmaBinding2
+        cod1 = binding'body sigmaBinding1
+        cod2 = binding'body sigmaBinding2
+    addNewConstraint
+      (JudTermRel
+        (divDeg dmu deg)
+        (VarFromCtx <$> dmu :\\ gamma)
+        (Pair3 fst1 fst2)
+        (Pair3 dom1 dom2)
+      )
+      (Just parent)
+      "Relating first components."
+    addNewConstraint
+      (JudTermRel
+        deg
+        gamma
+        (Pair3 snd1 snd2)
+        (Pair3
+          (Type $ substLast3 fst1 $ cod1)
+          (Type $ substLast3 fst2 $ cod2)
+        )
+      )
+      (Just parent)
+      "Relating second components."
+  (Pair _ _ _, _) -> tcFail parent "False."
   (_, _) -> _checkConstructorTermRel
 
 checkTermRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
@@ -203,6 +236,7 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
   (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), _) ->
     tcFail parent "Types are presumed to be related."
   (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
+    -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
     let d' = unVarFromCtx <$> ctx'mode gamma
     let fst1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Type ty1) Fst
@@ -242,6 +276,7 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
   (Expr3 (TermCons (ConsUniHS UnitType)), _) ->
     tcFail parent "Types are presumed to be related."
   (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
+    -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ boxSeg1
     let d' = unVarFromCtx <$> ctx'mode gamma
     let unbox1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Type ty1) Unbox
@@ -294,6 +329,13 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
             (Just parent)
             "Weak-head-normalize everything"
             <$> newConstraintID
+      case (metasTy1, metasTy2) of
+        -- Both types are whnormal
+        ([], []) -> checkTermRelKnownTypes whnparent deg gamma whnT1 whnT2 metasT1 metasT2 (Type whnTy1) (Type whnTy2)
+        -- Either type is not normal
+        (_, _) -> blockOnMetas (metasTy1 ++ metasTy2) whnparent
+
+      {-
       case (whnT1, whnT2) of
         -- If both sides are constructors: compare them
         (Expr3 (TermCons c1), Expr3 (TermCons c2)) ->
@@ -314,7 +356,8 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
           -- Both types are blocked. We may need to eta-expand but cannot. Hence, we cannot proceed.
           (_, _) -> blockOnMetas (metasT1 ++ metasT2 ++ metasTy1 ++ metasTy2) whnparent
           -}
-          
+      -}
+
       {- CANNOT COMPARE VARIABLES YET: what if we're in the unit type?
       case (whnT1, whnT2) of
         (Var3 v1, Var3 v2) -> if v1 == v2
