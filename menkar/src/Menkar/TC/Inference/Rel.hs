@@ -180,6 +180,28 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsSuc _, _) -> tcFail parent "False."
   --(_, _) -> _checkConstructorTermRel
 
+checkDependentEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  ModedModality mode modty v ->
+  Term mode modty v ->
+  Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  NamedBinding Term mode modty v ->
+  NamedBinding Term mode modty v ->
+  DependentEliminator mode modty v ->
+  DependentEliminator mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkDependentEliminatorRel parent deg gamma dmu
+  eliminee1 eliminee2
+  tyEliminee1 tyEliminee2
+  eliminator1 eliminator2
+  ty1 ty2 = _checkDependentEliminatorRel
+
 checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -221,8 +243,15 @@ checkEliminatorRel parent deg gamma dmu
   (Snd, _) -> tcFail parent "False."
   (Unbox, Unbox) -> return ()
   (Unbox, _) -> tcFail parent "False."
-  (_, _) -> _checkEliminatorRel
-    
+  (ElimDep motive1 clauses1, ElimDep motive2 clauses2) ->
+    checkDependentEliminatorRel parent deg gamma dmu
+      eliminee1 eliminee2
+      tyEliminee1 tyEliminee2
+      motive1 motive2
+      clauses1 clauses2
+      ty1 ty2
+  (ElimDep _ _, _) -> tcFail parent "False."
+  --(_, _) -> _checkEliminatorRel
 
 checkTermNVRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
