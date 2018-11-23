@@ -24,7 +24,22 @@ checkSegmentRel :: (MonadTC mode modty rel tc, Eq v) =>
   Segment Type mode modty v ->
   Segment Type mode modty v ->
   tc ()
-checkSegmentRel parent deg gamma seg1 seg2 = _checkSegmentRel
+checkSegmentRel parent deg gamma seg1 seg2 = do
+  -- CMOD check equality of modalities
+  let d' = unVarFromCtx <$> ctx'mode gamma
+  let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d' $ Expr3 TermWildcard
+  addNewConstraint
+    (JudTermRel
+      deg
+      gamma
+      (Pair3
+        (unType $ _segment'content seg1)
+        (unType $ _segment'content seg2)
+      )
+      (Pair3 uni uni)
+    )
+    (Just parent)
+    "Relating domains."      
 
 checkPiOrSigmaRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
