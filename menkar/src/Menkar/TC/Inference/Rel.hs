@@ -152,7 +152,33 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       (Just parent)
       "Relating second components."
   (Pair _ _ _, _) -> tcFail parent "False."
-  (_, _) -> _checkConstructorTermRel
+  -- Encountering a unit is not possible: it's well-typed, so the type is a Pi-type, so eta-expansion has fired.
+  (ConsUnit, _) -> tcFail parent "LHS is presumed to be well-typed."
+  (_, ConsUnit) -> tcFail parent "RHS is presumed to be well-typed."
+  (ConsBox boxSeg1 unbox1, ConsBox boxSeg2 unbox2) -> do
+    let dmu = _segment'modty $ boxSeg1
+        dom1 = _segment'content $ boxSeg1
+        dom2 = _segment'content $ boxSeg2
+    addNewConstraint
+      (JudTermRel
+        (divDeg dmu deg)
+        (VarFromCtx <$> dmu :\\ gamma)
+        (Pair3 unbox1 unbox2)
+        (Pair3 dom1 dom2)
+      )
+      (Just parent)
+      "Relating box contents."
+  (ConsBox _ _, _) -> tcFail parent "False."
+  (ConsZero, ConsZero) -> return ()
+  (ConsZero, _) -> tcFail parent "False."
+  (ConsSuc n1, ConsSuc n2) -> do
+    let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
+    addNewConstraint
+      (JudTermRel deg gamma (Pair3 n1 n2) (Pair3 nat nat))
+      (Just parent)
+      "Relating predecessors."
+  (ConsSuc _, _) -> tcFail parent "False."
+  --(_, _) -> _checkConstructorTermRel
 
 checkTermRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
