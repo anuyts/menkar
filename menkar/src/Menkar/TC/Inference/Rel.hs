@@ -103,7 +103,9 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (UnitType, _) -> tcFail parent "False."
   (BoxType seg1, BoxType seg2) -> checkSegmentRel parent deg gamma seg1 seg2
   (BoxType _, _) -> tcFail parent "False."
-  (_, _) -> _checkUniHSConstructorRel
+  (NatType, NatType) -> return ()
+  (NatType, _) -> tcFail parent "False."
+  --(_, _) -> _checkUniHSConstructorRel
 
 checkConstructorTermRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
