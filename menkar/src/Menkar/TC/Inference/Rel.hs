@@ -97,6 +97,12 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (Pi _, _) -> tcFail parent "False."
   (Sigma binding1, Sigma binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
   (Sigma _, _) -> tcFail parent "False."
+  (EmptyType, EmptyType) -> return ()
+  (EmptyType, _) -> tcFail parent "False."
+  (UnitType, UnitType) -> return ()
+  (UnitType, _) -> tcFail parent "False."
+  (BoxType seg1, BoxType seg2) -> checkSegmentRel parent deg gamma seg1 seg2
+  (BoxType _, _) -> tcFail parent "False."
   (_, _) -> _checkUniHSConstructorRel
 
 checkConstructorTermRel :: (MonadTC mode modty rel tc, Eq v) =>
