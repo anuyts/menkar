@@ -35,52 +35,59 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
     Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
       -- careful with glue/weld!
     Expr3 (TermProblem _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
-    Expr3 (TermCons t) -> case (t, e) of
-      {- -Hofmann-Streicher universe code case
-      (ConsUniHS d1' typeTerm, ElimUnsafeResize) -> return $ Expr3 $ TermCons $ ConsUniHS d1' $ case typeTerm of
-        UniHS d1'' lvl -> UniHS d1'' lvl
-        Pi (Binding seg body) ->
-          Pi (Binding _seg (Expr3 $ TermElim (VarWkn <$> ModedModality d1 mu) body ElimUnsafeResize))
-        _ -> _ -}
-      --function case
-      (Lam binding, App arg) ->
-        let subst v = case v of
-              VarWkn w -> Var3 w
-              VarLast -> arg
-              _ -> unreachable
-        in whnormalize gamma (join $ subst <$> binding'body binding)
-      --sigma cases
-      (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize gamma tmFst
-      (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize gamma tmSnd
-      (Pair sigmaBinding tmFst tmSnd, ElimDep motive (ElimSigma clause)) ->
-        let subst v = case v of
-              VarWkn (VarWkn w) -> Var3 w
-              VarWkn VarLast -> tmFst
-              VarLast -> tmSnd
-              _ -> unreachable
-        in whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause))
-      --empty type cases (none)
-      --unit cases (none)
-      --box cases
-      (ConsBox seg tm, Unbox) -> whnormalize gamma tm
-      (ConsBox seg tm, ElimDep motive (ElimBox clause)) ->
-        let subst :: VarExt _ -> Term _ _ _
-            subst VarLast = tm
-            subst (VarWkn v) = Var3 v
-            subst _ = unreachable
-        in  whnormalize gamma (join $ subst <$> _namedBinding'body clause)
-      --nat cases
-      (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize gamma cz
-      (ConsSuc t, ElimDep motive (ElimNat cz cs)) ->
-        let subst :: VarExt (VarExt _) -> Term _ _ _
-            subst VarLast = Expr3 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
-            subst (VarWkn VarLast) = t
-            subst (VarWkn (VarWkn v)) = Var3 v
-            subst (VarWkn v) = unreachable
-            subst v = unreachable
-        in  whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs))
-      --nonsensical cases
-      (_, _) -> return $ Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
+    Expr3 (TermCons t) ->
+      let termProblem = Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
+      in  case (t, e) of
+        {- -Hofmann-Streicher universe code case
+        (ConsUniHS d1' typeTerm, ElimUnsafeResize) -> return $ Expr3 $ TermCons $ ConsUniHS d1' $ case typeTerm of
+          UniHS d1'' lvl -> UniHS d1'' lvl
+          Pi (Binding seg body) ->
+            Pi (Binding _seg (Expr3 $ TermElim (VarWkn <$> ModedModality d1 mu) body ElimUnsafeResize))
+          _ -> _ -}
+        (ConsUniHS _, _) -> return termProblem
+        --function case
+        (Lam binding, App arg) ->
+          let subst v = case v of
+                VarWkn w -> Var3 w
+                VarLast -> arg
+                _ -> unreachable
+          in whnormalize gamma (join $ subst <$> binding'body binding)
+        (Lam _, _) -> return termProblem
+        --sigma cases
+        (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize gamma tmFst
+        (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize gamma tmSnd
+        (Pair sigmaBinding tmFst tmSnd, ElimDep motive (ElimSigma clause)) ->
+          let subst v = case v of
+                VarWkn (VarWkn w) -> Var3 w
+                VarWkn VarLast -> tmFst
+                VarLast -> tmSnd
+                _ -> unreachable
+          in whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause))
+        (Pair _ _ _, _) -> return termProblem
+        --empty type cases (none)
+        --unit cases (none)
+        (ConsUnit, _) -> return termProblem
+        --box cases
+        (ConsBox seg tm, Unbox) -> whnormalize gamma tm
+        (ConsBox seg tm, ElimDep motive (ElimBox clause)) ->
+          let subst :: VarExt _ -> Term _ _ _
+              subst VarLast = tm
+              subst (VarWkn v) = Var3 v
+              subst _ = unreachable
+          in  whnormalize gamma (join $ subst <$> _namedBinding'body clause)
+        (ConsBox _ _, _) -> return termProblem
+        --nat cases
+        (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize gamma cz
+        (ConsZero, _) -> return termProblem
+        (ConsSuc t, ElimDep motive (ElimNat cz cs)) ->
+          let subst :: VarExt (VarExt _) -> Term _ _ _
+              subst VarLast = Expr3 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
+              subst (VarWkn VarLast) = t
+              subst (VarWkn (VarWkn v)) = Var3 v
+              subst (VarWkn v) = unreachable
+              subst v = unreachable
+          in  whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs))
+        (ConsSuc _, _) -> return termProblem
     Expr3 _ -> unreachable
 
 whnormalizeNV :: MonadTC mode modty rel tc =>
