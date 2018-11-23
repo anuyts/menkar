@@ -11,6 +11,7 @@ import Menkar.TC.Monad
 import Control.Exception.AssertFalse
 import Menkar.TC.Inference.Term
 import Menkar.TC.Inference.SmartElim
+import Menkar.TC.Inference.Rel
 import Menkar.Fine.WHNormalize
 
 import Data.Void

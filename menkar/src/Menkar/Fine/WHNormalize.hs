@@ -101,6 +101,7 @@ whnormalizeNV gamma t@(TermMeta meta (Compose depcies)) = do
   case maybeSolution of
     Nothing -> Expr3 t <$ tell [meta]
     Just solution -> whnormalize gamma solution
+whnormalizeNV gamma TermWildcard = unreachable
 whnormalizeNV gamma (TermQName qname leftDividedTelescopedVal) =
     let telescopedVal = _leftDivided'content leftDividedTelescopedVal
         ModApplied _ quantifiedVal = telescoped2modalQuantified telescopedVal

@@ -113,6 +113,18 @@ duplicateCtx :: (
   Ctx ty mode modty v w -> Ctx (Pair3 ty) mode modty v w
 duplicateCtx = mapCtx (\ty -> Pair3 ty ty)
 
+fstCtx, sndCtx :: (
+    Functor mode,
+    Functor modty,
+    Functor (ty mode modty),
+    CanSwallow (Term mode modty) mode,
+    CanSwallow (Term mode modty) modty,
+    CanSwallow (Term mode modty) (ty mode modty)
+  ) =>
+  Ctx (Pair3 ty) mode modty v w -> Ctx ty mode modty v w
+fstCtx = mapCtx (\(Pair3 ty1 ty2) -> ty1)
+sndCtx = mapCtx (\(Pair3 ty1 ty2) -> ty2)
+
 {-
 -- TODO: you need a left division here!
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`

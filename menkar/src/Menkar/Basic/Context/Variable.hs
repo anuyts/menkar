@@ -7,17 +7,20 @@ import Control.Exception.AssertFalse
 import Data.Void
 
 --data VarWkn v = VarLast | VarWkn v deriving (Show, Functor, Foldable, Traversable)
-newtype VarExt v = VarExt {runVarWkn :: Maybe v} deriving (Show, Functor, Foldable, Traversable)
+newtype VarExt v = VarExt {runVarWkn :: Maybe v}
+  deriving (Show, Functor, Foldable, Traversable, Eq)
 pattern VarWkn v = VarExt (Just v)
 pattern VarLast = VarExt (Nothing)
 {- # COMPLETE VarWkn, VarLast #-}
 
-newtype VarLeftExt v = VarLeftExt {runVarLeftExt :: Maybe v} deriving (Show, Functor, Foldable, Traversable)
+newtype VarLeftExt v = VarLeftExt {runVarLeftExt :: Maybe v}
+  deriving (Show, Functor, Foldable, Traversable, Eq)
 pattern VarLeftWkn v = VarLeftExt (Just v)
 pattern VarFirst = VarLeftExt (Nothing)
 {- # COMPLETE VarLeftWkn, VarFirst #-}
 
-newtype VarOpenCtx v w = VarOpenCtx {runVarOpenCtx :: Either v w} deriving (Show, Functor, Foldable, Traversable, Bifunctor)
+newtype VarOpenCtx v w = VarOpenCtx {runVarOpenCtx :: Either v w}
+  deriving (Show, Functor, Foldable, Traversable, Bifunctor, Eq)
 pattern VarFromCtx v = VarOpenCtx (Left v)
 pattern VarBeforeCtx w = VarOpenCtx (Right w)
 {- # COMPLETE VarFromCtx, VarBeforeCtx #-}
@@ -34,4 +37,5 @@ varLeftEat _ = unreachable
 
 --newtype VarDiv v = VarDiv {runVarDiv :: v} deriving (Show, Functor, Foldable, Traversable)
 
-newtype VarInModule v = VarInModule {runVarInModule :: v} deriving (Show, Functor, Foldable, Traversable)
+newtype VarInModule v = VarInModule {runVarInModule :: v}
+  deriving (Show, Functor, Foldable, Traversable, Eq)
