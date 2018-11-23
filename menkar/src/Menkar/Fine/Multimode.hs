@@ -12,6 +12,7 @@ class (
   compMod :: modty v -> mode v -> modty v -> modty v
   wildMode :: mode v -- to be abolished!
   flatMod :: modty v
+  -- right adjoint to flatMod
   irrMod :: modty v
   dataMode :: mode v
   approxLeftAdjointProj :: ModedModality mode modty v -> mode v {-^ the codomain -} -> modty v

@@ -81,6 +81,18 @@ checkUniHSConstructorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Type mode modty v ->
   tc ()
 checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+  (UniHS d1 lvl1, UniHS d2 lvl2) -> do
+    let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
+    addNewConstraint
+      (JudTermRel
+        (divDeg irrModedModality deg)
+        (irrModedModality :\\ gamma)
+        (Pair3 lvl1 lvl2)
+        (Pair3 nat nat)
+      )
+      (Just parent)
+      "Relating levels."
+  (UniHS _ _, _) -> tcFail parent "False."
   (Pi binding1, Pi binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
   (Pi _, _) -> tcFail parent "False."
   (Sigma binding1, Sigma binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
