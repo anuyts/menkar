@@ -17,6 +17,19 @@ import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
 
+checkTermRelNoEta :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  Term mode modty v ->
+  Term mode modty v ->
+  [Int] ->
+  [Int] ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = _checkTermRelNoEta
+
 checkTermRelKnownTypes :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -61,7 +74,7 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
     let snd1 = Expr3 $ TermElim (idModedModality d') t1 (Type t1) Snd
     let snd2 = Expr3 $ TermElim (idModedModality d') t2 (Type t2) Snd
     if not (sigmaHasEta dmu d')
-      then _no_eta
+      then checkTermRelNoEta  parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
       else do
         addNewConstraint
           (JudTermRel
@@ -92,10 +105,29 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
   (Expr3 (TermCons (ConsUniHS UnitType)), Expr3 (TermCons (ConsUniHS UnitType))) -> return ()
   (Expr3 (TermCons (ConsUniHS UnitType)), _) ->
     tcFail parent "Types are presumed to be related."
-  (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> _box
+  (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
+    let dmu = _segment'modty $ boxSeg1
+    let d' = unVarFromCtx <$> ctx'mode gamma
+    let unbox1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Type ty1) Unbox
+    let unbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Type ty2) Unbox
+    if not (sigmaHasEta dmu d')
+      then checkTermRelNoEta  parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
+      else do
+        addNewConstraint
+          (JudTermRel
+            (divDeg dmu deg)
+            (VarFromCtx <$> dmu :\\ gamma)
+            (Pair3 unbox1 unbox2)
+            (Pair3
+              (_segment'content boxSeg1)
+              (_segment'content boxSeg2)
+            )
+          )
+          (Just parent)
+          "Eta: Relating box contents."
   (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), _) ->
     tcFail parent "Types are presumed to be related."
-  (_, _) -> _no_eta
+  (_, _) -> checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
 
 checkTermRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
