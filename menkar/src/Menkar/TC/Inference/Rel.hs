@@ -199,7 +199,8 @@ checkDependentEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
 checkDependentEliminatorRel parent deg gamma dmu
   eliminee1 eliminee2
   tyEliminee1 tyEliminee2
-  eliminator1 eliminator2
+  motive1 motive2
+  clauses1 clauses2
   ty1 ty2 = _checkDependentEliminatorRel
 
 checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
@@ -243,7 +244,16 @@ checkEliminatorRel parent deg gamma dmu
   (Snd, _) -> tcFail parent "False."
   (Unbox, Unbox) -> return ()
   (Unbox, _) -> tcFail parent "False."
-  (ElimDep motive1 clauses1, ElimDep motive2 clauses2) ->
+  (ElimDep motive1 clauses1, ElimDep motive2 clauses2) -> do
+    let seg = Declaration (DeclNameSegment $ _namedBinding'name motive1) dmu Explicit (Pair3 tyEliminee1 tyEliminee2)
+    addNewConstraint
+      (JudTypeRel
+        (VarWkn <$> deg)
+        (gamma :.. VarFromCtx <$> seg)
+        (Pair3 (Type $ _namedBinding'body motive1) (Type $ _namedBinding'body motive2))
+      )
+      (Just parent)
+      "Relating the motives."
     checkDependentEliminatorRel parent deg gamma dmu
       eliminee1 eliminee2
       tyEliminee1 tyEliminee2
