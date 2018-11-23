@@ -17,6 +17,57 @@ import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
 
+checkUniHSConstructorRel :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  UniHSConstructor mode modty v ->
+  UniHSConstructor mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+  (_, _) -> _checkUniHSConstructorRel
+
+checkConstructorTermRel :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  ConstructorTerm mode modty v ->
+  ConstructorTerm mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+  (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
+  (ConsUniHS _, _) -> tcFail parent "False."
+  (_, _) -> _checkConstructorTermRel
+
+checkTermRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  Term mode modty v ->
+  Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkTermRelNormal parent deg gamma t1 t2 ty1 ty2 = _checkTermRelNormal
+
+tryToWHSolveTerm :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  Term mode modty v ->
+  Term mode modty v ->
+  [Int] ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+tryToWHSolveTerm parent deg gamma tBlocked tWHN metas tyBlocked tyWHN = case tBlocked of
+  (Expr3 (TermMeta meta depcies)) -> _tryToWHSolveTerm
+  _ -> blockOnMetas metas parent
+
 checkTermRelNoEta :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -28,7 +79,14 @@ checkTermRelNoEta :: (MonadTC mode modty rel tc, Eq v) =>
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = _checkTermRelNoEta
+checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = case (metasT1, metasT2) of
+  -- Both are whnormal
+  ([], []) -> checkTermRelNormal parent deg gamma t1 t2 (Type ty1) (Type ty2)
+  -- Only one is whnormal: whsolve or block
+  (_, []) -> tryToWHSolveTerm parent deg gamma t1 t2 metasT1 (Type ty1) (Type ty2)
+  ([], _) -> tryToWHSolveTerm parent deg gamma t2 t1 metasT2 (Type ty2) (Type ty1)
+  -- Neither is whnormal: block
+  (_, _) -> blockOnMetas (metasT1 ++ metasT2) parent
 
 checkTermRelKnownTypes :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
@@ -160,7 +218,8 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
             <$> newConstraintID
       case (whnT1, whnT2) of
         -- If both sides are constructors: compare them
-        (Expr3 (TermCons c1), Expr3 (TermCons c2)) -> _checkConstructorTermRel
+        (Expr3 (TermCons c1), Expr3 (TermCons c2)) ->
+          checkConstructorTermRel whnparent deg gamma c1 c2 (Type whnTy1) (Type whnTy2)
         -- Otherwise, we want to eta-expand, so one of the types needs to be weak-head-normal
         (_, _) -> case (metasTy1, metasTy2) of
           -- Both types are whnormal
