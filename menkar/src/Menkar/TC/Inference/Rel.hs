@@ -180,6 +180,50 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsSuc _, _) -> tcFail parent "False."
   --(_, _) -> _checkConstructorTermRel
 
+checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  ModedModality mode modty v ->
+  Term mode modty v ->
+  Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  Eliminator mode modty v ->
+  Eliminator mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkEliminatorRel parent deg gamma dmu
+  eliminee1 eliminee2
+  tyEliminee1 tyEliminee2
+  eliminator1 eliminator2
+  ty1 ty2 = case (eliminator1, eliminator2) of
+  (App arg1, App arg2) -> case (unType tyEliminee1, unType tyEliminee2) of
+    (Expr3 (TermCons (ConsUniHS (Pi binding1))), Expr3 (TermCons (ConsUniHS (Pi binding2)))) -> do
+      let dmu = _segment'modty $ binding'segment $ binding1
+      let dom1 = _segment'content $ binding'segment binding1
+      let dom2 = _segment'content $ binding'segment binding2
+      addNewConstraint
+        (JudTermRel
+          (divDeg dmu deg)
+          (VarFromCtx <$> dmu :\\ gamma)
+          (Pair3 arg1 arg2)
+          (Pair3 dom1 dom2)
+        )
+        (Just parent)
+        "Relating arguments."
+    (_, _) -> unreachable
+  (App _, _) -> tcFail parent "False."
+  (Fst, Fst) -> return ()
+  (Fst, _) -> tcFail parent "False."
+  (Snd, Snd) -> return ()
+  (Snd, _) -> tcFail parent "False."
+  (Unbox, Unbox) -> return ()
+  (Unbox, _) -> tcFail parent "False."
+  (_, _) -> _checkEliminatorRel
+    
+
 checkTermNVRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -211,7 +255,7 @@ checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       )
       (Just parent)
       "Relating eliminees."
-    _checkEliminator
+    checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
   (TermElim _ _ _ _, _) -> tcFail parent "False."
   (TermMeta _ _, _) -> unreachable
   (TermWildcard, _) -> unreachable
