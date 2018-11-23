@@ -180,6 +180,41 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsSuc _, _) -> tcFail parent "False."
   --(_, _) -> _checkConstructorTermRel
 
+checkTermNVRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  TermNV mode modty v ->
+  TermNV mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+  (TermCons c1, TermCons c2) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2
+  (TermCons _, _) -> tcFail parent "False."
+  (TermElim dmu1 eliminee1 tyEliminee1 eliminator1, TermElim dmu2 eliminee2 tyEliminee2 eliminator2) -> do
+    -- CMOD dmu1 == dmu2
+    addNewConstraint
+      (JudTypeRel
+        (divDeg dmu1 deg)
+        (VarFromCtx <$> dmu1 :\\ gamma)
+        (Pair3 tyEliminee1 tyEliminee2)
+      )
+      (Just parent)
+      "Relating eliminees' types."
+    addNewConstraint
+      (JudTermRel
+        (divDeg dmu1 deg)
+        (VarFromCtx <$> dmu1 :\\ gamma)
+        (Pair3 eliminee1 eliminee2)
+        (Pair3 tyEliminee1 tyEliminee2)
+      )
+      (Just parent)
+      "Relating eliminees."
+    _checkEliminator
+  (TermElim _ _ _ _, _) -> tcFail parent "False."
+  (_, _) -> _checkTermNVRelNormal
+
 checkTermRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -189,7 +224,13 @@ checkTermRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-checkTermRelNormal parent deg gamma t1 t2 ty1 ty2 = _checkTermRelNormal
+checkTermRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+        (Var3 v1, Var3 v2) -> if v1 == v2
+          then return ()
+          else tcFail parent "Cannot relate different variables."
+        (Expr3 tnv1, Expr3 tnv2) -> checkTermNVRelNormal parent deg gamma tnv1 tnv2 ty1 ty2
+        (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
+        (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
 
 tryToWHSolveTerm :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
