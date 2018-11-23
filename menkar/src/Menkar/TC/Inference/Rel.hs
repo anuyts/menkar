@@ -43,20 +43,50 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
       (JudTermRel
         (VarWkn <$> deg)
         (gamma :.. VarFromCtx <$> seg)
-        (Pair3
-          app1
-          app2
-        )
+        (Pair3 app1 app2)
         (Pair3
           (Type $ binding'body piBinding1)
           (Type $ binding'body piBinding2)
         )
       )
       (Just parent)
-      "Applying eta."
+      "Eta: Relating function bodies."
   (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), _) ->
     tcFail parent "Types are presumed to be related."
-  (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> _sigma
+  (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
+    let dmu = _segment'modty $ binding'segment $ sigmaBinding1
+    let d' = unVarFromCtx <$> ctx'mode gamma
+    let fst1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Type ty1) Fst
+    let fst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Type ty2) Fst
+    let snd1 = Expr3 $ TermElim (idModedModality d') t1 (Type t1) Snd
+    let snd2 = Expr3 $ TermElim (idModedModality d') t2 (Type t2) Snd
+    if not (sigmaHasEta dmu d')
+      then _no_eta
+      else do
+        addNewConstraint
+          (JudTermRel
+            (divDeg dmu deg)
+            (VarFromCtx <$> dmu :\\ gamma)
+            (Pair3 fst1 fst2)
+            (Pair3
+              (_segment'content $ binding'segment sigmaBinding1)
+              (_segment'content $ binding'segment sigmaBinding2)
+            )
+          )
+          (Just parent)
+          "Eta: Relating first projections."
+        addNewConstraint
+          (JudTermRel
+            deg
+            gamma
+            (Pair3 snd1 snd2)
+            (Pair3
+              (Type $ substLast3 fst1 $ binding'body sigmaBinding1)
+              (Type $ substLast3 fst2 $ binding'body sigmaBinding2)
+            )
+          )
+          (Just parent)
+          "Eta: relating second projections"
   (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), _) ->
     tcFail parent "Types are presumed to be related."
   (Expr3 (TermCons (ConsUniHS UnitType)), Expr3 (TermCons (ConsUniHS UnitType))) -> return ()
@@ -77,10 +107,10 @@ checkTermRel :: (MonadTC mode modty rel tc, Eq v) =>
   Type mode modty v ->
   tc ()
 checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
-  isTopDeg deg >>= \ case
-    -- Top-relatedness is always ok.
-    True -> return ()
-    False -> do
+  -- Top-relatedness is always ok.
+  if isTopDeg deg
+    then return ()
+    else do
       -- Weak-head-normalize everything
       (whnT1, metasT1) <- runWriterT $ whnormalize (fstCtx gamma) t1
       (whnT2, metasT2) <- runWriterT $ whnormalize (sndCtx gamma) t2

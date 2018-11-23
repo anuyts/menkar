@@ -75,7 +75,6 @@ class (
   blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc ()
   leqMod :: modty v -> modty v -> tc Bool
-  isTopDeg :: rel v -> tc Bool
 
 addNewConstraint :: MonadTC mode modty rel tc =>
   Judgement mode modty rel ->
@@ -146,4 +145,3 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mo
   blockOnMetas metas c = lift $ blockOnMetas metas c
   tcFail c msg = lift $ tcFail c msg
   leqMod mu nu = lift $ leqMod mu nu
-  isTopDeg deg = lift $ isTopDeg deg

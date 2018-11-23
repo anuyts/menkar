@@ -24,6 +24,8 @@ class (
   ) => Degrees mode modty rel | rel -> mode, rel -> modty where
   eqDeg :: rel v
   topDeg :: rel v
+  divDeg :: ModedModality mode modty v -> rel v -> rel v
+  isTopDeg :: rel v -> Bool
 
 --------------
 
@@ -36,3 +38,7 @@ compModedModality (ModedModality d' mu') (ModedModality d mu) = ModedModality d 
 
 irrModedModality :: (Multimode mode modty) => ModedModality mode modty v
 irrModedModality = ModedModality dataMode irrMod
+
+modedApproxLeftAdjointProj :: (Multimode mode modty) =>
+  ModedModality mode modty v -> mode v {-^ the codomain -} -> ModedModality mode modty v
+modedApproxLeftAdjointProj dmu d' = ModedModality d' $ approxLeftAdjointProj dmu d'
