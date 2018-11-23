@@ -26,6 +26,36 @@ checkSegmentRel :: (MonadTC mode modty rel tc, Eq v) =>
   tc ()
 checkSegmentRel parent deg gamma seg1 seg2 = _checkSegmentRel
 
+checkPiOrSigmaRel :: (MonadTC mode modty rel tc, Eq v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  Binding Type Term mode modty v ->
+  Binding Type Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc ()
+checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
+    let seg1 = (binding'segment binding1)
+    let seg2 = (binding'segment binding2)
+    let dom2 = _segment'content $ binding'segment binding2
+    let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
+    let d' = unVarFromCtx <$> ctx'mode gamma
+    let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (VarWkn <$> d') $ Expr3 TermWildcard
+    checkSegmentRel parent deg gamma seg1 seg2
+    addNewConstraint
+      (JudTermRel
+        (VarWkn <$> deg)
+        (gamma :.. VarFromCtx <$> seg)
+        (Pair3
+          (binding'body binding1)
+          (binding'body binding2)
+        )
+        (Pair3 uni uni)
+      )
+      (Just parent)
+      "Relating codomains."
+
 checkUniHSConstructorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -36,28 +66,10 @@ checkUniHSConstructorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Type mode modty v ->
   tc ()
 checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
-  (Pi piBinding1, Pi piBinding2) -> do
-    let seg1 = (binding'segment piBinding1)
-    let seg2 = (binding'segment piBinding2)
-    let dom2 = _segment'content $ binding'segment piBinding2
-    let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
-    let d' = unVarFromCtx <$> ctx'mode gamma
-    let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (VarWkn <$> d') $ Expr3 TermWildcard
-    checkSegmentRel parent deg gamma seg1 seg2
-    addNewConstraint
-      (JudTermRel
-        (VarWkn <$> deg)
-        (gamma :.. VarFromCtx <$> seg)
-        (Pair3
-          (binding'body piBinding1)
-          (binding'body piBinding2)
-        )
-        (Pair3 uni uni)
-      )
-      (Just parent)
-      "Relating codomains."
-    _pi
+  (Pi binding1, Pi binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
   (Pi _, _) -> tcFail parent "False."
+  (Sigma binding1, Sigma binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
+  (Sigma _, _) -> tcFail parent "False."
   (_, _) -> _checkUniHSConstructorRel
 
 checkConstructorTermRel :: (MonadTC mode modty rel tc, Eq v) =>
