@@ -184,7 +184,7 @@ checkDependentEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
-  ModedModality mode modty v ->
+  ModedModality mode modty v {-^ Modality by which the eliminee is eliminated. -} ->
   Term mode modty v ->
   Term mode modty v ->
   Type mode modty v ->
@@ -201,9 +201,55 @@ checkDependentEliminatorRel parent deg gamma dmu
   tyEliminee1 tyEliminee2
   motive1 motive2
   clauses1 clauses2
-  ty1 ty2 = {-case (clauses1, clauses2) of
-  ()-} _checkDependentEliminatorRel
-
+  ty1 ty2 =
+    case (clauses1, clauses2) of
+      (ElimSigma pairClause1, ElimSigma pairClause2) -> case (tyEliminee1, tyEliminee2) of
+        (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1)))),
+         Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2))))) -> do
+          let segFst :: Segment (Pair3 Type) _ _ _
+              segFst = Declaration
+                         (DeclNameSegment $ _namedBinding'name pairClause1)
+                         (compModedModality dmu (_segment'modty $ binding'segment $ sigmaBinding1))
+                         Explicit
+                         (Pair3
+                           (_segment'content $ binding'segment $ sigmaBinding1)
+                           (_segment'content $ binding'segment $ sigmaBinding2)
+                         )
+          let segSnd :: Segment (Pair3 Type) _ _ (VarExt _)
+              segSnd = Declaration
+                         (DeclNameSegment $ _namedBinding'name $ _namedBinding'body pairClause1)
+                         (VarWkn <$> dmu)
+                         Explicit
+                         (Pair3
+                           (Type $ binding'body sigmaBinding1)
+                           (Type $ binding'body sigmaBinding2)
+                         )
+          let subst' :: Binding Type Term _ _ _ -> VarExt _ -> Term _ _ (VarExt (VarExt _))
+              subst' sigmaBinding VarLast =
+                Expr3 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var3 $ VarWkn VarLast) (Var3 VarLast)
+              subst' sigmaBinding (VarWkn v) = Var3 $ VarWkn $ VarWkn $ v
+              subst :: Binding Type Term _ _ _ -> Term _ _ (VarExt _) -> Term _ _ (VarExt (VarExt _))
+              subst sigmaBinding = join . fmap (subst' sigmaBinding)
+          addNewConstraint
+            (JudTermRel
+              (VarWkn . VarWkn <$> deg)
+              (gamma :.. VarFromCtx <$> segFst :.. VarFromCtx <$> segSnd)
+              (Pair3
+                (_namedBinding'body $ _namedBinding'body $ pairClause1)
+                (_namedBinding'body $ _namedBinding'body $ pairClause2)
+              )
+              (Pair3
+                (Type $ subst sigmaBinding1 $ _namedBinding'body motive1)
+                (Type $ subst sigmaBinding2 $ _namedBinding'body motive2)
+              )
+            )
+            (Just parent)
+            "Comparing elimination clauses for the pair constructor."
+        (_, _) -> unreachable
+                  -- It is an error to construct an elimination term where the eliminee's type does not
+                  -- match the elimination clauses.
+      (ElimSigma _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
+      (_, _) -> _checkDependentEliminatorRel
 checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
