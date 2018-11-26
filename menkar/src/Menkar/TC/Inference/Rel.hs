@@ -285,7 +285,60 @@ checkDependentEliminatorRel parent deg gamma dmu
       (ElimBox _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (ElimEmpty, ElimEmpty) -> return ()
       (ElimEmpty, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
-      (_, _) -> _checkDependentEliminatorRel
+      (ElimNat clauseZero1 clauseSuc1, ElimNat clauseZero2 clauseSuc2) -> do
+        let substZ :: VarExt _ -> Term _ _ _
+            substZ VarLast = Expr3 $ TermCons $ ConsZero
+            substZ (VarWkn v) = Var3 v
+            substZ _ = unreachable
+        addNewConstraint
+          (JudTermRel
+            deg
+            gamma
+            (Pair3 clauseZero1 clauseZero2)
+            (Pair3
+              (Type $ join $ substZ <$> _namedBinding'body motive1)
+              (Type $ join $ substZ <$> _namedBinding'body motive2)
+            )
+          )
+          (Just parent)
+          "Relating zero clauses."
+        let nat = (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+        let segPred :: Segment (Pair3 Type) _ _ _
+            segPred = Declaration
+                        (DeclNameSegment $ _namedBinding'name clauseSuc1)
+                        dmu
+                        Explicit
+                        (Pair3 nat nat)
+        let segHyp :: Segment (Pair3 Type) _ _ (VarExt _)
+            segHyp = Declaration
+                       (DeclNameSegment $ _namedBinding'name $ _namedBinding'body clauseSuc1)
+                       (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
+                       Explicit
+                       (Pair3
+                         (Type $ _namedBinding'body motive1)
+                         (Type $ _namedBinding'body motive2)
+                       )
+        let substS :: VarExt _ -> Term _ _ (VarExt (VarExt _))
+            substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
+            substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
+            substS _ = unreachable
+        addNewConstraint
+          (JudTermRel
+            (VarWkn . VarWkn <$> deg)
+            (gamma :.. VarFromCtx <$> segPred :.. VarFromCtx <$> segHyp)
+            (Pair3
+              (_namedBinding'body $ _namedBinding'body $ clauseSuc1)
+              (_namedBinding'body $ _namedBinding'body $ clauseSuc2)
+            )
+            (Pair3
+              (Type $ join $ substS <$> _namedBinding'body motive1)
+              (Type $ join $ substS <$> _namedBinding'body motive2)
+            )
+          )
+          (Just parent)
+          "Relating successor clauses."
+      (ElimNat _ _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
+      --(_, _) -> _checkDependentEliminatorRel
 checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
