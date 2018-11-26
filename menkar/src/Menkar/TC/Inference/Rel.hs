@@ -244,11 +244,45 @@ checkDependentEliminatorRel parent deg gamma dmu
               )
             )
             (Just parent)
-            "Comparing elimination clauses for the pair constructor."
+            "Relating elimination clauses for the pair constructor."
         (_, _) -> unreachable
                   -- It is an error to construct an elimination term where the eliminee's type does not
                   -- match the elimination clauses.
       (ElimSigma _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
+      (ElimBox boxClause1, ElimBox boxClause2) -> case (tyEliminee1, tyEliminee2) of
+        (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1)))),
+         Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg2))))) -> do
+           let segContent :: Segment (Pair3 Type) _ _ _
+               segContent = Declaration
+                              (DeclNameSegment $ _namedBinding'name boxClause1)
+                              (compModedModality dmu (_segment'modty boxSeg1))
+                              Explicit
+                              (Pair3
+                                (_segment'content boxSeg1)
+                                (_segment'content boxSeg2)
+                              )
+           let subst :: Segment Type _ _ _ -> VarExt _ -> Term _ _ (VarExt _)
+               subst boxSeg VarLast = Expr3 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var3 VarLast
+               subst boxSeg (VarWkn v) = Var3 $ VarWkn v
+           addNewConstraint
+             (JudTermRel
+               (VarWkn <$> deg)
+               (gamma :.. VarFromCtx <$> segContent)
+               (Pair3
+                 (_namedBinding'body $ boxClause1)
+                 (_namedBinding'body $ boxClause2)
+               )
+               (Pair3
+                 (Type $ join $ subst boxSeg1 <$> (_namedBinding'body motive1))
+                 (Type $ join $ subst boxSeg2 <$> (_namedBinding'body motive2))
+               )
+             )
+             (Just parent)
+             "Relating elimination clauses for the box constructor."
+        (_, _) -> unreachable
+                  -- It is an error to construct an elimination term where the eliminee's type does not
+                  -- match the elimination clauses.
+      (ElimBox _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (_, _) -> _checkDependentEliminatorRel
 checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
