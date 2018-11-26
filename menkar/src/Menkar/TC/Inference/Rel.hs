@@ -283,6 +283,8 @@ checkDependentEliminatorRel parent deg gamma dmu
                   -- It is an error to construct an elimination term where the eliminee's type does not
                   -- match the elimination clauses.
       (ElimBox _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
+      (ElimEmpty, ElimEmpty) -> return ()
+      (ElimEmpty, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (_, _) -> _checkDependentEliminatorRel
 checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
