@@ -10,6 +10,7 @@ import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Control.Exception.AssertFalse
 import Menkar.Fine.WHNormalize
+import Menkar.TC.Inference.Solve
 
 import Data.Void
 import Control.Lens
@@ -456,20 +457,6 @@ checkTermRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
         (Expr3 tnv1, Expr3 tnv2) -> checkTermNVRelNormal parent deg gamma tnv1 tnv2 ty1 ty2
         (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
         (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
-
-tryToWHSolveTerm :: (MonadTC mode modty rel tc, Eq v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Term mode modty v ->
-  [Int] ->
-  Type mode modty v ->
-  Type mode modty v ->
-  tc ()
-tryToWHSolveTerm parent deg gamma tBlocked tWHN metas tyBlocked tyWHN = case tBlocked of
-  (Expr3 (TermMeta meta depcies)) -> _tryToWHSolveTerm
-  _ -> blockOnMetas metas parent
 
 checkTermRelNoEta :: (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
