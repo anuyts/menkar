@@ -473,8 +473,8 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) =
   -- Both are whnormal
   ([], []) -> checkTermRelNormal parent deg gamma t1 t2 (Type ty1) (Type ty2)
   -- Only one is whnormal: whsolve or block
-  (_, []) -> tryToWHSolveTerm parent deg gamma t1 t2 metasT1 (Type ty1) (Type ty2)
-  ([], _) -> tryToWHSolveTerm parent deg gamma t2 t1 metasT2 (Type ty2) (Type ty1)
+  (_, []) -> tryToWHSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
+  ([], _) -> tryToWHSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
   -- Neither is whnormal: block
   (_, _) -> blockOnMetas (metasT1 ++ metasT2) parent
 
