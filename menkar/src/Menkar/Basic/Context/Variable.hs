@@ -69,12 +69,12 @@ proxyUnVarLeftWkn :: Proxy (VarLeftExt v) -> Proxy v
 proxyUnVarLeftWkn Proxy = Proxy
 instance DeBruijnLevel v => DeBruijnLevel (VarLeftExt v) where
   size p = size (proxyUnVarLeftWkn p) + 1
-  getDeBruijnLevel p (VarLeftWkn v) = 1 + getDeBruijnLevel Proxy v
-  getDeBruijnLevel p VarFirst = 0
+  getDeBruijnLevel p (VarLeftWkn v) = getDeBruijnLevel Proxy v
+  getDeBruijnLevel p VarFirst = size p - 1
   getDeBruijnLevel p _ = unreachable
   forDeBruijnLevel p n
-    | n == 0 = Just VarFirst
-    | otherwise = VarLeftWkn <$> forDeBruijnLevel Proxy (n - 1)
+    | n == size p - 1 = Just VarFirst
+    | otherwise = VarLeftWkn <$> forDeBruijnLevel Proxy n
 
 instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   size p = size $ runVarInModule <$> p
