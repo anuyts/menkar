@@ -5,34 +5,25 @@ import Control.Exception.AssertFalse
 import Data.Void
 import Data.Number.Nat
 
---data VarWkn v = VarLast | VarWkn v deriving (Show, Functor, Foldable, Traversable)
-newtype VarExt v = VarExt {runVarWkn :: Maybe v}
+data VarExt v = VarWkn v | VarLast
   deriving (Show, Functor, Foldable, Traversable, Eq)
-pattern VarWkn v = VarExt (Just v)
-pattern VarLast = VarExt (Nothing)
-{- # COMPLETE VarWkn, VarLast #-}
 
-newtype VarLeftExt v = VarLeftExt {runVarLeftExt :: Maybe v}
+data VarLeftExt v = VarFirst | VarLeftWkn v
   deriving (Show, Functor, Foldable, Traversable, Eq)
-pattern VarLeftWkn v = VarLeftExt (Just v)
-pattern VarFirst = VarLeftExt (Nothing)
-{- # COMPLETE VarLeftWkn, VarFirst #-}
 
-newtype VarOpenCtx v w = VarOpenCtx {runVarOpenCtx :: Either v w}
-  deriving (Show, Functor, Foldable, Traversable, Bifunctor, Eq)
-pattern VarFromCtx v = VarOpenCtx (Left v)
-pattern VarBeforeCtx w = VarOpenCtx (Right w)
-{- # COMPLETE VarFromCtx, VarBeforeCtx #-}
+data VarOpenCtx v w = VarFromCtx v | VarBeforeCtx w
+  deriving (Show, Functor, Foldable, Traversable, Eq)
+instance Bifunctor VarOpenCtx where
+  bimap f g (VarFromCtx v) = VarFromCtx (f v)
+  bimap f g (VarBeforeCtx w) = VarBeforeCtx (g w)
 unVarFromCtx :: VarOpenCtx v Void -> v
 unVarFromCtx (VarFromCtx v) = v
 unVarFromCtx (VarBeforeCtx w) = absurd w
-unVarFromCtx _ = unreachable
 
 varLeftEat :: VarOpenCtx v (VarExt w) -> VarOpenCtx (VarLeftExt v) w
 varLeftEat (VarBeforeCtx (VarWkn w)) = VarBeforeCtx w
 varLeftEat (VarBeforeCtx VarLast) = VarFromCtx $ VarFirst
 varLeftEat (VarFromCtx v) = VarFromCtx $ VarLeftWkn v
-varLeftEat _ = unreachable
 
 --newtype VarDiv v = VarDiv {runVarDiv :: v} deriving (Show, Functor, Foldable, Traversable)
 

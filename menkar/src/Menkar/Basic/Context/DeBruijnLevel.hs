@@ -36,7 +36,6 @@ instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
   size p = size (proxyUnVarWkn p) + 1
   getDeBruijnLevel p (VarWkn v) = getDeBruijnLevel Proxy v
   getDeBruijnLevel p VarLast = size p - 1
-  getDeBruijnLevel p _ = unreachable
   forDeBruijnLevel p n
     | n == size p - 1 = Just VarLast
     | otherwise = VarWkn <$> forDeBruijnLevel Proxy n
@@ -47,7 +46,6 @@ instance DeBruijnLevel v => DeBruijnLevel (VarLeftExt v) where
   size p = size (proxyUnVarLeftWkn p) + 1
   getDeBruijnLevel p (VarLeftWkn v) = getDeBruijnLevel Proxy v
   getDeBruijnLevel p VarFirst = size p - 1
-  getDeBruijnLevel p _ = unreachable
   forDeBruijnLevel p n
     | n == size p - 1 = Just VarFirst
     | otherwise = VarLeftWkn <$> forDeBruijnLevel Proxy n
