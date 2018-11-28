@@ -22,6 +22,24 @@ import Data.List
 import Data.List.Unique
 import Data.Proxy
 
+whsolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Type mode modty v ->
+  Term mode modty v ->
+  Type mode modty v ->
+  tc (Maybe (Term mode modty vOrig))
+whsolveMeta parent deg gammaOrig gamma subst partialInv tyMeta tSolution tySolution = _whsolveMeta
+
+------------------------------------
+
+{-| A meta is pure if it has undergone a substitution that can be inverted in the following sense:
+    All variables have been substituted with variables - all different - and the inverse substitution is well-typed.
+-}
 checkMetaPure :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty vOrig Void ->
@@ -30,20 +48,6 @@ checkMetaPure :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   tc Bool
 checkMetaPure parent gamma depcyVars ty = _checkMetaPure
-
-------------------------------------
-
-whsolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Int ->
-  [v] ->
-  Type mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  tc (Maybe (Term mode modty v))
-whsolveMeta parent deg gamma meta depcyVars tyMeta tSolution tySolution = _whsolveMeta
 
 ------------------------------------
 
@@ -77,11 +81,8 @@ tryToWHSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
             if isPure
               -- If so, weak-head-solve it
               then do
-                -- NOTE: YOU SHOULD WHSOLVE USING VARIABLES FROM GAMMAORIG, NOT FROM GAMMA
-                let depcySubstInv = _depcySubstInv
-                      --(fmap $ forDeBruijnLevel Proxy) . fmap fromIntegral . (flip elemIndex depcyVars)
-                solution <- whsolveMeta parent deg gamma meta depcyVars tyMeta tSolution tySolution
-                return $ _ solution
+                let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
+                whsolveMeta parent deg gammaOrig gamma depcySubst depcySubstInv tyMeta tSolution tySolution
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               else do
                 blockOnMetas [meta] parent
