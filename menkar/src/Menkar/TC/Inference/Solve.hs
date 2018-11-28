@@ -31,11 +31,21 @@ solutionForMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
+  Int ->
   Type mode modty v ->
   Term mode modty v ->
   Type mode modty v ->
   tc (Maybe (Term mode modty vOrig))
-solutionForMeta parent deg gammaOrig gamma subst partialInv tyMeta tSolution tySolution = _whsolveMeta
+solutionForMeta parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
+  -- CMOD if deg = eqDeg and tSolution does not mention any additional variables, solve fully.
+  -- Otherwise, we do a weak-head solve.
+  case tSolution of
+    Var3 v -> case partialInv v of
+      Nothing -> do
+        blockOnMetas [meta] parent
+        return Nothing
+      Just u -> return $ Just $ Var3 u
+    Expr3 tSolution -> _solutionForMeta
 
 ------------------------------------
 
@@ -104,7 +114,7 @@ tryToSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
               -- If so, weak-head-solve it
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                solutionForMeta parent deg gammaOrig gamma depcySubst depcySubstInv tyMeta tSolution tySolution
+                solutionForMeta parent deg gammaOrig gamma depcySubst depcySubstInv meta tyMeta tSolution tySolution
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               Just metas -> do
                 blockOnMetas (meta : metas) parent
