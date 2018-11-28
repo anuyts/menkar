@@ -4,14 +4,16 @@ module Menkar.Fine.Context.Context where
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context.Variable
 import Menkar.Fine.Multimode
-import Data.Void
 import Control.Exception.AssertFalse
 import qualified Menkar.Raw.Syntax as Raw
+
+import Data.Void
 import Data.Bifunctor
 import Data.Maybe
 import GHC.Generics
 import Data.Functor.Identity
 import Control.Lens
+import Data.Proxy
 
 {-| @'mapTelescopedSc' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescoped :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
@@ -135,6 +137,9 @@ flipCtx :: (
   ) =>
   Ctx (Pair3 ty) mode modty v w -> Ctx (Pair3 ty) mode modty v w
 flipCtx = mapCtx (\(Pair3 ty1 ty2) -> Pair3 ty2 ty1)
+
+ctx'sizeProxy :: Ctx ty mode modty v w -> Proxy v
+ctx'sizeProxy gamma = Proxy
 
 {-
 -- TODO: you need a left division here!

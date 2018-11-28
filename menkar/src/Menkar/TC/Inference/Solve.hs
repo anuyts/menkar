@@ -22,6 +22,8 @@ import Data.List
 import Data.List.Unique
 import Data.Proxy
 
+{-| Precondition: @partialInv . subst = Just@.
+-}
 whsolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -47,7 +49,21 @@ checkMetaPure :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   (vOrig -> v) ->
   Type mode modty v ->
   tc Bool
-checkMetaPure parent gamma depcyVars ty = _checkMetaPure
+checkMetaPure parent gammaOrig gamma subst ty = do
+  --let proxyOrig = ctx'sizeProxy gammaOrig
+  --let proxy     = ctx'sizeProxy gamma
+  --let varsOrig = listAll proxyOrig
+  --let vars     = listAll proxy
+  let ldivSegmentOrig u = unVarFromCtx <$> lookupVar gammaOrig u
+  let ldivSegment     v = unVarFromCtx <$> lookupVar gamma     v
+  let dmuOrig u = divModedModality
+                    (_leftDivided'modality $ ldivSegmentOrig u)
+                    (_segment'modty $ _leftDivided'content $ ldivSegmentOrig u)
+  let dmu     v = divModedModality
+                    (_leftDivided'modality $ ldivSegment v)
+                    (_segment'modty $ _leftDivided'content $ ldivSegment v)
+  -- CMODE require that forall u . dmuOrig u <= dmu (subst u)
+  return True
 
 ------------------------------------
 
