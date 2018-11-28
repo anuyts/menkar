@@ -11,6 +11,7 @@ import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Void
 import Control.Monad.Trans.Class
+import Data.Functor.Compose
 
 data Constraint mode modty rel = Constraint {
     constraint'judgement :: Judgement mode modty rel,
@@ -76,8 +77,13 @@ class (
   getMeta :: Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
   {-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
+  awaitMeta :: String -> Int -> [Term mode modty v] -> tc (Term mode modty v)
   tcFail :: Constraint mode modty rel -> String -> tc ()
   leqMod :: modty v -> modty v -> tc Bool
+
+await :: (MonadTC mode modty rel tc) => String -> Term mode modty v -> tc (Term mode modty v)
+await reason (Expr3 (TermMeta meta (Compose depcies))) = awaitMeta reason meta depcies >>= await reason
+await reason t = return t
 
 addNewConstraint :: MonadTC mode modty rel tc =>
   Judgement mode modty rel ->
@@ -179,5 +185,6 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mo
   solveMeta meta solver = lift $ solveMeta meta solver
   getMeta meta depcies = lift $ getMeta meta depcies
   blockOnMetas metas c = lift $ blockOnMetas metas c
+  awaitMeta reason meta depcies = lift $ awaitMeta reason meta depcies
   tcFail c msg = lift $ tcFail c msg
   leqMod mu nu = lift $ leqMod mu nu
