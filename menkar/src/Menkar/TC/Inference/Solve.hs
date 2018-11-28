@@ -24,7 +24,7 @@ import Data.Proxy
 
 {-| Precondition: @partialInv . subst = Just@.
 -}
-whsolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+solutionForMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -35,12 +35,15 @@ whsolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Term mode modty v ->
   Type mode modty v ->
   tc (Maybe (Term mode modty vOrig))
-whsolveMeta parent deg gammaOrig gamma subst partialInv tyMeta tSolution tySolution = _whsolveMeta
+solutionForMeta parent deg gammaOrig gamma subst partialInv tyMeta tSolution tySolution = _whsolveMeta
 
 ------------------------------------
 
 {-| A meta is pure if it has undergone a substitution that can be inverted in the following sense:
     All variables have been substituted with variables - all different - and the inverse substitution is well-typed.
+
+    This method returns @'Nothing'@ if the meta is pure, @'Just' (meta:metas)@ if it is presently unclear but may
+    become clear if one of the listed metas is resolved, and @'Just' []@ if it is certainly false.
 -}
 checkMetaPure :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -48,7 +51,7 @@ checkMetaPure :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx Type mode modty v Void ->
   (vOrig -> v) ->
   Type mode modty v ->
-  tc Bool
+  tc (Maybe [Int])
 checkMetaPure parent gammaOrig gamma subst ty = do
   --let proxyOrig = ctx'sizeProxy gammaOrig
   --let proxy     = ctx'sizeProxy gamma
@@ -63,11 +66,14 @@ checkMetaPure parent gammaOrig gamma subst ty = do
                     (_leftDivided'modality $ ldivSegment v)
                     (_segment'modty $ _leftDivided'content $ ldivSegment v)
   -- CMODE require that forall u . dmuOrig u <= dmu (subst u)
-  return True
+  -- If this is false, return Just []
+  -- If this is true, return Nothing
+  -- If this is unclear, return some metas
+  return Nothing
 
 ------------------------------------
 
-tryToWHSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+tryToSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -77,7 +83,7 @@ tryToWHSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Term mode modty v ->
   Type mode modty v ->
   tc ()
-tryToWHSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
+tryToSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
   let getVar3 :: Term mode modty v -> Maybe v
       getVar3 (Var3 v) = Just v
       getVar3 _ = Nothing
@@ -94,20 +100,20 @@ tryToWHSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
             let depcySubst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
             -- Check if the meta is pure
             isPure <- checkMetaPure parent gammaOrig (fstCtx gamma) depcySubst tyMeta
-            if isPure
+            case isPure of
               -- If so, weak-head-solve it
-              then do
+              Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                whsolveMeta parent deg gammaOrig gamma depcySubst depcySubstInv tyMeta tSolution tySolution
+                solutionForMeta parent deg gammaOrig gamma depcySubst depcySubstInv tyMeta tSolution tySolution
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
-              else do
-                blockOnMetas [meta] parent
+              Just metas -> do
+                blockOnMetas (meta : metas) parent
                 return Nothing
           )
         -- Some variables occur twice
         _ -> blockOnMetas [meta] parent
 
-tryToWHSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+tryToSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -117,9 +123,9 @@ tryToWHSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-tryToWHSolveTerm parent deg gamma tBlocked tSolution metasBlocked tyBlocked tySolution = case tBlocked of
+tryToSolveTerm parent deg gamma tBlocked tSolution metasBlocked tyBlocked tySolution = case tBlocked of
   -- tBlocked should be a meta
   (Expr3 (TermMeta meta depcies)) ->
-    tryToWHSolveMeta parent deg gamma meta (getCompose depcies) tyBlocked tSolution tySolution
+    tryToSolveMeta parent deg gamma meta (getCompose depcies) tyBlocked tSolution tySolution
   -- if tBlocked is not a meta, then we should just block on its submetas
   _ -> blockOnMetas metasBlocked parent
