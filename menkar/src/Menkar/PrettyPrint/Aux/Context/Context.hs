@@ -68,10 +68,8 @@ scGetName :: ScCtx mode modty v w -> v -> Maybe Raw.Name
 scGetName ScCtxEmpty v = absurd v
 scGetName (gamma ::.. seg) (VarWkn v) = scGetName gamma v
 scGetName (gamma ::.. seg) (VarLast) = scSegment'name seg
-scGetName (gamma ::.. seg) _ = unreachable
 scGetName (seg ::^^ gamma) (VarLeftWkn v) = scGetName gamma v
 scGetName (seg ::^^ gamma) (VarFirst) = scSegment'name seg
-scGetName (seg ::^^ gamma) _ = unreachable
 scGetName (gamma ::<...> modul) (VarInModule v) = scGetName gamma v
 scGetName (() ::\\ gamma) v = scGetName gamma v
 

@@ -118,7 +118,6 @@ substLast3 ev fextv = swallow $ substLast' <$> fextv
   where substLast' :: VarExt _ -> Expr3 _ _ _ _
         substLast' VarLast = ev
         substLast' (VarWkn v) = Var3 v
-        substLast' _ = unreachable
 
 --------------------------------------------
 

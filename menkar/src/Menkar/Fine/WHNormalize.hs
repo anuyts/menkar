@@ -50,7 +50,6 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
           let subst v = case v of
                 VarWkn w -> Var3 w
                 VarLast -> arg
-                _ -> unreachable
           in whnormalize gamma (join $ subst <$> binding'body binding)
         (Lam _, _) -> return termProblem
         --sigma cases
@@ -61,7 +60,6 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
                 VarWkn (VarWkn w) -> Var3 w
                 VarWkn VarLast -> tmFst
                 VarLast -> tmSnd
-                _ -> unreachable
           in whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause))
         (Pair _ _ _, _) -> return termProblem
         --empty type cases (none)
@@ -73,7 +71,6 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
           let subst :: VarExt _ -> Term _ _ _
               subst VarLast = tm
               subst (VarWkn v) = Var3 v
-              subst _ = unreachable
           in  whnormalize gamma (join $ subst <$> _namedBinding'body clause)
         (ConsBox _ _, _) -> return termProblem
         --nat cases
@@ -84,8 +81,6 @@ whnormalizeElim gamma dmu eliminee tyEliminee e = do
               subst VarLast = Expr3 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
               subst (VarWkn VarLast) = t
               subst (VarWkn (VarWkn v)) = Var3 v
-              subst (VarWkn v) = unreachable
-              subst v = unreachable
           in  whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs))
         (ConsSuc _, _) -> return termProblem
     Expr3 _ -> unreachable
