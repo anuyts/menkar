@@ -36,9 +36,9 @@ class (
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
-      @'newMetaExpr'@ should only be directly used by the SCOPER.
+      @'newMetaTermNoCheck'@ should only be directly used by the SCOPER.
   -}
-  newMetaExpr ::
+  newMetaTermNoCheck ::
     Maybe (Constraint mode modty rel) -> rel v {-^ Degree up to which it should be solved -}
                                       -> Ctx Type mode modty v Void -> String -> sc (Term mode modty v)
   newMetaMode ::
@@ -49,7 +49,7 @@ class (
 
 instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
   annot4annot gamma qstring args = lift $ annot4annot gamma qstring args
-  newMetaExpr maybeParent deg gamma reason = lift $ newMetaExpr maybeParent deg gamma reason
+  newMetaTermNoCheck maybeParent deg gamma reason = lift $ newMetaTermNoCheck maybeParent deg gamma reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
   newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
   scopeFail msg = lift $ scopeFail msg
@@ -97,7 +97,7 @@ newMetaTerm :: MonadTC mode modty rel tc =>
   String ->
   tc (Term mode modty v)
 newMetaTerm maybeParent deg gamma ty reason = do
-  t <- newMetaExpr maybeParent deg gamma reason
+  t <- newMetaTermNoCheck maybeParent deg gamma reason
   addNewConstraint
     (JudTerm gamma t ty)
     maybeParent
@@ -110,6 +110,23 @@ newMetaTerm maybeParent deg gamma ty reason = do
   -}
   return t
 
+newMetaTermRel :: MonadTC mode modty rel tc =>
+  Maybe (Constraint mode modty rel) ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  String ->
+  tc (Term mode modty v)
+newMetaTermRel maybeParent deg gamma t2 ty1 ty2 reason = do
+  t1 <- newMetaTermNoCheck maybeParent deg (fstCtx gamma) reason
+  addNewConstraint
+    (JudTermRel deg gamma (Pair3 t1 t2) (Pair3 ty1 ty2))
+    maybeParent
+    reason
+  return t1
+
 -- | Not to be used by the Scoper.
 newMetaType :: MonadTC mode modty rel tc =>
   Maybe (Constraint mode modty rel) ->
@@ -118,12 +135,28 @@ newMetaType :: MonadTC mode modty rel tc =>
   String ->
   tc (Type mode modty v)
 newMetaType maybeParent deg gamma reason = do
-  t <- Type <$> newMetaExpr maybeParent deg gamma reason
+  t <- Type <$> newMetaTermNoCheck maybeParent deg gamma reason
   addNewConstraint
     (JudType gamma t)
     maybeParent
     reason
   return t
+
+-- | Not to be used by the Scoper.
+newMetaTypeRel :: MonadTC mode modty rel tc =>
+  Maybe (Constraint mode modty rel) ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  Type mode modty v ->
+  String ->
+  tc (Type mode modty v)
+newMetaTypeRel maybeParent deg gamma ty2 reason = do
+  ty1 <- Type <$> newMetaTermNoCheck maybeParent deg (fstCtx gamma) reason
+  addNewConstraint
+    (JudTypeRel deg gamma (Pair3 ty1 ty2))
+    maybeParent
+    reason
+  return ty1
 
 newMetaModedModality :: MonadScoper mode modty rel tc =>
   Maybe (Constraint mode modty rel) ->

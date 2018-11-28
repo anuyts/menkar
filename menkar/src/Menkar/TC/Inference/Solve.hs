@@ -22,6 +22,59 @@ import Data.List
 import Data.List.Unique
 import Data.Proxy
 
+{-
+forceSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, Traversable t) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Int ->
+  Type mode modty v ->
+  t v ->
+  tc (Maybe (t vOrig))
+forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
+  let maybeTOrig = sequenceA $ partialInv <$> t
+  case maybeTOrig of
+    
+-}
+
+solveMetaAgainstSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Int ->
+  Type mode modty v ->
+  Segment Type mode modty v ->
+  tc (Maybe (Segment Type mode modty vOrig))
+solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv meta tyMeta segment = do
+  _solveMetaAgainstSegment
+  let modtyInOrig = sequenceA $ partialInv <$> _decl'modty segment
+  return $ Just $ Declaration
+    (_decl'name segment)
+    _modty'
+    plicity'
+    ty'
+
+solveMetaAgainstBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Int ->
+  Type mode modty v ->
+  Binding Type Term mode modty v ->
+  tc (Maybe (Binding Type Term mode modty vOrig))
+solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding = do
+  segment' <- solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv meta tyMeta (binding'segment binding)
+  _solveMetaAgainstBinding
+
 solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -33,13 +86,20 @@ solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLe
   Type mode modty v ->
   UniHSConstructor mode modty v ->
   Type mode modty v ->
-  tc (Maybe (Term mode modty vOrig))
+  tc (Maybe (UniHSConstructor mode modty vOrig))
 solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
   case tSolution of
     UniHS d lvl -> do
-      lvl' <- newMetaTerm (Just parent) topDeg gammaOrig (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) "Inferring level."
+      let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
+      lvl' <- newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
       let d' = unVarFromCtx <$> ctx'mode gammaOrig
-      return $ Just $ Expr3 $ TermCons $ ConsUniHS $ UniHS d' lvl'
+      return $ Just $ UniHS d' lvl'
+    Pi binding -> do
+      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding
+      return $ Pi <$> result
+    Sigma binding -> do
+      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding
+      return $ Sigma <$> result
     _ -> _solveMetaAgainstUniHSConstructor
 
 solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
@@ -53,10 +113,12 @@ solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLev
   Type mode modty v ->
   ConstructorTerm mode modty v ->
   Type mode modty v ->
-  tc (Maybe (Term mode modty vOrig))
+  tc (Maybe (ConstructorTerm mode modty vOrig))
 solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
   case tSolution of
-    ConsUniHS c -> solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv meta tyMeta c tySolution
+    ConsUniHS c -> do
+      result <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv meta tyMeta c tySolution
+      return $ ConsUniHS <$> result
     _ -> _solveMetaAgainstConstructorTerm
 
 {-| Precondition: @partialInv . subst = Just@.
@@ -83,7 +145,9 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv meta tyMeta tSo
         return Nothing
       Just u -> return $ Just $ Var3 u
     Expr3 tSolution -> case tSolution of
-      TermCons c -> solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv meta tyMeta c tySolution
+      TermCons c -> do
+        result <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv meta tyMeta c tySolution
+        return $ Expr3 . TermCons <$> result
       --TermElim
       TermMeta _ _ -> unreachable
       TermWildcard -> unreachable
