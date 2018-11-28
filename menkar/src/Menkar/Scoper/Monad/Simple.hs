@@ -61,7 +61,7 @@ instance MonadScoper U1 U1 U1 SimpleScoper where
     _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
              Raw.unparse' qstring \\\ fine2pretty (ctx2scCtx gamma) <$> args
            )
-  newMetaExpr maybeParent deg gamma reason = do
+  newMetaTermNoCheck maybeParent deg gamma reason = do
     i <- fresh
     return $ Expr3 $ TermMeta i $ Compose $ Var3 <$> scListVariables (ctx2scCtx gamma)
   newMetaMode maybeParent gamma reason = return U1
