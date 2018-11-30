@@ -42,7 +42,7 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
     
 -}
 
-newRelatedTermMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -54,7 +54,7 @@ newRelatedTermMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   String ->
   tc (Term mode modty vOrig)
-newRelatedTermMeta parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason = do
+newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason = do
   let maybeDegOrig = sequenceA $ partialInv <$> deg
   case maybeDegOrig of
     Nothing -> tcBlock
@@ -67,7 +67,7 @@ newRelatedTermMeta parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason
         reason
       return t1orig
 
-newRelatedTypeMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedMetaType :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -77,7 +77,7 @@ newRelatedTypeMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   String ->
   tc (Type mode modty vOrig)
-newRelatedTypeMeta parent deg gammaOrig gamma subst partialInv ty2 reason = do
+newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
   let maybeDegOrig = sequenceA $ partialInv <$> deg
   case maybeDegOrig of
     Nothing -> tcBlock
@@ -92,7 +92,7 @@ newRelatedTypeMeta parent deg gammaOrig gamma subst partialInv ty2 reason = do
 
 --------------------------
 
-solveMetaAgainstSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -101,13 +101,13 @@ solveMetaAgainstSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   (v -> Maybe vOrig) ->
   Segment Type mode modty v ->
   tc (Segment Type mode modty vOrig)
-solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv segment2 = do
+newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
   let dmu2 = _decl'modty segment2
   -- CMODE: dmu1orig <- newRelatedModedModality dmu2 
   let dmu1orig = wildModedModality
   let dmu1 = subst <$> dmu1orig
   let ty2 = _decl'content segment2
-  ty1orig <- newRelatedTypeMeta
+  ty1orig <- newRelatedMetaType
                parent
                (divDeg dmu1 deg)
                (VarFromCtx <$> dmu1orig :\\ gammaOrig)
@@ -123,7 +123,7 @@ solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv segment2 = d
     (fromMaybe Explicit $ sequenceA $ partialInv <$> _decl'plicity segment2)
     ty1orig
 
-solveMetaAgainstBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -134,15 +134,15 @@ solveMetaAgainstBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty (VarExt v) ->
   Type mode modty (VarExt v) ->
   tc (Binding Type Term mode modty vOrig)
-solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 tyBody2 = do
+newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 tyBody2 = do
   let segment2 = binding'segment binding2
-  segment1orig <- solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv segment2
+  segment1orig <- newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2
   let segment1 = subst <$> segment1orig
   let dom1 = _segment'content $ segment1
   let fmapPartialInv :: VarExt _ -> Maybe (VarExt _)
       fmapPartialInv VarLast = Just VarLast
       fmapPartialInv (VarWkn v) = VarWkn <$> partialInv v
-  body1orig <- newRelatedTermMeta
+  body1orig <- newRelatedMetaTerm
                  parent
                  (VarWkn <$> deg)
                  (gammaOrig :.. VarFromCtx <$> segment1orig)
@@ -172,25 +172,25 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
   case t2 of
     UniHS d2 lvl2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
-      lvl1orig <- newRelatedTermMeta parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
+      lvl1orig <- newRelatedMetaTerm parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
                 --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
       let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
       return $ UniHS d1orig lvl1orig
     Pi binding2 -> do
       let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
       binding1orig <-
-        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
+        newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Pi $ binding1orig
     Sigma binding2 -> do
       let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
       binding1orig <-
-        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
+        newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Sigma $ binding1orig
     EmptyType -> return EmptyType
     UnitType -> return UnitType
     BoxType boxSeg2 -> do
       boxSeg1orig <-
-        solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv boxSeg2
+        newRelatedSegment parent deg gammaOrig gamma subst partialInv boxSeg2
       return $ BoxType $ boxSeg1orig
     NatType -> return NatType
 
@@ -216,8 +216,34 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
          Type (Expr3 (TermCons (ConsUniHS (Pi piBinding2))))) -> do
             let cod1 = Type $ binding'body piBinding1
             let cod2 = Type $ binding'body piBinding2
-            binding1orig <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 cod1 cod2
+            binding1orig <- newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 cod1 cod2
             return $ Lam binding1orig
+        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
+    Pair sigmaBinding2 tmFst2 tmSnd2 -> do
+      case (ty1, ty2) of
+        (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1)))),
+         Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2))))) -> do
+            let tyFst1 = _segment'content $ binding'segment sigmaBinding1
+            let tyFst2 = _segment'content $ binding'segment sigmaBinding2
+            tmFst1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmFst2 tyFst1 tyFst2
+                            "Inferring first component."
+            let tmFst1 = subst <$> tmFst1orig
+            let tySnd1 = substLast3 tmFst1 $ Type $ binding'body sigmaBinding1
+            let tySnd2 = substLast3 tmFst2 $ Type $ binding'body sigmaBinding2
+            -- CMODE: deg should probably live in vOrig
+            let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
+            tyFst1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig "Inferring type of first component"
+            let sigmaSeg1orig = Declaration
+                                  (_decl'name $ binding'segment $ sigmaBinding1)
+                                  wildModedModality --CMODE
+                                  Explicit
+                                  (Type tyFst1orig)
+            tySnd1orig <- newMetaTermNoCheck (Just parent) (VarWkn <$> degOrig)
+                               (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) "Inferring type of second component"
+            let sigmaBinding1orig = Binding sigmaSeg1orig tySnd1orig
+            tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
+                            "Inferring second component."
+            return $ Pair sigmaBinding1orig tmFst1orig tmSnd1orig
         (_, _) -> tcFail parent "Terms are presumed to be well-typed."
     _ -> _solveMetaAgainstConstructorTerm
 
