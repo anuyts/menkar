@@ -278,6 +278,35 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
       t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat "Inferring predecessor."
       return $ ConsSuc t1orig
 
+------------------------------------
+
+newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  ModedModality mode modty vOrig ->
+  Term mode modty vOrig ->
+  Term mode modty v ->
+  Type mode modty vOrig ->
+  Type mode modty v ->
+  Eliminator mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc (Eliminator mode modty vOrig)
+newRelatedEliminator parent deg gammaOrig gamma subst partialInv
+  dmu
+  eliminee1orig eliminee2
+  tyEliminee1orig tyEliminee2
+  eliminator2
+  ty1 ty2 =
+  case eliminator2 of
+    _ -> _newRelatedEliminator
+
+------------------------------------
+
 {-| Precondition: @partialInv . subst = Just@.
 -}
 solveMetaAgainstWHNF :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
@@ -302,7 +331,39 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
       TermCons c2 -> do
         c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
         return $ Expr3 $ TermCons $ c1orig
-      --TermElim
+      TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
+        -- CMODE MODTY
+        let dmu1orig = wildModedModality
+        let dmu1 = subst <$> dmu1orig
+        tyEliminee1orig <- newRelatedMetaType
+                             parent
+                             (divDeg dmu1 deg)
+                             (VarFromCtx <$> dmu1orig :\\ gammaOrig)
+                             (VarFromCtx <$> dmu1 :\\ gamma)
+                             subst
+                             partialInv
+                             tyEliminee2
+                             "Inferring type of eliminee."
+        let tyEliminee1 = subst <$> tyEliminee1orig
+        eliminee1orig <- newRelatedMetaTerm
+                             parent
+                             (divDeg dmu1 deg)
+                             (VarFromCtx <$> dmu1orig :\\ gammaOrig)
+                             (VarFromCtx <$> dmu1 :\\ gamma)
+                             subst
+                             partialInv
+                             eliminee2
+                             tyEliminee1
+                             tyEliminee2
+                             "Inferring eliminee."
+        let eliminee1 = subst <$> eliminee1orig
+        eliminator1orig <- newRelatedEliminator parent deg gammaOrig gamma subst partialInv
+                             dmu1orig
+                             eliminee1orig eliminee2
+                             tyEliminee1orig tyEliminee2
+                             eliminator2
+                             ty1 ty2
+        return $ Expr3 $ TermElim dmu1orig eliminee1orig tyEliminee1orig eliminator1orig
       TermMeta _ _ -> unreachable
       TermWildcard -> unreachable
       TermQName _ _ -> unreachable
@@ -310,7 +371,6 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
       TermGoal _ _ -> unreachable
       TermProblem _ -> do
         tcFail parent "Nonsensical term."
-      _ -> _solveMetaAgainstWHNF
 
 ------------------------------------
 
