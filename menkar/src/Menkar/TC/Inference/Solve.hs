@@ -22,6 +22,7 @@ import Data.List
 import Data.List.Unique
 import Data.Proxy
 import Data.Maybe
+import Control.Monad.Trans.Maybe
 
 {-
 forceSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, Traversable t) =>
@@ -129,11 +130,11 @@ solveMetaAgainstBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
-  Type mode modty (VarExt v) ->
-  Type mode modty (VarExt v) ->
   Binding Type Term mode modty v ->
+  Type mode modty (VarExt v) ->
+  Type mode modty (VarExt v) ->
   tc (Binding Type Term mode modty vOrig)
-solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv tyBody1 tyBody2 binding2 = do
+solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 tyBody2 = do
   let segment2 = binding'segment binding2
   segment1orig <- solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv segment2
   let segment1 = subst <$> segment1orig
@@ -178,12 +179,12 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
     Pi binding2 -> do
       let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
       binding1orig <-
-        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding2
+        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Pi $ binding1orig
     Sigma binding2 -> do
       let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
       binding1orig <-
-        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding2
+        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Sigma $ binding1orig
     EmptyType -> return EmptyType
     UnitType -> return UnitType
@@ -192,7 +193,6 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
         solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv boxSeg2
       return $ BoxType $ boxSeg1orig
     NatType -> return NatType
-    --_ -> _solveMetaAgainstUniHSConstructor
 
 solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -210,6 +210,19 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
     ConsUniHS c2 -> do
       c1orig <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
       return $ ConsUniHS $ c1orig
+    Lam binding2 -> do
+      maybeWHNTy1 <- runMaybeT $ whnormalize parent (fstCtx gamma) (unType ty1) "Type of meta should be a Pi-type."
+      maybeWHNTy2 <- runMaybeT $ whnormalize parent (sndCtx gamma) (unType ty2) "Type of meta should be a Pi-type."
+      case (maybeWHNTy1, maybeWHNTy2) of
+        (Nothing, _) -> tcBlock
+        (_, Nothing) -> tcBlock
+        (Just (Expr3 (TermCons (ConsUniHS (Pi piBinding1)))),
+         Just (Expr3 (TermCons (ConsUniHS (Pi piBinding2))))) -> do
+            let cod1 = Type $ binding'body piBinding1
+            let cod2 = Type $ binding'body piBinding2
+            binding1orig <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 cod1 cod2
+            return $ Lam binding1orig
+        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
     _ -> _solveMetaAgainstConstructorTerm
 
 {-| Precondition: @partialInv . subst = Just@.

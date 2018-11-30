@@ -24,15 +24,15 @@ import Control.Monad.Trans.Maybe
 --TODOMOD normalize unboxed term in different context
 whnormalizeElim :: MonadTC mode modty rel tc =>
   Constraint mode modty rel ->
-  String ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ how eliminee is used -} ->
   Term mode modty v {-^ eliminee -} ->
   Type mode modty v {-^ eliminee's type -} ->
   Eliminator mode modty v ->
+  String ->
   MaybeT tc (Term mode modty v)
-whnormalizeElim parent reason gamma dmu eliminee tyEliminee e = do
-  whnEliminee <- whnormalize parent reason ((VarFromCtx <$> dmu) :\\ gamma) eliminee
+whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
+  whnEliminee <- whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
   case whnEliminee of
     Var3 v -> return $ Expr3 $ TermElim dmu (Var3 v) tyEliminee e
     Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
@@ -53,65 +53,65 @@ whnormalizeElim parent reason gamma dmu eliminee tyEliminee e = do
           let subst v = case v of
                 VarWkn w -> Var3 w
                 VarLast -> arg
-          in whnormalize parent reason gamma (join $ subst <$> binding'body binding)
+          in whnormalize parent gamma (join $ subst <$> binding'body binding) reason
         (Lam _, _) -> return termProblem
         --sigma cases
-        (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize parent reason gamma tmFst
-        (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize parent reason gamma tmSnd
+        (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize parent gamma tmFst reason
+        (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize parent gamma tmSnd reason
         (Pair sigmaBinding tmFst tmSnd, ElimDep motive (ElimSigma clause)) ->
           let subst v = case v of
                 VarWkn (VarWkn w) -> Var3 w
                 VarWkn VarLast -> tmFst
                 VarLast -> tmSnd
-          in whnormalize parent reason gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause))
+          in whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause)) reason
         (Pair _ _ _, _) -> return termProblem
         --empty type cases (none)
         --unit cases (none)
         (ConsUnit, _) -> return termProblem
         --box cases
-        (ConsBox seg tm, Unbox) -> whnormalize parent reason gamma tm
+        (ConsBox seg tm, Unbox) -> whnormalize parent gamma tm reason
         (ConsBox seg tm, ElimDep motive (ElimBox clause)) ->
           let subst :: VarExt _ -> Term _ _ _
               subst VarLast = tm
               subst (VarWkn v) = Var3 v
-          in  whnormalize parent reason gamma (join $ subst <$> _namedBinding'body clause)
+          in  whnormalize parent gamma (join $ subst <$> _namedBinding'body clause) reason
         (ConsBox _ _, _) -> return termProblem
         --nat cases
-        (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize parent reason gamma cz
+        (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize parent gamma cz reason
         (ConsZero, _) -> return termProblem
         (ConsSuc t, ElimDep motive (ElimNat cz cs)) ->
           let subst :: VarExt (VarExt _) -> Term _ _ _
               subst VarLast = Expr3 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
               subst (VarWkn VarLast) = t
               subst (VarWkn (VarWkn v)) = Var3 v
-          in  whnormalize parent reason gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs))
+          in  whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) reason
         (ConsSuc _, _) -> return termProblem
     Expr3 _ -> unreachable
 
 whnormalizeNV :: MonadTC mode modty rel tc =>
   Constraint mode modty rel ->
-  String ->
   Ctx Type mode modty v Void ->
   TermNV mode modty v ->
+  String ->
   MaybeT tc (Term mode modty v)
-whnormalizeNV parent reason gamma t@(TermCons _) = return . Expr3 $ t   -- Mind glue and weld!
-whnormalizeNV parent reason gamma (TermElim dmu t tyEliminee e) = whnormalizeElim parent reason gamma dmu t tyEliminee e
-whnormalizeNV parent reason gamma t@(TermMeta meta (Compose depcies)) = do
+whnormalizeNV parent gamma t@(TermCons _) reason = return . Expr3 $ t   -- Mind glue and weld!
+whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
+whnormalizeNV parent gamma t@(TermMeta meta (Compose depcies)) reason = do
   solution <- MaybeT $ awaitMeta parent reason meta depcies
-  whnormalize parent reason gamma solution
+  whnormalize parent gamma solution reason
 {-maybeSolution <- getMeta meta depcies
   case maybeSolution of
     Nothing -> Expr3 t <$ tell [meta]
     Just solution -> whnormalize gamma solution-}
-whnormalizeNV parent reason gamma TermWildcard = unreachable
-whnormalizeNV parent reason gamma (TermQName qname leftDividedTelescopedVal) =
+whnormalizeNV parent gamma TermWildcard reason = unreachable
+whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) reason =
     let telescopedVal = _leftDivided'content leftDividedTelescopedVal
         ModApplied _ quantifiedVal = telescoped2modalQuantified telescopedVal
         quantifiedTerm = _val'term quantifiedVal
-    in  whnormalize parent reason gamma quantifiedTerm
-whnormalizeNV parent reason gamma (TermSmartElim eliminee eliminators result) = whnormalize parent reason gamma result
-whnormalizeNV parent reason gamma (TermGoal str result) = whnormalize parent reason gamma result
-whnormalizeNV parent reason gamma t@(TermProblem _) = return $ Expr3 t
+    in  whnormalize parent gamma quantifiedTerm reason
+whnormalizeNV parent gamma (TermSmartElim eliminee eliminators result) reason = whnormalize parent gamma result reason
+whnormalizeNV parent gamma (TermGoal str result) reason = whnormalize parent gamma result reason
+whnormalizeNV parent gamma t@(TermProblem _) reason = return $ Expr3 t
 
 {- | Either weak-head-normalizes the given term and writes nothing,
      or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
@@ -119,9 +119,9 @@ whnormalizeNV parent reason gamma t@(TermProblem _) = return $ Expr3 t
 -}
 whnormalize :: MonadTC mode modty rel tc =>
   Constraint mode modty rel ->
-  String ->
   Ctx Type mode modty v Void ->
   Term mode modty v ->
+  String ->
   MaybeT tc (Term mode modty v)
-whnormalize parent reason gamma (Var3 v) = return $ Var3 v
-whnormalize parent reason gamma (Expr3 t) = whnormalizeNV parent reason gamma t
+whnormalize parent gamma (Var3 v) reason = return $ Var3 v
+whnormalize parent gamma (Expr3 t) reason = whnormalizeNV parent gamma t reason
