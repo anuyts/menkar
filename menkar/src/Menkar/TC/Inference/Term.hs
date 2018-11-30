@@ -117,7 +117,7 @@ checkUniHSConstructor parent gamma (UniHS d lvl) ty = do
   let biggerLvl =
         -- biggerLvl = suc (lvl + anyLvl)
         Expr3 . TermCons . ConsSuc $
-        Expr3 $ TermElim (idModedModality dataMode) lvl (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
+        Expr3 $ TermElim (idModedModality dataMode) lvl NatType $
         ElimDep (NamedBinding Nothing $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
         ElimNat
           anyLvl
@@ -316,13 +316,13 @@ checkDependentEliminator :: MonadTC mode modty rel tc =>
     Ctx Type mode modty v Void ->
     ModedModality mode modty v ->
     Term mode modty v ->
-    Type mode modty v ->
+    UniHSConstructor mode modty v ->
     NamedBinding Term mode modty v ->
     DependentEliminator mode modty v ->
     Type mode modty v ->
     tc ()
 checkDependentEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding))))) motive (ElimSigma clause) ty = do
+    tyEliminee@(Sigma sigmaBinding) motive (ElimSigma clause) ty = do
   let segFst :: Segment Type _ _ _
       segFst = Declaration
                  (DeclNameSegment $ _namedBinding'name clause)
@@ -349,7 +349,7 @@ checkDependentEliminator parent gamma dmu eliminee
 checkDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimSigma clause) ty = unreachable
 checkDependentEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg))))) motive (ElimBox clause) ty = do
+    tyEliminee@(BoxType boxSeg) motive (ElimBox clause) ty = do
   let segContent :: Segment Type _ _ _
       segContent = Declaration
                      (DeclNameSegment $ _namedBinding'name clause)
@@ -370,11 +370,11 @@ checkDependentEliminator parent gamma dmu eliminee
 checkDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimBox clause) ty = unreachable
 checkDependentEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS EmptyType)))) motive (ElimEmpty) ty = return ()
+    EmptyType motive (ElimEmpty) ty = return ()
 checkDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimEmpty) ty = unreachable
 checkDependentEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS NatType)))) motive (ElimNat cz cs) ty = do
+    NatType motive (ElimNat cz cs) ty = do
   let substZ :: VarExt _ -> Term _ _ _
       substZ VarLast = Expr3 $ TermCons $ ConsZero
       substZ (VarWkn v) = Var3 v
@@ -415,11 +415,11 @@ checkEliminator :: MonadTC mode modty rel tc =>
     Ctx Type mode modty v Void ->
     ModedModality mode modty v ->
     Term mode modty v ->
-    Type mode modty v ->
+    UniHSConstructor mode modty v ->
     Eliminator mode modty v ->
     Type mode modty v ->
     tc ()
-checkEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (ConsUniHS (Pi binding))))) (App arg) ty = do
+checkEliminator parent gamma dmu eliminee (Pi binding) (App arg) ty = do
   let dmu = _segment'modty $ binding'segment $ binding
   let dom = _segment'content $ binding'segment binding
   addNewConstraint
@@ -441,7 +441,7 @@ checkEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (ConsUniHS (Pi 
     (Just parent)
     "Checking whether actual type equals expected type."
 checkEliminator parent gamma dmu eliminee tyEliminee (App arg) ty = unreachable
-checkEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (ConsUniHS (Sigma binding))))) Fst ty = do
+checkEliminator parent gamma dmu eliminee (Sigma binding) Fst ty = do
   addNewConstraint
     (JudTypeRel
       eqDeg
@@ -455,7 +455,7 @@ checkEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (ConsUniHS (Sig
     "Checking whether actual type equals expected type."
 checkEliminator parent gamma dmu eliminee tyEliminee Fst ty = unreachable
 checkEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (Sigma binding))))) Snd ty = do
+    tyEliminee@(Sigma binding) Snd ty = do
   let dFst = modality'dom $ _segment'modty $ binding'segment $ binding
       muSigma = modality'mod $ _segment'modty $ binding'segment $ binding
       dSnd = unVarFromCtx <$> ctx'mode gamma
@@ -476,7 +476,7 @@ checkEliminator parent gamma dmu eliminee
     "Checking whether actual type equals expected type."
 checkEliminator parent gamma dmu eliminee tyEliminee Snd ty = unreachable
 checkEliminator parent gamma dmu eliminee
-    tyEliminee@(Type (Expr3 (TermCons (ConsUniHS (BoxType segment))))) Unbox ty = do
+    tyEliminee@(BoxType segment) Unbox ty = do
   addNewConstraint
     (JudTypeRel
       eqDeg
@@ -497,7 +497,7 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
         (DeclNameSegment $ _namedBinding'name motive)
         dmu
         Explicit
-        tyEliminee
+        (Type $ Expr3 $ TermCons $ ConsUniHS tyEliminee)
       )
       (Type $ _namedBinding'body motive)
     )
@@ -531,11 +531,11 @@ checkTermNV parent gamma (TermCons c) ty = checkConstructorTerm parent gamma c t
 checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
   -- CMODE CMODTY
   addNewConstraint
-    (JudType ((VarFromCtx <$> dmu) :\\ gamma) tyEliminee)
+    (JudType ((VarFromCtx <$> dmu) :\\ gamma) (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee))
     (Just parent)
     "Checking type of eliminee."
   addNewConstraint
-    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) eliminee tyEliminee)
+    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee))
     (Just parent)
     "Type-checking eliminee."
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
