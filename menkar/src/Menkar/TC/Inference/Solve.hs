@@ -21,6 +21,7 @@ import Control.Monad.Writer.Lazy
 import Data.List
 import Data.List.Unique
 import Data.Proxy
+import Data.Maybe
 
 {-
 forceSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, Traversable t) =>
@@ -40,7 +41,7 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
     
 -}
 
-newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedTermMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -52,18 +53,41 @@ newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   String ->
   tc (Term mode modty vOrig)
-newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason = do
+newRelatedTermMeta parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason = do
   let maybeDegOrig = sequenceA $ partialInv <$> deg
   case maybeDegOrig of
     Nothing -> tcBlock
     Just degOrig -> do
-      t1Orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
-      let t1 = subst <$> t1Orig
+      t1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
+      let t1 = subst <$> t1orig
       addNewConstraint
         (JudTermRel deg gamma (Pair3 t1 t2) (Pair3 ty1 ty2))
         (Just parent)
         reason
-      return t1Orig
+      return t1orig
+
+newRelatedTypeMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Type mode modty v ->
+  String ->
+  tc (Type mode modty vOrig)
+newRelatedTypeMeta parent deg gammaOrig gamma subst partialInv ty2 reason = do
+  let maybeDegOrig = sequenceA $ partialInv <$> deg
+  case maybeDegOrig of
+    Nothing -> tcBlock
+    Just degOrig -> do
+      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
+      let ty1 = subst <$> ty1orig
+      addNewConstraint
+        (JudTypeRel deg gamma (Pair3 ty1 ty2))
+        (Just parent)
+        reason
+      return ty1orig
 
 solveMetaAgainstSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -72,18 +96,29 @@ solveMetaAgainstSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
-  Int ->
-  Type mode modty v ->
   Segment Type mode modty v ->
-  tc (Maybe (Segment Type mode modty vOrig))
-solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv meta tyMeta segment = do
-  _solveMetaAgainstSegment
-  let modtyInOrig = sequenceA $ partialInv <$> _decl'modty segment
-  return $ Just $ Declaration
-    (_decl'name segment)
-    _modty'
-    plicity'
-    ty'
+  tc (Segment Type mode modty vOrig)
+solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv segment2 = do
+  let dmu2 = _decl'modty segment2
+  -- CMODE: dmu1orig <- newRelatedModedModality dmu2 
+  let dmu1orig = wildModedModality
+  let dmu1 = subst <$> dmu1orig
+  let ty2 = _decl'content segment2
+  ty1orig <- newRelatedTypeMeta
+               parent
+               (divDeg dmu1 deg)
+               (VarFromCtx <$> dmu1orig :\\ gammaOrig)
+               (VarFromCtx <$> dmu2 :\\ gamma)
+               subst
+               partialInv
+               ty2
+               "Inferring segment type."
+  -- CMODE: plicity
+  return $ Declaration
+    (_decl'name segment2)
+    dmu1orig
+    (fromMaybe Explicit $ sequenceA $ partialInv <$> _decl'plicity segment2)
+    ty1orig
 
 solveMetaAgainstBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -92,13 +127,30 @@ solveMetaAgainstBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
-  Int ->
-  Type mode modty v ->
+  Type mode modty (VarExt v) ->
+  Type mode modty (VarExt v) ->
   Binding Type Term mode modty v ->
-  tc (Maybe (Binding Type Term mode modty vOrig))
-solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding = do
-  segment' <- solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv meta tyMeta (binding'segment binding)
-  _solveMetaAgainstBinding
+  tc (Binding Type Term mode modty vOrig)
+solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv tyBody1 tyBody2 binding2 = do
+  let segment2 = binding'segment binding2
+  segment1orig <- solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv segment2
+  let segment1 = subst <$> segment1orig
+  let dom1 = _segment'content $ segment1
+  let fmapPartialInv :: VarExt _ -> Maybe (VarExt _)
+      fmapPartialInv VarLast = Just VarLast
+      fmapPartialInv (VarWkn v) = VarWkn <$> partialInv v
+  body1orig <- newRelatedTermMeta
+                 parent
+                 (VarWkn <$> deg)
+                 (gammaOrig :.. VarFromCtx <$> segment1orig)
+                 (gamma :.. VarFromCtx <$> over decl'content (\dom2 -> Pair3 dom1 dom2) segment2)
+                 (fmap subst)
+                 fmapPartialInv
+                 (binding'body binding2)
+                 tyBody1
+                 tyBody2
+                 "Inferring body."
+  return $ Binding segment1orig body1orig
 
 solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -116,10 +168,10 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv met
   case tSolution of
     UniHS d2 lvl2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
-      lvl1Orig <- newRelatedMetaTerm parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
+      lvl1orig <- newRelatedTermMeta parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
                 --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
-      let d1Orig = unVarFromCtx <$> ctx'mode gammaOrig
-      return $ Just $ UniHS d1Orig lvl1Orig
+      let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
+      return $ Just $ UniHS d1orig lvl1orig
     Pi binding -> do
       result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding
       return $ Pi <$> result

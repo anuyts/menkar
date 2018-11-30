@@ -11,6 +11,7 @@ class (
   idMod :: mode v -> modty v
   compMod :: modty v -> mode v -> modty v -> modty v
   wildMode :: mode v -- to be abolished!
+  wildModty :: modty v -- to be abolished!
   flatMod :: modty v
   -- right adjoint to flatMod
   irrMod :: modty v
@@ -40,6 +41,9 @@ compModedModality (ModedModality d' mu') (ModedModality d mu) = ModedModality d 
 
 irrModedModality :: (Multimode mode modty) => ModedModality mode modty v
 irrModedModality = ModedModality dataMode irrMod
+
+wildModedModality :: (Multimode mode modty) => ModedModality mode modty v
+wildModedModality = ModedModality wildMode wildModty
 
 modedApproxLeftAdjointProj :: (Multimode mode modty) =>
   ModedModality mode modty v -> mode v {-^ the codomain -} -> ModedModality mode modty v
