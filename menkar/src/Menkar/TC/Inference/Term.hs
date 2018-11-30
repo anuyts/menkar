@@ -540,7 +540,7 @@ checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
     "Type-checking eliminee."
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
 checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
-  maybeT <- getMeta meta depcies
+  maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
   case maybeT of
     Nothing -> do
       -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
@@ -549,7 +549,7 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
         (JudEta gamma (Expr3 t) ty)
         (Just parent)
         "Eta-expand meta if possible."
-      blockOnMetas [meta] parent
+      tcBlock --blockOnMetas [meta] parent
     Just t' -> do
       i <- newConstraintID
       let childConstraint = Constraint
@@ -557,7 +557,7 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
             (Just parent)
             "Look up meta."
             i
-      checkTerm parent gamma t' ty
+      checkTerm childConstraint gamma t' ty
 checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
   let ldivModAppliedVal = VarFromCtx <$> over leftDivided'content telescoped2modalQuantified lookupresult
   varAccessible <- leqMod
@@ -602,12 +602,12 @@ checkTermNV parent gamma (TermGoal goalname result) ty = do
     (Just parent)
     "Goal should take value of the appropriate type."
   -----
-  j <- newConstraintID
-  blockOnMetas [] $ Constraint
+  goalConstraint <- Constraint
       (JudGoal gamma goalname result ty)
       (Just parent)
       "Goal should take some value."
-      j
+      <$> newConstraintID
+  tcReport goalConstraint "This isn't my job; delegating to a human."
 checkTermNV parent gamma (TermProblem t) (Type ty) = tcFail parent $ "Erroneous term."
 checkTermNV parent gamma TermWildcard ty = unreachable
 

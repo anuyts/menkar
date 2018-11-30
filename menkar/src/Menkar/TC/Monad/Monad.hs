@@ -83,7 +83,8 @@ class (
       then the other branch is called when the meta is resolved. -}
   awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
   tcBlock :: tc a
-  tcFail :: Constraint mode modty rel -> String -> tc ()
+  tcReport :: Constraint mode modty rel -> String -> tc ()
+  tcFail :: Constraint mode modty rel -> String -> tc a
   leqMod :: modty v -> modty v -> tc Bool
 
 await :: (MonadTC mode modty rel tc) =>
@@ -196,4 +197,5 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mo
   awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
   tcBlock = lift tcBlock
   tcFail c msg = lift $ tcFail c msg
+  tcReport c msg = lift $ tcReport c msg
   leqMod mu nu = lift $ leqMod mu nu
