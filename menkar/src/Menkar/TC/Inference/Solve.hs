@@ -225,7 +225,7 @@ solveMetaAgainstWHNF :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   Term mode modty v ->
   Type mode modty v ->
-  tc (Maybe (Term mode modty vOrig))
+  tc (Term mode modty vOrig)
 solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
   -- CMOD if deg = eqDeg and tSolution does not mention any additional variables, solve fully.
   -- Otherwise, we do a weak-head solve.
@@ -233,12 +233,12 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv meta tyMeta tSo
     Var3 v -> case partialInv v of
       Nothing -> do
         blockOnMetas [meta] parent
-        return Nothing
-      Just u -> return $ Just $ Var3 u
+        --return Nothing
+      Just u -> return $ Var3 u
     Expr3 tSolution -> case tSolution of
       TermCons c -> do
         result <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c tyMeta tySolution
-        return $ Expr3 . TermCons <$> result
+        return $ Expr3 . TermCons $ result
       --TermElim
       TermMeta _ _ -> unreachable
       TermWildcard -> unreachable
@@ -247,7 +247,6 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv meta tyMeta tSo
       TermGoal _ _ -> unreachable
       TermProblem _ -> do
         tcFail parent "Nonsensical term."
-        return Nothing
       _ -> _solveMetaAgainstWHNF
 
 ------------------------------------
@@ -317,7 +316,7 @@ tryToSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
               -- If so, weak-head-solve it
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv meta tyMeta tSolution tySolution
+                Just $ solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv meta tyMeta tSolution tySolution
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               Just metas -> do
                 blockOnMetas (meta : metas) parent
