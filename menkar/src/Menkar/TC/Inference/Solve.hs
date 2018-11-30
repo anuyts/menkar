@@ -201,16 +201,15 @@ solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLev
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
-  Int ->
-  Type mode modty v ->
   ConstructorTerm mode modty v ->
   Type mode modty v ->
-  tc (Maybe (ConstructorTerm mode modty vOrig))
-solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
-  case tSolution of
-    ConsUniHS c -> do
-      result <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c tyMeta tySolution
-      return $ ConsUniHS <$> result
+  Type mode modty v ->
+  tc (ConstructorTerm mode modty vOrig)
+solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
+  case t2 of
+    ConsUniHS c2 -> do
+      c1orig <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
+      return $ ConsUniHS $ c1orig
     _ -> _solveMetaAgainstConstructorTerm
 
 {-| Precondition: @partialInv . subst = Just@.
@@ -238,7 +237,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv meta tyMeta tSo
       Just u -> return $ Just $ Var3 u
     Expr3 tSolution -> case tSolution of
       TermCons c -> do
-        result <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv meta tyMeta c tySolution
+        result <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c tyMeta tySolution
         return $ Expr3 . TermCons <$> result
       --TermElim
       TermMeta _ _ -> unreachable
