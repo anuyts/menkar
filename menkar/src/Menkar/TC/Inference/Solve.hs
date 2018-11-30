@@ -225,26 +225,53 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
          Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2))))) -> do
             let tyFst1 = _segment'content $ binding'segment sigmaBinding1
             let tyFst2 = _segment'content $ binding'segment sigmaBinding2
-            tmFst1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmFst2 tyFst1 tyFst2
+            let dmu1 = _segment'modty $ binding'segment sigmaBinding1
+            -- CMODE: figure out modality
+            let dmu1orig = wildModedModality
+            tmFst1orig <- newRelatedMetaTerm parent (divDeg dmu1orig deg) (VarFromCtx <$> dmu1orig :\\ gammaOrig)
+                            (VarFromCtx <$> dmu1 :\\ gamma) subst partialInv tmFst2 tyFst1 tyFst2
                             "Inferring first component."
             let tmFst1 = subst <$> tmFst1orig
             let tySnd1 = substLast3 tmFst1 $ Type $ binding'body sigmaBinding1
             let tySnd2 = substLast3 tmFst2 $ Type $ binding'body sigmaBinding2
             -- CMODE: deg should probably live in vOrig
             let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
-            tyFst1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig "Inferring type of first component"
+            tyFst1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig "Inferring type of first component."
             let sigmaSeg1orig = Declaration
                                   (_decl'name $ binding'segment $ sigmaBinding1)
-                                  wildModedModality --CMODE
-                                  Explicit
+                                  dmu1orig
+                                  Explicit -- CMODE
                                   (Type tyFst1orig)
             tySnd1orig <- newMetaTermNoCheck (Just parent) (VarWkn <$> degOrig)
-                               (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) "Inferring type of second component"
+                               (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) "Inferring type of second component."
             let sigmaBinding1orig = Binding sigmaSeg1orig tySnd1orig
             tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
                             "Inferring second component."
             return $ Pair sigmaBinding1orig tmFst1orig tmSnd1orig
         (_, _) -> tcFail parent "Terms are presumed to be well-typed."
+    ConsUnit -> return ConsUnit
+    ConsBox boxSeg tmUnbox2 -> do
+      case (ty1, ty2) of
+        (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1)))),
+         Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg2))))) -> do
+            let tyUnbox1 = _segment'content boxSeg1
+            let tyUnbox2 = _segment'content boxSeg2
+            let dmu1 = _segment'modty boxSeg1
+            -- CMODE: figure out modality
+            let dmu1orig = wildModedModality
+            tmUnbox1orig <- newRelatedMetaTerm parent (divDeg dmu1orig deg) (VarFromCtx <$> dmu1orig :\\ gammaOrig)
+                            (VarFromCtx <$> dmu1 :\\ gamma) subst partialInv tmUnbox2 tyUnbox1 tyUnbox2
+                            "Inferring box content."
+            let tmUnbox1 = subst <$> tmUnbox1orig
+            -- CMODE: deg should probably live in vOrig
+            let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
+            tyUnbox1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig "Inferring type of box content."
+            let boxSeg1orig = Declaration
+                                  (_decl'name $ boxSeg1)
+                                  dmu1orig
+                                  Explicit -- CMODE
+                                  (Type tyUnbox1orig)
+            return $ ConsBox boxSeg1orig tmUnbox1orig
     _ -> _solveMetaAgainstConstructorTerm
 
 {-| Precondition: @partialInv . subst = Just@.
