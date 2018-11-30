@@ -303,6 +303,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
   eliminator2
   ty1 ty2 =
   case eliminator2 of
+    App arg2 -> _newRelatedArgument
     _ -> _newRelatedEliminator
 
 ------------------------------------
@@ -331,11 +332,11 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
       TermCons c2 -> do
         c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
         return $ Expr3 $ TermCons $ c1orig
-      TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
+      TermElim dmu2 eliminee2 (Type (Expr3 (TermCons (ConsUniHS tyEliminee2)))) eliminator2 -> do
         -- CMODE MODTY
         let dmu1orig = wildModedModality
         let dmu1 = subst <$> dmu1orig
-        tyEliminee1orig <- newRelatedMetaType
+        tyEliminee1orig <- Type . Expr3 . TermCons . ConsUniHS <$> solveMetaAgainstUniHSConstructor
                              parent
                              (divDeg dmu1 deg)
                              (VarFromCtx <$> dmu1orig :\\ gammaOrig)
@@ -343,7 +344,6 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
                              subst
                              partialInv
                              tyEliminee2
-                             "Inferring type of eliminee."
         let tyEliminee1 = subst <$> tyEliminee1orig
         eliminee1orig <- newRelatedMetaTerm
                              parent
@@ -364,6 +364,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
                              eliminator2
                              ty1 ty2
         return $ Expr3 $ TermElim dmu1orig eliminee1orig tyEliminee1orig eliminator1orig
+      TermElim _ _ _ _ -> unreachable
       TermMeta _ _ -> unreachable
       TermWildcard -> unreachable
       TermQName _ _ -> unreachable
