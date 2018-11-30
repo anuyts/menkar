@@ -231,7 +231,6 @@ checkConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
   let subst :: VarExt _ -> Term _ _ _
       subst VarLast = t1
       subst (VarWkn v) = Var3 v
-      subst v = unreachable
   addNewConstraint
     (JudTerm gamma t2 (Type $ join $ subst <$> binding'body sigmaBinding))
     (Just parent)
@@ -339,7 +338,6 @@ checkDependentEliminator parent gamma dmu eliminee
   let subst :: VarExt _ -> Term _ _ (VarExt (VarExt _))
       subst VarLast = Expr3 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var3 $ VarWkn VarLast) (Var3 VarLast)
       subst (VarWkn v) = Var3 $ VarWkn $ VarWkn v
-      subst _ = unreachable
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> segFst) :.. (VarFromCtx <$> segSnd))
@@ -361,7 +359,6 @@ checkDependentEliminator parent gamma dmu eliminee
   let subst :: VarExt _ -> Term _ _ (VarExt _)
       subst VarLast = Expr3 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var3 VarLast
       subst (VarWkn v) = Var3 $ VarWkn v
-      subst _ = unreachable
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> segContent))
@@ -381,7 +378,6 @@ checkDependentEliminator parent gamma dmu eliminee
   let substZ :: VarExt _ -> Term _ _ _
       substZ VarLast = Expr3 $ TermCons $ ConsZero
       substZ (VarWkn v) = Var3 v
-      substZ _ = unreachable
   addNewConstraint
     (JudTerm gamma cz (Type $ join $ substZ <$> _namedBinding'body motive))
     (Just parent)
@@ -401,7 +397,6 @@ checkDependentEliminator parent gamma dmu eliminee
   let substS :: VarExt _ -> Term _ _ (VarExt (VarExt _))
       substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
       substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
-      substS _ = unreachable
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> segPred) :.. (VarFromCtx <$> segHyp))
@@ -434,7 +429,6 @@ checkEliminator parent gamma dmu eliminee (Type (Expr3 (TermCons (ConsUniHS (Pi 
   let subst :: VarExt _ -> Term _ _ _
       subst VarLast = arg
       subst (VarWkn v) = Var3 v
-      subst _ = unreachable
   addNewConstraint
     (JudTypeRel
       eqDeg
@@ -469,7 +463,6 @@ checkEliminator parent gamma dmu eliminee
       subst :: VarExt _ -> Term _ _ _
       subst VarLast = Expr3 $ TermElim (ModedModality dSnd muProj) eliminee tyEliminee Fst
       subst (VarWkn v) = Var3 v
-      subst _ = unreachable
   addNewConstraint
     (JudTypeRel
       eqDeg
@@ -513,7 +506,6 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
   let subst :: VarExt _ -> Term _ _ _
       subst VarLast = eliminee
       subst (VarWkn v) = Var3 v
-      subst _ = unreachable
   addNewConstraint
     (JudTypeRel
       eqDeg
@@ -617,6 +609,7 @@ checkTermNV parent gamma (TermGoal goalname result) ty = do
       "Goal should take some value."
       j
 checkTermNV parent gamma (TermProblem t) (Type ty) = tcFail parent $ "Erroneous term."
+checkTermNV parent gamma TermWildcard ty = unreachable
 
 -------
 
