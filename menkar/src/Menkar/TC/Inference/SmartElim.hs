@@ -16,6 +16,7 @@ import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
+import Control.Monad.Trans.Maybe
 
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
@@ -312,17 +313,16 @@ checkSmartElim :: (MonadTC mode modty rel tc) =>
   Type mode modty v ->
   tc ()
 checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators result tyResult = do
-  -- whnormalize the type
-  (whTyEliminee, metas) <- runWriterT $ whnormalize gamma tyEliminee
-  case metas of
-    -- the type whnormalizes
-    [] -> do
+  maybeWHTyEliminee <- runMaybeT $ whnormalize parent "Weak-head-normalizing type of eliminee." gamma tyEliminee
+  case maybeWHTyEliminee of
+    -- the type weak-head-normalizes
+    Just whTyEliminee -> do
       parent' <- Constraint
                    (JudSmartElim gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult)
                    (Just parent)
                    "Weak-head-normalized type."
                    <$> newConstraintID
       checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult
-    -- the type does not whnormalize
-    _ -> blockOnMetas metas parent
+    -- the type does not weak-head-normalize
+    Nothing -> tcBlock
 

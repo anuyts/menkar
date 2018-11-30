@@ -73,11 +73,11 @@ class (
     Ctx Type mode modty v Void ->
     tc' (Maybe (Term mode modty v))
     ) -> tc ()
-  {-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
-  -}
-  getMeta :: Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
-  {-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
-  blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
+  --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
+  ---}
+  --getMeta :: Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
+  --{-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
+  --blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
   {-| Forks computation, once returning nothing and once returning the meta's value.
       The branch that gets nothing is run immediately. If it blocks by calling @'tcBlock'@,
       then the other branch is called when the meta is resolved. -}
@@ -191,8 +191,8 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mo
   addConstraint c = lift $ addConstraint c
   addConstraintReluctantly c = lift $ addConstraintReluctantly c
   solveMeta meta solver = lift $ solveMeta meta solver
-  getMeta meta depcies = lift $ getMeta meta depcies
-  blockOnMetas metas c = lift $ blockOnMetas metas c
+  --getMeta meta depcies = lift $ getMeta meta depcies
+  --blockOnMetas metas c = lift $ blockOnMetas metas c
   awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
   tcBlock = lift tcBlock
   tcFail c msg = lift $ tcFail c msg
