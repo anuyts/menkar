@@ -40,6 +40,31 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
     
 -}
 
+newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  String ->
+  tc (Term mode modty vOrig)
+newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason = do
+  let maybeDegOrig = sequenceA $ partialInv <$> deg
+  case maybeDegOrig of
+    Nothing -> tcBlock
+    Just degOrig -> do
+      t1Orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
+      let t1 = subst <$> t1Orig
+      addNewConstraint
+        (JudTermRel deg gamma (Pair3 t1 t2) (Pair3 ty1 ty2))
+        (Just parent)
+        reason
+      return t1Orig
+
 solveMetaAgainstSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -89,11 +114,12 @@ solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLe
   tc (Maybe (UniHSConstructor mode modty vOrig))
 solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
   case tSolution of
-    UniHS d lvl -> do
+    UniHS d2 lvl2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
-      lvl' <- newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
-      let d' = unVarFromCtx <$> ctx'mode gammaOrig
-      return $ Just $ UniHS d' lvl'
+      lvl1Orig <- newRelatedMetaTerm parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
+                --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
+      let d1Orig = unVarFromCtx <$> ctx'mode gammaOrig
+      return $ Just $ UniHS d1Orig lvl1Orig
     Pi binding -> do
       result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding
       return $ Pi <$> result

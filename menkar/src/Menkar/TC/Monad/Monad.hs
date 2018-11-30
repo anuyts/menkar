@@ -38,7 +38,8 @@ class (
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
-      @'newMetaTermNoCheck'@ should only be directly used by the SCOPER.
+      @'newMetaTermNoCheck'@ should only be used when you are sure the meta will be type-checked (in a term judgement)
+      later on.
   -}
   newMetaTermNoCheck ::
     Maybe (Constraint mode modty rel) -> rel v {-^ Degree up to which it should be solved -}
@@ -124,23 +125,6 @@ newMetaTerm maybeParent deg gamma ty reason = do
     (reason ++ " (eta-expansion)")
   -}
   return t
-
-newMetaTermRel :: MonadTC mode modty rel tc =>
-  Maybe (Constraint mode modty rel) ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
-  String ->
-  tc (Term mode modty v)
-newMetaTermRel maybeParent deg gamma t2 ty1 ty2 reason = do
-  t1 <- newMetaTermNoCheck maybeParent deg (fstCtx gamma) reason
-  addNewConstraint
-    (JudTermRel deg gamma (Pair3 t1 t2) (Pair3 ty1 ty2))
-    maybeParent
-    reason
-  return t1
 
 -- | Not to be used by the Scoper.
 newMetaType :: MonadTC mode modty rel tc =>
