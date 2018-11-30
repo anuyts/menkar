@@ -175,15 +175,24 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
                 --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
       let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
       return $ UniHS d1orig lvl1orig
-    Pi binding -> do
+    Pi binding2 -> do
       let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
-      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding
-      return $ Pi $ result
-    Sigma binding -> do
+      binding1orig <-
+        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding2
+      return $ Pi $ binding1orig
+    Sigma binding2 -> do
       let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
-      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding
-      return $ Sigma $ result
-    _ -> _solveMetaAgainstUniHSConstructor
+      binding1orig <-
+        solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding2
+      return $ Sigma $ binding1orig
+    EmptyType -> return EmptyType
+    UnitType -> return UnitType
+    BoxType boxSeg2 -> do
+      boxSeg1orig <-
+        solveMetaAgainstSegment parent deg gammaOrig gamma subst partialInv boxSeg2
+      return $ BoxType $ boxSeg1orig
+    NatType -> return NatType
+    --_ -> _solveMetaAgainstUniHSConstructor
 
 solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
