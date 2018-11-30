@@ -165,10 +165,8 @@ solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLe
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   UniHSConstructor mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
   tc (UniHSConstructor mode modty vOrig)
-solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
+solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 =
   case t2 of
     UniHS d2 lvl2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
@@ -208,7 +206,7 @@ solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLev
 solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
   case t2 of
     ConsUniHS c2 -> do
-      c1orig <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
+      c1orig <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c2
       return $ ConsUniHS $ c1orig
     Lam binding2 -> do
       case (ty1, ty2) of
@@ -290,8 +288,8 @@ newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   ModedModality mode modty vOrig ->
   Term mode modty vOrig ->
   Term mode modty v ->
-  Type mode modty vOrig ->
-  Type mode modty v ->
+  UniHSConstructor mode modty vOrig ->
+  UniHSConstructor mode modty v ->
   Eliminator mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
@@ -332,11 +330,11 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
       TermCons c2 -> do
         c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
         return $ Expr3 $ TermCons $ c1orig
-      TermElim dmu2 eliminee2 (Type (Expr3 (TermCons (ConsUniHS tyEliminee2)))) eliminator2 -> do
+      TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
         -- CMODE MODTY
         let dmu1orig = wildModedModality
         let dmu1 = subst <$> dmu1orig
-        tyEliminee1orig <- Type . Expr3 . TermCons . ConsUniHS <$> solveMetaAgainstUniHSConstructor
+        tyEliminee1orig <- solveMetaAgainstUniHSConstructor
                              parent
                              (divDeg dmu1 deg)
                              (VarFromCtx <$> dmu1orig :\\ gammaOrig)
@@ -353,8 +351,8 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
                              subst
                              partialInv
                              eliminee2
-                             tyEliminee1
-                             tyEliminee2
+                             (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1)
+                             (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee2)
                              "Inferring eliminee."
         let eliminee1 = subst <$> eliminee1orig
         eliminator1orig <- newRelatedEliminator parent deg gammaOrig gamma subst partialInv
@@ -364,7 +362,6 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
                              eliminator2
                              ty1 ty2
         return $ Expr3 $ TermElim dmu1orig eliminee1orig tyEliminee1orig eliminator1orig
-      TermElim _ _ _ _ -> unreachable
       TermMeta _ _ -> unreachable
       TermWildcard -> unreachable
       TermQName _ _ -> unreachable

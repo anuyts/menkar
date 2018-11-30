@@ -73,7 +73,7 @@ unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
       (Expr3 $ TermElim
         (dmuUnbox)
         eliminee
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType boxSeg)
+        (BoxType boxSeg)
         Unbox
       )
       (_segment'content boxSeg)
@@ -106,7 +106,7 @@ projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
       (Expr3 $ TermElim
         (dmuProjFst)
         eliminee
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding)
+        (Sigma sigmaBinding)
         Fst
       )
       (_segment'content $ binding'segment sigmaBinding)
@@ -133,13 +133,13 @@ projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
   let tmFst = (Expr3 $ TermElim
                 (dmuProjFst)
                 eliminee
-                (Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding)
+                (Sigma sigmaBinding)
                 Fst
               )
   let tmSnd = (Expr3 $ TermElim
                 (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
                 eliminee
-                (Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding)
+                (Sigma sigmaBinding)
                 Snd
               )
   addNewConstraint
@@ -175,7 +175,7 @@ apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = 
       (Expr3 $ TermElim
         (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
         eliminee
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding)
+        (Pi piBinding)
         (App arg)
       )
       (Type $ substLast3 arg $ binding'body piBinding)
@@ -313,7 +313,7 @@ checkSmartElim :: (MonadTC mode modty rel tc) =>
   Type mode modty v ->
   tc ()
 checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators result tyResult = do
-  maybeWHTyEliminee <- runMaybeT $ whnormalize parent "Weak-head-normalizing type of eliminee." gamma tyEliminee
+  maybeWHTyEliminee <- runMaybeT $ whnormalize parent gamma tyEliminee "Weak-head-normalizing type of eliminee."
   case maybeWHTyEliminee of
     -- the type weak-head-normalizes
     Just whTyEliminee -> do
