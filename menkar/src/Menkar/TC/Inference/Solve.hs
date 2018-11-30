@@ -272,7 +272,11 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
                                   Explicit -- CMODE
                                   (Type tyUnbox1orig)
             return $ ConsBox boxSeg1orig tmUnbox1orig
-    _ -> _solveMetaAgainstConstructorTerm
+    ConsZero -> return ConsZero
+    ConsSuc t2 -> do
+      let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
+      t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat "Inferring predecessor."
+      return $ ConsSuc t1orig
 
 {-| Precondition: @partialInv . subst = Just@.
 -}
