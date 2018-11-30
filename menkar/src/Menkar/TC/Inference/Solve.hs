@@ -287,24 +287,21 @@ solveMetaAgainstWHNF :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
-  Int ->
-  Type mode modty v ->
   Term mode modty v ->
   Type mode modty v ->
+  Type mode modty v ->
   tc (Term mode modty vOrig)
-solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
+solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
   -- CMOD if deg = eqDeg and tSolution does not mention any additional variables, solve fully.
   -- Otherwise, we do a weak-head solve.
-  case tSolution of
+  case t2 of
     Var3 v -> case partialInv v of
-      Nothing -> do
-        blockOnMetas [meta] parent
-        --return Nothing
+      Nothing -> tcBlock
       Just u -> return $ Var3 u
-    Expr3 tSolution -> case tSolution of
-      TermCons c -> do
-        result <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c tyMeta tySolution
-        return $ Expr3 . TermCons $ result
+    Expr3 t2 -> case t2 of
+      TermCons c2 -> do
+        c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
+        return $ Expr3 $ TermCons $ c1orig
       --TermElim
       TermMeta _ _ -> unreachable
       TermWildcard -> unreachable
@@ -382,7 +379,7 @@ tryToSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
               -- If so, weak-head-solve it
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                Just $ solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv meta tyMeta tSolution tySolution
+                Just $ solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv tSolution tyMeta tySolution
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               Just metas -> do
                 blockOnMetas (meta : metas) parent
