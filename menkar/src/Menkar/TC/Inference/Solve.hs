@@ -211,13 +211,9 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
       c1orig <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
       return $ ConsUniHS $ c1orig
     Lam binding2 -> do
-      maybeWHNTy1 <- runMaybeT $ whnormalize parent (fstCtx gamma) (unType ty1) "Type of meta should be a Pi-type."
-      maybeWHNTy2 <- runMaybeT $ whnormalize parent (sndCtx gamma) (unType ty2) "Type of meta should be a Pi-type."
-      case (maybeWHNTy1, maybeWHNTy2) of
-        (Nothing, _) -> tcBlock
-        (_, Nothing) -> tcBlock
-        (Just (Expr3 (TermCons (ConsUniHS (Pi piBinding1)))),
-         Just (Expr3 (TermCons (ConsUniHS (Pi piBinding2))))) -> do
+      case (ty1, ty2) of
+        (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding1)))),
+         Type (Expr3 (TermCons (ConsUniHS (Pi piBinding2))))) -> do
             let cod1 = Type $ binding'body piBinding1
             let cod2 = Type $ binding'body piBinding2
             binding1orig <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv binding2 cod1 cod2
