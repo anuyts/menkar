@@ -89,6 +89,8 @@ newRelatedTypeMeta parent deg gammaOrig gamma subst partialInv ty2 reason = do
         reason
       return ty1orig
 
+--------------------------
+
 solveMetaAgainstSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -152,6 +154,8 @@ solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv tyBody1 tyBo
                  "Inferring body."
   return $ Binding segment1orig body1orig
 
+------------------------------------
+
 solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -159,25 +163,26 @@ solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLe
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
-  Int ->
-  Type mode modty v ->
   UniHSConstructor mode modty v ->
   Type mode modty v ->
-  tc (Maybe (UniHSConstructor mode modty vOrig))
-solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
-  case tSolution of
+  Type mode modty v ->
+  tc (UniHSConstructor mode modty vOrig)
+solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
+  case t2 of
     UniHS d2 lvl2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
       lvl1orig <- newRelatedTermMeta parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
                 --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
       let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
-      return $ Just $ UniHS d1orig lvl1orig
+      return $ UniHS d1orig lvl1orig
     Pi binding -> do
-      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding
-      return $ Pi <$> result
+      let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
+      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding
+      return $ Pi $ result
     Sigma binding -> do
-      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv meta tyMeta binding
-      return $ Sigma <$> result
+      let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
+      result <- solveMetaAgainstBinding parent deg gammaOrig gamma subst partialInv (VarWkn <$> uni) (VarWkn <$> uni) binding
+      return $ Sigma $ result
     _ -> _solveMetaAgainstUniHSConstructor
 
 solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
@@ -195,7 +200,7 @@ solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLev
 solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv meta tyMeta tSolution tySolution =
   case tSolution of
     ConsUniHS c -> do
-      result <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv meta tyMeta c tySolution
+      result <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c tyMeta tySolution
       return $ ConsUniHS <$> result
     _ -> _solveMetaAgainstConstructorTerm
 
