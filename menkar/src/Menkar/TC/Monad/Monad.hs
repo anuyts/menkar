@@ -12,6 +12,7 @@ import qualified Menkar.Raw.Syntax as Raw
 import Data.Void
 import Control.Monad.Trans.Class
 import Data.Functor.Compose
+import Control.Monad.Trans.Maybe
 
 data Constraint mode modty rel = Constraint {
     constraint'judgement :: Judgement mode modty rel,
@@ -77,15 +78,20 @@ class (
   getMeta :: Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
   {-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
-  awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Term mode modty v)
+  {-| Forks computation, once returning nothing and once returning the meta's value.
+      The branch that gets nothing is run immediately. If it blocks by calling @'tcBlock'@,
+      then the other branch is called when the meta is resolved. -}
+  awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
+  tcBlock :: tc a
   tcFail :: Constraint mode modty rel -> String -> tc ()
   leqMod :: modty v -> modty v -> tc Bool
 
 await :: (MonadTC mode modty rel tc) =>
-  Constraint mode modty rel -> String -> Term mode modty v -> tc (Term mode modty v)
-await parent reason (Expr3 (TermMeta meta (Compose depcies))) =
-  awaitMeta parent reason meta depcies >>= await parent reason
-await parent reason t = return t
+  Constraint mode modty rel -> String -> Term mode modty v -> tc (Maybe (Term mode modty v))
+await parent reason (Expr3 (TermMeta meta (Compose depcies))) = runMaybeT $ do
+  term <- MaybeT $ awaitMeta parent reason meta depcies
+  MaybeT $ await parent reason term
+await parent reason t = return $ Just t
 
 addNewConstraint :: MonadTC mode modty rel tc =>
   Judgement mode modty rel ->
@@ -188,5 +194,6 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mo
   getMeta meta depcies = lift $ getMeta meta depcies
   blockOnMetas metas c = lift $ blockOnMetas metas c
   awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
+  tcBlock = lift tcBlock
   tcFail c msg = lift $ tcFail c msg
   leqMod mu nu = lift $ leqMod mu nu
