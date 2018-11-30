@@ -246,7 +246,7 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
   TermElim
     (ModedModality mode modty v) {-^ modality by which the eliminee is used -}
     (Term mode modty v) {-^ eliminee -}
-    (Type mode modty v) {-^ eliminee's type -}
+    (UniHSConstructor mode modty v) {-^ eliminee's type -}
     (Eliminator mode modty v) {-^ eliminator -} |
   TermMeta Int (Compose [] (Term mode modty) v) |
   TermWildcard {-^ A meta that need not be solved. -} |

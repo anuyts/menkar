@@ -118,7 +118,7 @@ elimination2pretty :: (Functor mode, Functor modty,
          ScCtx mode modty v Void ->
          ModedModality mode modty v ->
          Term mode modty v ->
-         Type mode modty v ->
+         UniHSConstructor mode modty v ->
          Eliminator mode modty v ->
          PrettyTree String
 {-
@@ -169,7 +169,12 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clau
   ribbon "let {" \\\ [
     ribbon "elim f" \\\ [
         " : " ++| fine2pretty gamma (Pi (Binding
-                                      (Declaration (DeclNameSegment $ _namedBinding'name motive) dmu Explicit tyEliminee)
+                                      (Declaration
+                                        (DeclNameSegment $ _namedBinding'name motive)
+                                        dmu
+                                        Explicit
+                                        (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee)
+                                      )
                                       (_namedBinding'body motive)
                                     )),
         fine2pretty gamma $ ModuleRHS $ Compose $ [

@@ -27,7 +27,7 @@ whnormalizeElim :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ how eliminee is used -} ->
   Term mode modty v {-^ eliminee -} ->
-  Type mode modty v {-^ eliminee's type -} ->
+  UniHSConstructor mode modty v {-^ eliminee's type -} ->
   Eliminator mode modty v ->
   String ->
   MaybeT tc (Term mode modty v)
