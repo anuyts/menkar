@@ -278,6 +278,37 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
 
 ------------------------------------
 
+newRelatedDependentEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  ModedModality mode modty vOrig {-^ Modality of elimination. -} ->
+  Term mode modty vOrig ->
+  Term mode modty v ->
+  UniHSConstructor mode modty vOrig ->
+  UniHSConstructor mode modty v ->
+  NamedBinding Type mode modty vOrig ->
+  NamedBinding Type mode modty v ->
+  DependentEliminator mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc (DependentEliminator mode modty vOrig)
+newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
+  dmu1orig
+  eliminee1orig eliminee2
+  tyEliminee1orig tyEliminee2
+  motive1orig motive2
+  clauses2
+  ty1 ty2 = do
+  let dmu1 = subst <$> dmu1orig
+  let tyEliminee1 = subst <$> tyEliminee1orig
+  let motive1 = subst <$> motive1orig
+  case clauses2 of
+    _ -> _newRelatedDependentEliminator
+
 newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -337,7 +368,13 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                          (sequenceA . fmap partialInv)
                          ty2
                          "Inferring motive."
-      clauses1orig <- _newRelatedDependentEliminator
+      clauses1orig <- newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
+                        dmu1orig
+                        eliminee1orig eliminee2
+                        tyEliminee1orig tyEliminee2
+                        motive1orig motive2
+                        clauses2
+                        ty1 ty2
       return $ ElimDep motive1orig clauses1orig
 
 ------------------------------------
