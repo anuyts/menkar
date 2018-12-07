@@ -18,7 +18,8 @@ import Control.Monad
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
 
-checkPiOrSigma :: MonadTC mode modty rel tc =>
+checkPiOrSigma ::
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     Binding Type Term mode modty v ->
@@ -64,7 +65,8 @@ checkPiOrSigma parent gamma binding ty = do
 
 -------
 
-checkUni :: MonadTC mode modty rel tc =>
+checkUni ::
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     Type mode modty v ->
@@ -89,7 +91,8 @@ checkUni parent gamma ty = do
 
 -------
 
-checkUniHSConstructor :: MonadTC mode modty rel tc =>
+checkUniHSConstructor ::
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     UniHSConstructor mode modty v ->
@@ -167,7 +170,8 @@ checkUniHSConstructor parent gamma (NatType) ty = checkUni parent gamma ty
 --checkUniHSConstructor parent gamma t ty = _checkUniHSConstructor
 -- CMODE do we allow Empty, Unit and Nat in arbitrary mode? I guess not...
 
-checkConstructorTerm :: MonadTC mode modty rel tc =>
+checkConstructorTerm ::
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     ConstructorTerm mode modty v ->
@@ -312,7 +316,7 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
 -------
 
 checkDependentEliminator :: forall mode modty rel tc v .
-    MonadTC mode modty rel tc =>
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     ModedModality mode modty v ->
@@ -411,7 +415,8 @@ checkDependentEliminator parent gamma dmu eliminee
 
 -------
 
-checkEliminator :: MonadTC mode modty rel tc =>
+checkEliminator ::
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     ModedModality mode modty v ->
@@ -522,7 +527,8 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
 
 -------
     
-checkTermNV :: MonadTC mode modty rel tc =>
+checkTermNV ::
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     TermNV mode modty v ->
@@ -614,7 +620,8 @@ checkTermNV parent gamma TermWildcard ty = unreachable
 
 -------
 
-checkTerm :: MonadTC mode modty rel tc =>
+checkTerm ::
+    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     Term mode modty v ->

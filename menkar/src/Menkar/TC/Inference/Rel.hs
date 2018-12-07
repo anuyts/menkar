@@ -18,7 +18,8 @@ import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
 
-checkSegmentRel :: (MonadTC mode modty rel tc, Eq v) =>
+checkSegmentRel ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -42,7 +43,8 @@ checkSegmentRel parent deg gamma seg1 seg2 = do
     (Just parent)
     "Relating domains."      
 
-checkPiOrSigmaRel :: (MonadTC mode modty rel tc, Eq v) =>
+checkPiOrSigmaRel ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -72,7 +74,8 @@ checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
       (Just parent)
       "Relating codomains."
 
-checkUniHSConstructorRel :: (MonadTC mode modty rel tc, Eq v) =>
+checkUniHSConstructorRel ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -111,7 +114,7 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
 --------------------------------
 
 checkConstructorTermRel :: forall mode modty rel tc v .
-  (MonadTC mode modty rel tc, Eq v) =>
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -183,7 +186,7 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   --(_, _) -> _checkConstructorTermRel
 
 checkDependentEliminatorRel :: forall mode modty rel tc v .
-  (MonadTC mode modty rel tc, Eq v) =>
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -340,7 +343,9 @@ checkDependentEliminatorRel parent deg gamma dmu
           "Relating successor clauses."
       (ElimNat _ _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       --(_, _) -> _checkDependentEliminatorRel
-checkEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
+      
+checkEliminatorRel ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->

@@ -23,7 +23,8 @@ import Control.Monad.Trans.Maybe
 
 -------
 
-checkSmartElimDone :: (MonadTC mode modty rel tc) =>
+checkSmartElimDone ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -51,7 +52,8 @@ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult = do
         (Just parent)
         "End of elimination: checking if types match"
 
-unbox :: (MonadTC mode modty rel tc) =>
+unbox ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -84,7 +86,8 @@ unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
     (Just parent)
     "Unboxing."
 
-projFst :: (MonadTC mode modty rel tc) =>
+projFst ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -117,7 +120,8 @@ projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
     (Just parent)
     "First projection."
 
-projSnd :: (MonadTC mode modty rel tc) =>
+projSnd ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -155,7 +159,8 @@ projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
     (Just parent)
     "Second projection."
 
-apply :: (MonadTC mode modty rel tc) =>
+apply ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -186,7 +191,8 @@ apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = 
     (Just parent)
     "Applying function."
 
-insertImplicitArgument :: (MonadTC mode modty rel tc) =>
+insertImplicitArgument ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -203,7 +209,8 @@ insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators resul
   arg <- newMetaTerm (Just parent) eqDeg (VarFromCtx <$> dmuArg :\\ gamma) tyArg "Inferring implicit argument."
   apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult
 
-autoEliminate :: (MonadTC mode modty rel tc) =>
+autoEliminate ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -227,7 +234,8 @@ autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResu
            Nothing -> tcFail parent $ "Cannot auto-eliminate."
            Just alternative -> alternative 
 
-checkSmartElimForNormalType :: (MonadTC mode modty rel tc) =>
+checkSmartElimForNormalType ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
@@ -302,7 +310,8 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
       autoEliminate parent gamma dmuElim eliminee tyEliminee [] result tyResult $
       Just $ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
 
-checkSmartElim :: (MonadTC mode modty rel tc) =>
+checkSmartElim ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   ModedModality mode modty v {-^ modality by which the eliminee is used -} ->

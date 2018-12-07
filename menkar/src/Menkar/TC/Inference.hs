@@ -25,7 +25,8 @@ import Control.Monad.Writer.Lazy
 
 -------
 
-checkEtaForNormalType :: (MonadTC mode modty rel tc) =>
+checkEtaForNormalType ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   Term mode modty v ->
@@ -111,28 +112,30 @@ checkEtaForNormalType parent gamma t (BoxType segBox) =
   where dmu = _segment'modty $ segBox
 checkEtaForNormalType parent gamma t NatType = return ()
 
-checkEta :: (MonadTC mode modty rel tc) =>
+checkEta ::
+  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   Ctx Type mode modty v Void ->
   Term mode modty v ->
   Type mode modty v ->
   tc ()
 checkEta parent gamma t (Type ty) = do
-  (whTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
+  (whnTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
   case metas of
     [] -> do
       parent' <- Constraint
-                   (JudEta gamma t (Type whTy))
+                   (JudEta gamma t (Type whnTy))
                    (Just parent)
                    "Weak-head-normalized type."
                    <$> newConstraintID
-      case whTy of
+      case whnTy of
         Var3 v -> return ()
-        Expr3 whTyNV -> case whTyNV of
-          TermCons (ConsUniHS whTyCons) -> checkEtaForNormalType parent' gamma t whTyCons
+        Expr3 whnTyNV -> case whnTyNV of
+          TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons
           TermCons _ -> tcFail parent' $ "Type is not a type."
           TermElim _ _ _ _ -> return ()
           TermMeta _ _ -> unreachable
+          TermWildcard -> unreachable
           TermQName _ _ -> unreachable
           TermSmartElim _ _ _ -> unreachable
           TermGoal _ _ -> unreachable
@@ -143,8 +146,9 @@ checkEta parent gamma t (Type ty) = do
 -- ================================================================================================
 -------
 
-checkConstraint :: (MonadTC mode modty rel tc) => Constraint mode modty rel -> tc ()
-
+checkConstraint ::
+  (MonadTC mode modty rel tc) =>
+  Constraint mode modty rel -> tc ()
 checkConstraint parent = case constraint'judgement parent of
   
   {-
@@ -179,7 +183,11 @@ checkConstraint parent = case constraint'judgement parent of
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
 
+  JudTypeRel deg gamma (Pair3 ty1 ty2) -> checkTypeRel parent deg gamma ty1 ty2
+
   JudTerm gamma t ty -> checkTerm parent gamma t ty
+
+  JudTermRel deg gamma (Pair3 t1 t2) (Pair3 ty1 ty2) -> checkTermRel parent deg gamma t1 t2 ty1 ty2
 
   JudEta gamma t tyT -> checkEta parent gamma t tyT
 
@@ -189,8 +197,6 @@ checkConstraint parent = case constraint'judgement parent of
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
 
-  JudResolve gamma t ty -> unreachable
-
-  JudTypeRel deg gamma (Pair3 ty1 ty2) -> checkTypeRel parent deg gamma ty1 ty2
+  JudResolve gamma t ty -> todo
   
-  _ -> _checkConstraint
+  --_ -> _checkConstraint

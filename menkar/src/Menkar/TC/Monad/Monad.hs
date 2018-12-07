@@ -105,7 +105,7 @@ addNewConstraint judgement parent reason = do
   addConstraint $ Constraint judgement parent reason i
 
 -- | Not to be used by the Scoper.
-newMetaTerm :: MonadTC mode modty rel tc =>
+newMetaTerm :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Maybe (Constraint mode modty rel) ->
   rel v ->
   Ctx Type mode modty v Void ->
@@ -127,7 +127,7 @@ newMetaTerm maybeParent deg gamma ty reason = do
   return t
 
 -- | Not to be used by the Scoper.
-newMetaType :: MonadTC mode modty rel tc =>
+newMetaType :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Maybe (Constraint mode modty rel) ->
   rel v ->
   Ctx Type mode modty v Void ->
@@ -142,7 +142,7 @@ newMetaType maybeParent deg gamma reason = do
   return t
 
 -- | Not to be used by the Scoper.
-newMetaTypeRel :: MonadTC mode modty rel tc =>
+newMetaTypeRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Maybe (Constraint mode modty rel) ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
