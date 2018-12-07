@@ -110,7 +110,8 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
 
 --------------------------------
 
-checkConstructorTermRel :: (MonadTC mode modty rel tc, Eq v) =>
+checkConstructorTermRel :: forall mode modty rel tc v .
+  (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -181,7 +182,8 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsSuc _, _) -> tcFail parent "False."
   --(_, _) -> _checkConstructorTermRel
 
-checkDependentEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
+checkDependentEliminatorRel :: forall mode modty rel tc v .
+  (MonadTC mode modty rel tc, Eq v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -190,8 +192,8 @@ checkDependentEliminatorRel :: (MonadTC mode modty rel tc, Eq v) =>
   Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
-  NamedBinding Term mode modty v ->
-  NamedBinding Term mode modty v ->
+  NamedBinding Type mode modty v ->
+  NamedBinding Type mode modty v ->
   DependentEliminator mode modty v ->
   DependentEliminator mode modty v ->
   Type mode modty v ->
@@ -229,8 +231,8 @@ checkDependentEliminatorRel parent deg gamma dmu
               subst' sigmaBinding VarLast =
                 Expr3 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var3 $ VarWkn VarLast) (Var3 VarLast)
               subst' sigmaBinding (VarWkn v) = Var3 $ VarWkn $ VarWkn $ v
-              subst :: Binding Type Term _ _ _ -> Term _ _ (VarExt _) -> Term _ _ (VarExt (VarExt _))
-              subst sigmaBinding = join . fmap (subst' sigmaBinding)
+              subst :: Binding Type Term _ _ _ -> Type _ _ (VarExt _) -> Type _ _ (VarExt (VarExt _))
+              subst sigmaBinding = swallow . fmap (subst' sigmaBinding)
           addNewConstraint
             (JudTermRel
               (VarWkn . VarWkn <$> deg)
@@ -240,8 +242,8 @@ checkDependentEliminatorRel parent deg gamma dmu
                 (_namedBinding'body $ _namedBinding'body $ pairClause2)
               )
               (Pair3
-                (Type $ subst sigmaBinding1 $ _namedBinding'body motive1)
-                (Type $ subst sigmaBinding2 $ _namedBinding'body motive2)
+                (subst sigmaBinding1 $ _namedBinding'body motive1)
+                (subst sigmaBinding2 $ _namedBinding'body motive2)
               )
             )
             (Just parent)
@@ -274,8 +276,8 @@ checkDependentEliminatorRel parent deg gamma dmu
                  (_namedBinding'body $ boxClause2)
                )
                (Pair3
-                 (Type $ join $ subst boxSeg1 <$> (_namedBinding'body motive1))
-                 (Type $ join $ subst boxSeg2 <$> (_namedBinding'body motive2))
+                 (swallow $ subst boxSeg1 <$> (_namedBinding'body motive1))
+                 (swallow $ subst boxSeg2 <$> (_namedBinding'body motive2))
                )
              )
              (Just parent)
@@ -287,7 +289,7 @@ checkDependentEliminatorRel parent deg gamma dmu
       (ElimEmpty, ElimEmpty) -> return ()
       (ElimEmpty, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (ElimNat clauseZero1 clauseSuc1, ElimNat clauseZero2 clauseSuc2) -> do
-        let substZ :: VarExt _ -> Term _ _ _
+        let substZ :: VarExt v -> Term mode modty v
             substZ VarLast = Expr3 $ TermCons $ ConsZero
             substZ (VarWkn v) = Var3 v
             substZ _ = unreachable
@@ -297,8 +299,8 @@ checkDependentEliminatorRel parent deg gamma dmu
             gamma
             (Pair3 clauseZero1 clauseZero2)
             (Pair3
-              (Type $ join $ substZ <$> _namedBinding'body motive1)
-              (Type $ join $ substZ <$> _namedBinding'body motive2)
+              (swallow $ substZ <$> _namedBinding'body motive1)
+              (swallow $ substZ <$> _namedBinding'body motive2)
             )
           )
           (Just parent)
@@ -316,10 +318,10 @@ checkDependentEliminatorRel parent deg gamma dmu
                        (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
                        Explicit
                        (Pair3
-                         (Type $ _namedBinding'body motive1)
-                         (Type $ _namedBinding'body motive2)
+                         (_namedBinding'body motive1)
+                         (_namedBinding'body motive2)
                        )
-        let substS :: VarExt _ -> Term _ _ (VarExt (VarExt _))
+        let substS :: VarExt v -> Term mode modty (VarExt (VarExt v))
             substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
             substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
             substS _ = unreachable
@@ -332,8 +334,8 @@ checkDependentEliminatorRel parent deg gamma dmu
               (_namedBinding'body $ _namedBinding'body $ clauseSuc2)
             )
             (Pair3
-              (Type $ join $ substS <$> _namedBinding'body motive1)
-              (Type $ join $ substS <$> _namedBinding'body motive2)
+              (swallow $ substS <$> _namedBinding'body motive1)
+              (swallow $ substS <$> _namedBinding'body motive2)
             )
           )
           (Just parent)
@@ -387,7 +389,7 @@ checkEliminatorRel parent deg gamma dmu
       (JudTypeRel
         (VarWkn <$> deg)
         (gamma :.. VarFromCtx <$> seg)
-        (Pair3 (Type $ _namedBinding'body motive1) (Type $ _namedBinding'body motive2))
+        (Pair3 (_namedBinding'body motive1) (_namedBinding'body motive2))
       )
       (Just parent)
       "Relating the motives."
@@ -413,12 +415,14 @@ checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (TermCons c1, TermCons c2) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2
   (TermCons _, _) -> tcFail parent "False."
   (TermElim dmu1 eliminee1 tyEliminee1 eliminator1, TermElim dmu2 eliminee2 tyEliminee2 eliminator2) -> do
+    let tyEliminee1' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1
+    let tyEliminee2' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee2
     -- CMOD dmu1 == dmu2
     addNewConstraint
       (JudTypeRel
         (divDeg dmu1 deg)
         (VarFromCtx <$> dmu1 :\\ gamma)
-        (Pair3 tyEliminee1 tyEliminee2)
+        (Pair3 tyEliminee1' tyEliminee2')
       )
       (Just parent)
       "Relating eliminees' types."
@@ -427,11 +431,11 @@ checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
         (divDeg dmu1 deg)
         (VarFromCtx <$> dmu1 :\\ gamma)
         (Pair3 eliminee1 eliminee2)
-        (Pair3 tyEliminee1 tyEliminee2)
+        (Pair3 tyEliminee1' tyEliminee2')
       )
       (Just parent)
       "Relating eliminees."
-    checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
+    checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1' tyEliminee2' eliminator1 eliminator2 ty1 ty2
   (TermElim _ _ _ _, _) -> tcFail parent "False."
   (TermMeta _ _, _) -> unreachable
   (TermWildcard, _) -> unreachable
@@ -473,8 +477,8 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) =
   -- Both are whnormal
   ([], []) -> checkTermRelNormal parent deg gamma t1 t2 (Type ty1) (Type ty2)
   -- Only one is whnormal: whsolve or block
-  (_, []) -> tryToWHSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
-  ([], _) -> tryToWHSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
+  (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
+  ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
   -- Neither is whnormal: block
   (_, _) -> blockOnMetas (metasT1 ++ metasT2) parent
 
@@ -593,7 +597,31 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
   if isTopDeg deg
     then return ()
     else do
+      {-
       -- Weak-head-normalize everything
+      maybeWHNT1 <- runWriterT $ whnormalize (fstCtx gamma) t1
+      maybeWHNT2 <- runWriterT $ whnormalize (sndCtx gamma) t2
+      maybeWHNTy1 <- runWriterT $ whnormalize (fstCtx gamma) ty1
+      maybeWHNTy2 <- runWriterT $ whnormalize (sndCtx gamma) ty2
+      case (maybeWHNTy1, maybeWHNTy2) of
+        -- Both types are whnormal
+        (Just whnty1, Just whnty2) -> do
+          let t1' = fromMaybe t1 maybeWHNT1
+          let t2' = fromMaybe t2 maybeWHNT2
+          whnparent <- Constraint
+            (JudTermRel
+              deg
+              gamma
+              (Pair3 t1' t2')
+              (Pair3 (Type whnTy1) (Type whnTy2))
+            )
+            (Just parent)
+            "Weak-head-normalize types, try to weak-head-normalize terms."
+            <$> newConstraintID
+        -- Either type is blocked
+        (_, _) -> tcBlock
+      -}
+
       (whnT1, metasT1) <- runWriterT $ whnormalize (fstCtx gamma) t1
       (whnT2, metasT2) <- runWriterT $ whnormalize (sndCtx gamma) t2
       (whnTy1, metasTy1) <- runWriterT $ whnormalize (fstCtx gamma) t1

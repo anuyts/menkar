@@ -175,7 +175,7 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clau
                                         Explicit
                                         (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee)
                                       )
-                                      (_namedBinding'body motive)
+                                      (unType $ _namedBinding'body motive)
                                     )),
         fine2pretty gamma $ ModuleRHS $ Compose $ [
                 todo

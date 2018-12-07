@@ -7,10 +7,12 @@ import Menkar.Fine.Multimode
 import Menkar.TC.Monad
 
 import Data.Void
+import Data.Maybe
 import Control.Monad.Writer
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Control.Monad.Trans.Maybe
+import Data.Monoid
 
 --TODOMOD means todo for modalities
 
@@ -30,7 +32,7 @@ whnormalizeElim :: MonadTC mode modty rel tc =>
   UniHSConstructor mode modty v {-^ eliminee's type -} ->
   Eliminator mode modty v ->
   String ->
-  MaybeT tc (Term mode modty v)
+  WriterT All tc (Term mode modty v)
 whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
   whnEliminee <- whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
   case whnEliminee of
@@ -93,11 +95,11 @@ whnormalizeNV :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   TermNV mode modty v ->
   String ->
-  MaybeT tc (Term mode modty v)
+  WriterT All tc (Term mode modty v)
 whnormalizeNV parent gamma t@(TermCons _) reason = return . Expr3 $ t   -- Mind glue and weld!
 whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
 whnormalizeNV parent gamma t@(TermMeta meta (Compose depcies)) reason = do
-  solution <- MaybeT $ awaitMeta parent reason meta depcies
+  solution <- fromMaybe (Expr3 t) <$> awaitMeta parent reason meta depcies
   whnormalize parent gamma solution reason
 {-maybeSolution <- getMeta meta depcies
   case maybeSolution of
@@ -122,6 +124,6 @@ whnormalize :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   Term mode modty v ->
   String ->
-  MaybeT tc (Term mode modty v)
+  WriterT All tc (Term mode modty v)
 whnormalize parent gamma (Var3 v) reason = return $ Var3 v
 whnormalize parent gamma (Expr3 t) reason = whnormalizeNV parent gamma t reason
