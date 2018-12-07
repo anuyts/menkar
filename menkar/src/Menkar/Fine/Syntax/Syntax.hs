@@ -221,7 +221,7 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Snd |
   Unbox |
   ElimDep {
-    _eliminator'motive :: (NamedBinding Term mode modty v),
+    _eliminator'motive :: (NamedBinding Type mode modty v),
     _eliminator'clauses :: DependentEliminator mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>

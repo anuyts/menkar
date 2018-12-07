@@ -321,7 +321,24 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
     Fst -> return Fst
     Snd -> return Snd
     Unbox -> return Unbox
-    _ -> _newRelatedEliminator
+    ElimDep motive2 clauses2 -> do
+      let seg1orig = Declaration (DeclNameSegment $ _namedBinding'name motive2) dmu1orig Explicit
+                       (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1orig)
+      let seg      = Declaration (DeclNameSegment $ _namedBinding'name motive2) dmu1     Explicit $ Pair3
+                       (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1)
+                       (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee2)
+      motive1orig <- flip namedBinding'body motive2 $ \ ty2 ->
+                       newRelatedMetaType
+                         parent
+                         (VarWkn <$> deg)
+                         (gammaOrig :.. VarFromCtx <$> seg1orig)
+                         (gamma     :.. VarFromCtx <$> seg)
+                         (fmap subst)
+                         (sequenceA . fmap partialInv)
+                         ty2
+                         "Inferring motive."
+      clauses1orig <- _newRelatedDependentEliminator
+      return $ ElimDep motive1orig clauses1orig
 
 ------------------------------------
 
