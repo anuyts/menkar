@@ -308,11 +308,11 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
   let tyEliminee1 = subst <$> tyEliminee1orig
   let motive1 = subst <$> motive1orig
   case clauses2 of
-    ElimSigma pairClause2 -> case (tyEliminee1orig, tyEliminee2) of
+    ElimSigma clausePair2 -> case (tyEliminee1orig, tyEliminee2) of
       (Sigma sigmaBinding1orig, Sigma sigmaBinding2) -> do
         let sigmaBinding1 = subst <$> sigmaBinding1orig
-        let nameFst = _namedBinding'name pairClause2
-        let nameSnd = _namedBinding'name $ _namedBinding'body pairClause2
+        let nameFst = _namedBinding'name clausePair2
+        let nameSnd = _namedBinding'name $ _namedBinding'body clausePair2
         let segFst1orig = Declaration
                             (DeclNameSegment nameFst)
                             (compModedModality dmu1orig (_segment'modty $ binding'segment $ sigmaBinding1orig))
@@ -347,7 +347,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             substPair sigmaBinding = swallow . fmap (substPair' sigmaBinding)
         let ty1 = substPair sigmaBinding1 $ _namedBinding'body motive1
         let ty2 = substPair sigmaBinding2 $ _namedBinding'body motive2
-        pairClause1orig <- flip namedBinding'body pairClause2 $ namedBinding'body $ \ t2 ->
+        clausePair1orig <- flip namedBinding'body clausePair2 $ namedBinding'body $ \ t2 ->
           newRelatedMetaTerm
             parent
             (VarWkn . VarWkn <$> deg)
@@ -357,7 +357,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             (sequenceA . fmap sequenceA . (fmap $ fmap partialInv))
             t2 ty1 ty2
             "Inferring pair clause."
-        return $ ElimSigma pairClause1orig
+        return $ ElimSigma clausePair1orig
       (_, _) -> unreachable
     ElimBox boxClause2 -> case (tyEliminee1orig, tyEliminee2) of
       (BoxType boxSeg1orig, BoxType boxSeg2) -> do
@@ -394,7 +394,47 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
         return $ ElimBox boxClause1orig
       (_, _) -> unreachable
     ElimEmpty -> return ElimEmpty
-    _ -> _newRelatedDependentEliminator
+    ElimNat clauseZero2 clauseSuc2 -> do
+      let tyCZ1 = substLast3 (Expr3 $ TermCons $ ConsZero :: Term mode modty _) $ _namedBinding'body motive1
+      let tyCZ2 = substLast3 (Expr3 $ TermCons $ ConsZero :: Term mode modty _) $ _namedBinding'body motive2
+      clauseZero1orig <-
+        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv clauseZero2 tyCZ1 tyCZ2
+          "Inferring zero clause."
+      -----------------
+      let nat = (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+      let namePred = _namedBinding'name clauseSuc2
+      let nameHyp  = _namedBinding'name $ _namedBinding'body clauseSuc2
+      let segPred1orig = Declaration (DeclNameSegment namePred) dmu1orig Explicit nat
+      let segPred      = Declaration (DeclNameSegment namePred) dmu1     Explicit (Pair3 nat nat)
+      let segHyp1orig = Declaration
+                          (DeclNameSegment nameHyp)
+                          (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gammaOrig)
+                          Explicit
+                          (_namedBinding'body motive1orig)
+      let segHyp      = Declaration
+                          (DeclNameSegment nameHyp)
+                          (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
+                          Explicit
+                          (Pair3
+                            (_namedBinding'body motive1)
+                            (_namedBinding'body motive2)
+                          )
+      let substS :: VarExt v -> Term mode modty (VarExt (VarExt v))
+          substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
+          substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
+      let tyCS1 = swallow $ substS <$> _namedBinding'body motive1
+      let tyCS2 = swallow $ substS <$> _namedBinding'body motive2
+      clauseSuc1orig <- flip namedBinding'body clauseSuc2 $ namedBinding'body $ \ t2 ->
+        newRelatedMetaTerm
+          parent
+          (VarWkn . VarWkn <$> deg)
+          (gammaOrig :.. VarFromCtx <$> segPred1orig :.. VarFromCtx <$> segHyp1orig)
+          (gamma     :.. VarFromCtx <$> segPred      :.. VarFromCtx <$> segHyp)
+          (fmap $ fmap subst)
+          (sequenceA . fmap sequenceA . (fmap $ fmap partialInv))
+          t2 tyCS1 tyCS2
+          "Inferring pair clause."
+      return $ ElimNat clauseZero1orig clauseSuc1orig
 
 newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
