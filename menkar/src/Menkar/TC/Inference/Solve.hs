@@ -393,6 +393,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             "Inferring box clause."
         return $ ElimBox boxClause1orig
       (_, _) -> unreachable
+    ElimEmpty -> return ElimEmpty
     _ -> _newRelatedDependentEliminator
 
 newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
