@@ -318,6 +318,9 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                       "Inferring argument."
         return $ App arg1orig
       (_, _) -> unreachable
+    Fst -> return Fst
+    Snd -> return Snd
+    Unbox -> return Unbox
     _ -> _newRelatedEliminator
 
 ------------------------------------
