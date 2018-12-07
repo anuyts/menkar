@@ -118,7 +118,7 @@ checkUniHSConstructor parent gamma (UniHS d lvl) ty = do
         -- biggerLvl = suc (lvl + anyLvl)
         Expr3 . TermCons . ConsSuc $
         Expr3 $ TermElim (idModedModality dataMode) lvl NatType $
-        ElimDep (NamedBinding Nothing $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
+        ElimDep (NamedBinding Nothing $ Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
         ElimNat
           anyLvl
           (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr3 . TermCons . ConsSuc $ Var3 VarLast)
@@ -311,13 +311,14 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
 
 -------
 
-checkDependentEliminator :: MonadTC mode modty rel tc =>
+checkDependentEliminator :: forall mode modty rel tc v .
+    MonadTC mode modty rel tc =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
     ModedModality mode modty v ->
     Term mode modty v ->
     UniHSConstructor mode modty v ->
-    NamedBinding Term mode modty v ->
+    NamedBinding Type mode modty v ->
     DependentEliminator mode modty v ->
     Type mode modty v ->
     tc ()
@@ -342,7 +343,7 @@ checkDependentEliminator parent gamma dmu eliminee
     (JudTerm
       (gamma :.. (VarFromCtx <$> segFst) :.. (VarFromCtx <$> segSnd))
       (_namedBinding'body $ _namedBinding'body $ clause)
-      (Type $ join $ subst <$> (_namedBinding'body motive))
+      (swallow $ subst <$> (_namedBinding'body motive))
     )
     (Just parent)
     "Type-checking pair clause."
@@ -363,7 +364,7 @@ checkDependentEliminator parent gamma dmu eliminee
     (JudTerm
       (gamma :.. (VarFromCtx <$> segContent))
       (_namedBinding'body $ clause)
-      (Type $ join $ subst <$> (_namedBinding'body motive))
+      (swallow $ subst <$> (_namedBinding'body motive))
     )
     (Just parent)
     "Type-checking box clause."
@@ -375,11 +376,11 @@ checkDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimEmpty) ty = unreachable
 checkDependentEliminator parent gamma dmu eliminee
     NatType motive (ElimNat cz cs) ty = do
-  let substZ :: VarExt _ -> Term _ _ _
+  let substZ :: VarExt v -> Term mode modty v
       substZ VarLast = Expr3 $ TermCons $ ConsZero
       substZ (VarWkn v) = Var3 v
   addNewConstraint
-    (JudTerm gamma cz (Type $ join $ substZ <$> _namedBinding'body motive))
+    (JudTerm gamma cz (swallow $ substZ <$> _namedBinding'body motive))
     (Just parent)
     "Type-checking zero clause."
   let segPred :: Segment Type _ _ _
@@ -393,15 +394,15 @@ checkDependentEliminator parent gamma dmu eliminee
                   (DeclNameSegment $ _namedBinding'name $ _namedBinding'body cs)
                   (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
                   Explicit
-                  (Type $ _namedBinding'body motive)
-  let substS :: VarExt _ -> Term _ _ (VarExt (VarExt _))
+                  (_namedBinding'body motive)
+  let substS :: VarExt v -> Term mode modty (VarExt (VarExt v))
       substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
       substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> segPred) :.. (VarFromCtx <$> segHyp))
       (_namedBinding'body $ _namedBinding'body $ cs)
-      (Type $ join $ substS <$> _namedBinding'body motive)
+      (swallow $ substS <$> _namedBinding'body motive)
     )
     (Just parent)
     "Type-checking successor clause."
@@ -499,7 +500,7 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
         Explicit
         (Type $ Expr3 $ TermCons $ ConsUniHS tyEliminee)
       )
-      (Type $ _namedBinding'body motive)
+      (_namedBinding'body motive)
     )
     (Just parent)
     "Type-checking motive."
@@ -511,7 +512,7 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
       (Pair3
-        (Type $ join $ subst <$> _namedBinding'body motive)
+        (swallow $ subst <$> _namedBinding'body motive)
         ty
       )
     )

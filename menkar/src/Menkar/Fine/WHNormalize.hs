@@ -32,7 +32,7 @@ whnormalizeElim :: MonadTC mode modty rel tc =>
   UniHSConstructor mode modty v {-^ eliminee's type -} ->
   Eliminator mode modty v ->
   String ->
-  WriterT All tc (Term mode modty v)
+  WriterT [Int] tc (Term mode modty v)
 whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
   whnEliminee <- whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
   case whnEliminee of
@@ -95,12 +95,15 @@ whnormalizeNV :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   TermNV mode modty v ->
   String ->
-  WriterT All tc (Term mode modty v)
+  WriterT [Int] tc (Term mode modty v)
 whnormalizeNV parent gamma t@(TermCons _) reason = return . Expr3 $ t   -- Mind glue and weld!
 whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
 whnormalizeNV parent gamma t@(TermMeta meta (Compose depcies)) reason = do
-  solution <- fromMaybe (Expr3 t) <$> awaitMeta parent reason meta depcies
-  whnormalize parent gamma solution reason
+  --solution <- fromMaybe (Expr3 t) <$> awaitMeta parent reason meta depcies
+  maybeSolution <- awaitMeta parent reason meta depcies
+  case maybeSolution of
+    Nothing -> Expr3 t <$ tell [meta]
+    Just solution -> whnormalize parent gamma solution reason
 {-maybeSolution <- getMeta meta depcies
   case maybeSolution of
     Nothing -> Expr3 t <$ tell [meta]
@@ -124,6 +127,6 @@ whnormalize :: MonadTC mode modty rel tc =>
   Ctx Type mode modty v Void ->
   Term mode modty v ->
   String ->
-  WriterT All tc (Term mode modty v)
+  WriterT [Int] tc (Term mode modty v)
 whnormalize parent gamma (Var3 v) reason = return $ Var3 v
 whnormalize parent gamma (Expr3 t) reason = whnormalizeNV parent gamma t reason

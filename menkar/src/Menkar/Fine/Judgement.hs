@@ -51,11 +51,11 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
 
   -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
   -- | Premises: @'JudCtx'@
-  JudType ::
+  JudType :: (DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
     Type mode modty v ->
     Judgement mode modty rel
-  JudTypeRel ::
+  JudTypeRel :: (DeBruijnLevel v) =>
     rel v ->
     Ctx (Pair3 Type) mode modty v Void ->
     Pair3 Type mode modty v ->
@@ -63,12 +63,12 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     
   -- | @'JudTerm' gamma t tyT@ means @gamma |- t : tyT@.
   -- | Premises: @'JudCtx', 'JudType'@
-  JudTerm ::
+  JudTerm :: (DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
     Term mode modty v ->
     Type mode modty v ->
     Judgement mode modty rel
-  JudTermRel ::
+  JudTermRel :: (DeBruijnLevel v) =>
     rel v ->
     Ctx (Pair3 Type) mode modty v Void ->
     Pair3 Term mode modty v ->
@@ -77,7 +77,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     
   -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.
   -- | Premises: @'JudCtx', 'JudType', 'JudTerm'@
-  JudEta ::
+  JudEta :: (DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
     Term mode modty v ->
     Type mode modty v ->
@@ -85,7 +85,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     
   -- | @'JudSmartElim' gamma t tyT es r@ means @gamma |- (t : tyT) es ~> r@.
   -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
-  JudSmartElim ::
+  JudSmartElim :: (DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
     ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
     Term mode modty v {-^ eliminee -} ->
@@ -97,7 +97,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     
   -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
   -- | Premises: @'JudTerm' gamma t tyT@
-  JudGoal ::
+  JudGoal :: (DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
     String ->
     Term mode modty v ->
@@ -106,7 +106,7 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     
   -- | @'JudResolve' gamma t r tyT@ means @gamma |- t ~> r : tyT@ where @t@ is a resolution call.
   -- | Premises?
-  JudResolve ::
+  JudResolve :: (DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
     {- resolution call goes here -> -}
     Term mode modty v ->

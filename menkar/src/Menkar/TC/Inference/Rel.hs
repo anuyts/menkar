@@ -292,7 +292,6 @@ checkDependentEliminatorRel parent deg gamma dmu
         let substZ :: VarExt v -> Term mode modty v
             substZ VarLast = Expr3 $ TermCons $ ConsZero
             substZ (VarWkn v) = Var3 v
-            substZ _ = unreachable
         addNewConstraint
           (JudTermRel
             deg
@@ -324,7 +323,6 @@ checkDependentEliminatorRel parent deg gamma dmu
         let substS :: VarExt v -> Term mode modty (VarExt (VarExt v))
             substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
             substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
-            substS _ = unreachable
         addNewConstraint
           (JudTermRel
             (VarWkn . VarWkn <$> deg)
@@ -402,7 +400,7 @@ checkEliminatorRel parent deg gamma dmu
   (ElimDep _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkEliminatorRel
 
-checkTermNVRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
+checkTermNVRelNormal :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -445,7 +443,7 @@ checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (TermProblem t, _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
-checkTermRelNormal :: (MonadTC mode modty rel tc, Eq v) =>
+checkTermRelNormal :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -462,7 +460,7 @@ checkTermRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
         (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
         (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
 
-checkTermRelNoEta :: (MonadTC mode modty rel tc, Eq v) =>
+checkTermRelNoEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -480,9 +478,9 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) =
   (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
   ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
   -- Neither is whnormal: block
-  (_, _) -> blockOnMetas (metasT1 ++ metasT2) parent
+  (_, _) -> tcBlock
 
-checkTermRelKnownTypes :: (MonadTC mode modty rel tc, Eq v) =>
+checkTermRelWHNTypes :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -493,17 +491,17 @@ checkTermRelKnownTypes :: (MonadTC mode modty rel tc, Eq v) =>
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = case (ty1, ty2) of
+checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = case (ty1, ty2) of
   (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
     let seg1 = binding'segment piBinding1
     let dom2 = _segment'content $ binding'segment piBinding2
     let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
     let app1 = Expr3 $ TermElim
           (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-          (VarWkn <$> t1) (Type $ VarWkn <$> ty1) (App $ Var3 VarLast)
+          (VarWkn <$> t1) (VarWkn <$> Pi piBinding1) (App $ Var3 VarLast)
     let app2 = Expr3 $ TermElim
           (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-          (VarWkn <$> t2) (Type $ VarWkn <$> ty2) (App $ Var3 VarLast)
+          (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var3 VarLast)
     addNewConstraint
       (JudTermRel
         (VarWkn <$> deg)
@@ -522,10 +520,10 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
     -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
     let d' = unVarFromCtx <$> ctx'mode gamma
-    let fst1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Type ty1) Fst
-    let fst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Type ty2) Fst
-    let snd1 = Expr3 $ TermElim (idModedModality d') t1 (Type t1) Snd
-    let snd2 = Expr3 $ TermElim (idModedModality d') t2 (Type t2) Snd
+    let fst1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Sigma sigmaBinding1) Fst
+    let fst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
+    let snd1 = Expr3 $ TermElim (idModedModality d') t1 (Sigma sigmaBinding1) Snd
+    let snd2 = Expr3 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
     if not (sigmaHasEta dmu d')
       then checkTermRelNoEta  parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
       else do
@@ -562,8 +560,8 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
     -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ boxSeg1
     let d' = unVarFromCtx <$> ctx'mode gamma
-    let unbox1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Type ty1) Unbox
-    let unbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Type ty2) Unbox
+    let unbox1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (BoxType boxSeg1) Unbox
+    let unbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
     if not (sigmaHasEta dmu d')
       then checkTermRelNoEta  parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
       else do
@@ -583,7 +581,7 @@ checkTermRelKnownTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type t
     tcFail parent "Types are presumed to be related."
   (_, _) -> checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
 
-checkTermRel :: (MonadTC mode modty rel tc, Eq v) =>
+checkTermRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -597,35 +595,10 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
   if isTopDeg deg
     then return ()
     else do
-      {-
-      -- Weak-head-normalize everything
-      maybeWHNT1 <- runWriterT $ whnormalize (fstCtx gamma) t1
-      maybeWHNT2 <- runWriterT $ whnormalize (sndCtx gamma) t2
-      maybeWHNTy1 <- runWriterT $ whnormalize (fstCtx gamma) ty1
-      maybeWHNTy2 <- runWriterT $ whnormalize (sndCtx gamma) ty2
-      case (maybeWHNTy1, maybeWHNTy2) of
-        -- Both types are whnormal
-        (Just whnty1, Just whnty2) -> do
-          let t1' = fromMaybe t1 maybeWHNT1
-          let t2' = fromMaybe t2 maybeWHNT2
-          whnparent <- Constraint
-            (JudTermRel
-              deg
-              gamma
-              (Pair3 t1' t2')
-              (Pair3 (Type whnTy1) (Type whnTy2))
-            )
-            (Just parent)
-            "Weak-head-normalize types, try to weak-head-normalize terms."
-            <$> newConstraintID
-        -- Either type is blocked
-        (_, _) -> tcBlock
-      -}
-
-      (whnT1, metasT1) <- runWriterT $ whnormalize (fstCtx gamma) t1
-      (whnT2, metasT2) <- runWriterT $ whnormalize (sndCtx gamma) t2
-      (whnTy1, metasTy1) <- runWriterT $ whnormalize (fstCtx gamma) t1
-      (whnTy2, metasTy2) <- runWriterT $ whnormalize (sndCtx gamma) t2
+      (whnT1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
+      (whnT2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
+      (whnTy1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first type."
+      (whnTy2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second type."
       whnparent <- Constraint
             (JudTermRel
               deg
@@ -638,9 +611,9 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
             <$> newConstraintID
       case (metasTy1, metasTy2) of
         -- Both types are whnormal
-        ([], []) -> checkTermRelKnownTypes whnparent deg gamma whnT1 whnT2 metasT1 metasT2 (Type whnTy1) (Type whnTy2)
+        ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasTy1 metasTy2 (Type whnTy1) (Type whnTy2)
         -- Either type is not normal
-        (_, _) -> blockOnMetas (metasTy1 ++ metasTy2) whnparent
+        (_, _) -> tcBlock
 
       {-
       case (whnT1, whnT2) of
@@ -650,7 +623,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
         -- Otherwise, we want to eta-expand, so one of the types needs to be weak-head-normal
         (_, _) -> case (metasTy1, metasTy2) of
           -- Both types are whnormal
-          ([], []) -> checkTermRelKnownTypes whnparent deg gamma whnT1 whnT2 metasT1 metasT2 (Type whnTy1) (Type whnTy2)
+          ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasT1 metasT2 (Type whnTy1) (Type whnTy2)
           -- Either type is not normal
           (_, _) -> blockOnMetas (metasT1 ++ metasT2 ++ metasTy1 ++ metasTy2) whnparent
           {-
@@ -675,7 +648,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
         (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
       -}
 
-checkTypeRel :: (MonadTC mode modty rel tc, Eq v) =>
+checkTypeRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->

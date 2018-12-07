@@ -313,16 +313,17 @@ checkSmartElim :: (MonadTC mode modty rel tc) =>
   Type mode modty v ->
   tc ()
 checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators result tyResult = do
-  maybeWHTyEliminee <- runMaybeT $ whnormalize parent gamma tyEliminee "Weak-head-normalizing type of eliminee."
-  case maybeWHTyEliminee of
+  (whnTyEliminee, metasTyEliminee) <-
+    runWriterT $ whnormalize parent gamma tyEliminee "Weak-head-normalizing type of eliminee."
+  case metasTyEliminee of
     -- the type weak-head-normalizes
-    Just whTyEliminee -> do
+    [] -> do
       parent' <- Constraint
-                   (JudSmartElim gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult)
+                   (JudSmartElim gamma dmuElim eliminee (Type whnTyEliminee) eliminators result tyResult)
                    (Just parent)
                    "Weak-head-normalized type."
                    <$> newConstraintID
-      checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whTyEliminee) eliminators result tyResult
+      checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whnTyEliminee) eliminators result tyResult
     -- the type does not weak-head-normalize
-    Nothing -> tcBlock
+    _:_ -> tcBlock
 

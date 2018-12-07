@@ -118,7 +118,7 @@ checkEta :: (MonadTC mode modty rel tc) =>
   Type mode modty v ->
   tc ()
 checkEta parent gamma t (Type ty) = do
-  (whTy, metas) <- runWriterT $ whnormalize gamma ty
+  (whTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
   case metas of
     [] -> do
       parent' <- Constraint
@@ -137,7 +137,7 @@ checkEta parent gamma t (Type ty) = do
           TermSmartElim _ _ _ -> unreachable
           TermGoal _ _ -> unreachable
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
-    _ -> blockOnMetas metas parent
+    _ -> tcBlock
 
 -------
 -- ================================================================================================
@@ -187,8 +187,10 @@ checkConstraint parent = case constraint'judgement parent of
     checkSmartElim parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
 
   -- keep this until the end of time
-  JudGoal gamma goalname t tyT -> blockOnMetas [] parent
+  JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
 
   JudResolve gamma t ty -> unreachable
+
+  JudTypeRel deg gamma (Pair3 ty1 ty2) -> checkTypeRel parent deg gamma ty1 ty2
   
   _ -> _checkConstraint
