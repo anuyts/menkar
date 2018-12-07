@@ -278,7 +278,8 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
 
 ------------------------------------
 
-newRelatedDependentEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedDependentEliminator :: forall mode modty rel tc v vOrig .
+  (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -357,6 +358,40 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             t2 ty1 ty2
             "Inferring pair clause."
         return $ ElimSigma pairClause1orig
+      (_, _) -> unreachable
+    ElimBox boxClause2 -> case (tyEliminee1orig, tyEliminee2) of
+      (BoxType boxSeg1orig, BoxType boxSeg2) -> do
+        let boxSeg1 = subst <$> boxSeg1orig
+        let nameUnbox = _namedBinding'name boxClause2
+        let segUnbox1orig = Declaration
+                              (DeclNameSegment nameUnbox)
+                              (compModedModality dmu1orig (_segment'modty boxSeg1orig))
+                              Explicit
+                              (_segment'content boxSeg1orig)
+        let segUnbox =     Declaration
+                              (DeclNameSegment nameUnbox)
+                              (compModedModality dmu1     (_segment'modty boxSeg2))
+                              Explicit
+                              (Pair3
+                                (_segment'content boxSeg1)
+                                (_segment'content boxSeg2)
+                              )
+        let substBox :: Segment Type mode modty v -> VarExt v -> Term mode modty (VarExt v)
+            substBox boxSeg VarLast = Expr3 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var3 VarLast
+            substBox boxSeg (VarWkn v) = Var3 $ VarWkn v
+        let ty1 = swallow $ substBox boxSeg1 <$> _namedBinding'body motive1
+        let ty2 = swallow $ substBox boxSeg1 <$> _namedBinding'body motive2
+        boxClause1orig <- flip namedBinding'body boxClause2 $ \ t2 ->
+          newRelatedMetaTerm
+            parent
+            (VarWkn <$> deg)
+            (gammaOrig :.. VarFromCtx <$> segUnbox1orig)
+            (gamma     :.. VarFromCtx <$> segUnbox)
+            (fmap subst)
+            (sequenceA . fmap partialInv)
+            t2 ty1 ty2
+            "Inferring box clause."
+        return $ ElimBox boxClause1orig
       (_, _) -> unreachable
     _ -> _newRelatedDependentEliminator
 
