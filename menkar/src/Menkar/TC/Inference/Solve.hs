@@ -307,6 +307,57 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
   let tyEliminee1 = subst <$> tyEliminee1orig
   let motive1 = subst <$> motive1orig
   case clauses2 of
+    ElimSigma pairClause2 -> case (tyEliminee1orig, tyEliminee2) of
+      (Sigma sigmaBinding1orig, Sigma sigmaBinding2) -> do
+        let sigmaBinding1 = subst <$> sigmaBinding1orig
+        let nameFst = _namedBinding'name pairClause2
+        let nameSnd = _namedBinding'name $ _namedBinding'body pairClause2
+        let segFst1orig = Declaration
+                            (DeclNameSegment nameFst)
+                            (compModedModality dmu1orig (_segment'modty $ binding'segment $ sigmaBinding1orig))
+                            Explicit
+                            (_segment'content $ binding'segment $ sigmaBinding1orig)
+        let segFst      = Declaration
+                            (DeclNameSegment nameFst)
+                            (compModedModality dmu1     (_segment'modty $ binding'segment $ sigmaBinding1))
+                            Explicit
+                            (Pair3
+                              (_segment'content $ binding'segment $ sigmaBinding1)
+                              (_segment'content $ binding'segment $ sigmaBinding2)
+                            )
+        let segSnd1orig = Declaration
+                            (DeclNameSegment nameSnd)
+                            (VarWkn <$> dmu1orig)
+                            Explicit
+                            (Type $ binding'body sigmaBinding1orig)
+        let segSnd      = Declaration
+                            (DeclNameSegment nameSnd)
+                            (VarWkn <$> dmu1)
+                            Explicit
+                            (Pair3
+                              (Type $ binding'body sigmaBinding1)
+                              (Type $ binding'body sigmaBinding2)
+                            )
+        let substPair' :: Binding Type Term _ _ _ -> VarExt _ -> Term _ _ (VarExt (VarExt _))
+            substPair' sigmaBinding VarLast =
+                Expr3 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var3 $ VarWkn VarLast) (Var3 VarLast)
+            substPair' sigmaBinding (VarWkn v) = Var3 $ VarWkn $ VarWkn $ v
+            substPair :: Binding Type Term _ _ _ -> Type _ _ (VarExt _) -> Type _ _ (VarExt (VarExt _))
+            substPair sigmaBinding = swallow . fmap (substPair' sigmaBinding)
+        let ty1 = substPair sigmaBinding1 $ _namedBinding'body motive1
+        let ty2 = substPair sigmaBinding2 $ _namedBinding'body motive2
+        pairClause1orig <- flip namedBinding'body pairClause2 $ namedBinding'body $ \ t2 ->
+          newRelatedMetaTerm
+            parent
+            (VarWkn . VarWkn <$> deg)
+            (gammaOrig :.. VarFromCtx <$> segFst1orig :.. VarFromCtx <$> segSnd1orig)
+            (gamma     :.. VarFromCtx <$> segFst      :.. VarFromCtx <$> segSnd)
+            (fmap $ fmap subst)
+            (sequenceA . fmap sequenceA . (fmap $ fmap partialInv))
+            t2 ty1 ty2
+            "Inferring pair clause."
+        return $ ElimSigma pairClause1orig
+      (_, _) -> unreachable
     _ -> _newRelatedDependentEliminator
 
 newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
