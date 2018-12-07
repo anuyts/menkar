@@ -270,6 +270,7 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
                                   Explicit -- CMODE
                                   (Type tyUnbox1orig)
             return $ ConsBox boxSeg1orig tmUnbox1orig
+        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
     ConsZero -> return ConsZero
     ConsSuc t2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
@@ -612,17 +613,17 @@ tryToSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx (Pair3 Type) mode modty v Void ->
   Int ->
   [Term mode modty v] ->
-  Type mode modty v ->
   Term mode modty v ->
   Type mode modty v ->
+  Type mode modty v ->
   tc ()
-tryToSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
+tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
   let getVar3 :: Term mode modty v -> Maybe v
       getVar3 (Var3 v) = Just v
       getVar3 _ = Nothing
   case sequenceA $ getVar3 <$> depcies of
     -- Some dependency is not a variable
-    Nothing -> blockOnMetas [meta] parent
+    Nothing -> tcBlock
     -- All dependencies are variables
     Just depcyVars -> do
       let (_, repeatedVars, _) = complex depcyVars
@@ -632,19 +633,17 @@ tryToSolveMeta parent deg gamma meta depcies tyMeta tSolution tySolution = do
             -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
             let depcySubst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
             -- Check if the meta is pure
-            isPure <- checkMetaPure parent gammaOrig (fstCtx gamma) depcySubst tyMeta
+            isPure <- checkMetaPure parent gammaOrig (fstCtx gamma) depcySubst ty1
             case isPure of
               -- If so, weak-head-solve it
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                Just $ solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv tSolution tyMeta tySolution
+                Just $ solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
-              Just metas -> do
-                blockOnMetas (meta : metas) parent
-                return Nothing
+              Just metas -> tcBlock
           )
         -- Some variables occur twice
-        _ -> blockOnMetas [meta] parent
+        _ -> tcBlock
 
 tryToSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -656,9 +655,9 @@ tryToSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-tryToSolveTerm parent deg gamma tBlocked tSolution metasBlocked tyBlocked tySolution = case tBlocked of
+tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 = case tBlocked of
   -- tBlocked should be a meta
   (Expr3 (TermMeta meta depcies)) ->
-    tryToSolveMeta parent deg gamma meta (getCompose depcies) tyBlocked tSolution tySolution
+    tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2
   -- if tBlocked is not a meta, then we should just block on its submetas
-  _ -> blockOnMetas metasBlocked parent
+  _ -> tcBlock
