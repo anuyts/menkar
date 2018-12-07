@@ -57,7 +57,7 @@ newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
 newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason = do
   let maybeDegOrig = sequenceA $ partialInv <$> deg
   case maybeDegOrig of
-    Nothing -> tcBlock
+    Nothing -> tcBlock "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
     Just degOrig -> do
       t1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
       let t1 = subst <$> t1orig
@@ -80,7 +80,7 @@ newRelatedMetaType :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
 newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
   let maybeDegOrig = sequenceA $ partialInv <$> deg
   case maybeDegOrig of
-    Nothing -> tcBlock
+    Nothing -> tcBlock "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
     Just degOrig -> do
       ty1orig <- Type <$> newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
       let ty1 = subst <$> ty1orig
@@ -525,7 +525,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
   -- Otherwise, we do a weak-head solve.
   case t2 of
     Var3 v -> case partialInv v of
-      Nothing -> tcBlock
+      Nothing -> tcBlock "Cannot instantiate metavariable with a variable that it does not depend on."
       Just u -> return $ Var3 u
     Expr3 t2 -> case t2 of
       TermCons c2 -> do
@@ -623,7 +623,7 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
       getVar3 _ = Nothing
   case sequenceA $ getVar3 <$> depcies of
     -- Some dependency is not a variable
-    Nothing -> tcBlock
+    Nothing -> tcBlock "Cannot solve meta-variable: it has non-variable dependencies."
     -- All dependencies are variables
     Just depcyVars -> do
       let (_, repeatedVars, _) = complex depcyVars
@@ -640,10 +640,10 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
                 Just $ solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
-              Just metas -> tcBlock
+              Just metas -> tcBlock "Cannot solve meta-variable: modalities in current context are strictly weaker than in original context."
           )
         -- Some variables occur twice
-        _ -> tcBlock
+        _ -> tcBlock "Cannot solve meta-variable: it has undergone contraction of dependencies."
 
 tryToSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -660,4 +660,4 @@ tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 = case tB
   (Expr3 (TermMeta meta depcies)) ->
     tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2
   -- if tBlocked is not a meta, then we should just block on its submetas
-  _ -> tcBlock
+  _ -> tcBlock "Cannot solve relation: one side is blocked on a meta-variable."

@@ -83,7 +83,7 @@ class (
       The branch that gets nothing is run immediately. If it blocks by calling @'tcBlock'@,
       then the other branch is called when the meta is resolved. -}
   awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
-  tcBlock :: tc a
+  tcBlock :: String -> tc a
   tcReport :: Constraint mode modty rel -> String -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc a
   leqMod :: modty v -> modty v -> tc Bool
@@ -179,7 +179,7 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mo
   --getMeta meta depcies = lift $ getMeta meta depcies
   --blockOnMetas metas c = lift $ blockOnMetas metas c
   awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
-  tcBlock = lift tcBlock
+  tcBlock msg = lift $ tcBlock msg
   tcFail c msg = lift $ tcFail c msg
   tcReport c msg = lift $ tcReport c msg
   leqMod mu nu = lift $ leqMod mu nu

@@ -556,7 +556,7 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
         (JudEta gamma (Expr3 t) ty)
         (Just parent)
         "Eta-expand meta if possible."
-      tcBlock --blockOnMetas [meta] parent
+      tcBlock "I want to know what I'm supposed to type-check."
     Just t' -> do
       i <- newConstraintID
       let childConstraint = Constraint

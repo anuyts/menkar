@@ -334,5 +334,5 @@ checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators resul
                    <$> newConstraintID
       checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whnTyEliminee) eliminators result tyResult
     -- the type does not weak-head-normalize
-    _:_ -> tcBlock
+    _:_ -> tcBlock "Need to know type before I can eta-expand."
 

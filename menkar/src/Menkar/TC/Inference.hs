@@ -140,7 +140,7 @@ checkEta parent gamma t (Type ty) = do
           TermSmartElim _ _ _ -> unreachable
           TermGoal _ _ -> unreachable
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
-    _ -> tcBlock
+    _ -> tcBlock "Need to weak-head-normalize type before I can eta-expand."
 
 -------
 -- ================================================================================================
