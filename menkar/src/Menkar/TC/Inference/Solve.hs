@@ -285,7 +285,7 @@ newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Ctx (Pair3 Type) mode modty v Void ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
-  ModedModality mode modty vOrig ->
+  ModedModality mode modty vOrig {-^ Modality of elimination. -} ->
   Term mode modty vOrig ->
   Term mode modty v ->
   UniHSConstructor mode modty vOrig ->
@@ -295,13 +295,29 @@ newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Type mode modty v ->
   tc (Eliminator mode modty vOrig)
 newRelatedEliminator parent deg gammaOrig gamma subst partialInv
-  dmu
+  dmu1orig
   eliminee1orig eliminee2
   tyEliminee1orig tyEliminee2
   eliminator2
-  ty1 ty2 =
+  ty1 ty2 = do
+  let dmu1 = subst <$> dmu1orig
+  let tyEliminee1 = subst <$> tyEliminee1orig
   case eliminator2 of
-    App arg2 -> _newRelatedArgument
+    App arg2 -> case (tyEliminee1, tyEliminee2) of
+      (Pi piBinding1, Pi piBinding2) -> do
+        arg1orig <- newRelatedMetaTerm
+                      parent
+                      (divDeg dmu1 deg)
+                      (VarFromCtx <$> dmu1orig :\\ gammaOrig)
+                      (VarFromCtx <$> dmu1 :\\ gamma)
+                      subst
+                      partialInv
+                      arg2
+                      (_segment'content $ binding'segment piBinding1)
+                      (_segment'content $ binding'segment piBinding2)
+                      "Inferring argument."
+        return $ App arg1orig
+      (_, _) -> unreachable
     _ -> _newRelatedEliminator
 
 ------------------------------------
@@ -332,7 +348,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
         return $ Expr3 $ TermCons $ c1orig
       TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
         -- CMODE MODTY
-        let dmu1orig = wildModedModality
+        let dmu1orig = wildModedModality {-Modality by which you eliminate-}
         let dmu1 = subst <$> dmu1orig
         tyEliminee1orig <- solveMetaAgainstUniHSConstructor
                              parent
