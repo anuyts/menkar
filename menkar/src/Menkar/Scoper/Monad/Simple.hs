@@ -12,6 +12,8 @@ import Menkar.Fine.Multimode
 import Menkar.PrettyPrint.Fine
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
+import Menkar.Fine.Multimode.Trivial
+
 import Control.Monad.State.Lazy
 import GHC.Generics (U1 (..))
 import Text.PrettyPrint.Tree
@@ -35,25 +37,6 @@ evalSimpleScoper (SimpleScoper prog) = evalStateT prog 0
 
 fresh :: MonadState Int m => m Int
 fresh = state $ \ i -> (i, i+1)
-
-instance Fine2Pretty U1 U1 Mode where
-  fine2pretty gamma (Mode U1) = ribbon "data"
-instance Fine2Pretty U1 U1 Modty where
-  fine2pretty gamma (Modty U1) = ribbon "hoc"
-
-instance Multimode U1 U1 where
-  idMod U1 = U1
-  compMod U1 U1 U1 = U1
-  wildMode = U1
-  flatMod = U1
-  irrMod = U1
-  dataMode = U1
-  approxLeftAdjointProj (ModedModality U1 U1) U1 = U1
-  sigmaHasEta (ModedModality U1 U1) U1 = True
-
-instance Degrees U1 U1 U1 where
-  eqDeg = U1
-  topDeg = U1
 
 instance MonadScoper U1 U1 U1 SimpleScoper where
   annot4annot gamma qstring args = case (qstring, args) of
