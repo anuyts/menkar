@@ -12,6 +12,7 @@ import Control.Exception.AssertFalse
 import Menkar.TC.Inference.Term
 import Menkar.TC.Inference.SmartElim
 import Menkar.TC.Inference.Rel
+import Menkar.TC.Inference.Entry
 import Menkar.Fine.WHNormalize
 
 import Data.Void
@@ -198,5 +199,11 @@ checkConstraint parent = case constraint'judgement parent of
   JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
 
   JudResolve gamma t ty -> todo
+
+  JudSegment gamma seg -> checkSegment parent gamma seg
+
+  JudVal gamma val -> checkVal parent gamma val
+
+  JudModule gamma modul -> checkModule parent gamma modul
   
   --_ -> _checkConstraint

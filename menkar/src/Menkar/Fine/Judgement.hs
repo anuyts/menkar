@@ -115,3 +115,17 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     
   -- JudAccuracy: "This term should be known up to that accuracy"
 
+  JudSegment :: (DeBruijnLevel v) =>
+    Ctx Type mode modty v Void ->
+    Segment Type mode modty v ->
+    Judgement mode modty rel
+
+  JudVal :: (DeBruijnLevel v) =>
+    Ctx Type mode modty v Void ->
+    Val mode modty v ->
+    Judgement mode modty rel
+
+  JudModule :: (DeBruijnLevel v) =>
+    Ctx Type mode modty v Void ->
+    Module mode modty v ->
+    Judgement mode modty rel
