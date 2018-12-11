@@ -13,6 +13,7 @@ import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
 
 import Text.PrettyPrint.Tree
+import Control.Exception.AssertFalse
 
 import GHC.Generics (U1 (..))
 import Data.Void
@@ -33,14 +34,16 @@ data MetaInfo = forall v . (DeBruijnLevel v) => MetaInfo {
   _metaInfo'context :: Ctx Type U1 U1 v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
-  _metaInfo'solution :: Maybe (Term U1 U1 v)
+  _metaInfo'maybeSolution :: Maybe (Term U1 U1 v)
   }
 
 data TCState = TCState {
   _tcState'metaCounter :: Int,
-  _tcState'metaMap :: IntMap MetaInfo
+  _tcState'metaMap :: IntMap MetaInfo,
+  _tcState'constraintCounter :: Int
   }
 
+makeLenses ''MetaInfo
 makeLenses ''TCState
 
 data TCError =
@@ -79,3 +82,35 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
   newMetaModty maybeParent gamma reason = return U1
 
   scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
+
+instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
+  
+  newConstraintID = tcState'constraintCounter <<%= (+1)
+
+  addConstraint constraint = do
+    -- I'm not saving the constraint, as addConstraint is not even called on all created constraints.
+    -- If you want to save it, you should ask the whereabouts in newConstraintID,
+    -- since you should only entrust someone an ID if you're sure they're registering the constraint.
+    _addConstraint
+
+  addConstraintReluctantly constraint = todo
+
+  solveMeta meta getSolution = do
+    maybeMetaInfo <- use $ tcState'metaMap . at meta
+    case maybeMetaInfo of
+      Nothing -> unreachable
+      Just (MetaInfo maybeParent gamma reason maybeEarlierSolution) -> do
+        case maybeEarlierSolution of
+          Just _ -> unreachable
+          Nothing -> do
+            maybeSolution <- getSolution gamma
+            case maybeSolution of
+              Nothing -> _whatDoesThisMean
+              Just solution -> tcState'metaMap . at meta .= Just (MetaInfo maybeParent gamma reason (Just solution))
+
+  --awaitMeta
+  --tcBlock
+  --tcReport
+  --tcFail
+
+  leqMod U1 U1 = return True

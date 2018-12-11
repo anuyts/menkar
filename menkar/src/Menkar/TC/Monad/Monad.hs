@@ -65,12 +65,12 @@ class (
   --term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
   --mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
   --modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
-  genVarName :: tc Raw.Name
+  --genVarName :: tc Raw.Name
   newConstraintID :: tc Int
   addConstraint :: Constraint mode modty rel -> tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()
-  solveMeta :: Int -> (
+  solveMeta :: Int -> (forall tc' v .
     (MonadTC mode modty rel tc', Eq v, DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
     tc' (Maybe (Term mode modty v))
@@ -173,7 +173,7 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) =>
   --term4newImplicit gamma = lift $ term4newImplicit gamma
   --mode4newImplicit gamma = lift $ mode4newImplicit gamma
   --modty4newImplicit gamma = lift $ modty4newImplicit gamma
-  genVarName = lift $ genVarName
+  --genVarName = lift $ genVarName
   newConstraintID = lift $ newConstraintID
   addConstraint c = lift $ addConstraint c
   addConstraintReluctantly c = lift $ addConstraintReluctantly c
