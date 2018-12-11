@@ -41,9 +41,10 @@ class (
       @'newMetaTermNoCheck'@ should only be used when you are sure the meta will be type-checked (in a term judgement)
       later on.
   -}
-  newMetaTermNoCheck ::
-    Maybe (Constraint mode modty rel) -> rel v {-^ Degree up to which it should be solved -}
-                                      -> Ctx Type mode modty v Void -> String -> sc (Term mode modty v)
+  newMetaTermNoCheck :: (DeBruijnLevel v) =>
+    Maybe (Constraint mode modty rel)
+    -> rel v {-^ Degree up to which it should be solved -}
+    -> Ctx Type mode modty v Void -> String -> sc (Term mode modty v)
   newMetaMode ::
     Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> sc (mode v)
   newMetaModty ::
@@ -167,7 +168,8 @@ newMetaModedModality parent gamma reason = do
   mu <- newMetaModty parent gamma reason
   return $ ModedModality d mu
 
-instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) => MonadTC mode modty rel (mT tc) where
+instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) =>
+  MonadTC mode modty rel (mT tc) where
   --term4newImplicit gamma = lift $ term4newImplicit gamma
   --mode4newImplicit gamma = lift $ mode4newImplicit gamma
   --modty4newImplicit gamma = lift $ modty4newImplicit gamma
