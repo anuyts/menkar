@@ -73,7 +73,7 @@ class (
   solveMeta :: Int -> (forall tc' v .
     (MonadTC mode modty rel tc', Eq v, DeBruijnLevel v) =>
     Ctx Type mode modty v Void ->
-    tc' (Maybe (Term mode modty v))
+    tc' (Term mode modty v)
     ) -> tc ()
   --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
   ---}

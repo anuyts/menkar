@@ -638,7 +638,7 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
               -- If so, weak-head-solve it
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                Just <$> solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
+                solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               Just metas -> tcBlock "Cannot solve meta-variable: modalities in current context are strictly weaker than in original context."
           )
