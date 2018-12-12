@@ -4,6 +4,7 @@ module Menkar.PrettyPrint.Fine.Syntax where
 
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
+import Menkar.Fine.Context
 import Menkar.PrettyPrint.Aux.Context
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
@@ -15,6 +16,9 @@ import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
+
+charYielding :: Char
+charYielding = '\x2198'
 
 class Fine2Pretty mode modty f where
   fine2pretty :: DeBruijnLevel v => ScCtx mode modty v Void -> f mode modty v -> PrettyTree String
@@ -209,15 +213,17 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (TermCons consTerm) = fine2pretty gamma consTerm
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) =
     elimination2pretty gamma mod eliminee tyEliminee eliminator
-  fine2pretty gamma (TermMeta i (Compose depcies)) = ribbon ("?" ++ show i) \\\ ((" " ++|) . fine2pretty gamma <$> depcies)
+  fine2pretty gamma (TermMeta i (Compose depcies)) =
+    ribbon ("?" ++ show i)
+    \\\ ((|++ "}") . (" .{" ++|) . fine2pretty gamma <$> depcies)
   fine2pretty gamma TermWildcard = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) = Raw.unparse' qname
   fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) =
     "(" ++| fine2pretty gamma eliminee |++ ")"
       |+| treeGroup ((" " ++|) . fine2pretty gamma <$> eliminators)
-      |++ " `yielding " |+| fine2pretty gamma result
+      |++ " \x2198 " |+| fine2pretty gamma result
   fine2pretty gamma (TermGoal str result) =
-    "?" ++ str ++ " `yielding " ++| fine2pretty gamma result
+    "?" ++ str ++ " \x2198 " ++| fine2pretty gamma result
   fine2pretty gamma (TermProblem t) = "(! " ++| fine2pretty gamma t |++ "!)"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -399,3 +405,18 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Entry mode modty Void) where
   show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry ++ "\n]"
+
+--------------------------------------------------
+
+ctx2pretty :: forall v mode modty ty .
+  (DeBruijnLevel v,
+   Functor mode, Functor modty, Functor (ty mode modty),
+   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
+  Ctx ty mode modty v Void -> PrettyTree String
+ctx2pretty (CtxEmpty d) = "{[" ++| fine2pretty ScCtxEmpty (Mode d :: Mode mode modty Void) |++ "]}"
+ctx2pretty (gamma :.. seg) = haveDB gamma $ ctx2pretty gamma ||| fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> seg)
+ctx2pretty (seg :^^ gamma) = todo
+ctx2pretty (gamma :<...> modul) = haveDB gamma $ ctx2pretty gamma
+ctx2pretty (dmu :\\ gamma) = haveDB gamma $ fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> dmu) |++ "\\ ("
+                             \\\ [ctx2pretty gamma]
+                             /// ribbon ")"
