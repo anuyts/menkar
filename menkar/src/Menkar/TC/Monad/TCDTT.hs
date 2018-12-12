@@ -7,6 +7,7 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.Multimode.Trivial
 import Menkar.TC.Monad
+import Menkar.TC.Inference
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.PrettyPrint.Fine
@@ -118,11 +119,11 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   
   newConstraintID = tcState'constraintCounter <<%= (+1)
 
-  addConstraint constraint = do
+  addConstraint constraint = resetDC $ do
     -- I'm not saving the constraint, as addConstraint is not even called on all created constraints.
     -- If you want to save it, you should ask the whereabouts in newConstraintID,
     -- since you should only entrust someone an ID if you're sure they're registering the constraint.
-    _addConstraint
+    checkConstraint constraint
 
   addConstraintReluctantly constraint = todo
 
