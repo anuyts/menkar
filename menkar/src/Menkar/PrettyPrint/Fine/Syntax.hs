@@ -10,6 +10,7 @@ import qualified Menkar.PrettyPrint.Raw as Raw
 import Text.PrettyPrint.Tree
 import Data.Void
 import Data.Maybe
+import Data.Proxy
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
@@ -223,10 +224,14 @@ instance (Functor mode, Functor modty,
          Show (TermNV mode modty Void) where
   show t = "[TermNV|\n" ++ fine2string ScCtxEmpty t ++ "\n]"
 
+toSubscript :: String -> String
+toSubscript = map (\ char -> toEnum $ fromEnum char - 48 + 8320)
+
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
          Fine2Pretty mode modty (Expr3 termNV) where
-  fine2pretty gamma (Var3 v) = fromMaybe (ribbon "_") $ Raw.unparse' <$> scGetName gamma v
+  fine2pretty gamma (Var3 v) = (fromMaybe (ribbon "_") $ Raw.unparse' <$> scGetName gamma v)
+    |++ (toSubscript $ show $ getDeBruijnLevel Proxy v)
   fine2pretty gamma (Expr3 t) = fine2pretty gamma t
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
@@ -257,13 +262,15 @@ instance (Functor mode, Functor modty,
          Show (Plicity mode modty Void) where
   show plic = "[Plicity|\n" ++ fine2string ScCtxEmpty plic ++ "\n]"
 
-declName2pretty :: DeclName declSort -> PrettyTree String
-declName2pretty (DeclNameVal name) = Raw.unparse' name
-declName2pretty (DeclNameModule str) = ribbon str
-declName2pretty (DeclNameSegment maybeName) =  fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName
-declName2pretty (DeclNameValSpec) = ribbon "<VALSPECNAME>"
+declName2pretty :: forall v mode modty declSort . DeBruijnLevel v =>
+  ScCtx mode modty v Void -> DeclName declSort -> PrettyTree String
+declName2pretty gamma (DeclNameVal name) = Raw.unparse' name
+declName2pretty gamma (DeclNameModule str) = ribbon str
+declName2pretty gamma (DeclNameSegment maybeName) = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName)
+                                              |++ (toSubscript $ show $ size (Proxy :: Proxy v))
+declName2pretty gamma (DeclNameValSpec) = ribbon "<VALSPECNAME>"
 instance Show (DeclName declSort) where
-  show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty declName) ++ "\n]"
+  show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty ScCtxEmpty declName) ++ "\n]"
 
 {-| Prettyprints a telescope. -}
 telescope2pretties :: (DeBruijnLevel v,
@@ -312,7 +319,7 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty (Segment ty) where
   fine2pretty gamma seg = ribbon " {" \\\
     prettyAnnots ///
-    "| " ++| (declName2pretty $ DeclNameSegment $ _segment'name seg) |++ " : " |+| prettyType |++ "}"
+    "| " ++| (declName2pretty gamma $ DeclNameSegment $ _segment'name seg) |++ " : " |+| prettyType |++ "}"
     where
       prettyAnnots = declAnnots2pretties gamma seg
       prettyType = fine2pretty gamma (_decl'content seg)
@@ -339,7 +346,7 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma val =
     ribbon "val "
     \\\ declAnnots2pretties gamma val
-    /// (declName2pretty $ _decl'name val)
+    /// (declName2pretty gamma $ _decl'name val)
     \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content val)
     /// prettyValRHS
     where
@@ -370,7 +377,7 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma modul =
     ribbon "module "
     \\\ declAnnots2pretties gamma modul
-    /// (declName2pretty $ _decl'name modul)
+    /// (declName2pretty gamma $ _decl'name modul)
     \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content modul)
     /// prettyModuleRHS
     where
