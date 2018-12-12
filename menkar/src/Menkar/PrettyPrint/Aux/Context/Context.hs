@@ -91,3 +91,12 @@ mapTelescopedSc f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescopedSc (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
 mapTelescopedSc f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescopedSc f (() ::\\ gamma) stuff
+{-| @'mapTelescopedScDB' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
+mapTelescopedScDB :: (DeBruijnLevel v, Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
+  (forall w . DeBruijnLevel w => (v -> w) -> ScCtx mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
+  (ScCtx mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+mapTelescopedScDB f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
+mapTelescopedScDB f gamma (seg :|- stuff) = (seg :|-) <$>
+  mapTelescopedScDB (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
+mapTelescopedScDB f gamma (dmu :** stuff) = (dmu :**) <$>
+  mapTelescopedScDB f (() ::\\ gamma) stuff

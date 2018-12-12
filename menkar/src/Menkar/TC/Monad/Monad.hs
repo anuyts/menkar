@@ -33,7 +33,7 @@ class (
     (rel :: * -> *)
     (sc :: * -> *)
     | sc -> mode, sc -> modty, sc -> rel where
-  annot4annot :: Ctx Type mode modty v Void -> 
+  annot4annot :: (DeBruijnLevel v) => Ctx Type mode modty v Void -> 
     Raw.Qualified String -> [SmartEliminator mode modty v] -> sc (Annotation mode modty v)
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.

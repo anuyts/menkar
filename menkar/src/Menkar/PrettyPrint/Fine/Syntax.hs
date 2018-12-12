@@ -16,8 +16,8 @@ import Data.Functor.Const
 import Control.Lens
 
 class Fine2Pretty mode modty f where
-  fine2pretty :: ScCtx mode modty v Void -> f mode modty v -> PrettyTree String
-  fine2string :: ScCtx mode modty v Void -> f mode modty v -> String
+  fine2pretty :: DeBruijnLevel v => ScCtx mode modty v Void -> f mode modty v -> PrettyTree String
+  fine2string :: DeBruijnLevel v => ScCtx mode modty v Void -> f mode modty v -> String
   fine2string gamma x = render (RenderState 100 "  " "    ") $ fine2pretty gamma x
 
 ---------------------------
@@ -36,7 +36,8 @@ instance (Functor mode, Functor modty,
 
 deriving instance (Show (mode v), Show (modty v)) => Show (ModedContramodality mode modty v)
 
-binding2pretty :: (Functor mode, Functor modty,
+binding2pretty :: (DeBruijnLevel v,
+                  Functor mode, Functor modty,
                   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
                   String -> ScCtx mode modty v Void -> Binding Type rhs mode modty v -> PrettyTree String
 binding2pretty opstring gamma binding =
@@ -113,7 +114,8 @@ instance (Functor mode, Functor modty,
          Show (SmartEliminator mode modty Void) where
   show smartElim = "[SmartEliminator|\n" ++ fine2string ScCtxEmpty smartElim ++ "\n]"
 
-elimination2pretty :: (Functor mode, Functor modty,
+elimination2pretty :: (DeBruijnLevel v,
+                       Functor mode, Functor modty,
                        Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          ScCtx mode modty v Void ->
          ModedModality mode modty v ->
@@ -264,7 +266,8 @@ instance Show (DeclName declSort) where
   show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty declName) ++ "\n]"
 
 {-| Prettyprints a telescope. -}
-telescope2pretties :: (Functor mode, Functor modty, Functor (ty mode modty),
+telescope2pretties :: (DeBruijnLevel v,
+         Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          ScCtx mode modty v Void -> Telescope ty mode modty v -> [PrettyTree String]
 telescope2pretties gamma (Telescoped Unit3) = []
@@ -284,7 +287,8 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
          Show (Telescope ty mode modty Void) where
   show theta = "[Telescope|\n" ++ fine2string ScCtxEmpty theta ++ "\n]"
 
-declAnnots2pretties :: (Functor mode, Functor modty,
+declAnnots2pretties :: (DeBruijnLevel v,
+         Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          ScCtx mode modty v Void -> Declaration declSort content mode modty v -> [PrettyTree String]
 declAnnots2pretties gamma decl = [
@@ -340,7 +344,7 @@ instance (Functor mode, Functor modty,
     /// prettyValRHS
     where
       prettyValRHS = 
-        getConst (mapTelescopedSc (
+        getConst (mapTelescopedScDB (
             \ wkn gammadelta t -> Const $ fine2pretty gammadelta t
           ) gamma $ _decl'content val)
 instance (Functor mode, Functor modty,
@@ -371,7 +375,7 @@ instance (Functor mode, Functor modty,
     /// prettyModuleRHS
     where
       prettyModuleRHS = 
-        getConst (mapTelescopedSc (
+        getConst (mapTelescopedScDB (
             \ wkn gammadelta modulRHS -> Const $ fine2pretty gammadelta modulRHS
           ) gamma $ _decl'content modul)
 instance (Functor mode, Functor modty,
