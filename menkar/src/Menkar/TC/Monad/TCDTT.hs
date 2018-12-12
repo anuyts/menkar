@@ -44,10 +44,16 @@ data MetaInfo m = forall v . (DeBruijnLevel v) => MetaInfo {
   _metaInfo'maybeSolution :: Either [BlockInfo m v] (Term U1 U1 v)
   }
 
+data TCReport = TCReport {
+  _tcReport'parent :: Constraint U1 U1 U1,
+  _tcReport'reason :: String
+  }
+
 data TCState m = TCState {
   _tcState'metaCounter :: Int,
   _tcState'metaMap :: IntMap (MetaInfo m),
-  _tcState'constraintCounter :: Int
+  _tcState'constraintCounter :: Int,
+  _tcState'reports :: [TCReport]
   }
 
 -- | delimited continuation monad class
@@ -67,7 +73,7 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 data TCError =
   TCErrorConstraintBound |
   TCErrorBlocked String |
-  TCErrorTCFail |
+  TCErrorTCFail TCReport |
   TCErrorScopeFail String
 
 newtype TCT m a = TCT {unTCT :: ContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT TCError m))) a}
@@ -83,7 +89,9 @@ runTC = runTCT
 
 ----------------------------------------------------------------------------
 makeLenses ''MetaInfo
+makeLenses ''BlockInfo
 makeLenses ''TCState
+makeLenses ''TCReport
 ----------------------------------------------------------------------------
 
 instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
@@ -148,8 +156,10 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
                   (Just $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e
   
-  --tcBlock
-  --tcReport
-  --tcFail
+  tcBlock reason = throwError $ TCErrorBlocked reason
+
+  tcReport parent reason = tcState'reports %= (TCReport parent reason :)
+  
+  tcFail parent reason = throwError $ TCErrorTCFail $ TCReport parent reason
 
   leqMod U1 U1 = return True
