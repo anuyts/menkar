@@ -21,47 +21,70 @@ import Data.Functor.Identity
 import Data.Functor.Compose
 import Data.Proxy
 import Data.IntMap.Strict
+import Data.Foldable
 import Control.Monad.Cont
+import Control.Monad.Trans.Cont
 import Control.Monad.State.Lazy
 import Control.Monad.List
 import Control.Monad.Except
 import Control.Lens
 
-data TCResult = TCSuccess | TCWaiting
+type TCResult = () --TCSuccess | TCWaiting
 
-data MetaInfo = forall v . (DeBruijnLevel v) => MetaInfo {
+data BlockInfo m v = BlockInfo {
+  _blockInfo'reason :: String,
+  _blockInfo'cont :: (Maybe (Term U1 U1 v) -> TCT m TCResult)
+  }
+
+data MetaInfo m = forall v . (DeBruijnLevel v) => MetaInfo {
   _metaInfo'maybeParent :: Maybe (Constraint U1 U1 U1),
   _metaInfo'context :: Ctx Type U1 U1 v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
-  _metaInfo'maybeSolution :: Maybe (Term U1 U1 v)
+  _metaInfo'maybeSolution :: Either [BlockInfo m v] (Term U1 U1 v)
   }
 
-data TCState = TCState {
+data TCState m = TCState {
   _tcState'metaCounter :: Int,
-  _tcState'metaMap :: IntMap MetaInfo,
+  _tcState'metaMap :: IntMap (MetaInfo m),
   _tcState'constraintCounter :: Int
   }
 
-makeLenses ''MetaInfo
-makeLenses ''TCState
+-- | delimited continuation monad class
+class Monad m => MonadDC r m | m -> r where
+  shiftDC :: ((a -> m r) -> m r) -> m a
+  resetDC :: m r -> m r
+
+instance Monad m => MonadDC r (ContT r m) where
+  shiftDC f = ContT $ \ k -> f (lift . k) `runContT` return
+  resetDC = lift . evalContT
+
+instance (MonadError e m) => MonadError e (ContT r m) where
+  throwError e = lift $ throwError e
+  -- CAREFUL: this also catches errors thrown in the future, i.e. by the continuation!!!
+  catchError cma handle = ContT $ \k -> catchError (runContT cma k) (\e -> runContT (handle e) k)
 
 data TCError =
   TCErrorConstraintBound |
-  TCErrorBlocked |
+  TCErrorBlocked String |
   TCErrorTCFail |
   TCErrorScopeFail String
 
-newtype TCT m a = TCT {unTCT :: ContT TCResult (StateT TCState ({-ListT-} (ExceptT TCError m))) a}
-  deriving (Functor, Applicative, Monad, MonadState TCState)
+newtype TCT m a = TCT {unTCT :: ContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT TCError m))) a}
+  deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError TCError, MonadDC TCResult)
 
-runTCT :: (Monad m) => TCT m () -> TCState -> ExceptT TCError m (TCResult, TCState)
-runTCT program initState = flip runStateT initState $ runContT (unTCT program) (\() -> return TCSuccess)
+runTCT :: (Monad m) => TCT m () -> TCState m -> ExceptT TCError m (TCResult, TCState m)
+runTCT program initState = flip runStateT initState $ runContT (unTCT program) return
 
 type TC = TCT Identity
 
-runTC :: TC () -> TCState -> Except TCError (TCResult, TCState)
+runTC :: TC () -> TCState Identity -> Except TCError (TCResult, TCState Identity)
 runTC = runTCT
+
+----------------------------------------------------------------------------
+makeLenses ''MetaInfo
+makeLenses ''TCState
+----------------------------------------------------------------------------
 
 instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
   
@@ -73,7 +96,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
 
   newMetaTermNoCheck maybeParent deg gamma reason = do
     meta <- tcState'metaCounter <<%= (+1)
-    tcState'metaMap %= (insert meta $ MetaInfo maybeParent gamma reason Nothing)
+    tcState'metaMap %= (insert meta $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = Compose $ Var3 <$> listAll Proxy
     return $ Expr3 $ TermMeta meta depcies
 
@@ -101,14 +124,30 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
       Nothing -> unreachable
       Just (MetaInfo maybeParent gamma reason maybeEarlierSolution) -> do
         case maybeEarlierSolution of
-          Just _ -> unreachable
-          Nothing -> do
-            maybeSolution <- getSolution gamma
-            case maybeSolution of
-              Nothing -> _whatDoesThisMean
-              Just solution -> tcState'metaMap . at meta .= Just (MetaInfo maybeParent gamma reason (Just solution))
+          Right _ -> unreachable
+          Left blocks -> do
+            solution <- getSolution gamma
+            sequenceA_ $ blocks <&> \ (BlockInfo reason k) -> resetDC $ k $ Just $ solution
+            tcState'metaMap . at meta .= Just (MetaInfo maybeParent gamma reason (Right solution))
 
-  --awaitMeta
+  awaitMeta parent reason meta depcies = do
+    maybeMetaInfo <- use $ tcState'metaMap . at meta
+    case maybeMetaInfo of
+      Nothing -> unreachable
+      Just (MetaInfo maybeParent gamma reason maybeSolution) -> do
+        case maybeSolution of
+          Right solution -> do
+            return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
+          Left blocks -> shiftDC $ \ k -> do
+            -- Try to continue with an unsolved meta
+            k Nothing `catchError` \case
+              TCErrorBlocked blockReason -> do
+                let block = BlockInfo reason $
+                            k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy))
+                tcState'metaMap . at meta .=
+                  (Just $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
+              e -> throwError e
+  
   --tcBlock
   --tcReport
   --tcFail
