@@ -4,7 +4,7 @@
 module Menkar.Fine.Syntax.Syntax where
 
 import Menkar.Fine.Syntax.Substitution hiding (Expr (..))
-import Menkar.Basic.Context.Variable
+import Menkar.Basic.Context
 import GHC.Generics
 import qualified Menkar.Raw.Syntax as Raw
 import Data.Functor.Compose
@@ -425,6 +425,13 @@ mapTelescopedSimple :: (Functor h, Functor mode, Functor modty, Functor (ty mode
 mapTelescopedSimple f (Telescoped rhs) = Telescoped <$> f id rhs
 mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (. VarWkn)) stuff
 mapTelescopedSimple f (mu :** stuff) = (mu :**) <$> mapTelescopedSimple f stuff
+{-| @'mapTelescopedSimpleDB' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
+mapTelescopedSimpleDB :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty), DeBruijnLevel v) =>
+  (forall w . DeBruijnLevel w => (v -> w) -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
+  (Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+mapTelescopedSimpleDB f (Telescoped rhs) = Telescoped <$> f id rhs
+mapTelescopedSimpleDB f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimpleDB (f . (. VarWkn)) stuff
+mapTelescopedSimpleDB f (mu :** stuff) = (mu :**) <$> mapTelescopedSimpleDB f stuff
 
 data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ValRHS {_val'term :: Term mode modty v, _val'type :: Type mode modty v}

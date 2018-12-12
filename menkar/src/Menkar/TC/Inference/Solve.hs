@@ -42,7 +42,7 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
     
 -}
 
-newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -67,7 +67,7 @@ newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason
         reason
       return t1orig
 
-newRelatedMetaType :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedMetaType :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -92,7 +92,7 @@ newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
 
 --------------------------
 
-newRelatedSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedSegment :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -123,7 +123,7 @@ newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
     (fromMaybe Explicit $ sequenceA $ partialInv <$> _decl'plicity segment2)
     ty1orig
 
-newRelatedBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedBinding :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -157,7 +157,7 @@ newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 t
 
 ------------------------------------
 
-solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -192,7 +192,7 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
       return $ BoxType $ boxSeg1orig
     NatType -> return NatType
 
-solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -280,7 +280,7 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
 ------------------------------------
 
 newRelatedDependentEliminator :: forall mode modty rel tc v vOrig .
-  (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+  (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -437,7 +437,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
           "Inferring pair clause."
       return $ ElimNat clauseZero1orig clauseSuc1orig
 
-newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -509,7 +509,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
 
 {-| Precondition: @partialInv . subst = Just@.
 -}
-solveMetaAgainstWHNF :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+solveMetaAgainstWHNF :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -579,7 +579,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
     This method returns @'Nothing'@ if the meta is pure, @'Just' (meta:metas)@ if it is presently unclear but may
     become clear if one of the listed metas is resolved, and @'Just' []@ if it is certainly false.
 -}
-checkMetaPure :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
+checkMetaPure :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   Ctx Type mode modty vOrig Void ->
   Ctx Type mode modty v Void ->
@@ -638,7 +638,7 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
               -- If so, weak-head-solve it
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                Just $ solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
+                Just <$> solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               Just metas -> tcBlock "Cannot solve meta-variable: modalities in current context are strictly weaker than in original context."
           )

@@ -2,7 +2,7 @@
 module Menkar.Fine.Context.Context where
 
 import Menkar.Fine.Syntax
-import Menkar.Basic.Context.Variable
+import Menkar.Basic.Context
 import Menkar.Fine.Multimode
 import Control.Exception.AssertFalse
 import qualified Menkar.Raw.Syntax as Raw
@@ -15,7 +15,7 @@ import Data.Functor.Identity
 import Control.Lens
 import Data.Proxy
 
-{-| @'mapTelescopedSc' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
+{-| @'mapTelescoped' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescoped :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
   (forall w . (v -> w) -> Ctx ty mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
   (Ctx ty mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
@@ -24,6 +24,15 @@ mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescoped (f . (. VarWkn)) (gamma :.. (VarFromCtx <$> seg)) stuff
 mapTelescoped f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescoped f ((VarFromCtx <$> dmu) :\\ gamma) stuff
+{-| @'mapTelescopedDB' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
+mapTelescopedDB :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty), DeBruijnLevel v) =>
+  (forall w . DeBruijnLevel w => (v -> w) -> Ctx ty mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
+  (Ctx ty mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+mapTelescopedDB f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
+mapTelescopedDB f gamma (seg :|- stuff) = (seg :|-) <$>
+  mapTelescopedDB (f . (. VarWkn)) (gamma :.. (VarFromCtx <$> seg)) stuff
+mapTelescopedDB f gamma (dmu :** stuff) = (dmu :**) <$>
+  mapTelescopedDB f ((VarFromCtx <$> dmu) :\\ gamma) stuff
 
 --------------------------
 
