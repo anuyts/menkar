@@ -207,6 +207,10 @@ deriving instance (Functor mode, Functor modty,
                    Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty)
     => Show (Type mode modty Void)
 
+var2pretty :: DeBruijnLevel v => ScCtx mode modty v Void -> v -> PrettyTree String
+var2pretty gamma v = (fromMaybe (ribbon "_") $ Raw.unparse' <$> scGetName gamma v)
+    |++ (toSubscript $ show $ getDeBruijnLevel Proxy v)
+
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty TermNV where
@@ -218,6 +222,9 @@ instance (Functor mode, Functor modty,
     \\\ ((|++ "}") . (" .{" ++|) . fine2pretty gamma <$> depcies)
   fine2pretty gamma TermWildcard = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) = Raw.unparse' qname
+    --case _leftDivided'content lookupresult of
+    --Telescoped (ValRHS (Var3 v) _) -> var2pretty gamma v
+    --_ -> Raw.unparse' qname
   fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) =
     "(" ++| fine2pretty gamma eliminee |++ ")"
       |+| treeGroup ((" " ++|) . fine2pretty gamma <$> eliminators)
@@ -236,8 +243,7 @@ toSubscript = map (\ char -> toEnum $ fromEnum char - 48 + 8320)
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
          Fine2Pretty mode modty (Expr3 termNV) where
-  fine2pretty gamma (Var3 v) = (fromMaybe (ribbon "_") $ Raw.unparse' <$> scGetName gamma v)
-    |++ (toSubscript $ show $ getDeBruijnLevel Proxy v)
+  fine2pretty gamma (Var3 v) = var2pretty gamma v
   fine2pretty gamma (Expr3 t) = fine2pretty gamma t
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
