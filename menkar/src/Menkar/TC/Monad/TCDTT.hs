@@ -71,21 +71,21 @@ instance (MonadError e m) => MonadError e (ContT r m) where
   -- CAREFUL: this also catches errors thrown in the future, i.e. by the continuation!!!
   catchError cma handle = ContT $ \k -> catchError (runContT cma k) (\e -> runContT (handle e) k)
 
-data TCError =
+data TCError m =
   TCErrorConstraintBound |
   TCErrorBlocked String |
-  TCErrorTCFail TCReport |
+  TCErrorTCFail TCReport (TCState m) |
   TCErrorScopeFail String
 
-newtype TCT m a = TCT {unTCT :: ContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT TCError m))) a}
-  deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError TCError, MonadDC TCResult)
+newtype TCT m a = TCT {unTCT :: ContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT (TCError m) m))) a}
+  deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
 
-runTCT :: (Monad m) => TCT m () -> TCState m -> ExceptT TCError m (TCResult, TCState m)
+runTCT :: (Monad m) => TCT m () -> TCState m -> ExceptT (TCError m) m (TCResult, TCState m)
 runTCT program initState = flip runStateT initState $ runContT (unTCT program) return
 
 type TC = TCT Identity
 
-runTC :: TC () -> TCState Identity -> Except TCError (TCResult, TCState Identity)
+runTC :: TC () -> TCState Identity -> Except (TCError Identity) (TCResult, TCState Identity)
 runTC = runTCT
 
 ----------------------------------------------------------------------------
@@ -161,6 +161,8 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   tcReport parent reason = tcState'reports %= (TCReport parent reason :)
   
-  tcFail parent reason = throwError $ TCErrorTCFail $ TCReport parent reason
+  tcFail parent reason = do
+    s <- get
+    throwError $ TCErrorTCFail (TCReport parent reason) s
 
   leqMod U1 U1 = return True
