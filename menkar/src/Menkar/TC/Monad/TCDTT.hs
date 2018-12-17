@@ -32,6 +32,11 @@ import Control.Lens
 
 type TCResult = () --TCSuccess | TCWaiting
 
+data SolutionInfo m v = SolutionInfo {
+  _solutionInfo'parent :: Constraint U1 U1 U1,
+  _solutionInfo'solution :: Term U1 U1 v
+  }
+
 data BlockInfo m v = BlockInfo {
   _blockInfo'reason :: String,
   _blockInfo'cont :: (Maybe (Term U1 U1 v) -> TCT m TCResult)
@@ -42,7 +47,7 @@ data MetaInfo m = forall v . (DeBruijnLevel v) => MetaInfo {
   _metaInfo'context :: Ctx Type U1 U1 v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
-  _metaInfo'maybeSolution :: Either [BlockInfo m v] (Term U1 U1 v)
+  _metaInfo'maybeSolution :: Either [BlockInfo m v] (SolutionInfo m v)
   }
 
 data TCReport = TCReport {
@@ -127,7 +132,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   addConstraintReluctantly constraint = todo
 
-  solveMeta meta getSolution = do
+  solveMeta parent meta getSolution = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
     case maybeMetaInfo of
       Nothing -> unreachable
@@ -137,7 +142,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
           Left blocks -> do
             solution <- getSolution gamma
             sequenceA_ $ blocks <&> \ (BlockInfo reason k) -> resetDC $ k $ Just $ solution
-            tcState'metaMap . at meta .= Just (MetaInfo maybeParent gamma reason (Right solution))
+            tcState'metaMap . at meta .= Just (MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 
   awaitMeta parent reason meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
@@ -145,7 +150,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
       Nothing -> unreachable
       Just (MetaInfo maybeParent gamma reason maybeSolution) -> do
         case maybeSolution of
-          Right solution -> do
+          Right (SolutionInfo parent solution) -> do
             return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
           Left blocks -> shiftDC $ \ k -> do
             -- Try to continue with an unsolved meta

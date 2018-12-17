@@ -629,7 +629,7 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
       let (_, repeatedVars, _) = complex depcyVars
       case repeatedVars of
         -- All variables are unique
-        [] -> solveMeta meta ( \ gammaOrig -> do
+        [] -> solveMeta parent meta ( \ gammaOrig -> do
             -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
             let depcySubst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
             -- Check if the meta is pure

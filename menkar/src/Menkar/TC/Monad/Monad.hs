@@ -70,10 +70,13 @@ class (
   addConstraint :: Constraint mode modty rel -> tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()
-  solveMeta :: Int -> (forall tc' v .
-    (MonadTC mode modty rel tc', Eq v, DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    tc' (Term mode modty v)
+  solveMeta ::
+    Constraint mode modty rel ->
+    Int ->
+    (forall tc' v .
+      (MonadTC mode modty rel tc', Eq v, DeBruijnLevel v) =>
+      Ctx Type mode modty v Void ->
+      tc' (Term mode modty v)
     ) -> tc ()
   --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
   ---}
@@ -177,7 +180,7 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) =>
   newConstraintID = lift $ newConstraintID
   addConstraint c = lift $ addConstraint c
   addConstraintReluctantly c = lift $ addConstraintReluctantly c
-  solveMeta meta solver = lift $ solveMeta meta solver
+  solveMeta parent meta solver = lift $ solveMeta parent meta solver
   --getMeta meta depcies = lift $ getMeta meta depcies
   --blockOnMetas metas c = lift $ blockOnMetas metas c
   awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
