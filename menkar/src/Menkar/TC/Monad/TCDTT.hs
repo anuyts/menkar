@@ -174,7 +174,12 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   leqMod U1 U1 = return True
 
-subflush :: StateT (TCState m) (ExceptT (TCError m) m) a -> StateT (TCState m) (ExceptT (TCError m) m) a
-subflush ma = _
+subflush :: (Monad m) => StateT (TCState m) (ExceptT (TCError m) m) a -> StateT (TCState m) (ExceptT (TCError m) m) a
+subflush ma = do
+  metaCount0 <- use tcState'metaCounter
+  a <- ma
+  metaCount1 <- use tcState'metaCounter
+  _
+  
 instance (Monad m) => MonadTCBase U1 U1 U1 (TCT m) where
-  flush ma = TCT $ MContT $ \kna -> unTCT ma `runMContT` (\ na -> kna $ subflush na)
+  flush (TCT ma) = TCT $ mapMContT subflush ma
