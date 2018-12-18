@@ -1,6 +1,10 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Control.Monad.MCont where
 
 import Control.Monad.Trans.Class
+import Control.Monad.State
+import Control.Monad.Except
 
 data MContT r m a = MContT {
   runMContT :: (m a -> m r) -> m r
@@ -41,6 +45,16 @@ instance Monad m => MonadDC r (MContT r m) where
   resetDC = lift . evalMContT
 instance Monad m => MonadMDC r (MContT r m) where
   shiftMDC f = MContT $ \ kma -> evalMContT $ f (mapMContT kma)
+
+instance MonadState s m => MonadState s (MContT r m) where
+  get = lift get
+  put = lift . put
+  state = lift . state
+
+instance (MonadError e m) => MonadError e (MContT r m) where
+  throwError e = lift $ throwError e
+  -- CAREFUL: this also catches errors thrown in the future, i.e. by the continuation!!!
+  catchError cma handle = MContT $ \kma -> catchError (runMContT cma kma) (\e -> runMContT (handle e) kma)
 
 {-
 instance Monad m => MonadDC r (ContT r m) where

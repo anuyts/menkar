@@ -15,6 +15,7 @@ import Menkar.PrettyPrint.Aux.Context
 
 import Text.PrettyPrint.Tree
 import Control.Exception.AssertFalse
+import Control.Monad.MCont
 
 import GHC.Generics (U1 (..))
 import Data.Void
@@ -24,7 +25,7 @@ import Data.Proxy
 import Data.IntMap.Strict
 import Data.Foldable
 import Control.Monad.Cont
-import Control.Monad.Trans.Cont
+--import Control.Monad.Trans.Cont
 import Control.Monad.State.Lazy
 import Control.Monad.List
 import Control.Monad.Except
@@ -62,14 +63,15 @@ data TCState m = TCState {
   _tcState'reports :: [TCReport]
   }
 
+{-
 -- | delimited continuation monad class
 class Monad m => MonadDC r m | m -> r where
   shiftDC :: ((a -> m r) -> m r) -> m a
   resetDC :: m r -> m r
-
 instance Monad m => MonadDC r (ContT r m) where
   shiftDC f = ContT $ \ k -> f (lift . k) `runContT` return
   resetDC = lift . evalContT
+-}
 
 instance (MonadError e m) => MonadError e (ContT r m) where
   throwError e = lift $ throwError e
@@ -82,11 +84,11 @@ data TCError m =
   TCErrorTCFail TCReport (TCState m) |
   TCErrorScopeFail String
 
-newtype TCT m a = TCT {unTCT :: ContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT (TCError m) m))) a}
+newtype TCT m a = TCT {unTCT :: MContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT (TCError m) m))) a}
   deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
 
 runTCT :: (Monad m) => TCT m () -> TCState m -> ExceptT (TCError m) m (TCResult, TCState m)
-runTCT program initState = flip runStateT initState $ runContT (unTCT program) return
+runTCT program initState = flip runStateT initState $ evalMContT $ unTCT program
 
 type TC = TCT Identity
 
@@ -171,3 +173,8 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
     throwError $ TCErrorTCFail (TCReport parent reason) s
 
   leqMod U1 U1 = return True
+
+subflush :: StateT (TCState m) (ExceptT (TCError m) m) a -> StateT (TCState m) (ExceptT (TCError m) m) a
+subflush ma = _
+instance (Monad m) => MonadTCBase U1 U1 U1 (TCT m) where
+  flush ma = TCT $ MContT $ \kna -> unTCT ma `runMContT` (\ na -> kna $ subflush na)

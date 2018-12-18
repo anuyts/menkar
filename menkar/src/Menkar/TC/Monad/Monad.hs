@@ -92,6 +92,11 @@ class (
   tcFail :: Constraint mode modty rel -> String -> tc a
   leqMod :: modty v -> modty v -> tc Bool
 
+class (
+    MonadTC mode modty rel tc
+  ) => MonadTCBase mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
+  flush :: tc a -> tc a
+
 await :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel -> String -> Term mode modty v -> tc (Maybe (Term mode modty v))
 await parent reason (Expr3 (TermMeta meta (Compose depcies))) = runMaybeT $ do
