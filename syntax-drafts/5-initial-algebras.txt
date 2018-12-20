@@ -132,3 +132,25 @@ val transport {~ | A : Uni l} {~ | a a' : A} {P : A -> Uni l} {p : P a} {e : a =
 elim cong {~ | A B : Uni l} {f : A -> B} {~ | a a' : A} {e : a == a'} : f a == f a' where {
 	case refl = refl
 	}
+
+//-----------------------------------------
+
+val transport {~ | A : Uni l} {~ | a a' : A} {P : A -> Uni l} {p : P a} {e : a == a'} : P a'
+	= match {
+		motive {~ | x y : A} {_ : x == y} : P x -> P y
+		case x > x > refl > p > p
+	} e p
+
+val cong {~ | A B : Uni l} {f : A -> B} {~ | a a' : A} {e : a == a'} : f a == f a'
+	= match {
+		motive {~ | x y : A} {_ : x == y} : f x == f y
+		case x > x > refl > refl
+	} e
+
+//----------------------------------------
+
+val transport {~ | A : Uni l} {~ | a a' : A} {P : A -> Uni l} {p : P a} {e : a == a'} : P a'
+	= J idmod (x > y > _ > P x -> P y) (x > p > p) e
+
+val cong {~ | A B : Uni l} {f : A -> B} {~ | a a' : A} {e : a == a'} : f a == f a'
+	= J idmod (x > y > _ > f x == f y) (x > refl) e
