@@ -327,11 +327,10 @@ checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators resul
   case metasTyEliminee of
     -- the type weak-head-normalizes
     [] -> do
-      parent' <- Constraint
+      parent' <- defConstraint
                    (JudSmartElim gamma dmuElim eliminee (Type whnTyEliminee) eliminators result tyResult)
                    (Just parent)
                    "Weak-head-normalized type."
-                   <$> newConstraintID
       checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whnTyEliminee) eliminators result tyResult
     -- the type does not weak-head-normalize
     _:_ -> tcBlock "Need to know type before I can eta-expand."

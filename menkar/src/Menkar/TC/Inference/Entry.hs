@@ -107,7 +107,7 @@ checkEntry parent gamma entry = do
   let (jud, reason) = case entry of
         EntryVal val -> (JudVal gamma val, "Checking val.")
         EntryModule modul -> (JudModule gamma modul, "Checking module.")
-  constraint <- Constraint jud (Just parent) reason <$> newConstraintID
+  constraint <- defConstraint jud (Just parent) reason
   selfcontained constraint $ addConstraint constraint
 {-
 checkEntry parent gamma (EntryVal val) =

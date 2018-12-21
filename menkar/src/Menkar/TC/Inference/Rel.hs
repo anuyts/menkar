@@ -604,7 +604,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
       (whnT2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
       (whnTy1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first type."
       (whnTy2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second type."
-      whnparent <- Constraint
+      whnparent <- defConstraint
             (JudTermRel
               deg
               gamma
@@ -613,7 +613,6 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
             )
             (Just parent)
             "Weak-head-normalize everything"
-            <$> newConstraintID
       case (metasTy1, metasTy2) of
         -- Both types are whnormal
         ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasTy1 metasTy2 (Type whnTy1) (Type whnTy2)

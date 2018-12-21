@@ -124,11 +124,10 @@ checkEta parent gamma t (Type ty) = do
   (whnTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
   case metas of
     [] -> do
-      parent' <- Constraint
+      parent' <- defConstraint
                    (JudEta gamma t (Type whnTy))
                    (Just parent)
                    "Weak-head-normalized type."
-                   <$> newConstraintID
       case whnTy of
         Var3 v -> return ()
         Expr3 whnTyNV -> case whnTyNV of

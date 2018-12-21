@@ -527,7 +527,7 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
 
 -------
     
-checkTermNV ::
+checkTermNV :: forall mode modty rel tc v .
     (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
@@ -558,12 +558,10 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
         "Eta-expand meta if possible."
       tcBlock "I want to know what I'm supposed to type-check."
     Just t' -> do
-      i <- newConstraintID
-      let childConstraint = Constraint
+      childConstraint <- defConstraint
             (JudTerm gamma t' ty)
             (Just parent)
             "Look up meta."
-            i
       checkTerm childConstraint gamma t' ty
 checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
   let ldivModAppliedVal = VarFromCtx <$> over leftDivided'content telescoped2modalQuantified lookupresult
@@ -609,11 +607,10 @@ checkTermNV parent gamma (TermGoal goalname result) ty = do
     (Just parent)
     "Goal should take value of the appropriate type."
   -----
-  goalConstraint <- Constraint
+  goalConstraint <- defConstraint
       (JudGoal gamma goalname result ty)
       (Just parent)
       "Goal should take some value."
-      <$> newConstraintID
   tcReport goalConstraint "This isn't my job; delegating to a human."
 checkTermNV parent gamma (TermProblem t) (Type ty) = tcFail parent $ "Erroneous term."
 checkTermNV parent gamma TermWildcard ty = unreachable

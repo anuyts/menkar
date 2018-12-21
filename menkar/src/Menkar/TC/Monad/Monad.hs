@@ -66,7 +66,12 @@ class (
   --mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
   --modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
   --genVarName :: tc Raw.Name
-  newConstraintID :: tc Int
+  --newConstraintID :: tc Int
+  defConstraint :: MonadTC mode modty rel tc =>
+    Judgement mode modty rel ->
+    Maybe (Constraint mode modty rel) ->
+    String ->
+    tc (Constraint mode modty rel)
   addConstraint :: Constraint mode modty rel -> tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()
@@ -106,9 +111,7 @@ addNewConstraint :: MonadTC mode modty rel tc =>
   Maybe (Constraint mode modty rel) ->
   String ->
   tc()
-addNewConstraint judgement parent reason = do
-  i <- newConstraintID
-  addConstraint $ Constraint judgement parent reason i
+addNewConstraint judgement parent reason = addConstraint =<< defConstraint judgement parent reason
 
 -- | Not to be used by the Scoper.
 newMetaTerm :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
