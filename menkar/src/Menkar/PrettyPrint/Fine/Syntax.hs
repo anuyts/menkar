@@ -411,18 +411,3 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Entry mode modty Void) where
   show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry ++ "\n]"
-
---------------------------------------------------
-
-ctx2pretty :: forall v mode modty ty .
-  (DeBruijnLevel v,
-   Functor mode, Functor modty, Functor (ty mode modty),
-   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
-  Ctx ty mode modty v Void -> PrettyTree String
-ctx2pretty (CtxEmpty d) = "{[" ++| fine2pretty ScCtxEmpty (Mode d :: Mode mode modty Void) |++ "]}"
-ctx2pretty (gamma :.. seg) = haveDB gamma $ ctx2pretty gamma ||| fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> seg)
-ctx2pretty (seg :^^ gamma) = todo
-ctx2pretty (gamma :<...> modul) = haveDB gamma $ ctx2pretty gamma
-ctx2pretty (dmu :\\ gamma) = haveDB gamma $ fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> dmu) |++ "\\ ("
-                             \\\ [ctx2pretty gamma]
-                             /// ribbon ")"
