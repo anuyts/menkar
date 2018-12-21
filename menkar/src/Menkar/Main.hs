@@ -64,9 +64,10 @@ mainArgs args = do
                 addNewConstraint
                   (JudEntry (CtxEmpty U1) fineFile)
                   Nothing
-                  "Checking the file."
+                  "Type-checking the file."
           case tcResult of
-            Right ((), s) -> interactiveMode s
+            Right ((), s) -> do
+              interactiveMode s
             Left e -> case e of
               TCErrorConstraintBound -> unreachable
               TCErrorBlocked reason -> unreachable
@@ -75,7 +76,7 @@ mainArgs args = do
                 -- TODO
                 interactiveMode s
               TCErrorScopeFail msg -> do
-                putStrLn "Parse error:"
+                putStrLn "Scoping error:"
                 putStrLn msg
     xs -> do
       putStrLn "This program should be given a file path as its sole argument."
