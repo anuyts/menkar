@@ -95,7 +95,8 @@ class (
 class (
     MonadTC mode modty rel tc
   ) => MonadTCBase mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
-  flush :: tc a -> tc a
+  -- | DO NOT USE @'awaitMeta'@ WITHIN!
+  selfcontained :: Constraint mode modty rel -> tc a -> tc a
 
 await :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel -> String -> Term mode modty v -> tc (Maybe (Term mode modty v))

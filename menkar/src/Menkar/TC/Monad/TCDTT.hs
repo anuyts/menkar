@@ -19,11 +19,13 @@ import Control.Monad.MCont
 
 import GHC.Generics (U1 (..))
 import Data.Void
+import Data.Maybe
 import Data.Functor.Identity
 import Data.Functor.Compose
 import Data.Proxy
 import Data.IntMap.Strict
 import Data.Foldable
+import Data.Monoid
 import Control.Monad.Cont
 --import Control.Monad.Trans.Cont
 import Control.Monad.State.Lazy
@@ -50,6 +52,15 @@ data MetaInfo m = forall v . (DeBruijnLevel v) => MetaInfo {
   _metaInfo'reason :: String,
   _metaInfo'maybeSolution :: Either [BlockInfo m v] (SolutionInfo m v)
   }
+isDormant :: MetaInfo m -> Bool
+isDormant (MetaInfo maybeParent gamma reason maybeSolution) = case maybeSolution of
+  Left [] -> True
+  _ -> False
+isBlockingStuff :: MetaInfo m -> Bool
+isBlockingStuff (MetaInfo maybeParent gamma reason maybeSolution) = case maybeSolution of
+  Left [] -> False
+  Left _ -> True
+  Right _ -> False
 
 data TCReport = TCReport {
   _tcReport'parent :: Constraint U1 U1 U1,
@@ -174,12 +185,34 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   leqMod U1 U1 = return True
 
-subflush :: (Monad m) => StateT (TCState m) (ExceptT (TCError m) m) a -> StateT (TCState m) (ExceptT (TCError m) m) a
-subflush ma = do
-  metaCount0 <- use tcState'metaCounter
+selfcontainedNoCont :: (Monad m) =>
+  Constraint U1 U1 U1 ->
+  StateT (TCState m) (ExceptT (TCError m) m) a ->
+  StateT (TCState m) (ExceptT (TCError m) m) a
+selfcontainedNoCont parent ma = do
+  -- Metas on which nothing is blocked (=: dormant meta), may be future metas already introduced by the scopechecker
+  -- Thus, we need to check that
+  state0 <- get
+  let metaCount0 = _tcState'metaCounter state0
   a <- ma
-  metaCount1 <- use tcState'metaCounter
-  _
+  state1 <- get
+  let metaCount1 = _tcState'metaCounter state1
+  let throwTheError = throwError $ TCErrorTCFail (
+        TCReport parent "The meaning of this judgement is not self-contained: it spills unsolved meta-variables."
+        ) state1
+  -- 1) Any dormant meta is either still dormant or solved,
+  let spillsAwakenedMetas = getAny $ fold $ fmap Any $
+        [0 .. metaCount0 - 1] <&> \ meta ->
+          let dormant0 = isDormant $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state0
+              blockingStuff1 = isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
+          in  dormant0 && blockingStuff1
+  when spillsAwakenedMetas $ throwTheError
+  -- 2) Any newly introduced meta is solved.
+  let spillsNewMetas = getAny $ fold $ fmap Any $
+        [metaCount0 .. metaCount1 - 1] <&> \ meta ->
+          isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
+  when spillsNewMetas $ throwTheError
+  return a
   
 instance (Monad m) => MonadTCBase U1 U1 U1 (TCT m) where
-  flush (TCT ma) = TCT $ mapMContT subflush ma
+  selfcontained parent (TCT ma) = TCT $ mapMContT (selfcontainedNoCont parent) ma
