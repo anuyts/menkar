@@ -31,6 +31,9 @@ quickParse parser code = case MP.parse parser "quick" code of
   Left e -> error $ show e
   Right a -> a
 
+parse :: MP.Parsec ParseError String a -> String -> String -> Either (MP.ParseError Char ParseError) a
+parse parser path code = MP.parse parser path code
+
 -- ParseError ----------------------------------------------
 
 data ParseError

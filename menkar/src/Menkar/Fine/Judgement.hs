@@ -129,3 +129,8 @@ data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
     Ctx Type mode modty v Void ->
     Module mode modty v ->
     Judgement mode modty rel
+
+  JudEntry :: (DeBruijnLevel v) =>
+    Ctx Type mode modty v Void ->
+    Entry mode modty v ->
+    Judgement mode modty rel

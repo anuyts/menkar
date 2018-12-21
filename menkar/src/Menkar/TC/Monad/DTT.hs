@@ -73,6 +73,8 @@ data TCState m = TCState {
   _tcState'constraintCounter :: Int,
   _tcState'reports :: [TCReport]
   }
+initTCState :: TCState m
+initTCState = TCState 0 empty 0 []
 
 {-
 -- | delimited continuation monad class

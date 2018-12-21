@@ -13,7 +13,7 @@ name:                menkar
 version:             0.1.0.0
 
 -- A short (one-line) description of the package.
--- synopsis:            
+synopsis:            The multimode presheaf proof-assistant.
 
 -- A longer description of the package.
 -- description:         
@@ -53,7 +53,7 @@ executable menkar
   -- Modules included in this executable, other than Main.
   -- other-modules:       
   
-  default-extensions:  DeriveTraversable MultiParamTypeClasses FlexibleContexts FlexibleInstances StandaloneDeriving TypeOperators DeriveGeneric DefaultSignatures DeriveAnyClass KindSignatures GADTs RankNTypes DataKinds PolyKinds TypeFamilies FunctionalDependencies TypeApplications PartialTypeSignatures PatternSynonyms LambdaCase
+  default-extensions:  DeriveTraversable MultiParamTypeClasses FlexibleContexts FlexibleInstances StandaloneDeriving TypeOperators DeriveGeneric DefaultSignatures DeriveAnyClass KindSignatures GADTs RankNTypes DataKinds PolyKinds TypeFamilies FunctionalDependencies TypeApplications PartialTypeSignatures PatternSynonyms LambdaCase ScopedTypeVariables TemplateHaskell TupleSections
 
   ghc-options: -fwarn-incomplete-patterns -Wno-partial-type-signatures
 

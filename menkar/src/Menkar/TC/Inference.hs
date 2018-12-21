@@ -205,5 +205,7 @@ checkConstraint parent = case constraint'judgement parent of
   JudVal gamma val -> checkVal parent gamma val
 
   JudModule gamma modul -> checkModule parent gamma modul
+
+  JudEntry gamma entry -> checkEntry parent gamma entry
   
   --_ -> _checkConstraint
