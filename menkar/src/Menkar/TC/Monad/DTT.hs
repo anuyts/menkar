@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, NoDeriveAnyClass, UndecidableInstances #-}
 
-module Menkar.TC.Monad.TCDTT where
+module Menkar.TC.Monad.DTT where
 
 import Menkar.Basic
 import Menkar.Fine.Syntax
