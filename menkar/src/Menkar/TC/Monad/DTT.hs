@@ -215,3 +215,6 @@ selfcontainedNoCont parent ma = do
           isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
   when spillsNewMetas $ throwTheError
   return a
+
+---------------------------
+

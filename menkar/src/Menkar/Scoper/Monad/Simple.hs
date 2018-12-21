@@ -56,6 +56,4 @@ instance MonadScoper U1 U1 U1 SimpleScoper where
 testscope :: String -> IO (Either _ (Either String (Entry U1 U1 Void)))
 testscope filename = do
   errorOrRawFile <- P.testparse filename
-  return $ case errorOrRawFile of
-    Left error -> Left $ error
-    Right rawFile -> Right $ evalSimpleScoper $ file (CtxEmpty U1) rawFile
+  return $ evalSimpleScoper . file (CtxEmpty U1) <$> errorOrRawFile
