@@ -1,0 +1,7 @@
+module Test.A where {
+
+module B where {
+
+}
+
+}

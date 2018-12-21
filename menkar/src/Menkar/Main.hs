@@ -14,6 +14,8 @@ import Control.Exception.AssertFalse
 import Data.Functor.Identity
 import GHC.Generics (U1 (..))
 import Control.Monad.Except
+import Data.Foldable
+import Control.Lens
 
 printConstraint :: Constraint U1 U1 U1 -> IO ()
 printConstraint c = do
@@ -32,7 +34,44 @@ printReport r = do
   putStrLn $ _tcReport'reason r
   putStrLn ""
   printConstraint $ _tcReport'parent r
-  
+
+{-
+printMetaInfo :: TCState m -> MetaInfo m -> IO ()
+printMetaInfo s info = do
+  putStrLn $ "Context:"
+  putStrLn $ "--------"
+  --todo: separate existential from record in MetaInfo
+  --putStrLn $ show $ _metaInfo'context info
+  putStrLn $ ""
+  case _metaInfo'maybeSolution of
+    Right solutionInfo -> do
+      putStrLn "Solution:"
+      putStrLn "---------"
+      --todo: print solution to meta
+      --putStrLn $ show $ _solutionInfo'solution 
+    Left blocks -> do
+      putStrLn "Unsolved"
+      putStrLn "--------"
+      putStrLn $ "Blocking " ++ (show $ length blocks) ++ " constraints."
+      --todo: print hampered constraints
+  case _metaInfo'maybeParent of
+    Nothing -> return ()
+    Just parent -> do
+      putStrLn $ ""
+      putStrLn $ "Trace of creation:"
+      putStrLn $ "------------------"
+      putStrLn $ _metaInfo'reason
+      putStrLn $ ""
+      printConstraint parent
+-}
+
+printOverview :: TCState m -> IO ()
+printOverview s = do
+  let nUnsolved = length $ filter (not . isSolved) $ toList $ _tcState'metaMap s
+  putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
+    ++ show nUnsolved ++ " unsolved (metas),"
+  putStrLn $ (show $ _tcState'constraintCounter s) ++ " constraints (constraint i),"
+  putStrLn $ (show $ length $ _tcState'reports s) ++ " reports (reports)."
 
 ------------------------------------
 
@@ -52,17 +91,19 @@ prompt prefix = do
 giveHelp :: IO ()
 giveHelp = putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
-runCommand :: String -> IO ()
-runCommand "help" = giveHelp
-runCommand command = putStrLn command
+runCommand :: TCState m -> String -> IO ()
+runCommand s "" = return ()
+runCommand s "help" = giveHelp
+runCommand s "overview" = printOverview s
+runCommand s command = putStrLn command
 
-consumeCommand :: IO Bool
-consumeCommand = do
+consumeCommand :: TCState m -> IO Bool
+consumeCommand s = do
   command <- prompt "> "
   if command == "quit"
     then return False
     else do
-      runCommand command
+      runCommand s command
       return True
 
 interactiveMode :: TCState m -> IO ()
@@ -70,8 +111,10 @@ interactiveMode s = do
   putStrLn "-------------------------"
   putStrLn "START OF INTERACTIVE MODE"
   putStrLn "-------------------------"
+  printOverview s
+  putStrLn ""
   putStrLn "Type 'quit' to quit, 'help' for help."
-  doUntilFail consumeCommand
+  doUntilFail (consumeCommand s)
   return ()
 
 mainArgs :: [String] -> IO ()
@@ -100,7 +143,8 @@ mainArgs args = do
                 putStrLn "TYPING ERROR"
                 putStrLn "------------"
                 printReport report
-                interactiveMode s
+                let s' = over (tcState'reports) (report :) s
+                interactiveMode s'
               TCErrorScopeFail msg -> do
                 putStrLn "-------------"
                 putStrLn "SCOPING ERROR"

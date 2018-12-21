@@ -20,6 +20,7 @@ import Control.Monad.MCont
 import GHC.Generics (U1 (..))
 import Data.Void
 import Data.Maybe
+import Data.Either
 import Data.Functor.Identity
 import Data.Functor.Compose
 import Data.Proxy
@@ -61,6 +62,7 @@ isBlockingStuff (MetaInfo maybeParent gamma reason maybeSolution) = case maybeSo
   Left [] -> False
   Left _ -> True
   Right _ -> False
+isSolved (MetaInfo maybeParent gamma reason maybeSolution) = isRight maybeSolution
 
 data TCReport = TCReport {
   _tcReport'parent :: Constraint U1 U1 U1,
