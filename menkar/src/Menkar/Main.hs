@@ -15,6 +15,27 @@ import Data.Functor.Identity
 import GHC.Generics (U1 (..))
 import Control.Monad.Except
 
+printConstraint :: Constraint U1 U1 U1 -> IO ()
+printConstraint c = do
+  putStrLn $ "Constraint " ++ show (constraint'id c) ++ ":"
+  putStrLn $ show $ constraint'judgement c
+  putStrLn ""
+  putStrLn $ constraint'reason c
+  case constraint'parent c of
+    Nothing -> return ()
+    Just parent -> do
+      putStrLn ""
+      printConstraint parent
+
+printReport :: TCReport -> IO ()
+printReport r = do
+  putStrLn $ _tcReport'reason r
+  putStrLn ""
+  printConstraint $ _tcReport'parent r
+  
+
+------------------------------------
+
 {-| Repeats 'action' until it returns 'False' -}
 doUntilFail :: Monad m => m Bool -> m ()
 doUntilFail action = do
@@ -46,6 +67,9 @@ consumeCommand = do
 
 interactiveMode :: TCState m -> IO ()
 interactiveMode s = do
+  putStrLn "-------------------------"
+  putStrLn "START OF INTERACTIVE MODE"
+  putStrLn "-------------------------"
   putStrLn "Type 'quit' to quit, 'help' for help."
   doUntilFail consumeCommand
   return ()
@@ -72,11 +96,15 @@ mainArgs args = do
               TCErrorConstraintBound -> unreachable
               TCErrorBlocked reason -> unreachable
               TCErrorTCFail report s -> do
-                putStrLn "Typing error."
-                -- TODO
+                putStrLn "------------"
+                putStrLn "TYPING ERROR"
+                putStrLn "------------"
+                printReport report
                 interactiveMode s
               TCErrorScopeFail msg -> do
-                putStrLn "Scoping error:"
+                putStrLn "-------------"
+                putStrLn "SCOPING ERROR"
+                putStrLn "-------------"
                 putStrLn msg
     xs -> do
       putStrLn "This program should be given a file path as its sole argument."

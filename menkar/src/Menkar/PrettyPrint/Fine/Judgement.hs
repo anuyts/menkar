@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Menkar.PrettyPrint.Fine.Judgement where
 
 import Menkar.Fine.Syntax
@@ -66,3 +68,8 @@ jud2pretty (JudVal gamma val) = ctx2pretty gamma \\\ [vdash_ ++| fine2pretty (ct
 jud2pretty (JudModule gamma modul) = ctx2pretty gamma \\\ [vdash_ ++| fine2pretty (ctx2scCtx gamma) modul]
 jud2pretty (JudEntry gamma entry) = ctx2pretty gamma \\\ [vdash_ ++| fine2pretty (ctx2scCtx gamma) entry]
 --jud2pretty jud = _jud2pretty
+
+instance (Functor mode, Functor modty,
+          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty)
+         => Show (Judgement mode modty rel) where
+  show jud = render (RenderState 100 "  " "    ") $ jud2pretty jud

@@ -1,4 +1,4 @@
-module Test.A where {
+module Test.A {a : ?b} where {
 
 module B {x : _ } where {
 
