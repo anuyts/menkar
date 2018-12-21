@@ -100,7 +100,7 @@ whnormalizeNV parent gamma t@(TermCons _) reason = return . Expr3 $ t   -- Mind 
 whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
 whnormalizeNV parent gamma t@(TermMeta meta (Compose depcies)) reason = do
   --solution <- fromMaybe (Expr3 t) <$> awaitMeta parent reason meta depcies
-  maybeSolution <- awaitMeta parent reason meta depcies
+  maybeSolution <- lift $ awaitMeta parent reason meta depcies
   case maybeSolution of
     Nothing -> Expr3 t <$ tell [meta]
     Just solution -> whnormalize parent gamma solution reason

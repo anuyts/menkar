@@ -72,7 +72,7 @@ checkModuleRHS :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
 checkModuleRHS parent gamma (ModuleRHS (Compose entries)) =
   fmap (\ ((), prevEntries) -> ()) $ flip runStateT [] $ sequenceA_ $ flip fmap (reverse entries) $ \ entry -> do
     prevEntries <- get
-    checkEntry parent (gamma :<...> ModuleRHS (Compose prevEntries)) entry
+    lift $ checkEntry parent (gamma :<...> ModuleRHS (Compose prevEntries)) entry
     put $ (fmap VarFromCtx <$> entry) : prevEntries
   --sequenceA_ $ checkEntry parent (gamma :<...> _modul) <$> reverse entries
 
@@ -103,7 +103,15 @@ checkEntry :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Ctx Type mode modty v Void ->
   Entry mode modty v ->
   tc ()
+checkEntry parent gamma entry = do
+  let (jud, reason) = case entry of
+        EntryVal val -> (JudVal gamma val, "Checking val.")
+        EntryModule modul -> (JudModule gamma modul, "Checking module.")
+  constraint <- Constraint jud (Just parent) reason <$> newConstraintID
+  selfcontained constraint $ addConstraint constraint
+{-
 checkEntry parent gamma (EntryVal val) =
   addNewConstraint (JudVal gamma val) (Just parent) "Checking val."
 checkEntry parent gamma (EntryModule modul) =
   addNewConstraint (JudModule gamma modul) (Just parent) "Checking module."
+-}

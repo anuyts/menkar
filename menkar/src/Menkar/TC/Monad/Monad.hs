@@ -91,10 +91,6 @@ class (
   tcReport :: Constraint mode modty rel -> String -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc a
   leqMod :: modty v -> modty v -> tc Bool
-
-class (
-    MonadTC mode modty rel tc
-  ) => MonadTCBase mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
   selfcontained :: Constraint mode modty rel -> tc a -> tc a
 
@@ -177,6 +173,7 @@ newMetaModedModality parent gamma reason = do
   mu <- newMetaModty parent gamma reason
   return $ ModedModality d mu
 
+{-
 instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) =>
   MonadTC mode modty rel (mT tc) where
   --term4newImplicit gamma = lift $ term4newImplicit gamma
@@ -194,3 +191,4 @@ instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) =>
   tcFail c msg = lift $ tcFail c msg
   tcReport c msg = lift $ tcReport c msg
   leqMod mu nu = lift $ leqMod mu nu
+-}

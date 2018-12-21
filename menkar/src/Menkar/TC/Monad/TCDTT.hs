@@ -184,6 +184,8 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
     throwError $ TCErrorTCFail (TCReport parent reason) s
 
   leqMod U1 U1 = return True
+  
+  selfcontained parent (TCT ma) = TCT $ mapMContT (selfcontainedNoCont parent) ma
 
 selfcontainedNoCont :: (Monad m) =>
   Constraint U1 U1 U1 ->
@@ -213,6 +215,3 @@ selfcontainedNoCont parent ma = do
           isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
   when spillsNewMetas $ throwTheError
   return a
-  
-instance (Monad m) => MonadTCBase U1 U1 U1 (TCT m) where
-  selfcontained parent (TCT ma) = TCT $ mapMContT (selfcontainedNoCont parent) ma
