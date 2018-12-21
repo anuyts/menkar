@@ -146,9 +146,8 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
     return constraint
 
   addConstraint constraint = resetDC $ do
-    -- I'm not saving the constraint, as addConstraint is not even called on all created constraints.
-    -- If you want to save it, you should ask the whereabouts in newConstraintID,
-    -- since you should only entrust someone an ID if you're sure they're registering the constraint.
+    -- Constraints are saved upon creation, not now.
+    -- In fact, addConstraint is not even called on all created constraints.
     checkConstraint constraint
 
   addConstraintReluctantly constraint = todo
