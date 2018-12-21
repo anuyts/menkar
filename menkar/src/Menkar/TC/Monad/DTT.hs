@@ -71,10 +71,11 @@ data TCState m = TCState {
   _tcState'metaCounter :: Int,
   _tcState'metaMap :: IntMap (MetaInfo m),
   _tcState'constraintCounter :: Int,
+  _tcState'constraintMap :: IntMap (Constraint U1 U1 U1),
   _tcState'reports :: [TCReport]
   }
 initTCState :: TCState m
-initTCState = TCState 0 empty 0 []
+initTCState = TCState 0 empty 0 empty []
 
 {-
 -- | delimited continuation monad class
@@ -137,7 +138,12 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
 
 instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   
-  newConstraintID = tcState'constraintCounter <<%= (+1)
+  --newConstraintID = tcState'constraintCounter <<%= (+1)
+  defConstraint jud maybeParent reason = do
+    i <- tcState'constraintCounter <<%= (+1)
+    let constraint = Constraint jud maybeParent reason i
+    tcState'constraintMap %= insert i constraint
+    return constraint
 
   addConstraint constraint = resetDC $ do
     -- I'm not saving the constraint, as addConstraint is not even called on all created constraints.
