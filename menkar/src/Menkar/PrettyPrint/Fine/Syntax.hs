@@ -411,3 +411,8 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Entry mode modty Void) where
   show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry ++ "\n]"
+
+instance (Functor mode, Functor modty, Functor (ty mode modty),
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
+         Fine2Pretty mode modty (Pair3 ty) where
+  fine2pretty gamma (Pair3 ty1 ty2) = fine2pretty gamma ty1 |++ " =[]= " |+| fine2pretty gamma ty2
