@@ -70,7 +70,7 @@ checkModuleRHS :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   ModuleRHS mode modty v ->
   tc ()
 checkModuleRHS parent gamma (ModuleRHS (Compose entries)) =
-  fmap (\ ((), prevEntries) -> ()) $ flip runStateT [] $ sequenceA_ $ flip fmap (reverse entries) $ \ entry -> do
+  flip evalStateT [] $ sequenceA_ $ flip fmap (reverse entries) $ \ entry -> do
     prevEntries <- get
     lift $ checkEntry parent (gamma :<...> ModuleRHS (Compose prevEntries)) entry
     put $ (fmap VarFromCtx <$> entry) : prevEntries
