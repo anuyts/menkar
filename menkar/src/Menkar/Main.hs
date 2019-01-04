@@ -15,7 +15,9 @@ import Menkar.PrettyPrint.Aux.Context
 import Control.Exception.AssertFalse
 
 import Data.Maybe
+import Data.Proxy
 import Data.Functor.Identity
+import Data.Functor.Compose
 import GHC.Generics (U1 (..))
 import Control.Monad.Except
 import Data.Foldable
@@ -25,25 +27,36 @@ printConstraint :: Constraint U1 U1 U1 -> IO ()
 printConstraint c = do
   putStrLn $ "Constraint " ++ show (constraint'id c) ++ ":"
   putStrLn $ show $ constraint'judgement c
+
+printTrace :: Constraint U1 U1 U1 -> IO ()
+printTrace c = do
+  printConstraint c
   putStrLn ""
   putStrLn $ constraint'reason c
   case constraint'parent c of
     Nothing -> return ()
     Just parent -> do
       putStrLn ""
-      printConstraint parent
+      printTrace parent
 
 printReport :: TCReport -> IO ()
 printReport r = do
   putStrLn $ _tcReport'reason r
   putStrLn ""
-  printConstraint $ _tcReport'parent r
+  printTrace $ _tcReport'parent r
 
-printMetaInfo :: DeBruijnLevel v => TCState m -> MetaInfo m v -> IO ()
-printMetaInfo s info = do
+printBlockInfo :: DeBruijnLevel v => TCState m -> BlockInfo m v -> IO ()
+printBlockInfo s blockInfo = do
+  putStrLn $ "-----------"
+  putStrLn $ "Reason: " ++ _blockInfo'reason blockInfo
+  printConstraint $ _blockInfo'parent blockInfo
+
+printMetaInfo :: DeBruijnLevel v => TCState m -> Int -> MetaInfo m v -> IO ()
+printMetaInfo s meta info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  putStrLn $ show $ _metaInfo'context info
+  let depcies = Compose $ Var3 <$> listAll Proxy
+  putStrLn $ show $ JudTerm (_metaInfo'context info) (Expr3 $ TermMeta meta depcies) (Type $ Expr3 $ TermWildcard)
   putStrLn $ ""
   case _metaInfo'maybeSolution info of
     Right solutionInfo -> do
@@ -54,15 +67,14 @@ printMetaInfo s info = do
       putStrLn "Unsolved"
       putStrLn "--------"
       putStrLn $ "Blocking " ++ (show $ length blocks) ++ " constraints."
-      --todo: print hampered constraints
+      sequenceA_ $ blocks <&> printBlockInfo s
   case _metaInfo'maybeParent info of
     Nothing -> return ()
     Just parent -> do
       putStrLn $ ""
-      putStrLn $ "Trace of creation:"
-      putStrLn $ "------------------"
-      putStrLn $ _metaInfo'reason info
-      putStrLn $ ""
+      putStrLn $ "Creation"
+      putStrLn $ "--------"
+      putStrLn $ "Reason: " ++ _metaInfo'reason info
       printConstraint parent
 
 printMeta :: TCState m -> Int -> IO ()
@@ -71,7 +83,7 @@ printMeta s meta =
   then putStrLn $ "Meta index out of bounds."
   else do
     let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
-    forThisDeBruijnLevel (printMetaInfo s) metaInfo
+    forThisDeBruijnLevel (printMetaInfo s meta) metaInfo
 
 printOverview :: TCState m -> IO ()
 printOverview s = do

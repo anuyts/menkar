@@ -38,32 +38,33 @@ jud2pretty (JudTypeRel deg gamma (Pair3 ty1 ty2)) =
 jud2pretty (JudTerm gamma t ty) =
   ctx2pretty gamma \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t,
-    ": " ++| fine2pretty (ctx2scCtx gamma) ty]
+    " : " ++| fine2pretty (ctx2scCtx gamma) ty]
 jud2pretty (JudTermRel deg gamma (Pair3 t1 t2) ty) =
   ctx2pretty gamma \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t1 |++ " =[]= " |+| fine2pretty (ctx2scCtx gamma) t2,
-    ": " ++| fine2pretty (ctx2scCtx gamma) ty]
+    " : " ++| fine2pretty (ctx2scCtx gamma) ty]
   -- CMODE print the degree
 jud2pretty (JudEta gamma t ty) =
   ctx2pretty gamma \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t |++ " = eta-expansion",
-    ": " ++| fine2pretty (ctx2scCtx gamma) ty]
+    " : " ++| fine2pretty (ctx2scCtx gamma) ty]
 jud2pretty (JudSmartElim gamma dnu eliminee tyEliminee eliminators result tyResult) =
   ctx2pretty gamma \\\ [
-    ribbon (_vdash_ ++ "(") \\\ [
+    ribbon _vdash_ \\\ [
       fine2pretty (ctx2scCtx gamma) eliminee,
-      ": " ++| fine2pretty (ctx2scCtx gamma) tyEliminee
-      ]
-    /+/ ribbon ")" \\\ (fine2pretty (ctx2scCtx gamma) <$> eliminators),
-    ribbon (charYielding : " (") \\\ [
+      " : " ++| fine2pretty (ctx2scCtx gamma) tyEliminee
+      ],
+    ribbon " <eliminated-with>" \\\
+      ((" " ++|) . fine2pretty (ctx2scCtx gamma) <$> eliminators),
+    ribbon (" <yields> ") \\\ [
       fine2pretty (ctx2scCtx gamma) result,
-      ": " ++| fine2pretty (ctx2scCtx gamma) tyResult
+      " : " ++| fine2pretty (ctx2scCtx gamma) tyResult
       ]
     ]
 jud2pretty (JudGoal gamma goalName t ty) =
   ctx2pretty gamma \\\ [
     _vdash_ ++ goalName ++ " " ++ [charYielding] ++| fine2pretty (ctx2scCtx gamma) t,
-    ": " ++| fine2pretty (ctx2scCtx gamma) ty]
+    " : " ++| fine2pretty (ctx2scCtx gamma) ty]
 jud2pretty (JudResolve gamma t ty) = todo
 jud2pretty (JudSegment gamma seg) = ctx2pretty gamma \\\ [_vdash ++ " <segment> " ++| fine2pretty (ctx2scCtx gamma) seg]
 jud2pretty (JudVal gamma val) = ctx2pretty gamma \\\ [_vdash ++ " <val> " ++| fine2pretty (ctx2scCtx gamma) val]
