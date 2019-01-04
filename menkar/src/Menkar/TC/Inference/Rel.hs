@@ -483,7 +483,7 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) =
   (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
   ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
   -- Neither is whnormal: block
-  (_, _) -> tcBlock "Cannot solve relation: both sides are blocked on a meta-variable."
+  (_, _) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
 checkTermRelWHNTypes :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -617,7 +617,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
         -- Both types are whnormal
         ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasTy1 metasTy2 (Type whnTy1) (Type whnTy2)
         -- Either type is not normal
-        (_, _) -> tcBlock "Need to weak-head-normalize types to tell whether I should use eta-expansion."
+        (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 
       {-
       case (whnT1, whnT2) of

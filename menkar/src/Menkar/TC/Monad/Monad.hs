@@ -92,7 +92,7 @@ class (
       The branch that gets nothing is run immediately. If it blocks by calling @'tcBlock'@,
       then the other branch is called when the meta is resolved. -}
   awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
-  tcBlock :: String -> tc a
+  tcBlock :: Constraint mode modty rel -> String -> tc a
   tcReport :: Constraint mode modty rel -> String -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc a
   leqMod :: modty v -> modty v -> tc Bool

@@ -548,7 +548,7 @@ checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
 checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
   maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
-  case maybeT of
+  t' <- case maybeT of
     Nothing -> do
       -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
       -- place to request eta-expansion.
@@ -556,13 +556,17 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
         (JudEta gamma (Expr3 t) ty)
         (Just parent)
         "Eta-expand meta if possible."
-      tcBlock "I want to know what I'm supposed to type-check."
-    Just t' -> do
-      childConstraint <- defConstraint
+      -- The meta may now have a solution.
+      maybeT' <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
+      case maybeT' of
+        Nothing -> tcBlock parent "I want to know what I'm supposed to type-check."
+        Just t' -> return t'
+    Just t' -> return t'
+  childConstraint <- defConstraint
             (JudTerm gamma t' ty)
             (Just parent)
             "Look up meta."
-      checkTerm childConstraint gamma t' ty
+  checkTerm childConstraint gamma t' ty
 checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
   let ldivModAppliedVal = VarFromCtx <$> over leftDivided'content telescoped2modalQuantified lookupresult
   varAccessible <- leqMod

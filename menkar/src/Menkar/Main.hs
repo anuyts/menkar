@@ -137,7 +137,7 @@ mainArgs args = do
               interactiveMode s
             Left e -> case e of
               TCErrorConstraintBound -> unreachable
-              TCErrorBlocked reason -> unreachable
+              TCErrorBlocked parent reason -> unreachable
               TCErrorTCFail report s -> do
                 putStrLn "------------"
                 putStrLn "TYPING ERROR"

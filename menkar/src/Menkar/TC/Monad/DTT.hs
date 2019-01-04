@@ -42,6 +42,7 @@ data SolutionInfo m v = SolutionInfo {
   }
 
 data BlockInfo m v = BlockInfo {
+  _blockInfo'parent :: Constraint U1 U1 U1,
   _blockInfo'reason :: String,
   _blockInfo'cont :: (Maybe (Term U1 U1 v) -> TCT m TCResult)
   }
@@ -96,7 +97,7 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 
 data TCError m =
   TCErrorConstraintBound |
-  TCErrorBlocked String |
+  TCErrorBlocked (Constraint U1 U1 U1) String |
   TCErrorTCFail TCReport (TCState m) |
   TCErrorScopeFail String
 
@@ -163,7 +164,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
           Right _ -> unreachable
           Left blocks -> do
             solution <- getSolution gamma
-            sequenceA_ $ blocks <&> \ (BlockInfo reason k) -> resetDC $ k $ Just $ solution
+            sequenceA_ $ blocks <&> \ (BlockInfo blockParent reason k) -> resetDC $ k $ Just $ solution
             tcState'metaMap . at meta .= Just (MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 
   awaitMeta parent reason meta depcies = do
@@ -177,14 +178,14 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
           Left blocks -> shiftDC $ \ k -> do
             -- Try to continue with an unsolved meta
             k Nothing `catchError` \case
-              TCErrorBlocked blockReason -> do
-                let block = BlockInfo reason $
+              TCErrorBlocked blockParent blockReason -> do
+                let block = BlockInfo blockParent blockReason $
                             k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy))
                 tcState'metaMap . at meta .=
                   (Just $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e
   
-  tcBlock reason = throwError $ TCErrorBlocked reason
+  tcBlock parent reason = throwError $ TCErrorBlocked parent reason
 
   tcReport parent reason = tcState'reports %= (TCReport parent reason :)
   
