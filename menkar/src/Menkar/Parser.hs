@@ -162,12 +162,16 @@ manySpace = MP.skipMany $ MP.choice [MP.hidden someWhitespace, MP.hidden comment
 someSpace :: CanParse m => m ()
 someSpace = MP.label "whitespace" $ MP.skipSome $ MP.choice [MP.hidden someWhitespace, MP.hidden comment]
 
+socialChar :: CanParse m => m Char
+socialChar = charByType LetterChar <|> charByType DigitChar <|> charByType LooseChar
+         <|> charByType QuestChar <|> charByType MiscChar
+
 {-| 'lexeme p' consumes 'p', then 'manySpace'. -}
 lexeme :: CanParse m => m a -> m a
-lexeme = MPL.lexeme manySpace
+lexeme p = p <* manySpace
 {-| 'loneLexeme p' consumes 'p', then 'someSpace'. -}
 loneLexeme :: CanParse m => m a -> m a
-loneLexeme = MPL.lexeme someSpace
+loneLexeme p = p <* MP.notFollowedBy socialChar <* manySpace
 
 {-| Consumes and returns the specified string.
     DO NOT USE THIS FOR KEYWORDS, lest "ifbla" will be parsed as "if bla".
