@@ -64,9 +64,9 @@ jud2pretty (JudGoal gamma goalName t ty) =
     ": " ++| fine2pretty (ctx2scCtx gamma) ty]
 jud2pretty (JudResolve gamma t ty) = todo
 jud2pretty (JudSegment gamma seg) = ctx2pretty gamma \\\ [vdash_ ++| fine2pretty (ctx2scCtx gamma) seg]
-jud2pretty (JudVal gamma val) = ctx2pretty gamma \\\ [vdash_ ++| fine2pretty (ctx2scCtx gamma) val]
-jud2pretty (JudModule gamma modul) = ctx2pretty gamma \\\ [vdash_ ++| fine2pretty (ctx2scCtx gamma) modul]
-jud2pretty (JudEntry gamma entry) = ctx2pretty gamma \\\ [vdash_ ++| fine2pretty (ctx2scCtx gamma) entry]
+jud2pretty (JudVal gamma val) = ctx2pretty gamma \\\ [vdash : "val " ++| fine2pretty (ctx2scCtx gamma) val]
+jud2pretty (JudModule gamma modul) = ctx2pretty gamma \\\ [vdash : "module " ++| fine2pretty (ctx2scCtx gamma) modul]
+jud2pretty (JudEntry gamma entry) = ctx2pretty gamma \\\ [vdash : "declaration " ++| fine2pretty (ctx2scCtx gamma) entry]
 --jud2pretty jud = _jud2pretty
 
 instance (Functor mode, Functor modty,

@@ -209,7 +209,7 @@ selfcontainedNoCont parent ma = do
   state1 <- get
   let metaCount1 = _tcState'metaCounter state1
   let throwTheError = throwError $ TCErrorTCFail (
-        TCReport parent "The meaning of this judgement is not self-contained: it spills unsolved meta-variables."
+        TCReport parent "The meaning of this declaration is not self-contained: it spills unsolved meta-variables."
         ) state1
   -- 1) Any dormant meta is either still dormant or solved,
   let spillsAwakenedMetas = getAny $ fold $ fmap Any $
