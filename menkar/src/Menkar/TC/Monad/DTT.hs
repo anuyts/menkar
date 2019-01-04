@@ -208,6 +208,28 @@ selfcontainedNoCont parent ma = do
   a <- ma
   state1 <- get
   let metaCount1 = _tcState'metaCounter state1
+  let spilledAwakenedMetas = fold $
+        [0 .. metaCount0 - 1] <&> \ meta ->
+          let dormant0 = isDormant $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state0
+              blockingStuff1 = isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
+          in  if dormant0 && blockingStuff1
+              then [meta]
+              else []
+  let spilledNewMetas = fold $
+        [metaCount0 .. metaCount1 - 1] <&> \ meta ->
+          if isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
+          then [meta]
+          else []
+  case (spilledAwakenedMetas ++ spilledNewMetas) of
+    [] -> return a
+    spilledMetas -> throwError $ TCErrorTCFail (
+      TCReport parent (
+          "The meaning of this declaration is not self-contained: it spills unsolved meta-variables:\n" ++
+          (fold $ (" ?" ++) . show <$> spilledMetas)
+        )
+      ) state1
+
+  {-
   let throwTheError = throwError $ TCErrorTCFail (
         TCReport parent "The meaning of this declaration is not self-contained: it spills unsolved meta-variables."
         ) state1
@@ -224,6 +246,7 @@ selfcontainedNoCont parent ma = do
           isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
   when spillsNewMetas $ throwTheError
   return a
+  -}
 
 ---------------------------
 
