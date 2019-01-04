@@ -1,12 +1,17 @@
 module Control.Exception.AssertFalse where
 
-import Control.Exception (assert)
+--import Control.Exception (assert)
+import Debug.Trace
+import GHC.Stack
 
-assertFalse :: String -> a
-assertFalse msg = assert False (error msg)
+assertFalse :: HasCallStack => String -> a
+assertFalse msg = traceStack msg (error msg)
+--assertFalse msg = assert False (error msg)
 
-todo :: a
+todo :: HasCallStack => a
 todo = assertFalse "Todo."
 
-unreachable :: a
+unreachable :: HasCallStack => a
 unreachable = assertFalse "Unreachable."
+
+-- :set -fbreak-on-error

@@ -497,6 +497,7 @@ checkTermRelWHNTypes :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Type mode modty v ->
   tc ()
 checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = case (ty1, ty2) of
+  -- Pi types: eta-expand
   (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
     let seg1 = binding'segment piBinding1
     let dom2 = _segment'content $ binding'segment piBinding2
@@ -521,6 +522,7 @@ checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2
       "Eta: Relating function bodies."
   (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), _) ->
     tcFail parent "Types are presumed to be related."
+  -- Sigma types: eta expand if allowed
   (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
     -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
@@ -558,9 +560,11 @@ checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2
           "Eta: relating second projections"
   (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), _) ->
     tcFail parent "Types are presumed to be related."
+  -- Unit type: eta-expand
   (Expr3 (TermCons (ConsUniHS UnitType)), Expr3 (TermCons (ConsUniHS UnitType))) -> return ()
   (Expr3 (TermCons (ConsUniHS UnitType)), _) ->
     tcFail parent "Types are presumed to be related."
+  -- Box type: eta-expand
   (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
     -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ boxSeg1
@@ -615,7 +619,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
             "Weak-head-normalize everything"
       case (metasTy1, metasTy2) of
         -- Both types are whnormal
-        ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasTy1 metasTy2 (Type whnTy1) (Type whnTy2)
+        ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasT1 metasT2 (Type whnTy1) (Type whnTy2)
         -- Either type is not normal
         (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 
