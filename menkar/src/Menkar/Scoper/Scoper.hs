@@ -459,16 +459,22 @@ partialSegment gamma rawSeg = do
     _ -> unreachable -- nested segments encountered
 -}
 
-{-| Chain a list of fine segments to a fine telescope. -}
+{-| Chain a list of fine segments to a fine telescope; while avoiding shadowing. -}
 segments2telescoped :: --MonadScoper mode modty rel sc =>
-  (Functor mode, Functor modty) =>
+  (MonadScoper mode modty rel sc, Functor mode, Functor modty) =>
   Ctx Type mode modty v Void ->
   [Segment Type mode modty v] ->
-  (Telescoped Type Unit3 mode modty v)
+  sc (Telescoped Type Unit3 mode modty v)
 segments2telescoped gamma [] =
-  Telescoped Unit3
-segments2telescoped gamma (fineSeg:fineSegs) =
-  fineSeg :|- segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
+  return $ Telescoped Unit3
+segments2telescoped gamma (fineSeg:fineSegs) = do
+  let DeclNameSegment maybeNewName = _decl'name fineSeg
+  case maybeNewName of
+    Nothing -> return ()
+    Just newName -> case lookupQName gamma (Raw.Qualified [] newName) of
+      Nothing -> return ()
+      Just _ -> scopeFail $ "Shadowing is not allowed; already in scope: " ++ show newName
+  (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
 segment ::
   (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
@@ -477,7 +483,7 @@ segment ::
   sc (Telescoped Type Unit3 mode modty v)
 segment gamma (Raw.Segment rawDecl) = do
   partialSeg <- partialSegment gamma rawDecl
-  segments2telescoped gamma <$> buildSegment gamma partialSeg
+  segments2telescoped gamma =<< buildSegment gamma partialSeg
 
 {-| scope a partly fine, partly raw telescope to a fine telescope. -}
 telescope2 ::
