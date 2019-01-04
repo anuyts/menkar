@@ -9,6 +9,9 @@ import Menkar.TC.Monad.DTT
 import Menkar.Fine
 import Menkar.TC
 
+import Menkar.PrettyPrint.Fine
+import Menkar.PrettyPrint.Aux.Context
+
 import Control.Exception.AssertFalse
 
 import Data.Maybe
@@ -36,35 +39,31 @@ printReport r = do
   putStrLn ""
   printConstraint $ _tcReport'parent r
 
-{-
-printMetaInfo :: TCState m -> MetaInfo m -> IO ()
+printMetaInfo :: DeBruijnLevel v => TCState m -> MetaInfo m v -> IO ()
 printMetaInfo s info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  --todo: separate existential from record in MetaInfo
-  --putStrLn $ show $ _metaInfo'context info
+  putStrLn $ ctx2string $ _metaInfo'context info
   putStrLn $ ""
-  case _metaInfo'maybeSolution of
+  case _metaInfo'maybeSolution info of
     Right solutionInfo -> do
       putStrLn "Solution:"
       putStrLn "---------"
-      --todo: print solution to meta
-      --putStrLn $ show $ _solutionInfo'solution 
+      putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) $ _solutionInfo'solution solutionInfo
     Left blocks -> do
       putStrLn "Unsolved"
       putStrLn "--------"
       putStrLn $ "Blocking " ++ (show $ length blocks) ++ " constraints."
       --todo: print hampered constraints
-  case _metaInfo'maybeParent of
+  case _metaInfo'maybeParent info of
     Nothing -> return ()
     Just parent -> do
       putStrLn $ ""
       putStrLn $ "Trace of creation:"
       putStrLn $ "------------------"
-      putStrLn $ _metaInfo'reason
+      putStrLn $ _metaInfo'reason info
       putStrLn $ ""
       printConstraint parent
--}
 
 printMeta :: TCState m -> Int -> IO ()
 printMeta s meta =
@@ -72,11 +71,11 @@ printMeta s meta =
   then putStrLn $ "Meta index out of bounds."
   else do
     let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
-    _
+    forThisDeBruijnLevel (printMetaInfo s) metaInfo
 
 printOverview :: TCState m -> IO ()
 printOverview s = do
-  let nUnsolved = length $ filter (not . isSolved) $ toList $ _tcState'metaMap s
+  let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
   putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
     ++ show nUnsolved ++ " unsolved (metas),"
   putStrLn $ (show $ _tcState'constraintCounter s) ++ " constraints (constraint i),"

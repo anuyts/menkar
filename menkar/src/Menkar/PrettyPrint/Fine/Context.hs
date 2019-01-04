@@ -22,13 +22,20 @@ ctx2pretty :: forall v mode modty ty .
    Functor mode, Functor modty, Functor (ty mode modty),
    Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
   Ctx ty mode modty v Void -> PrettyTree String
-ctx2pretty (CtxEmpty d) = "{[" ++| fine2pretty ScCtxEmpty (Mode d :: Mode mode modty Void) |++ "]}"
+ctx2pretty (CtxEmpty d) = "{context-mode : " ++| fine2pretty ScCtxEmpty (Mode d :: Mode mode modty Void) |++ "}"
 ctx2pretty (gamma :.. seg) = haveDB gamma $ ctx2pretty gamma \+\ [fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> seg)]
 ctx2pretty (seg :^^ gamma) = todo
 ctx2pretty (gamma :<...> modul) = haveDB gamma $ ctx2pretty gamma
 ctx2pretty (dmu :\\ gamma) = haveDB gamma $ fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> dmu) |++ "\\ ("
                              \\\ [ctx2pretty gamma]
                              /// ribbon ")"
+
+ctx2string :: forall v mode modty ty .
+  (DeBruijnLevel v,
+   Functor mode, Functor modty, Functor (ty mode modty),
+   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
+  Ctx ty mode modty v Void -> String
+ctx2string gamma = render defaultRenderState $ ctx2pretty gamma
 
 {-
 ctx2pretties :: forall v mode modty ty .
