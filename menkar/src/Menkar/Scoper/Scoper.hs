@@ -37,7 +37,8 @@ eliminator ::
   Ctx Type mode modty v Void ->
   Raw.Eliminator ->
   sc (SmartEliminator mode modty v)
-eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
+eliminator gamma (Raw.ElimDots) = return SmartElimDots
+--eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
   fineExpr <- expr gamma rawExpr
   return $ SmartElimArg argSpec fineExpr

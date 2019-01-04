@@ -247,9 +247,15 @@ checkSmartElimForNormalType ::
   tc ()
 checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators result tyResult =
   case (tyEliminee, eliminators) of
-    -- `t ... e`, `t .{...} e`, `t .{a = ...} e` (bogus)
-    (_, SmartElimEnd _ : _ : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
+    -- `t ... e` (bogus)
+    (_, []) ->
+      checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
+    (_, SmartElimDots : _ : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
+    (_, SmartElimDots : []) ->
+      autoEliminate parent gamma dmuElim eliminee tyEliminee [] result tyResult $
+      Just $ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
     -- `t ...` (end elimination now)
+    {-
     (_, SmartElimEnd Raw.ArgSpecNext : []) ->
       checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
     -- `t (...)` (not syntax)
@@ -263,6 +269,7 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     (_, SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
       autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `f arg`
+    -}
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecExplicit arg : eliminators') ->
       case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
@@ -306,9 +313,6 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
            in  projSnd parent gamma dmuElim eliminee sigmaBinding decEliminators result tyResult
     (_, SmartElimProj _ : _) ->
       autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
-    (_, []) ->
-      autoEliminate parent gamma dmuElim eliminee tyEliminee [] result tyResult $
-      Just $ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
 
 checkSmartElim ::
   (MonadTC mode modty rel tc, DeBruijnLevel v) =>

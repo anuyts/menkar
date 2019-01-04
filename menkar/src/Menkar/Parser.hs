@@ -407,6 +407,7 @@ opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
 annotEliminator :: CanParse m => m Raw.Eliminator
 annotEliminator = MP.label "annotation eliminator" $ argExplicit <|> argNext <?|> argNamed
 
+{-
 argEndNext :: CanParse m => m Raw.Eliminator
 argEndNext = Raw.ElimEnd Raw.ArgSpecNext <$ loneDots
 argEndNamed :: CanParse m => m Raw.Eliminator
@@ -415,8 +416,10 @@ argEndNamed = (dotPrecise *>) $ accols $ do
   keyword "="
   loneDots
   return $ Raw.ElimEnd $ Raw.ArgSpecNamed aName
+-}
 eliminatorEnd :: CanParse m => m Raw.Eliminator
-eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <?|> argEndNamed
+eliminatorEnd = Raw.ElimDots <$ loneDots
+--eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <?|> argEndNamed
 
 eliminators :: CanParse m => m [Raw.Eliminator]
 eliminators = MP.label "eliminators" $

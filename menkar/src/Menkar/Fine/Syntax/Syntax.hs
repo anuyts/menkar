@@ -195,7 +195,8 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mod
   CanSwallow (Term mode modty) (ConstructorTerm mode modty)
 
 data SmartEliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
-  SmartElimEnd Raw.ArgSpec |
+  SmartElimDots |
+  --SmartElimEnd Raw.ArgSpec |
   SmartElimArg Raw.ArgSpec (Term mode modty v) |
   SmartElimProj Raw.ProjSpec
   deriving (Functor, Foldable, Traversable, Generic1)

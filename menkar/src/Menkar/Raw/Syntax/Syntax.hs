@@ -10,7 +10,8 @@ import Data.Hashable
 import GHC.Generics
 
 data Eliminator =
-  ElimEnd ArgSpec {-^ should not be 'ArgSpecExplicit'.-} |
+  ElimDots |
+  --ElimEnd ArgSpec {-^ should not be 'ArgSpecExplicit'.-} |
   ElimArg ArgSpec Expr |
   ElimProj ProjSpec
   -- case; induction
@@ -44,7 +45,7 @@ expr3to1 :: Expr3 -> Expr
 expr3to1 = expr2to1 . expr3to2
 expr3to1smart :: Expr3 -> Expr
 expr3to1smart (ExprParens e) = e
-expr3to1smart ExprImplicit = expr2to1 $ ExprElimination $ Elimination ExprImplicit [ElimEnd ArgSpecNext]
+--expr3to1smart ExprImplicit = expr2to1 $ ExprElimination $ Elimination ExprImplicit [ElimEnd ArgSpecNext]
 expr3to1smart e = expr2to1 . expr3to2 $ e
 
 -----------------------------------------------------------
