@@ -247,13 +247,13 @@ checkSmartElimForNormalType ::
   tc ()
 checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators result tyResult =
   case (tyEliminee, eliminators) of
-    -- `t ... e`, `t .{...} e` (bogus)
+    -- `t ... e`, `t .{...} e`, `t .{a = ...} e` (bogus)
     (_, SmartElimEnd _ : _ : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     -- `t ...` (end elimination now)
-    (_, SmartElimEnd Raw.ArgSpecExplicit : []) ->
+    (_, SmartElimEnd Raw.ArgSpecNext : []) ->
       checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
-    -- `t .{...}` (not syntax)
-    (_, SmartElimEnd Raw.ArgSpecNext : []) -> unreachable
+    -- `t (...)` (not syntax)
+    (_, SmartElimEnd Raw.ArgSpecExplicit : []) -> unreachable
     -- `f .{a = ...}` (match argument name)
     (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
