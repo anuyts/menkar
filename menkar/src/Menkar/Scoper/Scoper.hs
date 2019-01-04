@@ -15,6 +15,7 @@ import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Control.Exception.AssertFalse
 import Menkar.Fine.Multimode
+import Menkar.PrettyPrint.Raw.Syntax
 
 import Control.Monad.State.Lazy
 import Control.Monad.List
@@ -473,7 +474,7 @@ segments2telescoped gamma (fineSeg:fineSegs) = do
     Nothing -> return ()
     Just newName -> case lookupQName gamma (Raw.Qualified [] newName) of
       Nothing -> return ()
-      Just _ -> scopeFail $ "Shadowing is not allowed; already in scope: " ++ show newName
+      Just _ -> scopeFail $ "Shadowing is not allowed in variable names; already in scope: " ++ unparse newName
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
 segment ::
@@ -520,11 +521,14 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
   [fineLHS] <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma "Infer type."
                in  buildDeclaration gamma gen partialLHS
-  flip decl'content fineLHS $ mapTelescopedDB (
+  val <- flip decl'content fineLHS $ mapTelescopedDB (
       \wkn gammadelta fineTy -> do
         fineTm <- expr gammadelta rawExpr
         return $ ValRHS fineTm fineTy
     ) gamma
+  case lookupQName gamma (Raw.Qualified [] $ _val'name val) of
+    Nothing -> return val
+    Just _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ unparse (_val'name val)
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule ::
