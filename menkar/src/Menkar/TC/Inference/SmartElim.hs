@@ -23,6 +23,8 @@ import Control.Monad.Trans.Maybe
 
 -------
 
+{-| Handles a smartelim-judgement with 0 eliminations.
+-}
 checkSmartElimDone ::
   (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -50,7 +52,7 @@ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult = do
           (Pair3 tyEliminee tyResult)
         )
         (Just parent)
-        "End of elimination: checking if types match"
+        "End of elimination: checking if results match"
 
 unbox ::
   (MonadTC mode modty rel tc, DeBruijnLevel v) =>
@@ -68,6 +70,7 @@ unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
   let dmuUnbox = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuBox (modality'dom dmuElim))
   dmuElim' <- newMetaModedModality (Just parent) gamma "Mode/modality for remainder of elimination."
   -- CMODE CMOD : dmuElim = dmuElim' o dmuUnbox
+  -- CMODE : check if you can unbox
   addNewConstraint
     (JudSmartElim
       gamma
@@ -222,17 +225,18 @@ autoEliminate ::
   Maybe (tc ()) ->
   tc ()
 autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult maybeAlternative = do
+  let alternative = case maybeAlternative of
+           Nothing -> tcFail parent $ "Cannot auto-eliminate."
+           Just alternative' -> alternative'
   case tyEliminee of
     Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))) ->
       case (_segment'plicity $ binding'segment $ piBinding) of
-        Explicit -> tcFail parent $ "Cannot auto-eliminate."
+        Explicit -> alternative
         Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
         Resolves _ -> todo
     Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))) ->
       unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
-    _ -> case maybeAlternative of
-           Nothing -> tcFail parent $ "Cannot auto-eliminate."
-           Just alternative -> alternative 
+    _ -> alternative
 
 checkSmartElimForNormalType ::
   (MonadTC mode modty rel tc, DeBruijnLevel v) =>
@@ -250,10 +254,10 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     -- `t ... e` (bogus)
     (_, []) ->
       checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
-    (_, SmartElimDots : _ : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     (_, SmartElimDots : []) ->
       autoEliminate parent gamma dmuElim eliminee tyEliminee [] result tyResult $
       Just $ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
+    (_, SmartElimDots : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     -- `t ...` (end elimination now)
     {-
     (_, SmartElimEnd Raw.ArgSpecNext : []) ->
@@ -337,5 +341,5 @@ checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators resul
                    "Weak-head-normalized type."
       checkSmartElimForNormalType parent' gamma dmuElim eliminee (Type whnTyEliminee) eliminators result tyResult
     -- the type does not weak-head-normalize
-    _:_ -> tcBlock parent "Need to know type in order to make sense of smart-elimination."
+    _ -> tcBlock parent "Need to know type in order to make sense of smart-elimination."
 
