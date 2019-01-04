@@ -1,6 +1,6 @@
-module Test.A {a : ?b} where {
+module Test.A {a : ?b ... } where {
 
-module B {x : _ } where {
+module B {x : _ ... } where {
 
 }
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Menkar.PrettyPrint.Fine.Context where
 
 import Menkar.Fine.Syntax
@@ -36,6 +38,13 @@ ctx2string :: forall v mode modty ty .
    Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
   Ctx ty mode modty v Void -> String
 ctx2string gamma = render defaultRenderState $ ctx2pretty gamma
+
+instance
+  (DeBruijnLevel v,
+   Functor mode, Functor modty, Functor (ty mode modty),
+   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
+  Show (Ctx ty mode modty v Void) where
+  show = ctx2string
 
 {-
 ctx2pretties :: forall v mode modty ty .

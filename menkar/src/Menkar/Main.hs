@@ -43,7 +43,7 @@ printMetaInfo :: DeBruijnLevel v => TCState m -> MetaInfo m v -> IO ()
 printMetaInfo s info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  putStrLn $ ctx2string $ _metaInfo'context info
+  putStrLn $ show $ _metaInfo'context info
   putStrLn $ ""
   case _metaInfo'maybeSolution info of
     Right solutionInfo -> do
