@@ -14,6 +14,8 @@ import Menkar.PrettyPrint.Aux.Context
 
 import Control.Exception.AssertFalse
 
+import Text.Megaparsec.Error as MP
+
 import Data.IntMap.Strict hiding (filter, toList)
 import Data.Maybe
 import Data.Proxy
@@ -186,7 +188,7 @@ mainArgs args = do
       code <- readFile path
       let errorOrRawFile = P.parse P.file path code
       case errorOrRawFile of
-        Left e -> putStrLn $ show e
+        Left e -> putStrLn $ MP.errorBundlePretty e
         Right rawFile -> do
           let tcResult = runExcept $ flip runTC initTCState $ do
                 fineFile <- S.file (CtxEmpty U1) rawFile

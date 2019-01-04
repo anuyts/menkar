@@ -7,12 +7,15 @@ import qualified Text.Megaparsec.Char as MP
 --import qualified Text.Megaparsec.Expr as MP
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
+
 import qualified Text.Megaparsec.Char.Lexer as MPL
+
 import Control.Monad.Identity
 import Control.Applicative
 import Data.Char
 import Data.Number.Nat
 import Data.Maybe
+import Data.Void
 --import Data.Ord
 
 -- Testing -------------------------------------------------
@@ -36,6 +39,8 @@ parse parser path code = MP.parse parser path code
 
 -- ParseError ----------------------------------------------
 
+type ParseError = Void
+{-
 data ParseError
 instance Eq ParseError where
   e == e' = True
@@ -43,6 +48,7 @@ instance Ord ParseError where
   compare e e' = EQ
 instance Show ParseError where
   show e = "ERROR"
+-}
 
 -- CanParse ------------------------------------------------
 
