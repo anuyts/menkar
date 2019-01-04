@@ -55,4 +55,8 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   getDeBruijnLevel p (VarInModule v) = getDeBruijnLevel Proxy v
   forDeBruijnLevel p n = VarInModule <$> forDeBruijnLevel Proxy n
 
+----------------------------------
 
+data ForSomeDeBruijnLevel a = forall v . DeBruijnLevel v => ForSomeDeBruijnLevel (a v)
+forThisDeBruijnLevel :: (forall v . DeBruijnLevel v => a v -> t) -> ForSomeDeBruijnLevel a -> t
+forThisDeBruijnLevel f (ForSomeDeBruijnLevel a) = f a

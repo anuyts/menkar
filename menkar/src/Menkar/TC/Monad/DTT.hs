@@ -47,19 +47,19 @@ data BlockInfo m v = BlockInfo {
   _blockInfo'cont :: (Maybe (Term U1 U1 v) -> TCT m TCResult)
   }
 
-data MetaInfo m = forall v . (DeBruijnLevel v) => MetaInfo {
+data MetaInfo m v = MetaInfo {
   _metaInfo'maybeParent :: Maybe (Constraint U1 U1 U1),
   _metaInfo'context :: Ctx Type U1 U1 v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
   _metaInfo'maybeSolution :: Either [BlockInfo m v] (SolutionInfo m v)
   }
-isDormant :: MetaInfo m -> Bool
-isDormant (MetaInfo maybeParent gamma reason maybeSolution) = case maybeSolution of
+isDormant :: MetaInfo m v -> Bool
+isDormant metaInfo = case _metaInfo'maybeSolution metaInfo of
   Left [] -> True
   _ -> False
-isBlockingStuff :: MetaInfo m -> Bool
-isBlockingStuff (MetaInfo maybeParent gamma reason maybeSolution) = case maybeSolution of
+isBlockingStuff :: MetaInfo m v -> Bool
+isBlockingStuff metaInfo = case _metaInfo'maybeSolution metaInfo of
   Left [] -> False
   Left _ -> True
   Right _ -> False
@@ -72,7 +72,7 @@ data TCReport = TCReport {
 
 data TCState m = TCState {
   _tcState'metaCounter :: Int,
-  _tcState'metaMap :: IntMap (MetaInfo m),
+  _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo m)),
   _tcState'constraintCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint U1 U1 U1),
   _tcState'reports :: [TCReport]
@@ -129,7 +129,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
 
   newMetaTermNoCheck maybeParent deg gamma reason = do
     meta <- tcState'metaCounter <<%= (+1)
-    tcState'metaMap %= (insert meta $ MetaInfo maybeParent gamma reason (Left []))
+    tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = Compose $ Var3 <$> listAll Proxy
     return $ Expr3 $ TermMeta meta depcies
 
@@ -159,19 +159,20 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
     maybeMetaInfo <- use $ tcState'metaMap . at meta
     case maybeMetaInfo of
       Nothing -> unreachable
-      Just (MetaInfo maybeParent gamma reason maybeEarlierSolution) -> do
+      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reason maybeEarlierSolution)) -> do
         case maybeEarlierSolution of
           Right _ -> unreachable
           Left blocks -> do
             solution <- getSolution gamma
             sequenceA_ $ blocks <&> \ (BlockInfo blockParent reason k) -> resetDC $ k $ Just $ solution
-            tcState'metaMap . at meta .= Just (MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
+            tcState'metaMap . at meta .=
+              Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 
   awaitMeta parent reason meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
     case maybeMetaInfo of
       Nothing -> unreachable
-      Just (MetaInfo maybeParent gamma reason maybeSolution) -> do
+      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reason maybeSolution)) -> do
         case maybeSolution of
           Right (SolutionInfo parent solution) -> do
             return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
@@ -182,7 +183,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
                 let block = BlockInfo blockParent blockReason $
                             k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy))
                 tcState'metaMap . at meta .=
-                  (Just $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
+                  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e
   
   tcBlock parent reason = throwError $ TCErrorBlocked parent reason
@@ -211,14 +212,17 @@ selfcontainedNoCont parent ma = do
   let metaCount1 = _tcState'metaCounter state1
   let spilledAwakenedMetas = fold $
         [0 .. metaCount0 - 1] <&> \ meta ->
-          let dormant0 = isDormant $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state0
-              blockingStuff1 = isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
+          let dormant0 = forThisDeBruijnLevel isDormant $
+                fromMaybe unreachable $ view (tcState'metaMap . at meta) state0
+              blockingStuff1 = forThisDeBruijnLevel isBlockingStuff $
+                fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
           in  if dormant0 && blockingStuff1
               then [meta]
               else []
   let spilledNewMetas = fold $
         [metaCount0 .. metaCount1 - 1] <&> \ meta ->
-          if isBlockingStuff $ fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
+          if forThisDeBruijnLevel isBlockingStuff $
+                fromMaybe unreachable $ view (tcState'metaMap . at meta) state1
           then [meta]
           else []
   case (spilledAwakenedMetas ++ spilledNewMetas) of

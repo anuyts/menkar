@@ -11,6 +11,7 @@ import Menkar.TC
 
 import Control.Exception.AssertFalse
 
+import Data.Maybe
 import Data.Functor.Identity
 import GHC.Generics (U1 (..))
 import Control.Monad.Except
@@ -65,6 +66,14 @@ printMetaInfo s info = do
       printConstraint parent
 -}
 
+printMeta :: TCState m -> Int -> IO ()
+printMeta s meta =
+  if (meta < 0 || meta >= _tcState'metaCounter s)
+  then putStrLn $ "Meta index out of bounds."
+  else do
+    let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
+    _
+
 printOverview :: TCState m -> IO ()
 printOverview s = do
   let nUnsolved = length $ filter (not . isSolved) $ toList $ _tcState'metaMap s
@@ -102,6 +111,11 @@ giveHelp = do
 runCommand :: TCState m -> [String] -> IO ()
 runCommand s [] = return ()
 runCommand s ("help" : _) = giveHelp
+runCommand s ("meta" : args) = case args of
+  [arg] -> case readsPrec 0 arg :: [(Int, String)] of
+    [(meta, "")] -> printMeta s meta
+    _ -> putStrLn $ "Argument to 'meta' should be an integer."
+  _ -> putStrLn $ "Command 'meta' expects one integer argument, e.g. 'meta 5'."
 runCommand s ("overview" : _) = printOverview s
 runCommand s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
