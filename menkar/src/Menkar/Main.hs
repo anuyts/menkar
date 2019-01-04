@@ -14,6 +14,7 @@ import Menkar.PrettyPrint.Aux.Context
 
 import Control.Exception.AssertFalse
 
+import Data.IntMap.Strict hiding (filter, toList)
 import Data.Maybe
 import Data.Proxy
 import Data.Functor.Identity
@@ -47,7 +48,7 @@ printReport r = do
 
 printBlockInfo :: DeBruijnLevel v => TCState m -> BlockInfo m v -> IO ()
 printBlockInfo s blockInfo = do
-  putStrLn $ "-----------"
+  putStrLn $ ""
   putStrLn $ "Reason: " ++ _blockInfo'reason blockInfo
   printConstraint $ _blockInfo'parent blockInfo
 
@@ -68,14 +69,19 @@ printMetaInfo s meta info = do
       putStrLn "--------"
       putStrLn $ "Blocking " ++ (show $ length blocks) ++ " constraints."
       sequenceA_ $ blocks <&> printBlockInfo s
+  putStrLn $ ""
+  putStrLn $ "Creation"
+  putStrLn $ "--------"
+  putStrLn $ "Reason: " ++ _metaInfo'reason info
   case _metaInfo'maybeParent info of
-    Nothing -> return ()
-    Just parent -> do
-      putStrLn $ ""
-      putStrLn $ "Creation"
-      putStrLn $ "--------"
-      putStrLn $ "Reason: " ++ _metaInfo'reason info
-      printConstraint parent
+    Nothing -> putStrLn "(Created at scope-checking time.)"
+    Just parent -> printConstraint parent
+
+printConstraintByIndex :: TCState m -> Int -> IO ()
+printConstraintByIndex s i =
+  if (i < 0 || i >= _tcState'constraintCounter s)
+  then putStrLn $ "Constraint index out of bounds."
+  else printTrace $ fromMaybe unreachable $ view (tcState'constraintMap . at i) s
 
 printMeta :: TCState m -> Int -> IO ()
 printMeta s meta =
@@ -84,6 +90,16 @@ printMeta s meta =
   else do
     let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
     forThisDeBruijnLevel (printMetaInfo s meta) metaInfo
+
+summarizeUnsolvedMeta :: TCState m -> Int -> MetaInfo m v -> IO ()
+summarizeUnsolvedMeta s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
+  Right solutionInfo -> return ()
+  Left blocks -> putStrLn $
+    "?" ++ show meta ++ "    (" ++ show (length blocks) ++ " constraints)    Creation: " ++ _metaInfo'reason metaInfo
+
+printUnsolvedMetas :: TCState m -> IO ()
+printUnsolvedMetas s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
+  summarizeUnsolvedMeta s meta `forThisDeBruijnLevel` metaInfo
 
 printOverview :: TCState m -> IO ()
 printOverview s = do
@@ -127,6 +143,12 @@ runCommand s ("meta" : args) = case args of
     [(meta, "")] -> printMeta s meta
     _ -> putStrLn $ "Argument to 'meta' should be an integer."
   _ -> putStrLn $ "Command 'meta' expects one integer argument, e.g. 'meta 5'."
+runCommand s ("metas" : _) = printUnsolvedMetas s
+runCommand s ("constraint" : args) = case args of
+  [arg] -> case readsPrec 0 arg :: [(Int, String)] of
+    [(meta, "")] -> printConstraintByIndex s meta
+    _ -> putStrLn $ "Argument to 'constraint' should be an integer."
+  _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
 runCommand s ("overview" : _) = printOverview s
 runCommand s (command : args) = do
   putStrLn $ "Unknown command : " ++ command

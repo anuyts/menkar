@@ -177,7 +177,7 @@ checkConstraint parent = case constraint'judgement parent of
              topDeg
              (ModedModality dataMode irrMod :\\ gamma)
              (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-             "Infer level."
+             "Infer universe level of type."
     addNewConstraint
       (JudTerm gamma ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl))
       (Just parent)
