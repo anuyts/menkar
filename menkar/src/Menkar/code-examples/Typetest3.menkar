@@ -1,0 +1,9 @@
+module Test {A} where {
+    val id {x : A} : _ = x
+}
+
+/*
+A could be an implicit function outputting stuff of universe type. Hence, its type is not resolved.
+Then the type of x is a smart elimination that cannot be computed, and is represented as a meta.
+Then the _ is not resolved either, because metas are only resolved against WHNFs.
+*/
