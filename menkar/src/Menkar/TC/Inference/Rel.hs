@@ -602,8 +602,8 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
     else do
       (whnT1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
       (whnT2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
-      (whnTy1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first type."
-      (whnTy2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second type."
+      (whnTy1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
+      (whnTy2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
       whnparent <- defConstraint
             (JudTermRel
               deg
