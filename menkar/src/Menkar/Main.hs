@@ -89,21 +89,32 @@ prompt prefix = do
   getLine
 
 giveHelp :: IO ()
-giveHelp = putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
+giveHelp = do
+  putStrLn $ "quit          Quit Menkar."
+  putStrLn $ "overview      Give an overview of the type-checking results."
+  putStrLn $ "metas         Give an overview of the unsolved meta-variables."
+  putStrLn $ "meta i        Give information about meta-variable ?i (where i is an integer)."
+  putStrLn $ "constraint i  Give information about constraint i (where i is an integer)."
+  putStrLn $ "reports       List other reports produced during type-checking (including goals)."
+  putStrLn $ "help          Print this help."
+  --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
-runCommand :: TCState m -> String -> IO ()
-runCommand s "" = return ()
-runCommand s "help" = giveHelp
-runCommand s "overview" = printOverview s
-runCommand s command = putStrLn command
+runCommand :: TCState m -> [String] -> IO ()
+runCommand s [] = return ()
+runCommand s ("help" : _) = giveHelp
+runCommand s ("overview" : _) = printOverview s
+runCommand s (command : args) = do
+  putStrLn $ "Unknown command : " ++ command
+  putStrLn $ "Type 'help' for help."
 
 consumeCommand :: TCState m -> IO Bool
 consumeCommand s = do
   command <- prompt "> "
-  if command == "quit"
-    then return False
-    else do
-      runCommand s command
+  let splitCommand = words command
+  case splitCommand of
+    "quit" : _ -> return False
+    _ -> do
+      runCommand s splitCommand
       return True
 
 interactiveMode :: TCState m -> IO ()
