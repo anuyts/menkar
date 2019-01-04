@@ -253,7 +253,7 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
   case (tyEliminee, eliminators) of
     -- `t ... e` (bogus)
     (_, []) ->
-      checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
+      unreachable {-checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult-}
     (_, SmartElimDots : []) ->
       autoEliminate parent gamma dmuElim eliminee tyEliminee [] result tyResult $
       Just $ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
@@ -329,6 +329,8 @@ checkSmartElim ::
   Term mode modty v ->
   Type mode modty v ->
   tc ()
+checkSmartElim parent gamma dmuElim eliminee tyEliminee [] result tyResult =
+  checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
 checkSmartElim parent gamma dmuElim eliminee (Type tyEliminee) eliminators result tyResult = do
   (whnTyEliminee, metasTyEliminee) <-
     runWriterT $ whnormalize parent gamma tyEliminee "Weak-head-normalizing type of eliminee."
