@@ -27,7 +27,7 @@ import Control.Lens
 printConstraint :: Constraint U1 U1 U1 -> IO ()
 printConstraint c = do
   putStrLn $ "Constraint " ++ show (constraint'id c) ++ ":"
-  putStrLn $ show $ constraint'judgement c
+  putStr $ show $ constraint'judgement c
 
 printTrace :: Constraint U1 U1 U1 -> IO ()
 printTrace c = do
@@ -40,12 +40,6 @@ printTrace c = do
       putStrLn ""
       printTrace parent
 
-printReport :: TCReport -> IO ()
-printReport r = do
-  putStrLn $ _tcReport'reason r
-  putStrLn ""
-  printTrace $ _tcReport'parent r
-
 printBlockInfo :: DeBruijnLevel v => TCState m -> BlockInfo m v -> IO ()
 printBlockInfo s blockInfo = do
   putStrLn $ ""
@@ -57,7 +51,7 @@ printMetaInfo s meta info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
   let depcies = Compose $ Var3 <$> listAll Proxy
-  putStrLn $ show $ JudTerm (_metaInfo'context info) (Expr3 $ TermMeta meta depcies) (Type $ Expr3 $ TermWildcard)
+  putStr $ show $ JudTerm (_metaInfo'context info) (Expr3 $ TermMeta meta depcies) (Type $ Expr3 $ TermWildcard)
   putStrLn $ ""
   case _metaInfo'maybeSolution info of
     Right solutionInfo -> do
@@ -101,6 +95,14 @@ printUnsolvedMetas :: TCState m -> IO ()
 printUnsolvedMetas s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
   summarizeUnsolvedMeta s meta `forThisDeBruijnLevel` metaInfo
 
+printReport :: TCState m -> TCReport -> IO ()
+printReport s report = do
+  putStrLn $ "Report"
+  putStrLn $ "------"
+  putStrLn $ "Reason: " ++ _tcReport'reason report
+  printConstraint $ _tcReport'parent report
+  putStrLn $ ""
+
 printOverview :: TCState m -> IO ()
 printOverview s = do
   let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
@@ -131,6 +133,7 @@ giveHelp = do
   putStrLn $ "metas         Give an overview of the unsolved meta-variables."
   putStrLn $ "meta i        Give information about meta-variable ?i (where i is an integer)."
   putStrLn $ "constraint i  Give information about constraint i (where i is an integer)."
+  putStrLn $ "constraint 0  Print the internal representation of the entire program."
   putStrLn $ "reports       List other reports produced during type-checking (including goals)."
   putStrLn $ "help          Print this help."
   --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
@@ -149,6 +152,7 @@ runCommand s ("constraint" : args) = case args of
     [(meta, "")] -> printConstraintByIndex s meta
     _ -> putStrLn $ "Argument to 'constraint' should be an integer."
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
+runCommand s ("reports" : _) = sequenceA_ $ _tcState'reports s <&> printReport s
 runCommand s ("overview" : _) = printOverview s
 runCommand s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
@@ -200,7 +204,7 @@ mainArgs args = do
                 putStrLn "------------"
                 putStrLn "TYPING ERROR"
                 putStrLn "------------"
-                printReport report
+                printReport s report
                 let s' = over (tcState'reports) (report :) s
                 interactiveMode s'
               TCErrorScopeFail msg -> do

@@ -63,7 +63,7 @@ jud2pretty (JudSmartElim gamma dnu eliminee tyEliminee eliminators result tyResu
     ]
 jud2pretty (JudGoal gamma goalName t ty) =
   ctx2pretty gamma \\\ [
-    _vdash_ ++ goalName ++ " " ++ [charYielding] ++| fine2pretty (ctx2scCtx gamma) t,
+    _vdash_ ++ "?" ++ goalName ++ " <takes-value> " ++| fine2pretty (ctx2scCtx gamma) t,
     " : " ++| fine2pretty (ctx2scCtx gamma) ty]
 jud2pretty (JudResolve gamma t ty) = todo
 jud2pretty (JudSegment gamma seg) = ctx2pretty gamma \\\ [_vdash ++ " <segment> " ++| fine2pretty (ctx2scCtx gamma) seg]
