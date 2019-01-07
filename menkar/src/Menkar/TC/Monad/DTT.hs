@@ -33,6 +33,7 @@ import Control.Monad.State.Lazy
 import Control.Monad.List
 import Control.Monad.Except
 import Control.Lens
+import Unsafe.Coerce
 
 type TCResult = () --TCSuccess | TCWaiting
 
@@ -139,10 +140,22 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
 
   scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
 
-containBlocks :: (Monad m) => TCT m TCResult -> TCT m TCResult
-containBlocks action = resetDC $ action `catchError` \case
+catchBlocks :: (Monad m) => TCT m TCResult -> TCT m TCResult
+catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blocks -> do
-    _catchBlocks
+    let blockingMetas = fst <$> blocks
+    sequenceA_ $ blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
+      tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
+        ForSomeDeBruijnLevel $ over
+          (metaInfo'maybeSolution . _LeftUnsafe)
+          ((blockingMetas, unsafeCoerce blockInfo) :)
+          metaInfo
+      {-
+      maybeMetaInfo <- use $ tcState'metaMap . at meta
+      case maybeMetaInfo of
+        Nothing -> unreachable
+        Just (ForSomeDeBruijnLevel metaInfo) -> _handleBlocks
+      -}
   e -> throwError e
   
 instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
@@ -156,7 +169,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   -- Constraints are saved upon creation, not now.
   -- In fact, addConstraint is not even called on all created constraints.
-  addConstraint constraint = containBlocks $ checkConstraint constraint
+  addConstraint constraint = catchBlocks $ checkConstraint constraint
 
   addConstraintReluctantly constraint = todo
 
@@ -171,7 +184,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
             solution <- getSolution gamma
             sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reason k) -> do
               _checkIfSomeBlockingMetasHaveBeenSolved
-              containBlocks $ k $ Just $ solution
+              catchBlocks $ k $ Just $ solution
             tcState'metaMap . at meta .=
               Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 
