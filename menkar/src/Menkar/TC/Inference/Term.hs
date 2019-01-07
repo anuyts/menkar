@@ -556,12 +556,15 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
         (JudEta gamma (Expr3 t) ty)
         (Just parent)
         "Eta-expand meta if possible."
+      tcBlock parent "I want to know what I'm supposed to type-check."
+      {-
       -- The meta may now have a solution.
       maybeT' <- awaitMeta parent
                    "I want to know what I'm supposed to type-check. (Retry after trying to eta-expand)" meta depcies
       case maybeT' of
         Nothing -> tcBlock parent "I want to know what I'm supposed to type-check."
         Just t' -> return t'
+      -}
     Just t' -> return t'
   childConstraint <- defConstraint
             (JudTerm gamma t' ty)

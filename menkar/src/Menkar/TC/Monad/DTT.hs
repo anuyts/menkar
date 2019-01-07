@@ -77,10 +77,11 @@ data TCState m = TCState {
   _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo m)),
   _tcState'constraintCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint U1 U1 U1),
-  _tcState'reports :: [TCReport]
+  _tcState'reports :: [TCReport],
+  _tcState'tasks :: [TCT m ()]
   }
 initTCState :: TCState m
-initTCState = TCState 0 empty 0 empty []
+initTCState = TCState 0 empty 0 empty [] []
 
 {-
 -- | delimited continuation monad class
@@ -106,13 +107,13 @@ data TCError m =
 newtype TCT m a = TCT {unTCT :: MContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT (TCError m) m))) a}
   deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
 
-runTCT :: (Monad m) => TCT m () -> TCState m -> ExceptT (TCError m) m (TCResult, TCState m)
-runTCT program initState = flip runStateT initState $ evalMContT $ unTCT program
+getTCT :: (Monad m) => TCT m () -> TCState m -> ExceptT (TCError m) m (TCResult, TCState m)
+getTCT program initState = flip runStateT initState $ evalMContT $ unTCT program
 
 type TC = TCT Identity
 
-runTC :: TC () -> TCState Identity -> Except (TCError Identity) (TCResult, TCState Identity)
-runTC = runTCT
+getTC :: TC () -> TCState Identity -> Except (TCError Identity) (TCResult, TCState Identity)
+getTC = getTCT
 
 ----------------------------------------------------------------------------
 makeLenses ''MetaInfo
@@ -120,6 +121,20 @@ makeLenses ''BlockInfo
 makeLenses ''TCState
 makeLenses ''TCReport
 ----------------------------------------------------------------------------
+
+addTask :: Monad m => TCT m () -> TCT m ()
+addTask task = do
+  tcState'tasks %= (task :)
+
+typeCheck :: Monad m => TCT m ()
+typeCheck = do
+  tasks <- use tcState'tasks
+  case tasks of
+    [] -> return ()
+    (task : moreTasks) -> do
+      tcState'tasks .= moreTasks
+      task
+      typeCheck
 
 instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
   
@@ -168,7 +183,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   -- Constraints are saved upon creation, not now.
   -- In fact, addConstraint is not even called on all created constraints.
-  addConstraint constraint = catchBlocks $ checkConstraint constraint
+  addConstraint constraint = addTask $ catchBlocks $ checkConstraint constraint
 
   addConstraintReluctantly constraint = todo
 
@@ -189,7 +204,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
                   tcState'metaMap . at blockingMeta . _JustUnsafe
               if allAreUnsolved
               -- If so, then unblock with the solution just provided
-              then catchBlocks $ k $ Just $ solution
+              then addTask $ catchBlocks $ k $ Just $ solution
               -- Else forget about this blocked constraint, it has been unblocked already.
               else return ()
             -- Save the solution

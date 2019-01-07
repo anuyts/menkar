@@ -199,12 +199,13 @@ mainArgs args = do
           putStrLn "-------------"
           putStrLn $ MP.errorBundlePretty e
         Right rawFile -> do
-          let tcResult = runExcept $ flip runTC initTCState $ do
+          let tcResult = runExcept $ flip getTC initTCState $ do
                 fineFile <- S.file (CtxEmpty U1) rawFile
                 addNewConstraint
                   (JudEntry (CtxEmpty U1) fineFile)
                   Nothing
                   "Type-checking the file."
+                typeCheck
           case tcResult of
             Right ((), s) -> do
               interactiveMode s
