@@ -72,6 +72,7 @@ class (
     Maybe (Constraint mode modty rel) ->
     String ->
     tc (Constraint mode modty rel)
+  {-| Immediately checks the given constraint, unless it blocks. -}
   addConstraint :: Constraint mode modty rel -> tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()

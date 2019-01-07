@@ -52,7 +52,7 @@ data MetaInfo m v = MetaInfo {
   _metaInfo'context :: Ctx Type U1 U1 v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
-  _metaInfo'maybeSolution :: Either [BlockInfo m v] (SolutionInfo m v)
+  _metaInfo'maybeSolution :: Either [([Int {- all metas blocking this thing -}], BlockInfo m v)] (SolutionInfo m v)
   }
 isDormant :: MetaInfo m v -> Bool
 isDormant metaInfo = case _metaInfo'maybeSolution metaInfo of
@@ -97,7 +97,7 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 
 data TCError m =
   TCErrorConstraintBound |
-  TCErrorBlocked (Constraint U1 U1 U1) String |
+  TCErrorBlocked (Constraint U1 U1 U1) String [(Int, ForSomeDeBruijnLevel (BlockInfo m))] |
   TCErrorTCFail TCReport (TCState m) |
   TCErrorScopeFail String
 
@@ -139,6 +139,12 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
 
   scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
 
+containBlocks :: (Monad m) => TCT m TCResult -> TCT m TCResult
+containBlocks action = resetDC $ action `catchError` \case
+  TCErrorBlocked blockParent blockReason blocks -> do
+    _catchBlocks
+  e -> throwError e
+  
 instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   
   --newConstraintID = tcState'constraintCounter <<%= (+1)
@@ -148,10 +154,9 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
     tcState'constraintMap %= insert i constraint
     return constraint
 
-  addConstraint constraint = resetDC $ do
-    -- Constraints are saved upon creation, not now.
-    -- In fact, addConstraint is not even called on all created constraints.
-    checkConstraint constraint
+  -- Constraints are saved upon creation, not now.
+  -- In fact, addConstraint is not even called on all created constraints.
+  addConstraint constraint = containBlocks $ checkConstraint constraint
 
   addConstraintReluctantly constraint = todo
 
@@ -164,7 +169,9 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
           Right _ -> unreachable
           Left blocks -> do
             solution <- getSolution gamma
-            sequenceA_ $ blocks <&> \ (BlockInfo blockParent reason k) -> resetDC $ k $ Just $ solution
+            sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reason k) -> do
+              _checkIfSomeBlockingMetasHaveBeenSolved
+              containBlocks $ k $ Just $ solution
             tcState'metaMap . at meta .=
               Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 
@@ -179,14 +186,16 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
           Left blocks -> shiftDC $ \ k -> do
             -- Try to continue with an unsolved meta
             k Nothing `catchError` \case
-              TCErrorBlocked blockParent blockReason -> do
-                let block = BlockInfo blockParent blockReason $
-                            k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy))
-                tcState'metaMap . at meta .=
-                  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
+              TCErrorBlocked blockParent blockReason blocks -> do
+                let blockInfo = BlockInfo blockParent blockReason $
+                      k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
+                -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
+                throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks)
+                --tcState'metaMap . at meta .=
+                --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e
   
-  tcBlock parent reason = throwError $ TCErrorBlocked parent reason
+  tcBlock parent reason = throwError $ TCErrorBlocked parent reason []
 
   tcReport parent reason = tcState'reports %= (TCReport parent reason :)
   
