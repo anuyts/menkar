@@ -181,9 +181,6 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
           Right _ -> unreachable
           Left blocks -> do
             solution <- getSolution gamma
-            -- Save the solution
-            tcState'metaMap . at meta .=
-              Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
             -- Unblock blocked constraints
             sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k) -> do
               -- Check whether this is the first meta (among those on which this constraint is blocked) to be resolved.
@@ -195,12 +192,15 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
               then catchBlocks $ k $ Just $ solution
               -- Else forget about this blocked constraint, it has been unblocked already.
               else return ()
+            -- Save the solution
+            tcState'metaMap . at meta .=
+              Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 
-  awaitMeta parent reason meta depcies = do
+  awaitMeta parent reasonAwait meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
     case maybeMetaInfo of
       Nothing -> unreachable
-      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reason maybeSolution)) -> do
+      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reasonMeta maybeSolution)) -> do
         case maybeSolution of
           Right (SolutionInfo parent solution) -> do
             return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
@@ -208,7 +208,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
             -- Try to continue with an unsolved meta
             k Nothing `catchError` \case
               TCErrorBlocked blockParent blockReason blocks -> do
-                let blockInfo = BlockInfo blockParent blockReason reason $
+                let blockInfo = BlockInfo blockParent blockReason reasonAwait $
                       k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
                 -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
                 throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks)

@@ -557,7 +557,8 @@ checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
         (Just parent)
         "Eta-expand meta if possible."
       -- The meta may now have a solution.
-      maybeT' <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
+      maybeT' <- awaitMeta parent
+                   "I want to know what I'm supposed to type-check. (Retry after trying to eta-expand)" meta depcies
       case maybeT' of
         Nothing -> tcBlock parent "I want to know what I'm supposed to type-check."
         Just t' -> return t'
