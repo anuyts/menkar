@@ -146,10 +146,8 @@ catchBlocks action = resetDC $ action `catchError` \case
     let blockingMetas = fst <$> blocks
     sequenceA_ $ blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
       tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
-        ForSomeDeBruijnLevel $ over
-          (metaInfo'maybeSolution . _LeftUnsafe)
-          ((blockingMetas, unsafeCoerce blockInfo) :)
-          metaInfo
+        ForSomeDeBruijnLevel $ over (metaInfo'maybeSolution . _LeftUnsafe)
+          ((blockingMetas, unsafeCoerce blockInfo) :) metaInfo
       {-
       maybeMetaInfo <- use $ tcState'metaMap . at meta
       case maybeMetaInfo of
@@ -182,11 +180,20 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
           Right _ -> unreachable
           Left blocks -> do
             solution <- getSolution gamma
-            sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reason k) -> do
-              _checkIfSomeBlockingMetasHaveBeenSolved
-              catchBlocks $ k $ Just $ solution
+            -- Save the solution
             tcState'metaMap . at meta .=
               Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
+            -- Unblock blocked constraints
+            sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reason k) -> do
+              -- Check whether this is the first meta (among those on which this constraint is blocked) to be resolved.
+              allAreUnsolved <- fmap (not . getAny . fold) $ sequenceA $ blockingMetas <&>
+                \blockingMeta -> fmap (Any . forThisDeBruijnLevel isSolved) $ use $
+                  tcState'metaMap . at blockingMeta . _JustUnsafe
+              if allAreUnsolved
+              -- If so, then unblock with the solution just provided
+              then catchBlocks $ k $ Just $ solution
+              -- Else forget about this blocked constraint, it has been unblocked already.
+              else return ()
 
   awaitMeta parent reason meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
