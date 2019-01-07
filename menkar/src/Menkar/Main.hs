@@ -42,10 +42,11 @@ printTrace c = do
       putStrLn ""
       printTrace parent
 
-printBlockInfo :: DeBruijnLevel v => TCState m -> BlockInfo m v -> IO ()
-printBlockInfo s blockInfo = do
+printBlockInfo :: DeBruijnLevel v => TCState m -> ([Int], BlockInfo m v) -> IO ()
+printBlockInfo s (blockingMetas, blockInfo) = do
   putStrLn $ ""
   putStrLn $ "Reason: " ++ _blockInfo'reason blockInfo
+  putStrLn $ "Blocked on:" ++ (fold $ (" ?" ++) . show <$> blockingMetas)
   printConstraint $ _blockInfo'parent blockInfo
 
 printMetaInfo :: DeBruijnLevel v => TCState m -> Int -> MetaInfo m v -> IO ()
@@ -208,7 +209,7 @@ mainArgs args = do
               interactiveMode s
             Left e -> case e of
               TCErrorConstraintBound -> unreachable
-              TCErrorBlocked parent reason -> unreachable
+              TCErrorBlocked parent reason blocks -> unreachable
               TCErrorTCFail report s -> do
                 putStrLn "------------"
                 putStrLn "TYPING ERROR"
