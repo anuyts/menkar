@@ -52,14 +52,17 @@ printMetaInfo :: DeBruijnLevel v => TCState m -> Int -> MetaInfo m v -> IO ()
 printMetaInfo s meta info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  let depcies = Compose $ Var3 <$> listAll Proxy
-  putStr $ show $ JudTerm (_metaInfo'context info) (Expr3 $ TermMeta meta depcies) (Type $ Expr3 $ TermWildcard)
+  let tMeta = Expr3 $ TermMeta meta $ Compose $ Var3 <$> listAll Proxy
+  putStr $ show $ JudTerm (_metaInfo'context info) tMeta (Type $ Expr3 $ TermWildcard)
   putStrLn $ ""
   case _metaInfo'maybeSolution info of
     Right solutionInfo -> do
       putStrLn "Solution:"
       putStrLn "---------"
+      putStr   $ fine2string (ctx2scCtx $ _metaInfo'context info) tMeta
+      putStr   $ " = "
       putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) $ _solutionInfo'solution solutionInfo
+      printConstraint $ _solutionInfo'parent solutionInfo
     Left blocks -> do
       putStrLn "Unsolved"
       putStrLn "--------"
@@ -188,7 +191,11 @@ mainArgs args = do
       code <- readFile path
       let errorOrRawFile = P.parse P.file path code
       case errorOrRawFile of
-        Left e -> putStrLn $ MP.errorBundlePretty e
+        Left e -> do
+          putStrLn "-------------"
+          putStrLn "PARSING ERROR"
+          putStrLn "-------------"
+          putStrLn $ MP.errorBundlePretty e
         Right rawFile -> do
           let tcResult = runExcept $ flip runTC initTCState $ do
                 fineFile <- S.file (CtxEmpty U1) rawFile
