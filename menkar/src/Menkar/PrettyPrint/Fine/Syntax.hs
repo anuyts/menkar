@@ -37,7 +37,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
                   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ModedModality mode modty Void) where
-  show dmu = "[ModedModality|\n" ++ fine2string ScCtxEmpty dmu ++ "\n]"
+  show dmu = "[ModedModality|\n" ++ fine2string ScCtxEmpty dmu ++ "\n|]"
 
 deriving instance (Show (mode v), Show (modty v)) => Show (ModedContramodality mode modty v)
 
@@ -57,7 +57,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
          Show (Binding Type rhs mode modty Void) where
-  show binding = "[Binding|\n" ++ fine2string ScCtxEmpty binding ++ "\n]"
+  show binding = "[Binding|\n" ++ fine2string ScCtxEmpty binding ++ "\n|]"
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -76,7 +76,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (UniHSConstructor mode modty Void) where
-  show typeterm = "[UniHSConstructor|\n" ++ fine2string ScCtxEmpty typeterm ++ "\n]"
+  show typeterm = "[UniHSConstructor|\n" ++ fine2string ScCtxEmpty typeterm ++ "\n|]"
   
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -103,7 +103,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ConstructorTerm mode modty Void) where
-  show consTerm = "[ConstructorTerm|\n" ++ fine2string ScCtxEmpty consTerm ++ "\n]"
+  show consTerm = "[ConstructorTerm|\n" ++ fine2string ScCtxEmpty consTerm ++ "\n|]"
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -118,7 +118,32 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (SmartEliminator mode modty Void) where
-  show smartElim = "[SmartEliminator|\n" ++ fine2string ScCtxEmpty smartElim ++ "\n]"
+  show smartElim = "[SmartEliminator|\n" ++ fine2string ScCtxEmpty smartElim ++ "\n|]"
+
+typed2pretty :: (DeBruijnLevel v,
+                       Functor mode, Functor modty,
+                       Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
+  ScCtx mode modty v Void ->
+  Term mode modty v ->
+  Type mode modty v ->
+  PrettyTree String
+typed2pretty gamma t ty =
+  ribbon "(ofType" \\\ [
+      " (" ++| fine2pretty gamma ty |++ ")",
+      " (" ++| fine2pretty gamma t |++ ")"
+    ] ///
+  ribbon ")"
+
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
+         Fine2Pretty mode modty (NamedBinding rhs) where
+  fine2pretty gamma (NamedBinding maybeName body) =
+    let gammaExt = gamma ::.. ScSegment maybeName
+    in  var2pretty gammaExt VarLast |++ " > " |+| fine2pretty gammaExt body
+instance (Functor mode, Functor modty,
+         Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>
+         Show (NamedBinding rhs mode modty Void) where
+  show binding = "[NamedBinding|\n" ++ fine2string ScCtxEmpty binding ++ "\n|]"
 
 elimination2pretty :: (DeBruijnLevel v,
                        Functor mode, Functor modty,
@@ -165,15 +190,24 @@ elimination2pretty gamma eliminee (Unbox boxSeg) = todo
 elimination2pretty gamma eliminee (ElimNat motive cz cs) = todo
 -}
 elimination2pretty gamma dmu eliminee tyEliminee (App arg) =
-    ribbon "(ofType" \\\ [
-      " (" ++| fine2pretty gamma tyEliminee |++ ")",
-      " (" ++| fine2pretty gamma eliminee |++ ")"
-      ] ///
-    ribbon ")" \\\
+    typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) \\\
       [
       " .{" ++| fine2pretty gamma arg |++ "}"
       ]
+elimination2pretty gamma dmu eliminee tyEliminee (Fst) =
+  "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") .1 "
+elimination2pretty gamma dmu eliminee tyEliminee (Snd) =
+  "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") ..2 "
+elimination2pretty gamma dmu eliminee tyEliminee (Unbox) =
+  "unbox (" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
 elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clausePair)) =
+  ribbon "indSigma " \\\ [
+      fine2pretty gamma dmu,
+      "(" ++| fine2pretty gamma motive |++ ") ",
+      "(" ++| fine2pretty gamma clausePair |++ ") ",
+      "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
+    ]
+  {-
   ribbon "let {" \\\ [
     ribbon "elim f" \\\ [
         " : " ++| fine2pretty gamma (Pi (Binding
@@ -191,7 +225,29 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clau
         ]
     ] ///
   "} in f .{" ++| fine2pretty gamma eliminee |++ "}"
-elimination2pretty gamma dmu eliminee tyEliminee eliminator = todo
+  -}
+elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimBox clauseBox)) =
+  ribbon "indBox " \\\ [
+      fine2pretty gamma dmu,
+      "(" ++| fine2pretty gamma motive |++ ") ",
+      "(" ++| fine2pretty gamma clauseBox |++ ") ",
+      "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
+    ]
+elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimEmpty)) =
+  ribbon "indEmpty " \\\ [
+      fine2pretty gamma dmu,
+      "(" ++| fine2pretty gamma motive |++ ") ",
+      "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
+    ]
+elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimNat clauseZero clauseSuc)) =
+  ribbon "indNat " \\\ [
+      fine2pretty gamma dmu,
+      "(" ++| fine2pretty gamma motive |++ ") ",
+      "(" ++| fine2pretty gamma clauseZero |++ ") ",
+      "(" ++| fine2pretty gamma clauseSuc |++ ") ",
+      "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
+    ]
+--elimination2pretty gamma dmu eliminee tyEliminee eliminator = todo
 
 {-
 instance (Functor mode, Functor modty,
@@ -236,7 +292,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (TermNV mode modty Void) where
-  show t = "[TermNV|\n" ++ fine2string ScCtxEmpty t ++ "\n]"
+  show t = "[TermNV|\n" ++ fine2string ScCtxEmpty t ++ "\n|]"
 
 toSubscript :: String -> String
 toSubscript = map (\ char -> toEnum $ fromEnum char - 48 + 8320)
@@ -249,7 +305,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty termNV) =>
          Show (Expr3 termNV mode modty Void) where
-  show e = "[Expr3|\n" ++ fine2string ScCtxEmpty e ++ "\n]"
+  show e = "[Expr3|\n" ++ fine2string ScCtxEmpty e ++ "\n|]"
 
 ----------------------
 
@@ -262,7 +318,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Annotation mode modty Void) where
-  show annot = "[Annotation|\n" ++ fine2string ScCtxEmpty annot ++ "\n]"
+  show annot = "[Annotation|\n" ++ fine2string ScCtxEmpty annot ++ "\n|]"
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -273,7 +329,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Plicity mode modty Void) where
-  show plic = "[Plicity|\n" ++ fine2string ScCtxEmpty plic ++ "\n]"
+  show plic = "[Plicity|\n" ++ fine2string ScCtxEmpty plic ++ "\n|]"
 
 declName2pretty :: forall v mode modty declSort . DeBruijnLevel v =>
   ScCtx mode modty v Void -> DeclName declSort -> PrettyTree String
@@ -283,7 +339,7 @@ declName2pretty gamma (DeclNameSegment maybeName) = (fromMaybe (ribbon "_") $ Ra
                                               |++ (toSubscript $ show $ size (Proxy :: Proxy v))
 declName2pretty gamma (DeclNameValSpec) = ribbon "<VALSPECNAME>"
 instance Show (DeclName declSort) where
-  show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty ScCtxEmpty declName) ++ "\n]"
+  show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty ScCtxEmpty declName) ++ "\n|]"
 
 {-| Prettyprints a telescope. -}
 telescope2pretties :: (DeBruijnLevel v,
@@ -305,7 +361,7 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
 instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          Show (Telescope ty mode modty Void) where
-  show theta = "[Telescope|\n" ++ fine2string ScCtxEmpty theta ++ "\n]"
+  show theta = "[Telescope|\n" ++ fine2string ScCtxEmpty theta ++ "\n|]"
 
 declAnnots2pretties :: (DeBruijnLevel v,
          Functor mode, Functor modty,
@@ -339,7 +395,7 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
 instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
          Show (Segment ty mode modty Void) where
-  show seg = "[Segment|\n" ++ fine2string ScCtxEmpty seg ++ "\n]"
+  show seg = "[Segment|\n" ++ fine2string ScCtxEmpty seg ++ "\n|]"
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -351,7 +407,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ValRHS mode modty Void) where
-  show valRHS = "[ValRHS|\n" ++ fine2string ScCtxEmpty valRHS ++ "\n]"
+  show valRHS = "[ValRHS|\n" ++ fine2string ScCtxEmpty valRHS ++ "\n|]"
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -370,7 +426,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Val mode modty Void) where
-  show val = "[Val|\n" ++ fine2string ScCtxEmpty val ++ "\n]"
+  show val = "[Val|\n" ++ fine2string ScCtxEmpty val ++ "\n|]"
         
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -382,7 +438,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ModuleRHS mode modty Void) where
-  show moduleRHS = "[ModuleRHS|\n" ++ fine2string ScCtxEmpty moduleRHS ++ "\n]"
+  show moduleRHS = "[ModuleRHS|\n" ++ fine2string ScCtxEmpty moduleRHS ++ "\n|]"
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -401,7 +457,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Module mode modty Void) where
-  show modul = "[Module|\n" ++ fine2string ScCtxEmpty modul ++ "\n]"
+  show modul = "[Module|\n" ++ fine2string ScCtxEmpty modul ++ "\n|]"
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -411,7 +467,7 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Entry mode modty Void) where
-  show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry ++ "\n]"
+  show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry ++ "\n|]"
 
 instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty ty) =>
