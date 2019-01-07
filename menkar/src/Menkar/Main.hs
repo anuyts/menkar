@@ -45,7 +45,8 @@ printTrace c = do
 printBlockInfo :: DeBruijnLevel v => TCState m -> ([Int], BlockInfo m v) -> IO ()
 printBlockInfo s (blockingMetas, blockInfo) = do
   putStrLn $ ""
-  putStrLn $ "Reason: " ++ _blockInfo'reason blockInfo
+  putStrLn $ "Reason for blocking: " ++ _blockInfo'reasonBlock blockInfo
+  putStrLn $ "Reason for requesting: " ++ _blockInfo'reasonAwait blockInfo -- not super-useful.
   putStrLn $ "Blocked on:" ++ (fold $ (" ?" ++) . show <$> blockingMetas)
   printConstraint $ _blockInfo'parent blockInfo
 

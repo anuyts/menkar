@@ -44,7 +44,8 @@ data SolutionInfo m v = SolutionInfo {
 
 data BlockInfo m v = BlockInfo {
   _blockInfo'parent :: Constraint U1 U1 U1,
-  _blockInfo'reason :: String,
+  _blockInfo'reasonBlock :: String,
+  _blockInfo'reasonAwait :: String,
   _blockInfo'cont :: (Maybe (Term U1 U1 v) -> TCT m TCResult)
   }
 
@@ -184,7 +185,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
             tcState'metaMap . at meta .=
               Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
             -- Unblock blocked constraints
-            sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reason k) -> do
+            sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k) -> do
               -- Check whether this is the first meta (among those on which this constraint is blocked) to be resolved.
               allAreUnsolved <- fmap (not . getAny . fold) $ sequenceA $ blockingMetas <&>
                 \blockingMeta -> fmap (Any . forThisDeBruijnLevel isSolved) $ use $
@@ -207,7 +208,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
             -- Try to continue with an unsolved meta
             k Nothing `catchError` \case
               TCErrorBlocked blockParent blockReason blocks -> do
-                let blockInfo = BlockInfo blockParent blockReason $
+                let blockInfo = BlockInfo blockParent blockReason reason $
                       k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
                 -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
                 throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks)
