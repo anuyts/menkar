@@ -1,6 +1,6 @@
-module Test {A} where {
-    val id {x : A} : _ = x
-    val Nat' : _ = Nat ...
+module Test where {
+    //val Nat' : _ = Nat .{0}
+    val zero : Nat .{0} = suc 0
 }
 
 /*

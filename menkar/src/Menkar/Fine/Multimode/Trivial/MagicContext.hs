@@ -20,7 +20,7 @@ magicEntries = [
       trivModedModality
       Explicit
       $ Declaration
-          (DeclNameSegment $ Nothing)
+          (DeclNameSegment $ Just $ Name NonOp "lvl")
           trivModedModality
           Implicit
           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
@@ -29,6 +29,25 @@ magicEntries = [
             ValRHS
               (Expr3 $ TermCons $ ConsUniHS $ NatType)
               (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS U1 $ Var3 VarLast)
+          ),
+
+    {- Successor
+       suc {n : Nat} : Nat = suc n
+    -}
+    EntryVal $ Declaration
+      (DeclNameVal $ Name NonOp "suc")
+      trivModedModality
+      Explicit
+      $ Declaration
+          (DeclNameSegment $ Just $ Name NonOp "n")
+          trivModedModality
+          Explicit
+          (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+        :|-
+          Telescoped (
+            ValRHS
+              (Expr3 $ TermCons $ ConsSuc $ Var3 $ VarLast)
+              (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
           )
   ]
 

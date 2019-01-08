@@ -177,6 +177,14 @@ apply ::
 apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = do
   let dmuArg = _segment'modty $ binding'segment $ piBinding
   addNewConstraint
+    (JudTerm
+      (wildModedModality :\\ gamma) -- CMODE
+      arg
+      (_decl'content $ binding'segment $ piBinding)
+    )
+    (Just parent)
+    "Applying function: checking argument."
+  addNewConstraint
     (JudSmartElim
       gamma
       dmuElim
@@ -192,7 +200,7 @@ apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = 
       tyResult
     )
     (Just parent)
-    "Applying function."
+    "Applying function: checking further elimination."
 
 insertImplicitArgument ::
   (MonadTC mode modty rel tc, DeBruijnLevel v) =>
