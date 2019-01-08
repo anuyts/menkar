@@ -199,7 +199,7 @@ mainArgs args = do
           putStrLn "-------------"
           putStrLn $ MP.errorBundlePretty e
         Right rawFile -> do
-          let tcResult = runExcept $ flip getTC initTCState $ do
+          let (tcResult, s) = flip getTC initTCState $ do
                 fineFile <- S.file (CtxEmpty U1) rawFile
                 addNewConstraint
                   (JudEntry (CtxEmpty U1) fineFile)
@@ -207,12 +207,11 @@ mainArgs args = do
                   "Type-checking the file."
                 typeCheck
           case tcResult of
-            Right ((), s) -> do
-              interactiveMode s
+            Right () -> interactiveMode s
             Left e -> case e of
               TCErrorConstraintBound -> unreachable
               TCErrorBlocked parent reason blocks -> unreachable
-              TCErrorTCFail report s -> do
+              TCErrorTCFail report -> do
                 putStrLn "------------"
                 putStrLn "TYPING ERROR"
                 putStrLn "------------"

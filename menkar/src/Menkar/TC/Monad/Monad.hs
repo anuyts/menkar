@@ -105,7 +105,8 @@ class (
          run with the soluiton.
       It is an error to await the same meta twice. -}
   awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
-  {-| Aborts computation. For every call to @'awaitMeta'@ that didn't yield a result, the continuation as of that point
+  {-| Aborts (rather than cancels) computation.
+      For every call to @'awaitMeta'@ that didn't yield a result, the continuation as of that point
       is saved. The first time one of the corresponding metas is resolved, the continuation from that point will be run. -}
   tcBlock :: Constraint mode modty rel -> String -> tc a
   tcReport :: Constraint mode modty rel -> String -> tc ()

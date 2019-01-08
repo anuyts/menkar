@@ -102,19 +102,21 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 data TCError m =
   TCErrorConstraintBound |
   TCErrorBlocked (Constraint U1 U1 U1) String [(Int, ForSomeDeBruijnLevel (BlockInfo m))] |
-  TCErrorTCFail TCReport (TCState m) |
+  TCErrorTCFail TCReport |
   TCErrorScopeFail String
 
-newtype TCT m a = TCT {unTCT :: MContT TCResult (StateT (TCState m) ({-ListT-} (ExceptT (TCError m) m))) a}
+newtype TCT m a = TCT {unTCT :: MContT TCResult (ExceptT (TCError m) (StateT (TCState m) ({-ListT-}  m))) a}
   deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
 
-getTCT :: (Monad m) => TCT m () -> TCState m -> ExceptT (TCError m) m (TCResult, TCState m)
-getTCT program initState = flip runStateT initState $ evalMContT $ unTCT program
+getTCT :: (Monad m) => TCT m () -> TCState m -> m (Either (TCError m) TCResult, TCState m)
+getTCT program initState = flip runStateT initState $ runExceptT $ evalMContT $ unTCT program
+--getTCT program initState = flip runStateT initState $ evalMContT $ unTCT program
 
 type TC = TCT Identity
 
-getTC :: TC () -> TCState Identity -> Except (TCError Identity) (TCResult, TCState Identity)
-getTC = getTCT
+--getTC :: TC () -> TCState Identity -> Except (TCError Identity) (TCResult, TCState Identity)
+getTC :: TC () -> TCState Identity -> (Either (TCError Identity) TCResult, TCState Identity)
+getTC program initState = runIdentity $ getTCT program initState
 
 ----------------------------------------------------------------------------
 makeLenses ''MetaInfo
@@ -161,7 +163,8 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
 
   newMetaModty maybeParent gamma reason = return U1
 
-  scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
+  --scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
+  scopeFail reason = throwError $ TCErrorScopeFail reason
 
 catchBlocks :: (Monad m) => TCT m TCResult -> TCT m TCResult
 catchBlocks action = resetDC $ action `catchError` \case
@@ -273,9 +276,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   tcReport parent reason = tcState'reports %= (TCReport parent reason :)
   
-  tcFail parent reason = do
-    s <- get
-    throwError $ TCErrorTCFail (TCReport parent reason) s
+  tcFail parent reason = throwError $ TCErrorTCFail (TCReport parent reason)
 
   leqMod U1 U1 = return True
   
@@ -283,8 +284,8 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
 selfcontainedNoCont :: (Monad m) =>
   Constraint U1 U1 U1 ->
-  StateT (TCState m) (ExceptT (TCError m) m) a ->
-  StateT (TCState m) (ExceptT (TCError m) m) a
+  ExceptT (TCError m) (StateT (TCState m) m) a ->
+  ExceptT (TCError m) (StateT (TCState m) m) a
 selfcontainedNoCont parent ma = do
   -- Metas on which nothing is blocked (=: dormant meta), may be future metas already introduced by the scopechecker
   -- Thus, we need to check that
@@ -315,7 +316,7 @@ selfcontainedNoCont parent ma = do
           "The meaning of this declaration is not self-contained: it spills unsolved meta-variables:\n" ++
           (fold $ (" ?" ++) . show <$> spilledMetas)
         )
-      ) state1
+      )
 
   {-
   let throwTheError = throwError $ TCErrorTCFail (
