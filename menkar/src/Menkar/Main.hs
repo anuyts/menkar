@@ -7,6 +7,7 @@ import qualified Menkar.Parser as P
 import qualified Menkar.Scoper as S
 import Menkar.TC.Monad.DTT
 import Menkar.Fine
+import Menkar.Fine.Multimode.Trivial.MagicContext
 import Menkar.TC
 
 import Menkar.PrettyPrint.Fine
@@ -200,9 +201,9 @@ mainArgs args = do
           putStrLn $ MP.errorBundlePretty e
         Right rawFile -> do
           let (tcResult, s) = flip getTC initTCState $ do
-                fineFile <- S.file (CtxEmpty U1) rawFile
+                fineFile <- S.file magicContext rawFile
                 addNewConstraint
-                  (JudEntry (CtxEmpty U1) fineFile)
+                  (JudEntry magicContext fineFile)
                   Nothing
                   "Type-checking the file."
                 typeCheck
