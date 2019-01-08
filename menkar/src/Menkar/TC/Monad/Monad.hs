@@ -67,15 +67,17 @@ class (
   --modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
   --genVarName :: tc Raw.Name
   --newConstraintID :: tc Int
+  {-| Create and register a new constraint. -}
   defConstraint :: MonadTC mode modty rel tc =>
     Judgement mode modty rel ->
     Maybe (Constraint mode modty rel) ->
     String ->
     tc (Constraint mode modty rel)
-  {-| Immediately checks the given constraint, unless it blocks. -}
+  {-| Add a check for this constraint to the task stack. -}
   addConstraint :: Constraint mode modty rel -> tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()
+  {-| Provide a solution for the meta. All continuations thus unblocked are added to the task stack. -}
   solveMeta ::
     Constraint mode modty rel ->
     Int ->
@@ -89,12 +91,17 @@ class (
   --getMeta :: Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
   --{-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   --blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
-  {-| Forks computation, once returning nothing and once returning the meta's value.
-      The branch that gets nothing is run immediately. If it blocks by calling @'tcBlock'@,
-      then the other branch is called when the meta is resolved. -}
+  {-| Returns the meta's solution if the meta has been solved.
+      Otherwise, returns @Nothing@. Then you have two options:
+      1) Deal with it.
+      2) Block. In this case, the continuation as of this point is saved as being blocked on this meta.
+         (If other earlier or future metas were also unsuccessfully queried, then the continuations from those points
+         are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
+         run with the soluiton.
+      It is an error to await the same meta twice. -}
   awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
-  {-| Aborts computation and jumps back to the last call of @'awaitMeta'@ that didn't yield a solution. Continues from there
-      when a solution becomes available. -}
+  {-| Aborts computation. For every call to @'awaitMeta'@ that didn't yield a result, the continuation as of that point
+      is saved. The first time one of the corresponding metas is resolved, the continuation from that point will be run. -}
   tcBlock :: Constraint mode modty rel -> String -> tc a
   tcReport :: Constraint mode modty rel -> String -> tc ()
   tcFail :: Constraint mode modty rel -> String -> tc a
