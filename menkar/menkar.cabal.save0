@@ -53,11 +53,15 @@ executable menkar
   -- Modules included in this executable, other than Main.
   -- other-modules:       
   
+  default-extensions:  DeriveTraversable MultiParamTypeClasses FlexibleContexts FlexibleInstances StandaloneDeriving TypeOperators DeriveGeneric DefaultSignatures DeriveAnyClass KindSignatures GADTs RankNTypes DataKinds PolyKinds TypeFamilies FunctionalDependencies TypeApplications PartialTypeSignatures PatternSynonyms LambdaCase ScopedTypeVariables TemplateHaskell TupleSections
+
+  ghc-options: -fwarn-incomplete-patterns -Wno-partial-type-signatures
+
   -- LANGUAGE extensions used by modules in this package.
-  other-extensions:    DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts, StandaloneDeriving, MultiParamTypeClasses, GeneralizedNewtypeDeriving, FlexibleInstances, ApplicativeDo, NoDeriveAnyClass, TemplateHaskell, UndecidableInstances, IncoherentInstances, RankNTypes, PolyKinds, PartialTypeSignatures, DataKinds, TypeFamilies, ConstraintKinds, GADTs, TypeInType, TypeOperators, KindSignatures, FunctionalDependencies, TypeApplications, DeriveGeneric, DefaultSignatures, DeriveAnyClass
+  other-extensions:    DeriveFunctor, DeriveFoldable, DeriveTraversable, FlexibleContexts, StandaloneDeriving, MultiParamTypeClasses, GeneralizedNewtypeDeriving, FlexibleInstances, ApplicativeDo, NoDeriveAnyClass, TemplateHaskell, UndecidableInstances, TypeFamilies, PolyKinds, ConstraintKinds, KindSignatures, RankNTypes, GADTs, FunctionalDependencies, PartialTypeSignatures, TypeApplications, DataKinds, TypeInType, TypeOperators, DeriveGeneric, DefaultSignatures, DeriveAnyClass
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.9 && <4.10, containers >=0.5 && <0.6, mtl >=2.2 && <2.3, megaparsec >=7.0 && <7.1, lens >=4.17 && <4.18, nat >=0.3 && <0.4, transformers >=0.5 && <0.6, unordered-containers >=0.2 && <0.3, MissingH >=1.4 && <1.5, hashable >=1.2 && <1.3, Unique >=0.4 && <0.5, categories >=1.0 && <1.1, type-natural >=0.8 && <0.9, HUnit >=1.6 && <1.7, random >=1.1 && <1.2
+  build-depends:       base >=4.9, containers >=0.5 && <0.6, mtl >=2.2 && <2.3, megaparsec >=6.5 && <6.6, nat >=0.3 && <0.4, unordered-containers >=0.2 && <0.3, lens >=4.17 && <4.18, MissingH >=1.4 && <1.7, hashable >=1.2 && <1.3, categories >=1.0 && <1.1, type-natural >=0.8 && <0.9, HUnit >=1.6 && <1.7, random >=1.1 && <1.2, transformers >=0.5 && <0.6, Unique >= 0.4 && <0.5
   
   -- Directories containing source files.
   hs-source-dirs:      src
