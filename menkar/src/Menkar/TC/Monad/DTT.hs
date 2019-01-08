@@ -188,6 +188,27 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   addConstraintReluctantly constraint = todo
 
   solveMeta parent meta getSolution = do
+    ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
+    case _metaInfo'maybeSolution metaInfo of
+      Right _ -> unreachable
+      Left blocks -> do
+            solution <- getSolution $ _metaInfo'context metaInfo
+            -- Unblock blocked constraints
+            sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k) -> do
+              -- Check whether this is the first meta (among those on which this constraint is blocked) to be resolved.
+              allAreUnsolved <- fmap (not . getAny . fold) $ sequenceA $ blockingMetas <&>
+                \blockingMeta -> fmap (Any . forThisDeBruijnLevel isSolved) $ use $
+                  tcState'metaMap . at blockingMeta . _JustUnsafe
+              if allAreUnsolved
+              -- If so, then unblock with the solution just provided
+              then addTask $ catchBlocks $ k $ Just $ solution
+              -- Else forget about this blocked constraint, it has been unblocked already.
+              else return ()
+            -- Save the solution
+            tcState'metaMap . at meta . _JustUnsafe .=
+              ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
+
+{-do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
     case maybeMetaInfo of
       Nothing -> unreachable
@@ -210,6 +231,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
             -- Save the solution
             tcState'metaMap . at meta .=
               Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
+-}
 
   awaitMeta parent reasonAwait meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
