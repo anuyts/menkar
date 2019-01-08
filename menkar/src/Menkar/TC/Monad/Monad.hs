@@ -113,7 +113,7 @@ class (
   tcFail :: Constraint mode modty rel -> String -> tc a
   leqMod :: modty v -> modty v -> tc Bool
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
-  selfcontained :: Constraint mode modty rel -> tc a -> tc a
+  --selfcontained :: Constraint mode modty rel -> tc () -> tc ()
 
 await :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel -> String -> Term mode modty v -> tc (Maybe (Term mode modty v))

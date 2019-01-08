@@ -279,14 +279,21 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   tcFail parent reason = throwError $ TCErrorTCFail (TCReport parent reason)
 
   leqMod U1 U1 = return True
-  
-  selfcontained parent (TCT ma) = TCT $ mapMContT (selfcontainedNoCont parent) ma
 
-selfcontainedNoCont :: (Monad m) =>
+{-
+  selfcontained parent ma = addTask $ selfcontainedNoSched parent $ do
+    ma
+    typeCheck
+
+selfcontainedNoSched :: (Monad m) =>
+  Constraint U1 U1 U1 -> TCT m a -> TCT m a
+selfcontainedNoSched parent (TCT ma) = TCT $ mapMContT (selfcontainedNoContNoSched parent) ma
+
+selfcontainedNoContNoSched :: (Monad m) =>
   Constraint U1 U1 U1 ->
   ExceptT (TCError m) (StateT (TCState m) m) a ->
   ExceptT (TCError m) (StateT (TCState m) m) a
-selfcontainedNoCont parent ma = do
+selfcontainedNoContNoSched parent ma = do
   -- Metas on which nothing is blocked (=: dormant meta), may be future metas already introduced by the scopechecker
   -- Thus, we need to check that
   state0 <- get
@@ -336,6 +343,7 @@ selfcontainedNoCont parent ma = do
   when spillsNewMetas $ throwTheError
   return a
   -}
+-}
 
 ---------------------------
 
