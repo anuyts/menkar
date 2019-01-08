@@ -68,13 +68,18 @@ class (
   --genVarName :: tc Raw.Name
   --newConstraintID :: tc Int
   {-| Create and register a new constraint. -}
-  defConstraint :: MonadTC mode modty rel tc =>
+  defConstraint ::
     Judgement mode modty rel ->
     Maybe (Constraint mode modty rel) ->
     String ->
     tc (Constraint mode modty rel)
   {-| Add a check for this constraint to the task stack. -}
   addConstraint :: Constraint mode modty rel -> tc ()
+  addNewConstraint ::
+    Judgement mode modty rel ->
+    Maybe (Constraint mode modty rel) ->
+    String ->
+    tc()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint mode modty rel -> tc ()
   {-| Provide a solution for the meta. All continuations thus unblocked are added to the task stack. -}
@@ -116,12 +121,14 @@ await parent reason (Expr3 (TermMeta meta (Compose depcies))) = runMaybeT $ do
   MaybeT $ await parent reason term
 await parent reason t = return $ Just t
 
+{-
 addNewConstraint :: MonadTC mode modty rel tc =>
   Judgement mode modty rel ->
   Maybe (Constraint mode modty rel) ->
   String ->
   tc()
 addNewConstraint judgement parent reason = addConstraint =<< defConstraint judgement parent reason
+-}
 
 -- | Not to be used by the Scoper.
 newMetaTerm :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>

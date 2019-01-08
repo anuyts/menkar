@@ -78,10 +78,11 @@ data TCState m = TCState {
   _tcState'constraintCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint U1 U1 U1),
   _tcState'reports :: [TCReport],
-  _tcState'tasks :: [TCT m ()]
+  _tcState'newTasks :: [TCT m ()], -- always empty unless during constraint check; to be run from back to front
+  _tcState'tasks :: [TCT m ()] -- to be run from front to back
   }
 initTCState :: TCState m
-initTCState = TCState 0 empty 0 empty [] []
+initTCState = TCState 0 empty 0 empty [] [] []
 
 {-
 -- | delimited continuation monad class
@@ -124,10 +125,16 @@ makeLenses ''TCReport
 
 addTask :: Monad m => TCT m () -> TCT m ()
 addTask task = do
-  tcState'tasks %= (task :)
+  tcState'newTasks %= (task :)
+
+commitTasks :: Monad m => TCT m ()
+commitTasks = do
+  newTasks <- tcState'newTasks <<.= []
+  tcState'tasks %= (reverse newTasks ++)
 
 typeCheck :: Monad m => TCT m ()
 typeCheck = do
+  commitTasks -- just to be sure
   tasks <- use tcState'tasks
   case tasks of
     [] -> return ()
@@ -171,6 +178,11 @@ catchBlocks action = resetDC $ action `catchError` \case
         Just (ForSomeDeBruijnLevel metaInfo) -> _handleBlocks
       -}
   e -> throwError e
+
+checkConstraintTC :: (Monad m) => Constraint U1 U1 U1 -> TCT m ()
+checkConstraintTC c = catchBlocks $ do
+  checkConstraint c
+  commitTasks
   
 instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   
@@ -183,7 +195,11 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
 
   -- Constraints are saved upon creation, not now.
   -- In fact, addConstraint is not even called on all created constraints.
-  addConstraint constraint = addTask $ catchBlocks $ checkConstraint constraint
+  addConstraint constraint = addTask $ checkConstraintTC constraint
+
+  addNewConstraint jud maybeParent reason = addTask $ do
+    constraint <- defConstraint jud maybeParent reason
+    checkConstraintTC constraint
 
   addConstraintReluctantly constraint = todo
 
