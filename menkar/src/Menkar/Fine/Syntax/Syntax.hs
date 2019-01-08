@@ -413,6 +413,7 @@ deriving instance (
     CanSwallow (Term mode modty) (ty mode modty),
     CanSwallow (Term mode modty) (rhs mode modty)
   ) => CanSwallow (Term mode modty) (Telescoped ty rhs mode modty)
+infixr 3 :|-
 
 joinTelescoped :: Telescoped ty (Telescoped ty rhs) mode modty v -> Telescoped ty rhs mode modty v
 joinTelescoped (Telescoped tr) = tr
