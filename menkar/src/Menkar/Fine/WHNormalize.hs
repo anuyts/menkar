@@ -34,13 +34,14 @@ whnormalizeElim :: MonadTC mode modty rel tc =>
   String ->
   WriterT [Int] tc (Term mode modty v)
 whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
-  whnEliminee <- whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
-  case whnEliminee of
-    Var3 v -> return $ Expr3 $ TermElim dmu (Var3 v) tyEliminee e
-    Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
-      -- careful with glue/weld!
-    Expr3 (TermProblem _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
-    Expr3 (TermCons t) ->
+  (whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
+  case (metas, whnEliminee) of
+    (_ : _, _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
+    ([], Var3 v) -> return $ Expr3 $ TermElim dmu (Var3 v) tyEliminee e
+    --Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
+    --  -- careful with glue/weld!
+    ([], Expr3 (TermProblem _)) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
+    ([], Expr3 (TermCons t)) ->
       let termProblem = Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
       in  case (t, e) of
         {- -Hofmann-Streicher universe code case
@@ -88,7 +89,7 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
               subst (VarWkn (VarWkn v)) = Var3 v
           in  whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) reason
         (ConsSuc _, _) -> return termProblem
-    Expr3 _ -> unreachable
+    ([], Expr3 _) -> unreachable
 
 whnormalizeNV :: MonadTC mode modty rel tc =>
   Constraint mode modty rel ->
