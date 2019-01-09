@@ -139,6 +139,17 @@ valUnitType = val NonOp "Unit" $
 valUnitTerm :: Entry U1 U1 Void
 valUnitTerm = val NonOp "unit" $ Telescoped $ ValRHS (Expr3 $ TermCons $ ConsUnit) (hs2type UnitType)
 
+-- | @Box {~ | l : Nat} {X : UniHS l} : UniHS l = Box {x : X}@
+valBoxType :: Entry U1 U1 Void
+valBoxType = val NonOp "Box" $
+  segIm NonOp "l" {- var 0 -} (hs2type NatType) :|-
+  segEx NonOp "X" {- var 1 -} (hs2type $ UniHS U1 $ var 0) :|-
+  Telescoped (
+    ValRHS
+      (hs2term $ BoxType $ segEx NonOp "x" $ hs2type var 1)
+      (hs2type $ UniHS U1 $ var 0)
+  )
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]

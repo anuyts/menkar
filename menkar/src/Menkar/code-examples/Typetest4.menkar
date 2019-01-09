@@ -1,8 +1,8 @@
 module Test where {
     //val Nat' : _ = Nat .{0}
     //val one : Nat .{0} = suc 0
-    //val _+ {a b : Nat .{0}} : Nat .{0} = indNat (_ > {_ : Nat .{0}} -> Nat .{0}) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
-    val _-> {~ | l : Nat .{0}} {A B : UniHS l} : UniHS l = {_ : A} -> B
+    val _+ {a b : Nat .{0}} : Nat .{0} = indNat (_ > {_ : Nat .{0}} -> Nat .{0}) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
+    //val _-> {~ | l : Nat .{0}} {A B : UniHS l} : UniHS l = {_ : A} -> B
 }
 
 /*
