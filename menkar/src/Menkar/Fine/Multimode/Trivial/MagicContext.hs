@@ -121,7 +121,7 @@ valUniHS = val NonOp "UniHS" $
   Telescoped (
     ValRHS
       (hs2term $ UniHS U1 $ var 0)
-      (hs2term $ UniHS U1 $ Expr3 $ TermCons $ ConsSuc $ var 0)
+      (hs2type $ UniHS U1 $ Expr3 $ TermCons $ ConsSuc $ var 0)
   )
 
 ----------------------------------------------
@@ -131,7 +131,7 @@ magicEntries = [
     valNat,
     valSuc,
     valIndNat, -- doesn't type-check
-    valUniHS,
+    valUniHS
   ]
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
