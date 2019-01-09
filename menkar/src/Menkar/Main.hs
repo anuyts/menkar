@@ -210,7 +210,7 @@ interactAfterTask task = do
   
 
 checkMagic :: IO ()
-checkMagic = do
+checkMagic = interactAfterTask $ do
   addNewConstraint
     magicModuleCorrect
     Nothing

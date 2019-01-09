@@ -127,12 +127,12 @@ typed2pretty :: (DeBruijnLevel v,
   Term mode modty v ->
   Type mode modty v ->
   PrettyTree String
-typed2pretty gamma t ty =
-  ribbon "(ofType" \\\ [
+typed2pretty gamma t ty = fine2pretty gamma t
+{-  ribbon "(ofType" \\\ [
       " (" ++| fine2pretty gamma ty |++ ")",
       " (" ++| fine2pretty gamma t |++ ")"
     ] ///
-  ribbon ")"
+  ribbon ")" -}
 
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty, Fine2Pretty mode modty rhs) =>

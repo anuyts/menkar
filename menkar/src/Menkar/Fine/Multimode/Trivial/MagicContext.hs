@@ -142,12 +142,14 @@ valUnitTerm = val NonOp "unit" $ Telescoped $ ValRHS (Expr3 $ TermCons $ ConsUni
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
-magicEntries = [
-    valNat,
-    valSuc,
-    valIndNat, -- doesn't type-check
-    valUniHS
-  ]
+magicEntries = 
+  valNat :
+  valSuc :
+  valIndNat : -- doesn't type-check
+  valUniHS : -- doesn't type-check
+  valUnitType :
+  valUnitTerm :
+  []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
 magicContext = CtxEmpty U1 :<...> ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
