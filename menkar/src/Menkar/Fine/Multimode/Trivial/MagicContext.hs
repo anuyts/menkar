@@ -45,28 +45,20 @@ valNat = val NonOp "Nat" $
       (hs2type $ UniHS U1 $ var 0)
   )
 
+-- | suc {n : Nat} : Nat = suc n
+valSuc :: Entry U1 U1 Void
+valSuc = val NonOp "suc" $
+  segEx NonOp "n" (hs2type NatType) :|-
+  Telescoped (
+    ValRHS
+      (Expr3 $ TermCons $ ConsSuc $ var 0)
+      (hs2type NatType)
+  )
+
 magicEntries :: [Entry U1 U1 Void]
 magicEntries = [
     valNat,
-
-    {- Successor
-       suc {n : Nat} : Nat = suc n
-    -}
-    EntryVal $ Declaration
-      (DeclNameVal $ Name NonOp "suc")
-      trivModedModality
-      Explicit
-      $ Declaration
-          (DeclNameSegment $ Just $ Name NonOp "n")
-          trivModedModality
-          Explicit
-          (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-        :|-
-          Telescoped (
-            ValRHS
-              (Expr3 $ TermCons $ ConsSuc $ Var3 $ VarLast)
-              (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-          ) --,
+    valSuc
 
     {-
     {- indNat {~ | l : Nat} {C : {n : Nat} -> Set l} {cz : C 0} {cs : {n : Nat} -> C n -> C (suc n)} {n : Nat} : C n
