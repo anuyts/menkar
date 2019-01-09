@@ -81,15 +81,18 @@ elimination ::
   Ctx Type mode modty v Void ->
   Raw.Elimination ->
   sc (Term mode modty v)
-elimination gamma (Raw.Elimination rawExpr rawElims) = do
-  fineExpr <- expr3 gamma rawExpr -- CMOD: Fix context
+elimination gamma (Raw.Elimination rawEliminee rawElims) = do
+  fineEliminee <- expr3 gamma rawEliminee -- CMOD: Fix context
   --fineTy <- type4newImplicit gamma
   fineElims <- sequenceA (eliminator gamma <$> rawElims) -- CMOD: Fix modalities
-  fineResult <- newMetaTermNoCheck Nothing eqDeg gamma "Infer result of smart elimination."
-  return . Expr3 $ TermSmartElim fineExpr (Compose fineElims) fineResult
+  case fineElims of
+    [] -> return fineEliminee
+    _  -> do
+      fineResult <- newMetaTermNoCheck Nothing eqDeg gamma "Infer result of smart elimination."
+      return . Expr3 $ TermSmartElim fineEliminee (Compose fineElims) fineResult
   --theMode <- mode4newImplicit gamma
   {-pushConstraint $ Constraint {
-      constraintJudgement = JudSmartElim gamma fineExpr fineTy fineElims fineResult,
+      constraintJudgement = JudSmartElim gamma fineEliminee fineTy fineElims fineResult,
       constraintParent = Nothing,
       constraintReason = "Scoper: Elaborate smart elimination."
     }-}
