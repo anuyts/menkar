@@ -146,9 +146,23 @@ valBoxType = val NonOp "Box" $
   segEx NonOp "X" {- var 1 -} (hs2type $ UniHS U1 $ var 0) :|-
   Telescoped (
     ValRHS
-      (hs2term $ BoxType $ segEx NonOp "x" $ hs2type var 1)
+      (hs2term $ BoxType $ segEx NonOp "x" $ Type $ var 1)
       (hs2type $ UniHS U1 $ var 0)
   )
+
+-- | @box {~ | l : Nat} {~ | X : UniHS l} {x : X} : Box X = box x@
+valBoxTerm :: Entry U1 U1 Void
+valBoxTerm = val NonOp "box" $
+  segIm NonOp "l" {- var 0 -} (hs2type NatType) :|-
+  segIm NonOp "X" {- var 1 -} (hs2type $ UniHS U1 $ var 0) :|-
+  segEx NonOp "x" {- var 2 -} (Type $ var 1) :|-
+  Telescoped (
+    ValRHS
+      (Expr3 $ TermCons $ ConsBox boxSeg $ var 2)
+      (hs2type $ BoxType $ boxSeg)
+  )
+  where boxSeg :: DeBruijnLevel v => Segment Type U1 U1 v
+        boxSeg = segEx NonOp "x" $ Type $ var 1
 
 ----------------------------------------------
 
@@ -160,6 +174,8 @@ magicEntries =
   valUniHS : -- doesn't type-check
   valUnitType :
   valUnitTerm :
+  valBoxType :
+  valBoxTerm :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void

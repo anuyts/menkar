@@ -71,7 +71,7 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (Sigma binding) = binding2pretty "><" gamma binding
   fine2pretty gamma (EmptyType) = ribbon "Empty"
   fine2pretty gamma (UnitType) = ribbon "Unit"
-  fine2pretty gamma (BoxType tySeg) = "Box " ++| fine2pretty gamma tySeg
+  fine2pretty gamma (BoxType tySeg) = "Box" ++| fine2pretty gamma tySeg
   fine2pretty gamma (NatType) = ribbon "Nat"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -96,7 +96,7 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (ConsBox tySeg tmUnbox) =
     ribbon "ofType" \\\ [
       " (" ++| fine2pretty gamma (BoxType tySeg) |++ ")",
-      " (box .{" ++| fine2pretty gamma tmUnbox |++ "} ...)"
+      " (box .{" ++| fine2pretty gamma tmUnbox |++ "})"
       ]
   fine2pretty gamma (ConsZero) = ribbon "zero"
   fine2pretty gamma (ConsSuc t) = "suc .{" ++| fine2pretty gamma t |++ "}"
