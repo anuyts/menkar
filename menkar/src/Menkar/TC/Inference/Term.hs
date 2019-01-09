@@ -597,12 +597,12 @@ checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) t
   addNewConstraint
     (JudTerm gamma eliminee tyEliminee)
     (Just parent)
-    "Type-check the eliminee"
+    "Type-check the eliminee."
   -----
   addNewConstraint
     (JudTerm gamma result ty)
     (Just parent)
-    "Smart elimination should reduce to value of the appropriate type."
+    "Type-check the result."
   -----
   addNewConstraint
     (JudSmartElim gamma dmuElim eliminee tyEliminee eliminators result ty)

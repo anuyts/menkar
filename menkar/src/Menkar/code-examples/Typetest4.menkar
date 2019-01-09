@@ -1,6 +1,6 @@
 module Test where {
     //val Nat' : _ = Nat .{0}
-    val zero : Nat .{0} = suc 0
+    val one : Nat .{0} = suc 0
 }
 
 /*

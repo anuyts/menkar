@@ -7,30 +7,47 @@ import Menkar.Fine.Context
 import Menkar.Fine.Multimode.Trivial.Trivial
 import Menkar.Basic.Context
 
+import Control.Exception.AssertFalse
+
 import Data.Void
 import Data.Functor.Compose
+import Data.Proxy
+import Data.Number.Nat
+import Data.Maybe
 import GHC.Generics (U1 (..))
+
+var :: DeBruijnLevel v => Nat -> Term U1 U1 v
+var n = Var3 $ fromMaybe unreachable $ forDeBruijnLevel Proxy n
+
+val :: Opness -> String -> Telescoped Type ValRHS U1 U1 v -> Entry U1 U1 v
+val op str rhs = EntryVal $ Declaration
+  (DeclNameVal $ Name op str)
+  trivModedModality
+  Explicit
+  rhs
+
+seg :: Plicity U1 U1 v -> Opness -> String -> content U1 U1 v -> Segment content U1 U1 v
+seg plic op str content = Declaration
+  (DeclNameSegment $ Just $ Name op str)
+  trivModedModality
+  plic
+  content
+segIm = seg Implicit
+segEx = seg Explicit
+
+-- | Nat {~ | l : Nat} : Set l = Nat
+valNat :: Entry U1 U1 Void
+valNat = val NonOp "Nat" $
+  segIm NonOp "lvl" (hs2type NatType) :|-
+  Telescoped (
+    ValRHS
+      (hs2term NatType)
+      (hs2type $ UniHS U1 $ var 0)
+  )
 
 magicEntries :: [Entry U1 U1 Void]
 magicEntries = [
-    {- Natural numbers
-       Nat {~ | l : Nat} : Set l = Nat
-    -}
-    EntryVal $ Declaration
-      (DeclNameVal $ Name NonOp "Nat")
-      trivModedModality
-      Explicit
-      $ Declaration
-          (DeclNameSegment $ Just $ Name NonOp "lvl")
-          trivModedModality
-          Implicit
-          (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-        :|-
-          Telescoped (
-            ValRHS
-              (Expr3 $ TermCons $ ConsUniHS $ NatType)
-              (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS U1 $ Var3 VarLast)
-          ),
+    valNat,
 
     {- Successor
        suc {n : Nat} : Nat = suc n
@@ -49,8 +66,9 @@ magicEntries = [
             ValRHS
               (Expr3 $ TermCons $ ConsSuc $ Var3 $ VarLast)
               (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-          ),
+          ) --,
 
+    {-
     {- indNat {~ | l : Nat} {C : {n : Nat} -> Set l} {cz : C 0} {cs : {n : Nat} -> C n -> C (suc n)} {n : Nat} : C n
          = indNat (n > C n) cz (n > ihyp > cs n ihyp) n
     -}
@@ -133,6 +151,7 @@ magicEntries = [
               )
               (Type $ appMotive (Var3 $ VarWkn $ VarWkn $ VarWkn $ VarLast) $ Var3 $ VarLast)
           )
+-}
   ]
   where
     tyNatMotive = Pi $ Binding

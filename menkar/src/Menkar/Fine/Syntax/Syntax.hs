@@ -173,6 +173,11 @@ data UniHSConstructor (mode :: * -> *) (modty :: * -> *) (v :: *) =
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (UniHSConstructor mode modty)
 
+hs2term :: UniHSConstructor mode modty v -> Term mode modty v
+hs2term ty = Expr3 $ TermCons $ ConsUniHS $ ty
+hs2type :: UniHSConstructor mode modty v -> Type mode modty v
+hs2type ty = Type $ Expr3 $ TermCons $ ConsUniHS $ ty
+
 data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
   {-| element of the Hofmann-Streicher universe -}
   ConsUniHS
