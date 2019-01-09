@@ -77,43 +77,39 @@ valSuc = val NonOp "suc" $
 -}
 valIndNat :: Entry U1 U1 Void
 valIndNat = val NonOp "indNat" $
-  segIm NonOp "l" (hs2type NatType) :|-
-  segEx NonOp "C" (hs2type $ tyMotive $ var 0) :|-
-  segEx NonOp "cz" (tyCZ (var 1) (var 0)) :|-
-  segEx NonOp "cs" (hs2type $ tyCS (var 2) (var 1)) :|-
-  segEx NonOp "n0" (hs2type NatType) :|-
+  segIm NonOp "l" {- var 0 -} (hs2type NatType) :|-
+  segEx NonOp "C" {- var 1 -} (hs2type $ tyMotive) :|-
+  segEx NonOp "cz" {- var 2 -} (tyCZ) :|-
+  segEx NonOp "cs" {- var 3 -} (hs2type $ tyCS) :|-
+  segEx NonOp "n0" {- var 4 -} (hs2type NatType) :|-
   Telescoped (
     ValRHS
       (elim (var 0) NatType $ ElimDep
-        (nbind NonOp "n" $ appMotive (var 5) (var 4) (var 0))
+        (nbind NonOp "n" {- var 5 -} $ appMotive (var 5))
         (ElimNat
           (var 2)
-          (nbind NonOp "n" $ nbind NonOp "ihyp" $
+          (nbind NonOp "n" {- var 5 -} $ nbind NonOp "ihyp" {- var 6 -} $
             app
-              (app
-                (var 3)
-                (tyCS (var 6) (var 5))
-                (var 1)
-              )
-              (tyCS' (var 6) (var 5) (var 1))
-              (var 0)
+              (app (var 3) (tyCS) (var 5))
+              (tyCS' (var 5))
+              (var 6)
           )
         )
       )
-      (appMotive (var 4) (var 3) (var 0))
+      (appMotive (var 4))
   )
   where
-    tyMotive :: Term U1 U1 v -> UniHSConstructor U1 U1 v
-    tyMotive l = (segEx NonOp "n" $ hs2type NatType) `arrow` (hs2type $ UniHS U1 l)
-    appMotive :: Term U1 U1 v -> Term U1 U1 v -> Term U1 U1 v -> Type U1 U1 v
-    appMotive l motive arg = Type $ app motive (tyMotive l) arg
-    tyCZ :: Term U1 U1 v -> Term U1 U1 v -> Type U1 U1 v
-    tyCZ l motive = appMotive l motive $ Expr3 $ TermCons $ ConsZero
-    tyCS' :: Term U1 U1 v -> Term U1 U1 v -> Term U1 U1 v -> UniHSConstructor U1 U1 v
-    tyCS' l motive n = (segEx NonOp "ihyp" $ appMotive l motive n)
-                     `arrow` (appMotive l motive $ Expr3 $ TermCons $ ConsSuc $ n)
-    tyCS :: DeBruijnLevel v => Term U1 U1 v -> Term U1 U1 v -> UniHSConstructor U1 U1 v
-    tyCS l motive = pi (segEx NonOp "n" $ hs2type NatType) (hs2type $ tyCS' (VarWkn <$> l) (VarWkn <$> motive) $ var 0)
+    tyMotive :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyMotive = (segEx NonOp "n" $ hs2type NatType) `arrow` (hs2type $ UniHS U1 $ var 0)
+    appMotive :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appMotive arg = Type $ app (var 1) tyMotive arg
+    tyCZ :: DeBruijnLevel v => Type U1 U1 v
+    tyCZ = appMotive $ Expr3 $ TermCons $ ConsZero
+    tyCS' :: DeBruijnLevel v => Term U1 U1 v -> UniHSConstructor U1 U1 v
+    tyCS' n = (segEx NonOp "ihyp" $ appMotive n)
+                     `arrow` (appMotive $ Expr3 $ TermCons $ ConsSuc $ n)
+    tyCS :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyCS = pi (segEx NonOp "n" $ hs2type NatType) (hs2type $ tyCS' $ Var3 $ VarLast)
 
 magicEntries :: [Entry U1 U1 Void]
 magicEntries = [
