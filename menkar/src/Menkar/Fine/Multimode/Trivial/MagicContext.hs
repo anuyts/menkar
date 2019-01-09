@@ -18,6 +18,7 @@ import Data.Number.Nat
 import Data.Maybe
 import GHC.Generics (U1 (..))
 
+-- | These are de Bruijn LEVELS, not INDICES!!!
 var :: DeBruijnLevel v => Nat -> Term U1 U1 v
 var n = Var3 $ fromMaybe unreachable $ forDeBruijnLevel Proxy n
 
@@ -75,6 +76,7 @@ valSuc = val NonOp "suc" $
 {- | @indNat {~ | l : Nat} {C : Nat -> Set l} {cz : C 0} {cs : {n : Nat} -> C n -> C (suc n)} {n0 : Nat} : C n
         = indNat (n > C n) cz (n > ihyp > cs n ihyp) n0@
 -}
+-- TODO types of cz and cs and rhs need to be lifted to a higher universe
 valIndNat :: Entry U1 U1 Void
 valIndNat = val NonOp "indNat" $
   segIm NonOp "l" {- var 0 -} (hs2type NatType) :|-

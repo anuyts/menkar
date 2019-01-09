@@ -52,7 +52,7 @@ checkPiOrSigma parent gamma binding ty = do
       currentUni
     )
     (Just parent)
-    "Checking type of the domain."
+    "Checking the domain."
   ----------
   addNewConstraint
     (JudTerm
@@ -61,7 +61,7 @@ checkPiOrSigma parent gamma binding ty = do
       (VarWkn <$> currentUni)
     )
     (Just parent)
-    "Checking the type of the codomain."
+    "Checking the codomain."
 
 -------
 
