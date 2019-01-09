@@ -164,6 +164,44 @@ valBoxTerm = val NonOp "box" $
   where boxSeg :: DeBruijnLevel v => Segment Type U1 U1 v
         boxSeg = segEx NonOp "x" $ Type $ var 1
 
+{-| indBox
+      {~ | lX lC : Nat}
+      {X : Set lX}
+      {C : Box X -> Set lC}
+      {cbox : {x : X} -> C (box x)}
+      {b0 : Box X} : C b0
+        = indBox (b > C b) (x > cbox x) b0
+-}
+valIndBox :: Entry U1 U1 Void
+valIndBox = val NonOp "indBox" $
+  segIm NonOp "lX" {- var 0 -} (hs2type NatType) :|-
+  segIm NonOp "lC" {- var 1 -} (hs2type NatType) :|-
+  segEx NonOp "X"  {- var 2 -} (hs2type $ UniHS U1 $ var 0) :|-
+  segEx NonOp "C"  {- var 3 -} (hs2type tyMotive) :|-
+  segEx NonOp "cbox" {- var 4 -} (hs2type $ tyCBox) :|-
+  segEx NonOp "b0" {- var 5 -} (hs2type $ BoxType $ boxSeg) :|-
+  Telescoped (
+    ValRHS
+      (elim
+        (var 5)
+        (BoxType $ boxSeg)
+      $ ElimDep
+        (nbind NonOp "b" {- var 6 -} $ appMotive $ var 6)
+      $ ElimBox
+        (nbind NonOp "x" {- var 6 -} $ app (var 4) tyCBox (var 6))
+      )
+      (appMotive $ var 5)
+  )
+  where
+    boxSeg :: DeBruijnLevel v => Segment Type U1 U1 v
+    boxSeg = segEx NonOp "x" $ Type $ var 2
+    tyMotive :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyMotive = (segEx NonOp "b" (hs2type $ BoxType $ boxSeg)) `arrow` (hs2type $ UniHS U1 $ var 1)
+    appMotive :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appMotive arg = Type $ app (var 3) tyMotive arg
+    tyCBox :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyCBox = pi (segEx NonOp "x" (Type $ var 2)) $ appMotive $ Expr3 $ TermCons $ ConsBox boxSeg $ Var3 $ VarLast
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
@@ -176,6 +214,7 @@ magicEntries =
   valUnitTerm :
   valBoxType :
   valBoxTerm :
+  valIndBox :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
