@@ -521,7 +521,7 @@ solveMetaAgainstWHNF :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBru
   Type mode modty v ->
   tc (Term mode modty vOrig)
 solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
-  -- CMOD if deg = eqDeg and tSolution does not mention any additional variables, solve fully.
+  -- CMOD if deg = eqDeg and t2 does not mention any additional variables, solve fully.
   -- Otherwise, we do a weak-head solve.
   case t2 of
     Var3 v -> case partialInv v of
@@ -570,6 +570,24 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
       TermGoal _ _ -> unreachable
       TermProblem _ -> do
         tcFail parent "Nonsensical term."
+
+{-| Precondition: @partialInv . subst = Just@.
+-}
+solveMetaImmediately :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  Constraint mode modty rel ->
+  Ctx Type mode modty vOrig Void ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  tc (Term mode modty vOrig)
+solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 = do
+  let maybeT2orig = sequenceA $ partialInv <$> t2
+  case maybeT2orig of
+    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2
+    Just t2orig -> return t2orig
 
 ------------------------------------
 
@@ -638,7 +656,9 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
               -- If so, weak-head-solve it
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
+                if isEqDeg deg
+                  then solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
+                  else solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               Just metas -> tcBlock parent "Cannot solve meta-variable: modalities in current context are strictly weaker than in original context."
           )

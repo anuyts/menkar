@@ -32,3 +32,4 @@ instance Degrees U1 U1 U1 where
   topDeg = U1
   divDeg (ModedModality U1 U1) U1 = U1
   isTopDeg U1 = False
+  isEqDeg U1 = True

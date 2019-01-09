@@ -29,6 +29,7 @@ class (
   topDeg :: rel v
   divDeg :: ModedModality mode modty v -> rel v -> rel v
   isTopDeg :: rel v -> Bool
+  isEqDeg :: rel v -> Bool
 
 --------------
 

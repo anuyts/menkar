@@ -1,7 +1,7 @@
 module Test where {
     //val Nat' : _ = Nat .{0}
-    //val one : Nat .{0} = suc 0
-    val _+ {a b : Nat .{0}} : Nat .{0} = indNat (_ > {_ : Nat .{0}} -> Nat .{0}) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
+    val one : Nat .{0} = suc 0
+    //val _+ {a b : Nat .{0}} : Nat .{0} = indNat (_ > {_ : Nat .{0}} -> Nat .{0}) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
 }
 
 /*

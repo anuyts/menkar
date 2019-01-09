@@ -476,14 +476,15 @@ checkTermRelNoEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = case (metasT1, metasT2) of
-  -- Both are whnormal
-  ([], []) -> checkTermRelNormal parent deg gamma t1 t2 (Type ty1) (Type ty2)
-  -- Only one is whnormal: whsolve or block
-  (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
-  ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
-  -- Neither is whnormal: block
-  (_, _) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
+checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) =
+  case (metasT1, metasT2) of
+    -- Both are whnormal
+    ([], []) -> checkTermRelNormal parent deg gamma t1 t2 (Type ty1) (Type ty2)
+    -- Only one is whnormal: whsolve or block
+    (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
+    ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
+    -- Neither is whnormal: block
+    (_, _) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
 checkTermRelWHNTypes :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -673,4 +674,4 @@ checkTypeRel parent deg gamma (Type ty1) (Type ty2) =
           (Pair3 uni uni)
         )
         (Just parent)
-        "Checking equality of types in a Hofmann-Streicher universe."
+        "Checking relatedness of types in a Hofmann-Streicher universe."
