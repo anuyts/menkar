@@ -187,26 +187,9 @@ interactiveMode s = do
   doUntilFail (consumeCommand s)
   return ()
 
-mainArgs :: [String] -> IO ()
-mainArgs args = do
-  case args of
-    [path] -> do
-      code <- readFile path
-      let errorOrRawFile = P.parse P.file path code
-      case errorOrRawFile of
-        Left e -> do
-          putStrLn "-------------"
-          putStrLn "PARSING ERROR"
-          putStrLn "-------------"
-          putStrLn $ MP.errorBundlePretty e
-        Right rawFile -> do
-          let (tcResult, s) = flip getTC initTCState $ do
-                fineFile <- S.file magicContext rawFile
-                addNewConstraint
-                  (JudEntry magicContext fineFile)
-                  Nothing
-                  "Type-checking the file."
-                typeCheck
+interactAfterTask :: TC () -> IO ()
+interactAfterTask task = do
+          let (tcResult, s) = flip getTC initTCState $ task
           case tcResult of
             Right () -> interactiveMode s
             Left e -> case e of
@@ -224,6 +207,35 @@ mainArgs args = do
                 putStrLn "SCOPING ERROR"
                 putStrLn "-------------"
                 putStrLn msg
+  
+
+checkMagic :: IO ()
+checkMagic = do
+  addNewConstraint
+    magicModuleCorrect
+    Nothing
+    "Checking the magic module."
+  typeCheck
+  
+mainArgs :: [String] -> IO ()
+mainArgs args = do
+  case args of
+    [path] -> do
+      code <- readFile path
+      let errorOrRawFile = P.parse P.file path code
+      case errorOrRawFile of
+        Left e -> do
+          putStrLn "-------------"
+          putStrLn "PARSING ERROR"
+          putStrLn "-------------"
+          putStrLn $ MP.errorBundlePretty e
+        Right rawFile -> interactAfterTask $ do
+                fineFile <- S.file magicContext rawFile
+                addNewConstraint
+                  (JudEntry magicContext fineFile)
+                  Nothing
+                  "Type-checking the file."
+                typeCheck
     xs -> do
       putStrLn "This program should be given a file path as its sole argument."
 

@@ -5,6 +5,7 @@ import Prelude hiding (pi)
 import Menkar.Basic.Syntax
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
+import Menkar.Fine.Judgement
 --import Menkar.Fine.Multimode
 import Menkar.Fine.Multimode.Trivial.Trivial
 import Menkar.Basic.Context
@@ -56,7 +57,7 @@ app eliminee tyEliminee arg = elim eliminee tyEliminee $ App arg
 -- | @Nat {~ | l : Nat} : Set l = Nat@
 valNat :: Entry U1 U1 Void
 valNat = val NonOp "Nat" $
-  segIm NonOp "lvl" (hs2type NatType) :|-
+  segIm NonOp "l" (hs2type NatType) :|-
   Telescoped (
     ValRHS
       (hs2term NatType)
@@ -124,6 +125,20 @@ valUniHS = val NonOp "UniHS" $
       (hs2type $ UniHS U1 $ Expr3 $ TermCons $ ConsSuc $ var 0)
   )
 
+-- | @Unit {~ | l : Nat} : Set l = Unit@
+valUnitType :: Entry U1 U1 Void
+valUnitType = val NonOp "Unit" $
+  segIm NonOp "l" (hs2type NatType) :|-
+  Telescoped (
+    ValRHS
+      (hs2term UnitType)
+      (hs2type $ UniHS U1 $ var 0)
+  )
+
+-- | @unit : Unit = unit@
+valUnitTerm :: Entry U1 U1 Void
+valUnitTerm = val NonOp "unit" $ Telescoped $ ValRHS (Expr3 $ TermCons $ ConsUnit) (hs2type UnitType)
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
@@ -136,3 +151,17 @@ magicEntries = [
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
 magicContext = CtxEmpty U1 :<...> ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
+
+----------------------------------------------
+
+magicModuleCorrect :: Judgement U1 U1 U1
+magicModuleCorrect = 
+    (JudModule
+      (CtxEmpty U1)
+      (Declaration
+        (DeclNameModule "magic")
+        trivModedModality
+        Explicit $
+       Telescoped $ ModuleRHS $ absurd <$> (Compose $ reverse magicEntries)
+      )
+    )
