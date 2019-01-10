@@ -81,8 +81,8 @@ checkUniHSConstructorRel ::
   Ctx (Pair3 Type) mode modty v Void ->
   UniHSConstructor mode modty v ->
   UniHSConstructor mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+  Type mode modty v {-^ May not be normal -} ->
+  Type mode modty v {-^ May not be normal -} ->
   tc ()
 checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (UniHS d1 {-lvl1-}, UniHS d2 {-lvl2-}) -> return ()
@@ -129,9 +129,8 @@ checkConstructorTermRel :: forall mode modty rel tc v .
 checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
   (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
   (ConsUniHS _, _) -> tcFail parent "False."
-  -- Encountering a lambda is not possible: it's well-typed, so the type is a Pi-type, so eta-expansion has fired.
-  (Lam binding, _) -> _fixallofthis -- tcFail parent "LHS is presumed to be well-typed."
-  (_, Lam binding) -> tcFail parent "RHS is presumed to be well-typed."
+  (Lam binding, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, Lam binding) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
   (Pair sigmaBinding1 fst1 snd1, Pair sigmaBinding2 fst2 snd2) -> do
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
         dom1 = _segment'content $ binding'segment $ sigmaBinding1
@@ -159,10 +158,10 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       )
       (Just parent)
       "Relating second components."
-  (Pair _ _ _, _) -> tcFail parent "False."
-  -- Encountering a unit is not possible: it's well-typed, so the type is a Pi-type, so eta-expansion has fired.
-  (ConsUnit, _) -> tcFail parent "LHS is presumed to be well-typed."
-  (_, ConsUnit) -> tcFail parent "RHS is presumed to be well-typed."
+  (Pair _ _ _, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, Pair _ _ _) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (ConsUnit, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, ConsUnit) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
   (ConsBox boxSeg1 unbox1, ConsBox boxSeg2 unbox2) -> do
     let dmu = _segment'modty $ boxSeg1
         dom1 = _segment'content $ boxSeg1
@@ -176,7 +175,8 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       )
       (Just parent)
       "Relating box contents."
-  (ConsBox _ _, _) -> tcFail parent "False."
+  (ConsBox _ _, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, ConsBox _ _) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
   (ConsZero, ConsZero) -> return ()
   (ConsZero, _) -> tcFail parent "False."
   (ConsSuc n1, ConsSuc n2) -> do
