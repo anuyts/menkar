@@ -190,7 +190,7 @@ elimination2pretty gamma eliminee (Unbox boxSeg) = todo
 elimination2pretty gamma eliminee (ElimNat motive cz cs) = todo
 -}
 elimination2pretty gamma dmu eliminee tyEliminee (App arg) =
-    typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) \\\
+    "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ")" \\\
       [
       " .{" ++| fine2pretty gamma arg |++ "}"
       ]

@@ -85,7 +85,7 @@ valIndNat = val NonOp "indNat" $
   segEx NonOp "C" {- var 0 -} (hs2type $ tyMotive) :|-
   segEx NonOp "cz" {- var 1 -} (tyCZ) :|-
   segEx NonOp "cs" {- var 2 -} (hs2type $ tyCS) :|-
-  segEx NonOp "n0" {- var 3 -} (hs2type NatType) :|-
+  segEx NonOp "n*" {- var 3 -} (hs2type NatType) :|-
   Telescoped (
     ValRHS
       (elim (var 3) NatType $ ElimDep
@@ -173,7 +173,7 @@ valIndBox = val NonOp "indBox" $
   segEx NonOp "X"  {- var 0 -} (hs2type $ UniHS U1) :|-
   segEx NonOp "C"  {- var 1 -} (hs2type tyMotive) :|-
   segEx NonOp "cbox" {- var 2 -} (hs2type $ tyCBox) :|-
-  segEx NonOp "b0" {- var 3 -} (hs2type $ BoxType $ boxSeg) :|-
+  segEx NonOp "b*" {- var 3 -} (hs2type $ BoxType $ boxSeg) :|-
   Telescoped (
     ValRHS
       (elim
@@ -238,7 +238,7 @@ valIndPair = val NonOp "indPair" $
   segIm NonOp "B" {- var 1 -} (hs2type $ tyCod) :|-
   segEx NonOp "C" {- var 2 -} (hs2type $ tyMotive) :|-
   segEx NonOp "cpair" {- var 3 -} (hs2type $ tyCPair) :|-
-  segEx NonOp "p0" {- var 4 -} (hs2type $ tyPair) :|-
+  segEx NonOp "p*" {- var 4 -} (hs2type $ tyPair) :|-
   Telescoped (
     ValRHS
       (elim (var 4) tyPair $
@@ -270,6 +270,35 @@ valIndPair = val NonOp "indPair" $
     tyCPair :: DeBruijnLevel v => UniHSConstructor U1 U1 v
     tyCPair = pi segA $ hs2type $ tyCPair' $ Var3 $ VarLast
 
+-- | @Empty : Set = Empty@
+valEmpty :: Entry U1 U1 Void
+valEmpty = val NonOp "Empty" $
+  Telescoped (
+    ValRHS
+      (hs2term EmptyType)
+      (hs2type $ UniHS U1)
+  )
+
+{-| indEmpty {C : Empty -> UniHS} {e0 : Empty} : C e0 = indEmpty (e > C e) e0
+-}
+valIndEmpty :: Entry U1 U1 Void
+valIndEmpty = val NonOp "indEmpty" $
+  segEx NonOp "C" {- var 0 -} (hs2type $ tyMotive) :|-
+  segEx NonOp "e*" {- var 1 -} (hs2type $ EmptyType) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 1) EmptyType $
+       ElimDep (nbind NonOp "e" {- var 2 -} $ appMotive $ var 2) $
+       ElimEmpty
+      )
+      (appMotive $ var 1)
+  )
+  where
+    tyMotive :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyMotive = (segEx NonOp "e" $ hs2type EmptyType) `arrow` (hs2type $ UniHS U1)
+    appMotive :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appMotive arg = Type $ app (var 0) tyMotive arg
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
@@ -285,6 +314,8 @@ magicEntries =
   valIndBox :
   valPair :
   valIndPair :
+  valEmpty :
+  valIndEmpty :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
