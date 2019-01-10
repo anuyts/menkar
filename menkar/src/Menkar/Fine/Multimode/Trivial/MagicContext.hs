@@ -200,13 +200,13 @@ magicEntries :: [Entry U1 U1 Void]
 magicEntries = 
   valNat :
   valSuc :
-  --valIndNat : -- doesn't type-check
+  valIndNat : -- doesn't type-check
   valUniHS :
   valUnitType :
   valUnitTerm :
   valBoxType :
   valBoxTerm :
-  --valIndBox : -- doesn't type-check
+  valIndBox : -- doesn't type-check
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
