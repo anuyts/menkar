@@ -62,10 +62,10 @@ instance (Functor mode, Functor modty,
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty UniHSConstructor where
-  fine2pretty gamma (UniHS d lvl) =
+  fine2pretty gamma (UniHS d {-lvl-}) =
     ribbon "UniHS " \\\ [
-      fine2pretty gamma (Mode d),
-      " (" ++| fine2pretty gamma lvl |++ ")"
+      fine2pretty gamma (Mode d)
+      --, " (" ++| fine2pretty gamma lvl |++ ")"
       ]
   fine2pretty gamma (Pi binding) = binding2pretty "->" gamma binding
   fine2pretty gamma (Sigma binding) = binding2pretty "><" gamma binding

@@ -33,7 +33,7 @@ checkEtaForNormalType ::
   Term mode modty v ->
   UniHSConstructor mode modty v ->
   tc ()
-checkEtaForNormalType parent gamma t (UniHS _ _) = return ()
+checkEtaForNormalType parent gamma t (UniHS _) = return ()
 checkEtaForNormalType parent gamma t (Pi piBinding) = do
   let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding
   body <- newMetaTerm
@@ -172,14 +172,14 @@ checkConstraint parent = case constraint'judgement parent of
   -} -- contexts start empty and grow only in well-typed ways.
 
   JudType gamma (Type ty) -> do
-    lvl <- newMetaTerm
+    {-lvl <- newMetaTerm
              (Just parent)
              topDeg
              (ModedModality dataMode irrMod :\\ gamma)
              (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-             "Infer universe level of type."
+             "Infer universe level of type."-}
     addNewConstraint
-      (JudTerm gamma ty (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl))
+      (JudTerm gamma ty (hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) {-lvl-}))
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
 

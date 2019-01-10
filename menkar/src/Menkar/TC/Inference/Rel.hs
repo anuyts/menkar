@@ -29,7 +29,7 @@ checkSegmentRel ::
 checkSegmentRel parent deg gamma seg1 seg2 = do
   -- CMOD check equality of modalities
   let d' = unVarFromCtx <$> ctx'mode gamma
-  let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d' $ Expr3 TermWildcard
+  let uni = hs2type $ UniHS d' -- $ Expr3 TermWildcard
   addNewConstraint
     (JudTermRel
       deg
@@ -59,7 +59,7 @@ checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
     let dom2 = _segment'content $ binding'segment binding2
     let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
     let d' = unVarFromCtx <$> ctx'mode gamma
-    let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (VarWkn <$> d') $ Expr3 TermWildcard
+    let uni = hs2type $ UniHS (VarWkn <$> d') -- $ Expr3 TermWildcard
     checkSegmentRel parent deg gamma seg1 seg2
     addNewConstraint
       (JudTermRel
@@ -85,8 +85,9 @@ checkUniHSConstructorRel ::
   Type mode modty v ->
   tc ()
 checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
-  (UniHS d1 lvl1, UniHS d2 lvl2) -> do
-    let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
+  (UniHS d1 {-lvl1-}, UniHS d2 {-lvl2-}) -> return ()
+    {-do
+    let nat = hs2type $ NatType
     addNewConstraint
       (JudTermRel
         (divDeg irrModedModality deg)
@@ -95,8 +96,8 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
         (Pair3 nat nat)
       )
       (Just parent)
-      "Relating levels."
-  (UniHS _ _, _) -> tcFail parent "False."
+      "Relating levels."-}
+  (UniHS _, _) -> tcFail parent "False."
   (Pi binding1, Pi binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
   (Pi _, _) -> tcFail parent "False."
   (Sigma binding1, Sigma binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
@@ -665,7 +666,7 @@ checkTypeRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Type mode modty v ->
   tc ()
 checkTypeRel parent deg gamma (Type ty1) (Type ty2) =
-  let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
+  let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr3 $ TermWildcard)
   in  addNewConstraint
         (JudTermRel
           deg

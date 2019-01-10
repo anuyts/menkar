@@ -193,6 +193,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   defConstraint jud maybeParent reason = do
     i <- tcState'constraintCounter <<%= (+1)
     let constraint = Constraint jud maybeParent reason i
+    when (i > 10000) $ tcFail constraint "I may be stuck in a loop."
     tcState'constraintMap %= insert i constraint
     return constraint
 

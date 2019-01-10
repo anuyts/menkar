@@ -162,7 +162,8 @@ deriving instance (
 data UniHSConstructor (mode :: * -> *) (modty :: * -> *) (v :: *) =
   UniHS {-^ Hofmann-Streicher universe, or at least a universe that classifies its own mode. -}
     (mode v) {-^ mode (of both the universe and its elements) -}
-    (Term mode modty v) {-^ level it classifies -} |
+    --(Term mode modty v) {-^ level it classifies -}
+    |
   Pi (Binding Type Term mode modty v) |
   Sigma (Binding Type Term mode modty v) |
   EmptyType |

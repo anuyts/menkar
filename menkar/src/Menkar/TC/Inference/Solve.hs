@@ -168,19 +168,19 @@ solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLe
   tc (UniHSConstructor mode modty vOrig)
 solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 =
   case t2 of
-    UniHS d2 lvl2 -> do
-      let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
-      lvl1orig <- newRelatedMetaTerm parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
+    UniHS d2 {-lvl2-} -> do
+      --let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
+      --lvl1orig <- newRelatedMetaTerm parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
                 --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
       let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
-      return $ UniHS d1orig lvl1orig
+      return $ UniHS d1orig --lvl1orig
     Pi binding2 -> do
-      let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
+      let uni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr3 $ TermWildcard)
       binding1orig <-
         newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Pi $ binding1orig
     Sigma binding2 -> do
-      let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) (Expr3 $ TermWildcard)
+      let uni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr3 $ TermWildcard)
       binding1orig <-
         newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Sigma $ binding1orig

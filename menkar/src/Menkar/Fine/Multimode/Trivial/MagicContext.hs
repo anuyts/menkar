@@ -18,9 +18,10 @@ import Data.Proxy
 import Data.Number.Nat
 import Data.Maybe
 import GHC.Generics (U1 (..))
+import GHC.Stack
 
 -- | These are de Bruijn LEVELS, not INDICES!!!
-var :: DeBruijnLevel v => Nat -> Term U1 U1 v
+var :: (HasCallStack, DeBruijnLevel v) => Nat -> Term U1 U1 v
 var n = Var3 $ fromMaybe unreachable $ forDeBruijnLevel Proxy n
 
 val :: Opness -> String -> Telescoped Type ValRHS U1 U1 v -> Entry U1 U1 v
@@ -54,14 +55,13 @@ app eliminee tyEliminee arg = elim eliminee tyEliminee $ App arg
 
 ----------------------------------------------
 
--- | @Nat {~ | l : Nat} : Set l = Nat@
+-- | @Nat : Set = Nat@
 valNat :: Entry U1 U1 Void
 valNat = val NonOp "Nat" $
-  segIm NonOp "l" (hs2type NatType) :|-
   Telescoped (
     ValRHS
       (hs2term NatType)
-      (hs2type $ UniHS U1 $ var 0)
+      (hs2type $ UniHS U1)
   )
 
 -- | @suc {n : Nat} : Nat = suc n@
@@ -74,38 +74,37 @@ valSuc = val NonOp "suc" $
       (hs2type NatType)
   )
 
-{- | @indNat {~ | l : Nat} {C : Nat -> Set l} {cz : C 0} {cs : {n : Nat} -> C n -> C (suc n)} {n0 : Nat} : C n
+{- | @indNat {C : Nat -> Set} {cz : C 0} {cs : {n : Nat} -> C n -> C (suc n)} {n0 : Nat} : C n
         = indNat (n > C n) cz (n > ihyp > cs n ihyp) n0@
 -}
 -- TODO types of cz and cs and rhs need to be lifted to a higher universe
 valIndNat :: Entry U1 U1 Void
 valIndNat = val NonOp "indNat" $
-  segIm NonOp "l" {- var 0 -} (hs2type NatType) :|-
-  segEx NonOp "C" {- var 1 -} (hs2type $ tyMotive) :|-
-  segEx NonOp "cz" {- var 2 -} (tyCZ) :|-
-  segEx NonOp "cs" {- var 3 -} (hs2type $ tyCS) :|-
-  segEx NonOp "n0" {- var 4 -} (hs2type NatType) :|-
+  segEx NonOp "C" {- var 0 -} (hs2type $ tyMotive) :|-
+  segEx NonOp "cz" {- var 1 -} (tyCZ) :|-
+  segEx NonOp "cs" {- var 2 -} (hs2type $ tyCS) :|-
+  segEx NonOp "n0" {- var 3 -} (hs2type NatType) :|-
   Telescoped (
     ValRHS
-      (elim (var 0) NatType $ ElimDep
-        (nbind NonOp "n" {- var 5 -} $ appMotive (var 5))
+      (elim (var 3) NatType $ ElimDep
+        (nbind NonOp "n" {- var 4 -} $ appMotive (var 4))
         (ElimNat
-          (var 2)
-          (nbind NonOp "n" {- var 5 -} $ nbind NonOp "ihyp" {- var 6 -} $
+          (var 1)
+          (nbind NonOp "n" {- var 4 -} $ nbind NonOp "ihyp" {- var 5 -} $
             app
-              (app (var 3) (tyCS) (var 5))
-              (tyCS' (var 5))
-              (var 6)
+              (app (var 2) (tyCS) (var 4))
+              (tyCS' (var 4))
+              (var 5)
           )
         )
       )
-      (appMotive (var 4))
+      (appMotive (var 3))
   )
   where
     tyMotive :: DeBruijnLevel v => UniHSConstructor U1 U1 v
-    tyMotive = (segEx NonOp "n" $ hs2type NatType) `arrow` (hs2type $ UniHS U1 $ var 0)
+    tyMotive = (segEx NonOp "n" $ hs2type NatType) `arrow` (hs2type $ UniHS U1)
     appMotive :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
-    appMotive arg = Type $ app (var 1) tyMotive arg
+    appMotive arg = Type $ app (var 0) tyMotive arg
     tyCZ :: DeBruijnLevel v => Type U1 U1 v
     tyCZ = appMotive $ Expr3 $ TermCons $ ConsZero
     tyCS' :: DeBruijnLevel v => Term U1 U1 v -> UniHSConstructor U1 U1 v
@@ -114,93 +113,86 @@ valIndNat = val NonOp "indNat" $
     tyCS :: DeBruijnLevel v => UniHSConstructor U1 U1 v
     tyCS = pi (segEx NonOp "n" $ hs2type NatType) (hs2type $ tyCS' $ Var3 $ VarLast)
 
-{- | @UniHS {l : Nat} : UniHS (suc l) = UniHS l@
+{- | @UniHS : UniHS = UniHS @
 -}
 valUniHS :: Entry U1 U1 Void
 valUniHS = val NonOp "UniHS" $
-  segEx NonOp "l" {- var 0 -} (hs2type NatType) :|-
   Telescoped (
     ValRHS
-      (hs2term $ UniHS U1 $ var 0)
-      (hs2type $ UniHS U1 $ Expr3 $ TermCons $ ConsSuc $ var 0)
+      (hs2term $ UniHS U1)
+      (hs2type $ UniHS U1)
   )
 
--- | @Unit {~ | l : Nat} : Set l = Unit@
+-- | @Unit : Set = Unit@
 valUnitType :: Entry U1 U1 Void
 valUnitType = val NonOp "Unit" $
-  segIm NonOp "l" (hs2type NatType) :|-
   Telescoped (
     ValRHS
       (hs2term UnitType)
-      (hs2type $ UniHS U1 $ var 0)
+      (hs2type $ UniHS U1)
   )
 
 -- | @unit : Unit = unit@
 valUnitTerm :: Entry U1 U1 Void
 valUnitTerm = val NonOp "unit" $ Telescoped $ ValRHS (Expr3 $ TermCons $ ConsUnit) (hs2type UnitType)
 
--- | @Box {~ | l : Nat} {X : UniHS l} : UniHS l = Box {x : X}@
+-- | @Box {X : UniHS} : UniHS l = Box {x : X}@
 valBoxType :: Entry U1 U1 Void
 valBoxType = val NonOp "Box" $
-  segIm NonOp "l" {- var 0 -} (hs2type NatType) :|-
-  segEx NonOp "X" {- var 1 -} (hs2type $ UniHS U1 $ var 0) :|-
+  segEx NonOp "X" {- var 0 -} (hs2type $ UniHS U1) :|-
   Telescoped (
     ValRHS
-      (hs2term $ BoxType $ segEx NonOp "x" $ Type $ var 1)
-      (hs2type $ UniHS U1 $ var 0)
+      (hs2term $ BoxType $ segEx NonOp "x" $ Type $ var 0)
+      (hs2type $ UniHS U1)
   )
 
--- | @box {~ | l : Nat} {~ | X : UniHS l} {x : X} : Box X = box x@
+-- | @box {~ | X : UniHS} {x : X} : Box X = box x@
 valBoxTerm :: Entry U1 U1 Void
 valBoxTerm = val NonOp "box" $
-  segIm NonOp "l" {- var 0 -} (hs2type NatType) :|-
-  segIm NonOp "X" {- var 1 -} (hs2type $ UniHS U1 $ var 0) :|-
-  segEx NonOp "x" {- var 2 -} (Type $ var 1) :|-
+  segIm NonOp "X" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segEx NonOp "x" {- var 1 -} (Type $ var 0) :|-
   Telescoped (
     ValRHS
-      (Expr3 $ TermCons $ ConsBox boxSeg $ var 2)
+      (Expr3 $ TermCons $ ConsBox boxSeg $ var 1)
       (hs2type $ BoxType $ boxSeg)
   )
   where boxSeg :: DeBruijnLevel v => Segment Type U1 U1 v
-        boxSeg = segEx NonOp "x" $ Type $ var 1
+        boxSeg = segEx NonOp "x" $ Type $ var 0
 
 {-| indBox
-      {~ | lX lC : Nat}
-      {X : Set lX}
-      {C : Box X -> Set lC}
+      {X : Set}
+      {C : Box X -> Set}
       {cbox : {x : X} -> C (box x)}
       {b0 : Box X} : C b0
         = indBox (b > C b) (x > cbox x) b0
 -}
 valIndBox :: Entry U1 U1 Void
 valIndBox = val NonOp "indBox" $
-  segIm NonOp "lX" {- var 0 -} (hs2type NatType) :|-
-  segIm NonOp "lC" {- var 1 -} (hs2type NatType) :|-
-  segEx NonOp "X"  {- var 2 -} (hs2type $ UniHS U1 $ var 0) :|-
-  segEx NonOp "C"  {- var 3 -} (hs2type tyMotive) :|-
-  segEx NonOp "cbox" {- var 4 -} (hs2type $ tyCBox) :|-
-  segEx NonOp "b0" {- var 5 -} (hs2type $ BoxType $ boxSeg) :|-
+  segEx NonOp "X"  {- var 0 -} (hs2type $ UniHS U1) :|-
+  segEx NonOp "C"  {- var 1 -} (hs2type tyMotive) :|-
+  segEx NonOp "cbox" {- var 2 -} (hs2type $ tyCBox) :|-
+  segEx NonOp "b0" {- var 3 -} (hs2type $ BoxType $ boxSeg) :|-
   Telescoped (
     ValRHS
       (elim
-        (var 5)
+        (var 3)
         (BoxType $ boxSeg)
       $ ElimDep
-        (nbind NonOp "b" {- var 6 -} $ appMotive $ var 6)
+        (nbind NonOp "b" {- var 4 -} $ appMotive $ var 4)
       $ ElimBox
-        (nbind NonOp "x" {- var 6 -} $ app (var 4) tyCBox (var 6))
+        (nbind NonOp "x" {- var 4 -} $ app (var 2) tyCBox (var 4))
       )
-      (appMotive $ var 5)
+      (appMotive $ var 3)
   )
   where
     boxSeg :: DeBruijnLevel v => Segment Type U1 U1 v
-    boxSeg = segEx NonOp "x" $ Type $ var 2
+    boxSeg = segEx NonOp "x" $ Type $ var 0
     tyMotive :: DeBruijnLevel v => UniHSConstructor U1 U1 v
-    tyMotive = (segEx NonOp "b" (hs2type $ BoxType $ boxSeg)) `arrow` (hs2type $ UniHS U1 $ var 1)
+    tyMotive = (segEx NonOp "b" (hs2type $ BoxType $ boxSeg)) `arrow` (hs2type $ UniHS U1)
     appMotive :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
-    appMotive arg = Type $ app (var 3) tyMotive arg
+    appMotive arg = Type $ app (var 1) tyMotive arg
     tyCBox :: DeBruijnLevel v => UniHSConstructor U1 U1 v
-    tyCBox = pi (segEx NonOp "x" (Type $ var 2)) $ appMotive $ Expr3 $ TermCons $ ConsBox boxSeg $ Var3 $ VarLast
+    tyCBox = pi (segEx NonOp "x" (Type $ var 0)) $ appMotive $ Expr3 $ TermCons $ ConsBox boxSeg $ Var3 $ VarLast
 
 ----------------------------------------------
 
@@ -208,13 +200,13 @@ magicEntries :: [Entry U1 U1 Void]
 magicEntries = 
   valNat :
   valSuc :
-  valIndNat : -- doesn't type-check
-  valUniHS : -- doesn't type-check
+  --valIndNat : -- doesn't type-check
+  valUniHS :
   valUnitType :
   valUnitTerm :
   valBoxType :
   valBoxTerm :
-  valIndBox :
+  --valIndBox : -- doesn't type-check
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void

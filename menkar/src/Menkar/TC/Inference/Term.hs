@@ -28,13 +28,13 @@ checkPiOrSigma ::
 checkPiOrSigma parent gamma binding ty = do
   -- CMODE
   -- CMODTY
-  lvl <- newMetaTerm
+  {-lvl <- newMetaTerm
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
            (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-           "Infer level."
-  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
+           "Infer level."-}
+  let currentUni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
   ---------
   addNewConstraint
     (JudTypeRel
@@ -72,13 +72,13 @@ checkUni ::
     Type mode modty v ->
     tc ()
 checkUni parent gamma ty = do
-  lvl <- newMetaTerm
+  {-lvl <- newMetaTerm
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
            (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-           "Infer level."
-  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
+           "Infer level."-}
+  let currentUni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
   ---------
   addNewConstraint
     (JudTypeRel
@@ -98,19 +98,19 @@ checkUniHSConstructor ::
     UniHSConstructor mode modty v ->
     Type mode modty v ->
     tc ()
-checkUniHSConstructor parent gamma (UniHS d lvl) ty = do
+checkUniHSConstructor parent gamma (UniHS d {-lvl-}) ty = do
   -- CMODE d
   -----
-  addNewConstraint
+  {-addNewConstraint
     (JudTerm
       (ModedModality dataMode irrMod :\\ gamma)
       lvl
       (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
     )
     (Just parent)
-    "Checking the level."
+    "Checking the level."-}
   -----
-  anyLvl <- newMetaTerm
+  {-anyLvl <- newMetaTerm
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
@@ -124,13 +124,13 @@ checkUniHSConstructor parent gamma (UniHS d lvl) ty = do
         ElimDep (NamedBinding Nothing $ Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
         ElimNat
           anyLvl
-          (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr3 . TermCons . ConsSuc $ Var3 VarLast)
+          (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr3 . TermCons . ConsSuc $ Var3 VarLast)-}
   addNewConstraint
     (JudTypeRel
       eqDeg
       (mapCtx (\ty -> Pair3 ty ty) gamma)
       (Pair3
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d biggerLvl)
+        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d {-biggerLvl-})
         ty
       )
     )
@@ -141,13 +141,13 @@ checkUniHSConstructor parent gamma (Sigma binding) ty = checkPiOrSigma parent ga
 checkUniHSConstructor parent gamma (EmptyType) ty = checkUni parent gamma ty
 checkUniHSConstructor parent gamma (UnitType) ty = checkUni parent gamma ty
 checkUniHSConstructor parent gamma (BoxType seg) ty = do
-  lvl <- newMetaTerm
+  {-lvl <- newMetaTerm
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
            (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-           "Infer level."
-  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) lvl
+           "Infer level."-}
+  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
   ---------
   addNewConstraint
     (JudTypeRel
