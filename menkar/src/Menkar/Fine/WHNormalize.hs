@@ -41,6 +41,7 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
     --Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
     --  -- careful with glue/weld!
     ([], Expr3 (TermProblem _)) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
+    ([], Expr3 (TermElim _ _ _ _)) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
     ([], Expr3 (TermCons t)) ->
       let termProblem = Expr3 $ TermProblem $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
       in  case (t, e) of

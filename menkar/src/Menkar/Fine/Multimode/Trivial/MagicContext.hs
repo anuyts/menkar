@@ -33,6 +33,8 @@ val op str rhs = EntryVal $ Declaration
 
 pi :: Segment Type U1 U1 v -> Type U1 U1 (VarExt v) -> UniHSConstructor U1 U1 v
 pi aSeg cod = Pi $ Binding aSeg (unType cod)
+sigma :: Segment Type U1 U1 v -> Type U1 U1 (VarExt v) -> UniHSConstructor U1 U1 v
+sigma aSeg cod = Sigma $ Binding aSeg (unType cod)
 arrow :: Segment Type U1 U1 v -> Type U1 U1 v -> UniHSConstructor U1 U1 v
 arrow aSeg cod = pi aSeg (VarWkn <$> cod)
 
@@ -194,19 +196,95 @@ valIndBox = val NonOp "indBox" $
     tyCBox :: DeBruijnLevel v => UniHSConstructor U1 U1 v
     tyCBox = pi (segEx NonOp "x" (Type $ var 0)) $ appMotive $ Expr3 $ TermCons $ ConsBox boxSeg $ Var3 $ VarLast
 
+{-| _, 
+      {~ | A : Set}
+      {~ | B : A -> Set}
+      {x : A}
+      {y : B x}
+      : {x : A} >< B x
+      = x , y
+-}
+valPair :: Entry U1 U1 Void
+valPair = val Op "," $
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "B" {- var 1 -} (hs2type $ tyCod) :|-
+  segEx NonOp "x" {- var 2 -} (Type $ var 0) :|-
+  segEx NonOp "y" {- var 3 -} (appCod $ var 2) :|-
+  Telescoped (
+    ValRHS
+      (Expr3 $ TermCons $ Pair (Binding segA $ unType $ appCod $ Var3 VarLast) (var 2) (var 3))
+      (hs2type $ sigma segA (appCod $ var 4))
+  )
+  where
+    segA :: DeBruijnLevel v => Segment Type U1 U1 v
+    segA = segEx NonOp "x" (Type $ var 0)
+    tyCod :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyCod = segA `arrow` (hs2type $ UniHS U1)
+    appCod :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appCod arg = Type $ app (var 1) tyCod arg
+
+{-| indPair
+      {~ | A : Set}
+      {~ | B : A -> Set}
+      {C : ({x : A} >< B x) -> Set}
+      {cpair : {x : A} {y : B x} -> C (x , y)}
+      {p0 : {x : A} >< B x}
+      : C p0
+      = indPair (p > C) (x > y > cpair x y) p0
+-}
+valIndPair :: Entry U1 U1 Void
+valIndPair = val NonOp "indPair" $
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "B" {- var 1 -} (hs2type $ tyCod) :|-
+  segEx NonOp "C" {- var 2 -} (hs2type $ tyMotive) :|-
+  segEx NonOp "cpair" {- var 3 -} (hs2type $ tyCPair) :|-
+  segEx NonOp "p0" {- var 4 -} (hs2type $ tyPair) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 4) tyPair $
+       ElimDep (nbind NonOp "p" {- var 5 -} $ appMotive $ var 5) $
+       ElimSigma $ nbind NonOp "x" {- var 5 -} $ nbind NonOp "y" {- var 6 -} $
+       app (
+         app (var 3) tyCPair (var 5)
+       ) (tyCPair' (var 5)) (var 6)
+      )
+      (appMotive $ var 4)
+  )
+  where
+    segA :: DeBruijnLevel v => Segment Type U1 U1 v
+    segA = segEx NonOp "x" (Type $ var 0)
+    tyCod :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyCod = segA `arrow` (hs2type $ UniHS U1)
+    appCod :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appCod arg = Type $ app (var 1) tyCod arg
+    tyPair :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyPair = sigma segA $ appCod $ Var3 $ VarLast
+    tyMotive :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyMotive = (segEx NonOp "p" $ hs2type tyPair) `arrow` (hs2type $ UniHS U1)
+    appMotive :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appMotive arg = Type $ app (var 2) tyMotive arg
+    tyCPair' :: DeBruijnLevel v => Term U1 U1 v -> UniHSConstructor U1 U1 v
+    tyCPair' x = pi
+      (segEx NonOp "y" $ appCod $ x)
+      (appMotive $ Expr3 $ TermCons $ Pair (Binding segA $ unType $ appCod $ Var3 VarLast) (VarWkn <$> x) (Var3 VarLast))
+    tyCPair :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyCPair = pi segA $ hs2type $ tyCPair' $ Var3 $ VarLast
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
 magicEntries = 
   valNat :
   valSuc :
-  valIndNat : -- doesn't type-check
+  valIndNat :
   valUniHS :
   valUnitType :
   valUnitTerm :
   valBoxType :
   valBoxTerm :
-  valIndBox : -- doesn't type-check
+  valIndBox :
+  valPair :
+  valIndPair :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
