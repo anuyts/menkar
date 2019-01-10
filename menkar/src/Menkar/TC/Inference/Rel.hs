@@ -423,12 +423,12 @@ checkTermNVRelEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   tc ()
 checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = case c1 of
   ConsUniHS _ -> tcFail parent "False."
-  Lam lambdaBinding -> case (metasTy1, metasTy2, ty1, ty2) of
+  Lam lambdaBinding1 -> case (metasTy1, metasTy2, ty1, ty2) of
     ([], [], Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
-      let seg1 = binding'segment lambdaBinding
+      let seg1 = binding'segment lambdaBinding1
       let dom2 = _segment'content $ binding'segment piBinding2
       let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
-      let app1 = binding'body lambdaBinding
+      let app1 = binding'body lambdaBinding1
       let app2 = Expr3 $ TermElim
             (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
             (VarWkn <$> Expr3 t2) (VarWkn <$> Pi piBinding2) (App $ Var3 VarLast)
@@ -446,7 +446,43 @@ checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
         "Eta: Relating function bodies."
     ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
     (_, _, _, _) -> tcBlock parent "Need to analyze function types."  
-  Pair sigmaBinding tFst tSnd -> _pair
+  Pair sigmaBinding1' tFst1 tSnd1 -> do
+    -- CMOD am I dividing by the correct modality here?
+    let dmu = _segment'modty $ binding'segment $ sigmaBinding1'
+    let d' = unVarFromCtx <$> ctx'mode gamma
+    when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This sigma-type has no eta-rule.)"
+    case (metasTy1, metasTy2, ty1, ty2) of
+      ([], [], Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
+        let tFst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') (Expr3 t2) (Sigma sigmaBinding2) Fst
+        let tSnd2 = Expr3 $ TermElim (idModedModality d') (Expr3 t2) (Sigma sigmaBinding2) Snd
+        addNewConstraint
+          (JudTermRel
+            (divDeg dmu deg)
+            (VarFromCtx <$> dmu :\\ gamma)
+            (Pair3 tFst1 tFst2)
+            (Pair3
+              (_segment'content $ binding'segment sigmaBinding1)
+              (_segment'content $ binding'segment sigmaBinding2)
+            )
+          )
+          (Just parent)
+          "Eta: Relating first projections."
+        addNewConstraint
+          (JudTermRel
+            deg
+            gamma
+            (Pair3 tSnd1 tSnd2)
+            (Pair3
+              (Type $ substLast3 tFst1 $ binding'body sigmaBinding1)
+              (Type $ substLast3 tFst2 $ binding'body sigmaBinding2)
+            )
+          )
+          (Just parent)
+          "Eta: relating second projections"
+      ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
+      (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
+
+  
   ConsUnit -> return ()
   ConsBox boxSeg t -> _box
   ConsZero -> tcFail parent "False."
