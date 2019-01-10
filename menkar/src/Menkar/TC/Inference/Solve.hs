@@ -202,25 +202,28 @@ solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLev
   ConstructorTerm mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc (ConstructorTerm mode modty vOrig)
-solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
+solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 =
   case t2 of
     ConsUniHS c2 -> do
       c1orig <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c2
       return $ ConsUniHS $ c1orig
     Lam binding2 -> do
-      case (ty1, ty2) of
-        (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding1)))),
-         Type (Expr3 (TermCons (ConsUniHS (Pi piBinding2))))) -> do
+      case (metasTy1, ty1, metasTy2, ty2) of
+        ([], Type (Expr3 (TermCons (ConsUniHS (Pi piBinding1)))),
+         [], Type (Expr3 (TermCons (ConsUniHS (Pi piBinding2))))) -> do
             let cod1 = Type $ binding'body piBinding1
             let cod2 = Type $ binding'body piBinding2
             binding1orig <- newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 cod1 cod2
             return $ Lam binding1orig
-        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
+        ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
+        (_, _, _, _) -> tcBlock parent "Need to know codomains of function types."
     Pair sigmaBinding2 tmFst2 tmSnd2 -> do
-      case (ty1, ty2) of
-        (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1)))),
-         Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2))))) -> do
+      case (metasTy1, ty1, metasTy2, ty2) of
+        ([], Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1)))),
+         [], Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2))))) -> do
             let tyFst1 = _segment'content $ binding'segment sigmaBinding1
             let tyFst2 = _segment'content $ binding'segment sigmaBinding2
             let dmu1 = _segment'modty $ binding'segment sigmaBinding1
@@ -246,12 +249,13 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
             tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
                             "Inferring second component."
             return $ Pair sigmaBinding1orig tmFst1orig tmSnd1orig
-        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
+        ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
+        (_, _, _, _) -> tcBlock parent "Need to know domains and codomains of Sigma-types."
     ConsUnit -> return ConsUnit
     ConsBox boxSeg tmUnbox2 -> do
-      case (ty1, ty2) of
-        (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1)))),
-         Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg2))))) -> do
+      case (metasTy1, ty1, metasTy2, ty2) of
+        ([], Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1)))),
+         [], Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg2))))) -> do
             let tyUnbox1 = _segment'content boxSeg1
             let tyUnbox2 = _segment'content boxSeg2
             let dmu1 = _segment'modty boxSeg1
@@ -270,7 +274,8 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
                                   Explicit -- CMODE
                                   (Type tyUnbox1orig)
             return $ ConsBox boxSeg1orig tmUnbox1orig
-        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
+        ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
+        (_, _, _, _) -> tcBlock parent "Need to know content types of box types."
     ConsZero -> return ConsZero
     ConsSuc t2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
@@ -519,8 +524,10 @@ solveMetaAgainstWHNF :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBru
   Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc (Term mode modty vOrig)
-solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
+solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 =
   -- CMOD if deg = eqDeg and t2 does not mention any additional variables, solve fully.
   -- Otherwise, we do a weak-head solve.
   case t2 of
@@ -529,7 +536,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 =
       Just u -> return $ Var3 u
     Expr3 t2 -> case t2 of
       TermCons c2 -> do
-        c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2
+        c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2 metasTy1 metasTy2
         return $ Expr3 $ TermCons $ c1orig
       TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
         -- CMODE MODTY
@@ -582,11 +589,13 @@ solveMetaImmediately :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBru
   Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc (Term mode modty vOrig)
-solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 = do
+solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 = do
   let maybeT2orig = sequenceA $ partialInv <$> t2
   case maybeT2orig of
-    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2
+    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
     Just t2orig -> return t2orig
 
 ------------------------------------
@@ -634,8 +643,10 @@ tryToSolveMeta :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc ()
-tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
+tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 metasTy1 metasTy2 = do
   let getVar3 :: Term mode modty v -> Maybe v
       getVar3 (Var3 v) = Just v
       getVar3 _ = Nothing
@@ -657,8 +668,8 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 = do
               Nothing -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
                 if isEqDeg deg
-                  then solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
-                  else solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2
+                  then solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
+                  else solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
               Just metas -> tcBlock parent "Cannot solve meta-variable: modalities in current context are strictly weaker than in original context."
           )
@@ -674,10 +685,12 @@ tryToSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   [Int] ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc ()
-tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 = case tBlocked of
+tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 metasTyBlocked metasTy2 = case tBlocked of
   -- tBlocked should be a meta
   (Expr3 (TermMeta meta depcies)) ->
-    tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2
+    tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2 metasTyBlocked metasTy2
   -- if tBlocked is not a meta, then we should just block on its submetas
   _ -> tcBlock parent "Cannot solve relation: one side is blocked on a meta-variable."

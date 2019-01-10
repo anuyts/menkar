@@ -448,7 +448,7 @@ checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (TermProblem t, _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
-checkTermRelNormal :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+checkTermRelNoEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -457,7 +457,7 @@ checkTermRelNormal :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-checkTermRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+checkTermRelNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
         (Var3 v1, Var3 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
@@ -465,39 +465,16 @@ checkTermRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
         (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
         (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
 
-checkTermRelNoEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+checkTermRelWHN :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
   Term mode modty v ->
   Term mode modty v ->
-  [Int] ->
-  [Int] ->
   Type mode modty v ->
   Type mode modty v ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) =
-  case (metasT1, metasT2) of
-    -- Both are whnormal
-    ([], []) -> checkTermRelNormal parent deg gamma t1 t2 (Type ty1) (Type ty2)
-    -- Only one is whnormal: whsolve or block
-    (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2)
-    ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1)
-    -- Neither is whnormal: block
-    (_, _) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
-
-checkTermRelWHNTypes :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Term mode modty v ->
-  [Int] ->
-  [Int] ->
-  Type mode modty v ->
-  Type mode modty v ->
-  tc ()
-checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) = case (ty1, ty2) of
+checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2) = case (ty1, ty2) of
   -- Pi types: eta-expand
   (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
     let seg1 = binding'segment piBinding1
@@ -533,7 +510,7 @@ checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2
     let snd1 = Expr3 $ TermElim (idModedModality d') t1 (Sigma sigmaBinding1) Snd
     let snd2 = Expr3 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
     if not (sigmaHasEta dmu d')
-      then checkTermRelNoEta  parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
+      then checkTermRelNoEta  parent deg gamma t1 t2 (Type ty1) (Type ty2)
       else do
         addNewConstraint
           (JudTermRel
@@ -573,7 +550,7 @@ checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2
     let unbox1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (BoxType boxSeg1) Unbox
     let unbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
     if not (sigmaHasEta dmu d')
-      then checkTermRelNoEta  parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
+      then checkTermRelNoEta  parent deg gamma t1 t2 (Type ty1) (Type ty2)
       else do
         addNewConstraint
           (JudTermRel
@@ -589,7 +566,25 @@ checkTermRelWHNTypes parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2
           "Eta: Relating box contents."
   (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), _) ->
     tcFail parent "Types are presumed to be related."
-  (_, _) -> checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
+  (_, _) -> checkTermRelNoEta parent deg gamma t1 t2 (Type ty1) (Type ty2)
+
+checkTermRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  Term mode modty v ->
+  Term mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  [Int] ->
+  [Int] ->
+  tc ()
+checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = do
+  case (metasTy1, metasTy2) of
+    -- Both types are whnormal
+    ([], []) -> checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2)
+    -- Either type is not normal
+    (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 
 checkTermRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
@@ -605,24 +600,29 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
   if isTopDeg deg
     then return ()
     else do
-      (whnT1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
-      (whnT2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
-      (whnTy1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
-      (whnTy2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
-      whnparent <- defConstraint
+      --purposefully shadowing (redefining)
+      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
+      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
+      (ty1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
+      (ty2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
+      parent <- defConstraint
             (JudTermRel
               deg
               gamma
-              (Pair3 whnT1 whnT2)
-              (Pair3 (Type whnTy1) (Type whnTy2))
+              (Pair3 t1 t2)
+              (Pair3 (Type ty1) (Type ty2))
             )
             (Just parent)
             "Weak-head-normalize everything"
-      case (metasTy1, metasTy2) of
-        -- Both types are whnormal
-        ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasT1 metasT2 (Type whnTy1) (Type whnTy2)
-        -- Either type is not normal
-        (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
+
+      case (metasT1, metasT2) of
+        -- Both are whnormal
+        ([], []) -> checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
+        -- Only one is whnormal: whsolve or block
+        (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2) metasTy1 metasTy2
+        ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1) metasTy1 metasTy2
+        -- Neither is whnormal: block
+        (_, _) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
       {-
       case (whnT1, whnT2) of
