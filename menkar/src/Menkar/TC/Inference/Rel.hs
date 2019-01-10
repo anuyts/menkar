@@ -123,12 +123,14 @@ checkConstructorTermRel :: forall mode modty rel tc v .
   ConstructorTerm mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
   (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
   (ConsUniHS _, _) -> tcFail parent "False."
   -- Encountering a lambda is not possible: it's well-typed, so the type is a Pi-type, so eta-expansion has fired.
-  (Lam binding, _) -> tcFail parent "LHS is presumed to be well-typed."
+  (Lam binding, _) -> _fixallofthis -- tcFail parent "LHS is presumed to be well-typed."
   (_, Lam binding) -> tcFail parent "RHS is presumed to be well-typed."
   (Pair sigmaBinding1 fst1 snd1, Pair sigmaBinding2 fst2 snd2) -> do
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
@@ -200,8 +202,8 @@ checkDependentEliminatorRel :: forall mode modty rel tc v .
   NamedBinding Type mode modty v ->
   DependentEliminator mode modty v ->
   DependentEliminator mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+  Type mode modty v {-^ May not be whnormal. -} ->
+  Type mode modty v {-^ May not be whnormal. -} ->
   tc ()
 checkDependentEliminatorRel parent deg gamma dmu
   eliminee1 eliminee2
@@ -357,8 +359,8 @@ checkEliminatorRel ::
   Type mode modty v ->
   Eliminator mode modty v ->
   Eliminator mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+  Type mode modty v {-^ May not be whnormal. -} ->
+  Type mode modty v {-^ May not be whnormal. -} ->
   tc ()
 checkEliminatorRel parent deg gamma dmu
   eliminee1 eliminee2
@@ -406,7 +408,53 @@ checkEliminatorRel parent deg gamma dmu
   (ElimDep _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkEliminatorRel
 
-checkTermNVRelNormal :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+{-| Relate a constructor-term with a whnormal non-constructor term.
+-}
+checkTermNVRelEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+  Constraint mode modty rel ->
+  rel v ->
+  Ctx (Pair3 Type) mode modty v Void ->
+  ConstructorTerm mode modty v ->
+  TermNV mode modty v ->
+  Type mode modty v ->
+  Type mode modty v ->
+  [Int] ->
+  [Int] ->
+  tc ()
+checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = case c1 of
+  ConsUniHS _ -> tcFail parent "False."
+  Lam lambdaBinding -> case (metasTy1, metasTy2, ty1, ty2) of
+    ([], [], Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
+      let seg1 = binding'segment lambdaBinding
+      let dom2 = _segment'content $ binding'segment piBinding2
+      let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
+      let app1 = binding'body lambdaBinding
+      let app2 = Expr3 $ TermElim
+            (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
+            (VarWkn <$> Expr3 t2) (VarWkn <$> Pi piBinding2) (App $ Var3 VarLast)
+      addNewConstraint
+        (JudTermRel
+          (VarWkn <$> deg)
+          (gamma :.. VarFromCtx <$> seg)
+          (Pair3 app1 app2)
+          (Pair3
+            (Type $ binding'body piBinding1)
+            (Type $ binding'body piBinding2)
+          )
+        )
+        (Just parent)
+        "Eta: Relating function bodies."
+    ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
+    (_, _, _, _) -> tcBlock parent "Need to analyze function types."  
+  Pair sigmaBinding tFst tSnd -> _pair
+  ConsUnit -> return ()
+  ConsBox boxSeg t -> _box
+  ConsZero -> tcFail parent "False."
+  ConsSuc t -> tcFail parent "False."
+
+{-| Relate 2 non-variable whnormal terms.
+-}
+checkTermNVRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -414,10 +462,13 @@ checkTermNVRelNormal :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   TermNV mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
-  (TermCons c1, TermCons c2) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2
-  (TermCons _, _) -> tcFail parent "False."
+checkTermNVRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
+  (TermCons c1, TermCons c2) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
+  (TermCons c1, _) -> checkTermNVRelEta parent deg          gamma  c1 t2 ty1 ty2 metasTy1 metasTy2
+  (_, TermCons c2) -> checkTermNVRelEta parent deg (flipCtx gamma) c2 t1 ty2 ty1 metasTy2 metasTy1
   (TermElim dmu1 eliminee1 tyEliminee1 eliminator1, TermElim dmu2 eliminee2 tyEliminee2 eliminator2) -> do
     let tyEliminee1' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1
     let tyEliminee2' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee2
@@ -449,7 +500,9 @@ checkTermNVRelNormal parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (TermProblem t, _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
-checkTermRelNoEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+{-| Relate 2 whnormal terms.
+-}
+checkTermRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
@@ -457,15 +510,18 @@ checkTermRelNoEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
         (Var3 v1, Var3 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
-        (Expr3 tnv1, Expr3 tnv2) -> checkTermNVRelNormal parent deg gamma tnv1 tnv2 ty1 ty2
+        (Expr3 tnv1, Expr3 tnv2) -> checkTermNVRelWHNTerms parent deg gamma tnv1 tnv2 ty1 ty2 metasTy1 metasTy2
         (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
         (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
 
+{-
 checkTermRelWHN :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -586,6 +642,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metas
     ([], []) -> checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2)
     -- Either type is not normal
     (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
+-}
 
 checkTermRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
