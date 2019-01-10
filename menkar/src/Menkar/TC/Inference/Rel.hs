@@ -481,10 +481,29 @@ checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
           "Eta: relating second projections"
       ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
       (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
-
-  
   ConsUnit -> return ()
-  ConsBox boxSeg t -> _box
+  ConsBox boxSeg1' tUnbox1 -> do
+    -- CMOD am I dividing by the correct modality here?
+    let dmu = _segment'modty $ boxSeg1'
+    let d' = unVarFromCtx <$> ctx'mode gamma
+    when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This box-type has no eta-rule.)"
+    case (metasTy1, metasTy2, ty1, ty2) of
+      ([], [], Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
+        let tUnbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') (Expr3 t2) (BoxType boxSeg2) Unbox
+        addNewConstraint
+          (JudTermRel
+            (divDeg dmu deg)
+            (VarFromCtx <$> dmu :\\ gamma)
+            (Pair3 tUnbox1 tUnbox2)
+            (Pair3
+              (_segment'content $ boxSeg1)
+              (_segment'content $ boxSeg2)
+            )
+          )
+          (Just parent)
+          "Eta: Relating box contents."
+      ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
+      (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
   ConsZero -> tcFail parent "False."
   ConsSuc t -> tcFail parent "False."
 
