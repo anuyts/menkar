@@ -279,7 +279,7 @@ valEmpty = val NonOp "Empty" $
       (hs2type $ UniHS U1)
   )
 
-{-| indEmpty {C : Empty -> UniHS} {e0 : Empty} : C e0 = indEmpty (e > C e) e0
+{-| @indEmpty {C : Empty -> UniHS} {e0 : Empty} : C e0 = indEmpty (e > C e) e*@
 -}
 valIndEmpty :: Entry U1 U1 Void
 valIndEmpty = val NonOp "indEmpty" $
@@ -299,6 +299,19 @@ valIndEmpty = val NonOp "indEmpty" $
     appMotive :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
     appMotive arg = Type $ app (var 0) tyMotive arg
 
+{-| @_== {~ | A : UniHS} {aL aR : A} : UniHS = aL == .{A} aR@
+-}
+valEqType :: Entry U1 U1 Void
+valEqType = val Op "==" $
+  segIm NonOp "A"  {- var 0 -} (hs2type $ UniHS U1) :|-
+  segEx NonOp "aL" {- var 1 -} (Type $ var 0) :|-
+  segEx NonOp "aR" {- var 2 -} (Type $ var 0) :|-
+  Telescoped (
+    ValRHS
+      (hs2term $ EqType (Type $ var 0) (var 1) (var 2))
+      (hs2type $ UniHS U1)
+    )
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
@@ -316,6 +329,7 @@ magicEntries =
   valIndPair :
   valEmpty :
   valIndEmpty :
+  valEqType :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
