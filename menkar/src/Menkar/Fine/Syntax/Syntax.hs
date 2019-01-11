@@ -169,7 +169,8 @@ data UniHSConstructor (mode :: * -> *) (modty :: * -> *) (v :: *) =
   EmptyType |
   UnitType |
   BoxType (Segment Type mode modty v) |
-  NatType
+  NatType |
+  EqType (Type mode modty v) (Term mode modty v) (Term mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (UniHSConstructor mode modty)

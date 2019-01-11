@@ -112,6 +112,7 @@ checkEtaForNormalType parent gamma t (BoxType segBox) =
   else return ()
   where dmu = _segment'modty $ segBox
 checkEtaForNormalType parent gamma t NatType = return ()
+checkEtaForNormalType parent gamma t (EqType _ _ _) = return ()
 
 checkEta ::
   (MonadTC mode modty rel tc, DeBruijnLevel v) =>

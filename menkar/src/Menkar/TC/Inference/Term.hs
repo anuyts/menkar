@@ -83,7 +83,7 @@ checkUni parent gamma ty = do
   addNewConstraint
     (JudTypeRel
       eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (duplicateCtx gamma)
       (Pair3 currentUni ty)
     )
     (Just parent)
@@ -125,17 +125,7 @@ checkUniHSConstructor parent gamma (UniHS d {-lvl-}) ty = do
         ElimNat
           anyLvl
           (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr3 . TermCons . ConsSuc $ Var3 VarLast)-}
-  addNewConstraint
-    (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS d {-biggerLvl-})
-        ty
-      )
-    )
-    (Just parent)
-    "Checking whether actual type equals expected type."
+  checkUni parent gamma ty
 checkUniHSConstructor parent gamma (Pi binding) ty = checkPiOrSigma parent gamma binding ty
 checkUniHSConstructor parent gamma (Sigma binding) ty = checkPiOrSigma parent gamma binding ty
 checkUniHSConstructor parent gamma (EmptyType) ty = checkUni parent gamma ty
@@ -152,7 +142,7 @@ checkUniHSConstructor parent gamma (BoxType seg) ty = do
   addNewConstraint
     (JudTypeRel
       eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (duplicateCtx gamma)
       (Pair3 currentUni ty)
     )
     (Just parent)
@@ -167,6 +157,20 @@ checkUniHSConstructor parent gamma (BoxType seg) ty = do
     (Just parent)
     "Checking type of the inner type."
 checkUniHSConstructor parent gamma (NatType) ty = checkUni parent gamma ty
+checkUniHSConstructor parent gamma (EqType tyAmbient tyL tyR) ty = do
+  checkUni parent gamma ty
+  addNewConstraint
+    (JudType gamma tyAmbient)
+    (Just parent)
+    "Checking ambient type."
+  addNewConstraint
+    (JudTerm gamma tyL tyAmbient)
+    (Just parent)
+    "Checking left equand."
+  addNewConstraint
+    (JudTerm gamma tyR tyAmbient)
+    (Just parent)
+    "Checking right equand."
 --checkUniHSConstructor parent gamma t ty = _checkUniHSConstructor
 -- CMODE do we allow Empty, Unit and Nat in arbitrary mode? I guess not...
 

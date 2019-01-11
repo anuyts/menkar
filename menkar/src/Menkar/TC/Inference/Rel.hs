@@ -110,6 +110,20 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (BoxType _, _) -> tcFail parent "False."
   (NatType, NatType) -> return ()
   (NatType, _) -> tcFail parent "False."
+  (EqType tyAmbient1 tL1 tR1, EqType tyAmbient2 tL2 tR2) -> do
+    addNewConstraint
+      (JudTypeRel deg gamma (Pair3 tyAmbient1 tyAmbient2))
+      (Just parent)
+      "Relating ambient types."
+    addNewConstraint
+      (JudTermRel deg gamma (Pair3 tL1 tL2) (Pair3 tyAmbient1 tyAmbient2))
+      (Just parent)
+      "Relating left equands."
+    addNewConstraint
+      (JudTermRel deg gamma (Pair3 tR1 tR2) (Pair3 tyAmbient1 tyAmbient2))
+      (Just parent)
+      "Relating right equands."
+  (EqType _ _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkUniHSConstructorRel
 
 --------------------------------

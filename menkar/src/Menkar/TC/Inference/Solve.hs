@@ -166,13 +166,13 @@ solveMetaAgainstUniHSConstructor :: (MonadTC mode modty rel tc, Eq v, DeBruijnLe
   (v -> Maybe vOrig) ->
   UniHSConstructor mode modty v ->
   tc (UniHSConstructor mode modty vOrig)
-solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 =
+solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
+  let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
   case t2 of
     UniHS d2 {-lvl2-} -> do
       --let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
       --lvl1orig <- newRelatedMetaTerm parent topDeg gammaOrig gamma subst partialInv lvl2 nat nat "Inferring level."
                 --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
-      let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
       return $ UniHS d1orig --lvl1orig
     Pi binding2 -> do
       let uni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr3 $ TermWildcard)
@@ -191,6 +191,14 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
         newRelatedSegment parent deg gammaOrig gamma subst partialInv boxSeg2
       return $ BoxType $ boxSeg1orig
     NatType -> return NatType
+    EqType tyAmbient2 tL2 tR2 -> do
+      tyAmbient1orig <- newRelatedMetaType parent deg gammaOrig gamma subst partialInv tyAmbient2 "Inferring ambient type."
+      let tyAmbient1 = subst <$> tyAmbient1orig
+      tL1orig <-
+        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tL2 tyAmbient1 tyAmbient2 "Inferring left equand."
+      tR1orig <-
+        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tR2 tyAmbient1 tyAmbient2 "Inferring right equand."
+      return $ EqType tyAmbient1orig tL1orig tR1orig
 
 solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->

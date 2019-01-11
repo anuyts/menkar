@@ -73,6 +73,11 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (UnitType) = ribbon "Unit"
   fine2pretty gamma (BoxType tySeg) = "Box" ++| fine2pretty gamma tySeg
   fine2pretty gamma (NatType) = ribbon "Nat"
+  fine2pretty gamma (EqType tyAmbient tyL tyR) =
+    ribbonEmpty
+    \\\ ["(" ++| fine2pretty gamma tyL |++ ")"]
+    /+/ " == .{" ++| fine2pretty gamma tyAmbient |++ "} "
+    \\\ ["(" ++| fine2pretty gamma tyR |++ ")"]
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (UniHSConstructor mode modty Void) where
