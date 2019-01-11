@@ -200,6 +200,8 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       (Just parent)
       "Relating predecessors."
   (ConsSuc _, _) -> tcFail parent "False."
+  (ConsRefl, ConsRefl) -> return ()
+  (ConsRefl, _) -> tcFail parent "False."
   --(_, _) -> _checkConstructorTermRel
 
 checkDependentEliminatorRel :: forall mode modty rel tc v .
@@ -420,6 +422,16 @@ checkEliminatorRel parent deg gamma dmu
       clauses1 clauses2
       ty1 ty2
   (ElimDep _ _, _) -> tcFail parent "False."
+  (ElimEq motive1 crefl1, ElimEq motive2 crefl2) -> do
+    _
+    {-
+    addNewConstraint
+      (JudTermRel deg gamma $ Pair3
+        ()
+      )
+    -}
+    --note: tyEliminee should be a unihsconstructor, not a type!
+  (ElimEq _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkEliminatorRel
 
 {-| Relate a constructor-term with a whnormal non-constructor term.
