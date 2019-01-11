@@ -289,6 +289,7 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
       t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat "Inferring predecessor."
       return $ ConsSuc t1orig
+    ConsRefl -> return ConsRefl
 
 ------------------------------------
 
@@ -450,7 +451,8 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
           "Inferring pair clause."
       return $ ElimNat clauseZero1orig clauseSuc1orig
 
-newRelatedEliminator :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+newRelatedEliminator :: forall mode modty rel tc v vOrig .
+  (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx Type mode modty vOrig Void ->
@@ -517,6 +519,47 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                         clauses2
                         ty1 ty2
       return $ ElimDep motive1orig clauses1orig
+    ElimEq motive2 crefl2 -> case (tyEliminee1orig, tyEliminee2) of
+      (EqType tyAmbient1orig tL1orig tR1orig, EqType tyAmbient2 tL2 tR2) -> do
+        let tyAmbient1 = subst <$> tyAmbient1orig
+        let tL1 = subst <$> tL1orig
+        let tR1 = subst <$> tR1orig
+        let segR1orig = Declaration (DeclNameSegment $ _namedBinding'name motive2) dmu1orig Explicit
+                          tyAmbient1orig
+        let segR      = Declaration (DeclNameSegment $ _namedBinding'name motive2) dmu1     Explicit $ Pair3
+                          tyAmbient1
+                          tyAmbient2
+        let segEq1orig = Declaration (DeclNameSegment $ _namedBinding'name $ _namedBinding'body motive2)
+                           (VarWkn <$> dmu1orig) Explicit
+                           (Type $ Expr3 $ TermCons $ ConsUniHS $
+                              EqType (VarWkn <$> tyAmbient1orig) (VarWkn <$> tL1orig) (Var3 VarLast))
+        let segEq      = Declaration (DeclNameSegment $ _namedBinding'name $ _namedBinding'body motive2)
+                           (VarWkn <$> dmu1    ) Explicit $
+                         Pair3
+                           (Type $ Expr3 $ TermCons $ ConsUniHS $
+                              EqType (VarWkn <$> tyAmbient1) (VarWkn <$> tL1) (Var3 VarLast))
+                           (Type $ Expr3 $ TermCons $ ConsUniHS $
+                              EqType (VarWkn <$> tyAmbient2) (VarWkn <$> tL2) (Var3 VarLast))
+        motive1orig <- flip (namedBinding'body . namedBinding'body) motive2 $ \ty2 ->
+                         newRelatedMetaType
+                           parent
+                           (VarWkn . VarWkn <$> deg)
+                           (gammaOrig :.. VarFromCtx <$> segR1orig :.. VarFromCtx <$> segEq1orig)
+                           (gamma     :.. VarFromCtx <$> segR      :.. VarFromCtx <$> segEq     )
+                           (fmap $ fmap subst)
+                           (sequenceA . fmap sequenceA . fmap (fmap partialInv))
+                           ty2
+                           "Inferring motive."
+        let motive1 = subst <$> motive1orig
+        let refl :: forall w . Term mode modty w
+            refl = Expr3 $ TermCons $ ConsRefl
+        crefl1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv
+                        crefl2
+                        (substLast3 tL1 $ substLast3 refl $ _namedBinding'body $ _namedBinding'body motive1)
+                        (substLast3 tL2 $ substLast3 refl $ _namedBinding'body $ _namedBinding'body motive2)
+                        "Inferring refl clause."
+        return $ ElimEq motive1orig crefl1orig
+      (_, _) -> unreachable
 
 ------------------------------------
 

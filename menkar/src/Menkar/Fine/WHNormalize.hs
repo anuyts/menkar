@@ -90,6 +90,8 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
               subst (VarWkn (VarWkn v)) = Var3 v
           in  whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) reason
         (ConsSuc _, _) -> return termProblem
+        (ConsRefl, ElimEq motive crefl) -> whnormalize parent gamma crefl reason
+        (ConsRefl, _) -> return termProblem
     ([], Expr3 _) -> unreachable
 
 whnormalizeNV :: MonadTC mode modty rel tc =>

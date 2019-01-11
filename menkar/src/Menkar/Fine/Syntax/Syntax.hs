@@ -196,7 +196,8 @@ data ConstructorTerm (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Segment Type mode modty v) {-^ box's type -}
     (Term mode modty v) {-^ box's content -} |
   ConsZero |
-  ConsSuc (Term mode modty v)
+  ConsSuc (Term mode modty v) |
+  ConsRefl
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (ConstructorTerm mode modty)
@@ -230,7 +231,8 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Unbox |
   ElimDep {
     _eliminator'motive :: (NamedBinding Type mode modty v),
-    _eliminator'clauses :: DependentEliminator mode modty v}
+    _eliminator'clauses :: DependentEliminator mode modty v} |
+  ElimEq (NamedBinding (NamedBinding Type) mode modty v) (Term mode modty v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode, CanSwallow (Term mode modty) modty) =>
   CanSwallow (Term mode modty) (Eliminator mode modty)
