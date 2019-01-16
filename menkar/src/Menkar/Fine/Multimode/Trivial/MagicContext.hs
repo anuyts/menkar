@@ -356,6 +356,34 @@ valIndEq = val NonOp "ind==" $
     appMotive :: DeBruijnLevel v => Term U1 U1 v -> Term U1 U1 v -> Type U1 U1 v
     appMotive aR eq = Type $ app (app (var 2) tyMotive aR) (tyMotive' aR) eq
 
+{-| @funext {~| A : UniHS} {~| B : A -> UniHS} {~| f g : {x : A} -> B x} {p : {x : A} -> f x == g x} : f == g = funext p@
+-}
+valFunext :: Entry U1 U1 Void
+valFunext = val NonOp "funext" $
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "B" {- var 1 -} (hs2type $ tyCod) :|-
+  segIm NonOp "f" {- var 2 -} (hs2type $ tyPi) :|-
+  segIm NonOp "g" {- var 3 -} (hs2type $ tyPi) :|-
+  segEx NonOp "p" {- var 4 -} (hs2type $ tyEqPi) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 4) tyEqPi Funext)
+      (hs2type $ EqType (hs2type $ tyPi) (var 2) (var 3))
+  )  
+  where
+    segA :: DeBruijnLevel v => Segment Type U1 U1 v
+    segA = segEx NonOp "x" (Type $ var 0)
+    tyCod :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyCod = segA `arrow` (hs2type $ UniHS U1)
+    appCod :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appCod arg = Type $ app (var 1) tyCod arg
+    appEqCod :: DeBruijnLevel v => Term U1 U1 v -> Type U1 U1 v
+    appEqCod arg = hs2type $ EqType (appCod arg) (app (var 2) tyPi arg) (app (var 3) tyPi arg)
+    tyPi :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyPi = pi segA (appCod (Var3 $ VarLast))
+    tyEqPi :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyEqPi = pi segA (appEqCod (Var3 $ VarLast))
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
@@ -376,6 +404,7 @@ magicEntries =
   valEqType :
   valRefl :
   valIndEq :
+  valFunext :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
