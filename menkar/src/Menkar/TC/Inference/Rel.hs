@@ -456,7 +456,7 @@ checkEliminatorRel parent deg gamma dmu
         )
         (Just parent)
         "Relating elimination clauses for the refl constructor."
-    --note: tyEliminee should be a unihsconstructor, not a type!
+    (_, _) -> unreachable
   (ElimEq _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkEliminatorRel
 
@@ -558,6 +558,7 @@ checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
       (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
   ConsZero -> tcFail parent "False."
   ConsSuc t -> tcFail parent "False."
+  ConsRefl -> tcFail parent "False."
 
 {-| Relate 2 non-variable whnormal terms.
 -}
