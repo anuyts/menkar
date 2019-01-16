@@ -105,6 +105,7 @@ instance (Functor mode, Functor modty,
       ]
   fine2pretty gamma (ConsZero) = ribbon "zero"
   fine2pretty gamma (ConsSuc t) = "suc .{" ++| fine2pretty gamma t |++ "}"
+  fine2pretty gamma ConsRefl = ribbon "refl"
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (ConstructorTerm mode modty Void) where
@@ -251,6 +252,13 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimNat clause
       "(" ++| fine2pretty gamma clauseZero |++ ") ",
       "(" ++| fine2pretty gamma clauseSuc |++ ") ",
       "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
+    ]
+elimination2pretty gamma dmu eliminee tyEliminee (ElimEq motive crefl) =
+  ribbon "ind== " \\\ [
+      fine2pretty gamma dmu,
+      "(" ++| fine2pretty gamma motive |++ ") ",
+      "(" ++| fine2pretty gamma crefl |++ ") ",
+      "(" ++| typed2pretty gamma eliminee (hs2type tyEliminee) |++ ") "
     ]
 --elimination2pretty gamma dmu eliminee tyEliminee eliminator = todo
 
