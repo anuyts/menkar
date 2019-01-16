@@ -310,8 +310,19 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
   addNewConstraint
     (JudTypeRel
       eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
+      (duplicateCtx gamma)
       (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkConstructorTerm parent gamma ConsRefl ty = do
+  tyAmbient <- newMetaType (Just parent) eqDeg gamma "Inferring ambient type."
+  t <- newMetaTerm (Just parent) eqDeg gamma ty "Inferring self-equand."
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (duplicateCtx gamma)
+      (Pair3 (hs2type $ EqType tyAmbient t t) ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -419,7 +430,7 @@ checkDependentEliminator parent gamma dmu eliminee
 
 -------
 
-checkEliminator ::
+checkEliminator :: forall mode modty rel tc v .
     (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
     Ctx Type mode modty v Void ->
@@ -528,6 +539,26 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
     (Just parent)
     "Checking whether actual type equals expected type."
   checkDependentEliminator parent gamma dmu eliminee tyEliminee motive clauses ty
+checkEliminator parent gamma dmu eliminee (EqType tyAmbient tL tR) (ElimEq motive crefl) ty = do
+  let bodyMotive = _namedBinding'body $ _namedBinding'body motive
+  let segR = Declaration (DeclNameSegment $ _namedBinding'name motive) dmu Explicit tyAmbient
+  let segEq = Declaration
+               (DeclNameSegment $ _namedBinding'name $ _namedBinding'body $ motive)
+               (VarWkn <$> dmu)
+               Explicit
+               (hs2type $ EqType (VarWkn <$> tyAmbient) (VarWkn <$> tL) (Var3 VarLast))
+  addNewConstraint
+    (JudType
+      (gamma :.. VarFromCtx <$> segR :.. VarFromCtx <$> segEq)
+      (_namedBinding'body $ _namedBinding'body motive)
+    )
+    (Just parent)
+    "Checking the motive"
+  addNewConstraint
+    (JudTerm gamma crefl (substLast3 tL $ substLast3 (Expr3 $ TermCons $ ConsRefl :: Term mode modty _) $ bodyMotive))
+    (Just parent)
+    "Type-checking refl-clause."
+checkEliminator parent gamma dmu eliminee tyEliminee (ElimEq motive crefl) ty = unreachable
 
 -------
     
