@@ -143,8 +143,8 @@ checkConstructorTermRel :: forall mode modty rel tc v .
 checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
   (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
   (ConsUniHS _, _) -> tcFail parent "False."
-  (Lam binding, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, Lam binding) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (Lam binding, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, Lam binding) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
   (Pair sigmaBinding1 fst1 snd1, Pair sigmaBinding2 fst2 snd2) -> do
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
         dom1 = _segment'content $ binding'segment $ sigmaBinding1
@@ -172,10 +172,10 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       )
       (Just parent)
       "Relating second components."
-  (Pair _ _ _, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, Pair _ _ _) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
-  (ConsUnit, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, ConsUnit) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (Pair _ _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, Pair _ _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (ConsUnit, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, ConsUnit) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
   (ConsBox boxSeg1 unbox1, ConsBox boxSeg2 unbox2) -> do
     let dmu = _segment'modty $ boxSeg1
         dom1 = _segment'content $ boxSeg1
@@ -189,8 +189,8 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       )
       (Just parent)
       "Relating box contents."
-  (ConsBox _ _, _) -> checkTermNVRelEta parent deg          gamma  t1 (TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, ConsBox _ _) -> checkTermNVRelEta parent deg (flipCtx gamma) t2 (TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (ConsBox _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, ConsBox _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
   (ConsZero, ConsZero) -> return ()
   (ConsZero, _) -> tcFail parent "False."
   (ConsSuc n1, ConsSuc n2) -> do
@@ -464,18 +464,18 @@ checkEliminatorRel parent deg gamma dmu
 
 {-| Relate a constructor-term with a whnormal non-constructor term.
 -}
-checkTermNVRelEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+checkTermRelEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
   ConstructorTerm mode modty v ->
-  TermNV mode modty v ->
+  Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
   [Int] ->
   [Int] ->
   tc ()
-checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = case c1 of
+checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = case c1 of
   ConsUniHS _ -> tcFail parent "False."
   Lam lambdaBinding1 -> case (metasTy1, metasTy2, ty1, ty2) of
     ([], [], Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
@@ -485,7 +485,7 @@ checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
       let app1 = binding'body lambdaBinding1
       let app2 = Expr3 $ TermElim
             (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-            (VarWkn <$> Expr3 t2) (VarWkn <$> Pi piBinding2) (App $ Var3 VarLast)
+            (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var3 VarLast)
       addNewConstraint
         (JudTermRel
           (VarWkn <$> deg)
@@ -507,8 +507,8 @@ checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
     when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This sigma-type has no eta-rule.)"
     case (metasTy1, metasTy2, ty1, ty2) of
       ([], [], Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
-        let tFst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') (Expr3 t2) (Sigma sigmaBinding2) Fst
-        let tSnd2 = Expr3 $ TermElim (idModedModality d') (Expr3 t2) (Sigma sigmaBinding2) Snd
+        let tFst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
+        let tSnd2 = Expr3 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
         addNewConstraint
           (JudTermRel
             (divDeg dmu deg)
@@ -543,7 +543,7 @@ checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
     when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This box-type has no eta-rule.)"
     case (metasTy1, metasTy2, ty1, ty2) of
       ([], [], Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
-        let tUnbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') (Expr3 t2) (BoxType boxSeg2) Unbox
+        let tUnbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
         addNewConstraint
           (JudTermRel
             (divDeg dmu deg)
@@ -564,22 +564,26 @@ checkTermNVRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
 
 {-| Relate 2 non-variable whnormal terms.
 -}
-checkTermNVRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+checkTermRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
   Ctx (Pair3 Type) mode modty v Void ->
-  TermNV mode modty v ->
-  TermNV mode modty v ->
+  Term mode modty v ->
+  Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
   [Int] ->
   [Int] ->
   tc ()
-checkTermNVRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
-  (TermCons c1, TermCons c2) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
-  (TermCons c1, _) -> checkTermNVRelEta parent deg          gamma  c1 t2 ty1 ty2 metasTy1 metasTy2
-  (_, TermCons c2) -> checkTermNVRelEta parent deg (flipCtx gamma) c2 t1 ty2 ty1 metasTy2 metasTy1
-  (TermElim dmu1 eliminee1 tyEliminee1 eliminator1, TermElim dmu2 eliminee2 tyEliminee2 eliminator2) -> do
+checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
+  (Expr3 (TermCons c1), Expr3 (TermCons c2)) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
+  (Expr3 (TermCons c1), _) -> checkTermRelEta parent deg          gamma  c1 t2 ty1 ty2 metasTy1 metasTy2
+  (_, Expr3 (TermCons c2)) -> checkTermRelEta parent deg (flipCtx gamma) c2 t1 ty2 ty1 metasTy2 metasTy1
+  (Var3 v1, Var3 v2) -> if v1 == v2
+          then return ()
+          else tcFail parent "Cannot relate different variables."
+  (Var3 v, _) -> tcFail parent "False."
+  (Expr3 (TermElim dmu1 eliminee1 tyEliminee1 eliminator1), Expr3 (TermElim dmu2 eliminee2 tyEliminee2 eliminator2)) -> do
     let tyEliminee1' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1
     let tyEliminee2' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee2
     -- CMOD dmu1 == dmu2
@@ -601,15 +605,16 @@ checkTermNVRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (
       (Just parent)
       "Relating eliminees."
     checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1' tyEliminee2' eliminator1 eliminator2 ty1 ty2
-  (TermElim _ _ _ _, _) -> tcFail parent "False."
-  (TermMeta _ _, _) -> unreachable
-  (TermWildcard, _) -> unreachable
-  (TermQName _ _, _) -> unreachable
-  (TermSmartElim _ _ _, _) -> unreachable
-  (TermGoal _ _, _) -> unreachable
-  (TermProblem t, _) -> tcFail parent "Nonsensical term."
+  (Expr3 (TermElim _ _ _ _), _) -> tcFail parent "False."
+  (Expr3 (TermMeta _ _), _) -> unreachable
+  (Expr3 (TermWildcard), _) -> unreachable
+  (Expr3 (TermQName _ _), _) -> unreachable
+  (Expr3 (TermSmartElim _ _ _), _) -> unreachable
+  (Expr3 (TermGoal _ _), _) -> unreachable
+  (Expr3 (TermProblem t), _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
+{-
 {-| Relate 2 whnormal terms.
 -}
 checkTermRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
@@ -630,6 +635,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1
         (Expr3 tnv1, Expr3 tnv2) -> checkTermNVRelWHNTerms parent deg gamma tnv1 tnv2 ty1 ty2 metasTy1 metasTy2
         (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
         (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
+-}
 
 {-
 checkTermRelWHN :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
