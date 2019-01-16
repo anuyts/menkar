@@ -405,6 +405,8 @@ checkEliminatorRel parent deg gamma dmu
   (Snd, _) -> tcFail parent "False."
   (Unbox, Unbox) -> return ()
   (Unbox, _) -> tcFail parent "False."
+  (Funext, Funext) -> return ()
+  (Funext, _) -> tcFail parent "False."
   (ElimDep motive1 clauses1, ElimDep motive2 clauses2) -> do
     let seg = Declaration (DeclNameSegment $ _namedBinding'name motive1) dmu Explicit (Pair3 tyEliminee1 tyEliminee2)
     addNewConstraint

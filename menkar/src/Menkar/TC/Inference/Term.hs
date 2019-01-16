@@ -430,6 +430,7 @@ checkDependentEliminator parent gamma dmu eliminee
 
 -------
 
+{-| Checks whether the eliminator applies and has the correct output type. -}
 checkEliminator :: forall mode modty rel tc v .
     (MonadTC mode modty rel tc, DeBruijnLevel v) =>
     Constraint mode modty rel ->
@@ -510,6 +511,23 @@ checkEliminator parent gamma dmu eliminee
     (Just parent)
     "Checking whether actual type equals expected type."
 checkEliminator parent gamma dmu eliminee tyEliminee Unbox ty = unreachable
+checkEliminator parent gamma dmu eliminee
+    tyEliminee@(Pi (Binding seg (Expr3 (TermCons (ConsUniHS (EqType tyAmbient tL tR)))))) Funext ty = do
+  let tyPiAmbient = hs2type $ Pi $ Binding seg $ unType tyAmbient
+  let tLamL = Expr3 $ TermCons $ Lam $ Binding seg $ tL
+  let tLamR = Expr3 $ TermCons $ Lam $ Binding seg $ tR
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (duplicateCtx gamma)
+      (Pair3
+        (hs2type $ EqType tyPiAmbient tLamL tLamR)
+        ty
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkEliminator parent gamma dmu eliminee tyEliminee Funext ty = unreachable
 -- dependent elims: type-check motive and take them separately
 checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty = do
   addNewConstraint
@@ -558,6 +576,14 @@ checkEliminator parent gamma dmu eliminee (EqType tyAmbient tL tR) (ElimEq motiv
     (JudTerm gamma crefl (substLast3 tL $ substLast3 (Expr3 $ TermCons $ ConsRefl :: Term mode modty _) $ bodyMotive))
     (Just parent)
     "Type-checking refl-clause."
+  addNewConstraint
+    (JudTypeRel
+      eqDeg
+      (duplicateCtx gamma)
+      (Pair3 (substLast3 tR $ substLast3 (VarWkn <$> eliminee) $ bodyMotive) ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
 checkEliminator parent gamma dmu eliminee tyEliminee (ElimEq motive crefl) ty = unreachable
 
 -------

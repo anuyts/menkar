@@ -229,6 +229,7 @@ data Eliminator (mode :: * -> *) (modty :: * -> *) (v :: *) =
   Fst |
   Snd |
   Unbox |
+  Funext |
   ElimDep {
     _eliminator'motive :: (NamedBinding Type mode modty v),
     _eliminator'clauses :: DependentEliminator mode modty v} |

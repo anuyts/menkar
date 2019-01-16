@@ -37,6 +37,7 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
   (whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
   case (metas, whnEliminee) of
     (_ : _, _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
+    --Eliminations of metas are neutral and hence normal.
     ([], Var3 v) -> return $ Expr3 $ TermElim dmu (Var3 v) tyEliminee e
     --Expr3 (TermMeta _ _) -> return $ Expr3 $ TermElim dmu whnEliminee tyEliminee e
     --  -- careful with glue/weld!
@@ -58,6 +59,12 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
                 VarWkn w -> Var3 w
                 VarLast -> arg
           in whnormalize parent gamma (join $ subst <$> binding'body binding) reason
+        (Lam (Binding seg body), Funext) -> do
+          (whnBody, metasBody) <- listen $ whnormalize parent (gamma :.. VarFromCtx <$> seg) body reason
+          case (metasBody, whnBody) of
+            ([], Expr3 (TermCons (ConsRefl))) -> return $ Expr3 $ TermCons $ ConsRefl
+            --blocked or neutral
+            (_, _) -> return $ Expr3 $ TermElim dmu (Expr3 $ TermCons $ Lam $ Binding seg whnBody) tyEliminee Funext
         (Lam _, _) -> return termProblem
         --sigma cases
         (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize parent gamma tmFst reason

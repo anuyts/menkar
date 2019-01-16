@@ -495,6 +495,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
     Fst -> return Fst
     Snd -> return Snd
     Unbox -> return Unbox
+    Funext -> return Funext
     ElimDep motive2 clauses2 -> do
       let seg1orig = Declaration (DeclNameSegment $ _namedBinding'name motive2) dmu1orig Explicit
                        (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1orig)

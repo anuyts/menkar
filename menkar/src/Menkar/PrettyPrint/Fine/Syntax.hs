@@ -206,6 +206,8 @@ elimination2pretty gamma dmu eliminee tyEliminee (Snd) =
   "(" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") ..2 "
 elimination2pretty gamma dmu eliminee tyEliminee (Unbox) =
   "unbox (" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
+elimination2pretty gamma dmu eliminee tyEliminee (Funext) =
+  "funext (" ++| typed2pretty gamma eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee) |++ ") "
 elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clausePair)) =
   ribbon "indSigma " \\\ [
       fine2pretty gamma dmu,
