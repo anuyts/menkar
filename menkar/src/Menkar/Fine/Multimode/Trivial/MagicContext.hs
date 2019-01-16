@@ -324,6 +324,38 @@ valRefl = val NonOp "refl" $
       (hs2type $ EqType (Type $ var 0) (var 1) (var 1))
   )
 
+{-| @ind==
+        {~| A : UniHS}
+        {~| aL : A}
+        {C : {aR : A} -> aL == aR -> UniHS}
+        {crefl : C aL (refl .{A} .{aL})}
+        {~| aR* : A}
+        {eq* : aL == aR}
+        : C aR* eq*
+        = ind== (aR > eq > C) crefl eq*@
+-}
+valIndEq :: Entry U1 U1 Void
+valIndEq = val NonOp "ind==" $
+  segIm NonOp "A"  {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "aL" {- var 1 -} (Type $ var 0) :|-
+  segEx NonOp "C"  {- var 2 -} (hs2type $ tyMotive) :|-
+  segEx NonOp "crefl" {- var 3 -} (appMotive (var 1) (Expr3 $ TermCons $ ConsRefl)) :|-
+  segIm NonOp "aR*" {- var 4 -} (Type $ var 0) :|-
+  segEx NonOp "eq*" {- var 5 -} (hs2type $ EqType (Type $ var 0) (var 1) (var 4)) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 5) (EqType (Type $ var 0) (var 1) (var 4)) $
+       ElimEq (nbind NonOp "aR" {- var 6 -} $ nbind NonOp "eq" {- var 7 -} $ appMotive (var 6) (var 7)) (var 3))
+      (appMotive (var 4) (var 5))
+  )
+  where
+    tyMotive' :: DeBruijnLevel v => Term U1 U1 v -> UniHSConstructor U1 U1 v
+    tyMotive' aR = (segEx NonOp "eq" $ hs2type $ EqType (Type $ var 0) (var 1) aR) `arrow` (hs2type $ UniHS U1)
+    tyMotive :: DeBruijnLevel v => UniHSConstructor U1 U1 v
+    tyMotive = pi (segEx NonOp "aR" $ Type $ var 0) (hs2type $ tyMotive' $ Var3 VarLast)
+    appMotive :: DeBruijnLevel v => Term U1 U1 v -> Term U1 U1 v -> Type U1 U1 v
+    appMotive aR eq = Type $ app (app (var 2) tyMotive aR) (tyMotive' aR) eq
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
@@ -343,6 +375,7 @@ magicEntries =
   valIndEmpty :
   valEqType :
   valRefl :
+  valIndEq :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void
