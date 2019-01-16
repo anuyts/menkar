@@ -363,7 +363,7 @@ checkDependentEliminatorRel parent deg gamma dmu
       (ElimNat _ _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       --(_, _) -> _checkDependentEliminatorRel
       
-checkEliminatorRel ::
+checkEliminatorRel :: forall mode modty rel tc v .
   (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   Constraint mode modty rel ->
   rel v ->
@@ -422,14 +422,40 @@ checkEliminatorRel parent deg gamma dmu
       clauses1 clauses2
       ty1 ty2
   (ElimDep _ _, _) -> tcFail parent "False."
-  (ElimEq motive1 crefl1, ElimEq motive2 crefl2) -> do
-    _
-    {-
-    addNewConstraint
-      (JudTermRel deg gamma $ Pair3
-        ()
-      )
-    -}
+  (ElimEq motive1 crefl1, ElimEq motive2 crefl2) -> case (unType tyEliminee1, unType tyEliminee2) of
+    (Expr3 (TermCons (ConsUniHS (EqType tyAmbient1 tL1 tR1))),
+     Expr3 (TermCons (ConsUniHS (EqType tyAmbient2 tL2 tR2)))) -> do
+      let bodyMotive1 = _namedBinding'body $ _namedBinding'body motive1
+      let bodyMotive2 = _namedBinding'body $ _namedBinding'body motive2
+      let segR = Declaration
+               (DeclNameSegment $ _namedBinding'name motive1)
+               dmu
+               Explicit
+               (Pair3 tyAmbient1 tyAmbient2)
+      let segEq = Declaration
+               (DeclNameSegment $ _namedBinding'name $ _namedBinding'body $ motive1)
+               (VarWkn <$> dmu)
+               Explicit
+               (Pair3
+                 (hs2type $ EqType (VarWkn <$> tyAmbient1) (VarWkn <$> tL1) (Var3 VarLast))
+                 (hs2type $ EqType (VarWkn <$> tyAmbient2) (VarWkn <$> tL2) (Var3 VarLast))
+               )
+      addNewConstraint
+        (JudTypeRel
+          (VarWkn . VarWkn <$> deg)
+          (gamma :.. VarFromCtx <$> segR :.. VarFromCtx <$> segEq)
+          (Pair3 (_namedBinding'body $ _namedBinding'body motive1)
+                 (_namedBinding'body $ _namedBinding'body motive2))
+        )
+        (Just parent)
+        "Relating the motives"
+      addNewConstraint
+        (JudTermRel deg gamma (Pair3 crefl1 crefl2) $ Pair3
+          (substLast3 tL1 $ substLast3 (Expr3 $ TermCons $ ConsRefl :: Term mode modty _) $ bodyMotive1)
+          (substLast3 tL2 $ substLast3 (Expr3 $ TermCons $ ConsRefl :: Term mode modty _) $ bodyMotive2)
+        )
+        (Just parent)
+        "Relating elimination clauses for the refl constructor."
     --note: tyEliminee should be a unihsconstructor, not a type!
   (ElimEq _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkEliminatorRel
