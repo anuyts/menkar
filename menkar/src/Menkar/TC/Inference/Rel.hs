@@ -212,8 +212,8 @@ checkDependentEliminatorRel :: forall mode modty rel tc v .
   ModedModality mode modty v {-^ Modality by which the eliminee is eliminated. -} ->
   Term mode modty v ->
   Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+  UniHSConstructor mode modty v ->
+  UniHSConstructor mode modty v ->
   NamedBinding Type mode modty v ->
   NamedBinding Type mode modty v ->
   DependentEliminator mode modty v ->
@@ -229,8 +229,7 @@ checkDependentEliminatorRel parent deg gamma dmu
   ty1 ty2 =
     case (clauses1, clauses2) of
       (ElimSigma pairClause1, ElimSigma pairClause2) -> case (tyEliminee1, tyEliminee2) of
-        (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1)))),
-         Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2))))) -> do
+        (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
           let segFst :: Segment (Pair3 Type) _ _ _
               segFst = Declaration
                          (DeclNameSegment $ _namedBinding'name pairClause1)
@@ -275,8 +274,7 @@ checkDependentEliminatorRel parent deg gamma dmu
                   -- match the elimination clauses.
       (ElimSigma _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (ElimBox boxClause1, ElimBox boxClause2) -> case (tyEliminee1, tyEliminee2) of
-        (Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1)))),
-         Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg2))))) -> do
+        (BoxType boxSeg1, BoxType boxSeg2) -> do
            let segContent :: Segment (Pair3 Type) _ _ _
                segContent = Declaration
                               (DeclNameSegment $ _namedBinding'name boxClause1)
@@ -371,8 +369,8 @@ checkEliminatorRel :: forall mode modty rel tc v .
   ModedModality mode modty v ->
   Term mode modty v ->
   Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+  UniHSConstructor mode modty v ->
+  UniHSConstructor mode modty v ->
   Eliminator mode modty v ->
   Eliminator mode modty v ->
   Type mode modty v {-^ May not be whnormal. -} ->
@@ -383,8 +381,8 @@ checkEliminatorRel parent deg gamma dmu
   tyEliminee1 tyEliminee2
   eliminator1 eliminator2
   ty1 ty2 = case (eliminator1, eliminator2) of
-  (App arg1, App arg2) -> case (unType tyEliminee1, unType tyEliminee2) of
-    (Expr3 (TermCons (ConsUniHS (Pi binding1))), Expr3 (TermCons (ConsUniHS (Pi binding2)))) -> do
+  (App arg1, App arg2) -> case (tyEliminee1, tyEliminee2) of
+    (Pi binding1, Pi binding2) -> do
       let dmu = _segment'modty $ binding'segment $ binding1
       let dom1 = _segment'content $ binding'segment binding1
       let dom2 = _segment'content $ binding'segment binding2
@@ -408,7 +406,11 @@ checkEliminatorRel parent deg gamma dmu
   (Funext, Funext) -> return ()
   (Funext, _) -> tcFail parent "False."
   (ElimDep motive1 clauses1, ElimDep motive2 clauses2) -> do
-    let seg = Declaration (DeclNameSegment $ _namedBinding'name motive1) dmu Explicit (Pair3 tyEliminee1 tyEliminee2)
+    let seg = Declaration
+          (DeclNameSegment $ _namedBinding'name motive1)
+          dmu
+          Explicit
+          (Pair3 (hs2type tyEliminee1) (hs2type tyEliminee2))
     addNewConstraint
       (JudTypeRel
         (VarWkn <$> deg)
@@ -424,9 +426,8 @@ checkEliminatorRel parent deg gamma dmu
       clauses1 clauses2
       ty1 ty2
   (ElimDep _ _, _) -> tcFail parent "False."
-  (ElimEq motive1 crefl1, ElimEq motive2 crefl2) -> case (unType tyEliminee1, unType tyEliminee2) of
-    (Expr3 (TermCons (ConsUniHS (EqType tyAmbient1 tL1 tR1))),
-     Expr3 (TermCons (ConsUniHS (EqType tyAmbient2 tL2 tR2)))) -> do
+  (ElimEq motive1 crefl1, ElimEq motive2 crefl2) -> case (tyEliminee1, tyEliminee2) of
+    (EqType tyAmbient1 tL1 tR1, EqType tyAmbient2 tL2 tR2) -> do
       let bodyMotive1 = _namedBinding'body $ _namedBinding'body motive1
       let bodyMotive2 = _namedBinding'body $ _namedBinding'body motive2
       let segR = Declaration
@@ -604,7 +605,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1
       )
       (Just parent)
       "Relating eliminees."
-    checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1' tyEliminee2' eliminator1 eliminator2 ty1 ty2
+    checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
   (Expr3 (TermElim _ _ _ _), _) -> tcFail parent "False."
   (Expr3 (TermMeta _ _), _) -> unreachable
   (Expr3 (TermWildcard), _) -> unreachable
