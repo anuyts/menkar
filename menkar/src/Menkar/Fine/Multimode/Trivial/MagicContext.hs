@@ -312,6 +312,18 @@ valEqType = val Op "==" $
       (hs2type $ UniHS U1)
     )
 
+{-| @refl {~| A : UniHS} {~| a : A} : a == .{A} a = refl@
+-}
+valRefl :: Entry U1 U1 Void
+valRefl = val NonOp "refl" $
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "a" {- var 1 -} (Type $ var 0) :|-
+  Telescoped (
+    ValRHS
+      (Expr3 $ TermCons $ ConsRefl)
+      (hs2type $ EqType (Type $ var 0) (var 1) (var 1))
+  )
+
 ----------------------------------------------
 
 magicEntries :: [Entry U1 U1 Void]
@@ -330,6 +342,7 @@ magicEntries =
   valEmpty :
   valIndEmpty :
   valEqType :
+  valRefl :
   []
 
 magicContext :: Ctx Type U1 U1 (VarInModule Void) Void

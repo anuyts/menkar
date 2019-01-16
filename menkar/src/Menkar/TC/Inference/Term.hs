@@ -317,7 +317,7 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma ConsRefl ty = do
   tyAmbient <- newMetaType (Just parent) eqDeg gamma "Inferring ambient type."
-  t <- newMetaTerm (Just parent) eqDeg gamma ty "Inferring self-equand."
+  t <- newMetaTerm (Just parent) eqDeg gamma tyAmbient "Inferring self-equand."
   addNewConstraint
     (JudTypeRel
       eqDeg
