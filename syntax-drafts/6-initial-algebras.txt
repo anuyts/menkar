@@ -23,12 +23,12 @@ module [depth suc d] InitialOfFunctor
 	}
 	{str | rewrite |
 		F'-comp :
-		{irr | lA lB lC : Nat}
-		{par | A : Uni d lA}
-		{par | B : Uni d lB}
-		{par | C : Uni d lC}
-		{f : A -> B}
-		{g : B -> C}
+		{m irr | lA lB lC : Nat}
+		{m par | A : Uni d lA}
+		{m par | B : Uni d lB}
+		{m par | C : Uni d lC}
+		{m con | f : A -> B}
+		{m con | g : B -> C}
 		{fa : F A}
 		-> F' g (F' f fa) := F' (a > g (f a)) fa
 	}
@@ -121,7 +121,7 @@ val Stream {irr | l : Nat} {A : Uni d l} : Uni d l
 	//= {par | X : Uni d l} >< (X -> A) >< (X -> X) >< X
         = {par | X : Uni d l} {hd : X -> A} {tl : X -> X} {state : X} >< TT
         //= Record {par | X : Uni d l} {hd : X -> A} {tl : X -> X} {state : X}
-val [str] count {n : Nat} : Uni 0 0
+val [m str] count {n : Nat} : Uni 0 0
 	//= (Nat , (x > x) , suc , n)
 	= (Nat , (x > x) , suc , n , tt)
 
