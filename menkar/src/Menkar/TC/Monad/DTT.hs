@@ -147,10 +147,10 @@ typeCheck = do
 
 instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
   
-  annot4annot gamma qstring args = case (qstring, args) of
-    (Raw.Qualified [] "~", []) -> return AnnotImplicit
+  annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
+    (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
     _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
-             Raw.unparse' qstring \\\ fine2pretty (ctx2scCtx gamma) <$> args
+             Raw.unparse' qstring \\\ (maybeToList $ fine2pretty (ctx2scCtx gamma) <$> maybeArg)
            )
 
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = do

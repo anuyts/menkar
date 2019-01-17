@@ -19,6 +19,7 @@ import GHC.Generics (U1 (..))
 import Text.PrettyPrint.Tree
 import Data.Functor.Compose
 import Data.Void
+import Data.Maybe
 
 import qualified Menkar.Parser as P -- for testscope
 import Menkar.Scoper.Scoper -- for testscope
@@ -39,10 +40,10 @@ fresh :: MonadState Int m => m Int
 fresh = state $ \ i -> (i, i+1)
 
 instance MonadScoper U1 U1 U1 SimpleScoper where
-  annot4annot gamma qstring args = case (qstring, args) of
-    (Raw.Qualified [] "~", []) -> return AnnotImplicit
+  annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
+    (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
     _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
-             Raw.unparse' qstring \\\ fine2pretty (ctx2scCtx gamma) <$> args
+             Raw.unparse' qstring \\\ (maybeToList $ fine2pretty (ctx2scCtx gamma) <$> maybeArg)
            )
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = do
     i <- fresh

@@ -31,8 +31,8 @@ instance (Functor mode, Functor modty,
                   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty ModedModality where
   fine2pretty gamma (ModedModality d mu) = ribbonEmpty \\\ [
-                "[" ++| fine2pretty gamma (Mode $ d) |++ "] ",
-                "[" ++| fine2pretty gamma (Modty $ mu) |++ "] "
+                "d " ++| fine2pretty gamma (Mode $ d) |++ " | ",
+                "m " ++| fine2pretty gamma (Modty $ mu)
               ]
 instance (Functor mode, Functor modty,
                   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -383,9 +383,8 @@ declAnnots2pretties :: (DeBruijnLevel v,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          ScCtx mode modty v Void -> Declaration declSort content mode modty v -> [PrettyTree String]
 declAnnots2pretties gamma decl = [
-                fine2pretty gamma (_decl'plicity decl),
-                "[" ++| fine2pretty gamma (Mode $ modality'dom $ _decl'modty decl) |++ "] ",
-                "[" ++| fine2pretty gamma (Modty $ modality'mod $ _decl'modty decl) |++ "] "
+                fine2pretty gamma (_decl'plicity decl) |++ " | ",
+                fine2pretty gamma (_decl'modty decl) |++ " | "
               ]
 
 {-
@@ -403,7 +402,7 @@ instance (Functor mode, Functor modty, Functor (ty mode modty),
          Fine2Pretty mode modty (Segment ty) where
   fine2pretty gamma seg = ribbon " {" \\\
     prettyAnnots ///
-    "| " ++| (declName2pretty gamma $ DeclNameSegment $ _segment'name seg) |++ " : " |+| prettyType |++ "}"
+    (declName2pretty gamma $ DeclNameSegment $ _segment'name seg) |++ " : " |+| prettyType |++ "}"
     where
       prettyAnnots = declAnnots2pretties gamma seg
       prettyType = fine2pretty gamma (_decl'content seg)
@@ -428,9 +427,9 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty Val where
   fine2pretty gamma val =
-    ribbon "val "
+    ribbon "val ["
     \\\ declAnnots2pretties gamma val
-    /// (declName2pretty gamma $ _decl'name val)
+    /// "] " ++| (declName2pretty gamma $ _decl'name val)
     \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content val)
     /// prettyValRHS
     where
@@ -459,9 +458,9 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty Module where
   fine2pretty gamma modul =
-    ribbon "module "
+    ribbon "module  ["
     \\\ declAnnots2pretties gamma modul
-    /// (declName2pretty gamma $ _decl'name modul)
+    /// "] " ++| (declName2pretty gamma $ _decl'name modul)
     \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content modul)
     /// prettyModuleRHS
     where

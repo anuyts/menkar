@@ -34,7 +34,7 @@ class (
     (sc :: * -> *)
     | sc -> mode, sc -> modty, sc -> rel where
   annot4annot :: (DeBruijnLevel v) => Ctx Type mode modty v Void -> 
-    Raw.Qualified String -> [SmartEliminator mode modty v] -> sc (Annotation mode modty v)
+    Raw.Qualified String -> Maybe (Term mode modty v) -> sc (Annotation mode modty v)
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
@@ -55,7 +55,7 @@ class (
   scopeFail :: String -> sc a
 
 instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
-  annot4annot gamma qstring args = lift $ annot4annot gamma qstring args
+  annot4annot gamma qstring maybeArg = lift $ annot4annot gamma qstring maybeArg
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = lift $ newMetaTermNoCheck maybeParent deg gamma etaFlag reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
   newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason

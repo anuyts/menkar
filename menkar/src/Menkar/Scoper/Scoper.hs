@@ -310,10 +310,10 @@ annotation ::
   Ctx Type mode modty v Void ->
   Raw.Annotation ->
   sc (Annotation mode modty v)
-annotation gamma (Raw.Annotation (Raw.Qualified [] "~") []) = return AnnotImplicit
-annotation gamma (Raw.Annotation qstring rawElims) = do
-  fineElims <- sequenceA $ eliminator gamma <$> rawElims
-  annot4annot gamma qstring fineElims
+annotation gamma (Raw.Annotation (Raw.Qualified [] "~") Nothing) = return AnnotImplicit
+annotation gamma (Raw.Annotation qstring maybeRawArg) = do
+  maybeFineArg <- sequenceA $ expr gamma <$> maybeRawArg
+  annot4annot gamma qstring maybeFineArg
 
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal

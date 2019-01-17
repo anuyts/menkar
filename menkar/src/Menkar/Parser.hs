@@ -444,7 +444,7 @@ segmentAnnotations :: CanParse m => m [Raw.Annotation]
 segmentAnnotations = manyTry $ annotation <* pipe
 
 entryAnnotations :: CanParse m => m [Raw.Annotation]
-entryAnnotations = brackets $ manySep pipe annotation
+entryAnnotations = (brackets $ someSep pipe annotation) <|> return []
 
 -- telescopes
 
