@@ -256,10 +256,14 @@ unqWord :: CanParse m => m String
 unqWord = nonStickyLexeme wordPrecise
 qWord :: CanParse m => m (Raw.Qualified String)
 qWord = qualified unqWord
+           
+goal :: CanParse m => m String
+goal = questionMarkPrecise *> unqWord
 
---formerly called identifierString
-nameNonOpPrecise :: CanParse m => m String
-nameNonOpPrecise = MP.label "non-operator identifier" $ MP.try $ do
+-------------------------------------------------------------
+
+nonOpPrecise :: CanParse m => m String
+nonOpPrecise = MP.label "non-operator identifier" $ MP.try $ do
   letter <- nameNonOpChar
   letters <- many nameChar
   let string = letter : letters
@@ -268,9 +272,6 @@ nameNonOpPrecise = MP.label "non-operator identifier" $ MP.try $ do
     else if (and $ map isDigit string)
       then fail $ "Number " ++ show string ++ " cannot be an identifier."
       else return string
-
-nameNonOpNonSticky :: CanParse m => m String
-nameNonOpNonSticky = nonStickyLexeme nameNonOpPrecise
 
 opPrecise :: CanParse m => m String
 opPrecise = MP.label "operator identifier" $ MP.try $ do
@@ -283,95 +284,29 @@ opPrecise = MP.label "operator identifier" $ MP.try $ do
       then fail $ "Number " ++ show string ++ " cannot be an identifier."
       else return $ string
 
-nameOpPrecise :: CanParse m => m String
-nameOpPrecise = underscorePrecise *> opPrecise
-
-namePrecise :: CanParse m => m Raw.Name
-namePrecise = (Raw.Name Raw.NonOp <$> nameNonOpPrecise) <|> (Raw.Name Raw.Op <$> nameOpPrecise)
-
-unqName :: CanParse m => m Raw.Name
-unqName = MP.label "unqualified identifier" $ nonStickyLexeme namePrecise
-  {-
-  lexeme $ namePrecise <* (MP.notFollowedBy nameStickyChar <|> fail msg)
-  where
-    msg = "You have either neglected to leave a space after this identifier, or you have used a" ++
-      " qualified identifier where an unqualified one was expected."
-  -}
-           
-goal :: CanParse m => m String
-goal = questionMarkPrecise *> unqWord
-
 qualified :: CanParse m => m a -> m (Raw.Qualified a)
 qualified p = lexeme $ do
-  modules <- manyTry $ (nameNonOpPrecise <* dotPrecise)
+  modules <- manyTry $ (wordPrecise <* dotPrecise)
   thing <- p
   return $ Raw.Qualified modules thing
 
-qName :: CanParse m => m Raw.QName
-qName = MP.label "qualified identifier" $ qualified unqName
+unqNonOp :: CanParse m => m Raw.Name
+unqNonOp = MP.label "unqualified non-operator name" $ nonStickyLexeme $ Raw.Name Raw.NonOp <$> nonOpPrecise
 
---tickedQName :: CanParse m => m Raw.QName
---tickedQName = ticks $ qName
+qNonOp :: CanParse m => m Raw.QName
+qNonOp = MP.label "qualified non-operator name" $ qualified unqNonOp
 
 unqOp :: CanParse m => m Raw.Name
 unqOp = MP.label "unqualified operator" $ nonStickyLexeme $ Raw.Name Raw.Op <$> opPrecise
-  {-
-  lexeme $ Raw.Name Raw.Op <$> opPrecise <* (MP.notFollowedBy nameStickyChar <|> fail msg)
-  where
-    msg = "You have neglected to leave a space after this operator."
-  -}
 
---qOp :: CanParse m => m Raw.QName
---qOp = MP.label "qualified operator" $ tickedQName <|> (Raw.Qualified [] <$> unqOp)
+qOp :: CanParse m => m Raw.QName
+qOp = MP.label "qualified operator" $ qualified unqOp
 
-{-
-qIdentifier :: CanParse m => m Raw.QName
-qIdentifier = MP.label "qualified identifier" $ lexeme $ do
-  head <- identifierString
-  tail <- many $ do
-    MP.char '.'
-    identifierString <|> fail "Another identifier is expected after '.', with no space in between."
-  return $ Raw.QName (head : tail)
--}
+unqName :: CanParse m => m Raw.Name
+unqName = unqNonOp <|> parens unqOp
 
-{-
-haskellCharLiteral :: CanParse m => m String
-haskellCharLiteral = MP.label "Haskell character literal" $ do
-  "'" <- MP.string "'"
-  content <- many $ (MP.label "any character other than (') or (\\)" $
-                      return <$> MP.satisfy (\ c . not $ c `elem` ['\'', '\\']))
-                    <|> MP.string "\\'"
-                    <|> (MP.string "\\" <* MP.notFollowedBy (MP.String "\'"))
-  "'" <- MP.string "'"
-  return $ "'" ++ concat content ++ "'"
--}
-
-{-
-{-| Parses any rubbish, including what would otherwise be a comment,
-    until a parenthesis closes that was never opened. Parentheses need not match.
-    This parser is unaware of quotes. Don't use strings containing parentheses in Menkar
-    pseudocode. -}
-haskellCode :: CanParse m => m String
-haskellCode = MP.label "Haskell code" $ fmap concat $ many $
-  ((\ c -> [c]) <$> MP.satisfy (\ c -> not $ charType c `elem` [OpenChar, CloseChar]))
-  <|> do
-        openChar <- MP.satisfy (\ c -> charType c == OpenChar)
-        contents <- haskellCode
-        closeChar <- MP.satisfy (\ c -> charType c == CloseChar)
-        return $ [openChar] ++ contents ++ [closeChar]
-
-haskellCodeBracketed :: CanParse m => m String
-haskellCodeBracketed = lexeme $
-  MP.between (MP.string "[") (MP.string "]") haskellCode
--}
-
-{-
-optionalEntrySep :: CanParse m => m ()
-optionalEntrySep = void (symbol ",") <|> return ()
-
-requiredEntrySep :: CanParse m => m ()
-requiredEntrySep = void $ symbol "," <|> MP.lookAhead (symbol "}")
--}
+qName :: CanParse m => m Raw.QName
+qName = qNonOp <|> parens qOp
 
 -- expression subparsers -----------------------------------
 
@@ -442,7 +377,7 @@ operand :: CanParse m => m Raw.Operand
 operand = (Raw.OperandTelescope <$> telescopeSome) <?|> (Raw.OperandExpr <$> expr2)
 
 operatorHead :: CanParse m => m Raw.Expr3
-operatorHead = (ticks $ Raw.ExprParens <$> expr) <|> (Raw.ExprQName . Raw.Qualified [] <$> unqOp)
+operatorHead = (ticks $ Raw.ExprParens <$> expr) <|> (Raw.ExprQName <$> qOp)
 operator :: CanParse m => m Raw.Elimination
 operator = MP.label "operator with eliminations" $ Raw.Elimination <$> operatorHead <*> opEliminators
 

@@ -1,9 +1,9 @@
 module Test where {
     val Nat' : _ = Nat
     val one : Nat = suc 0
-    val _+ {a b : Nat} : Nat = indNat (_ > {_ : Nat} -> Nat) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
-    val _-> {A B : UniHS} : UniHS = {_ : A} -> B
-    val _>< {A B : UniHS} : UniHS = {_ : A} >< B
+    val (+) {a b : Nat} : Nat = indNat (_ > {_ : Nat} -> Nat) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
+    val (->) {A B : UniHS} : UniHS = {_ : A} -> B
+    val (><) {A B : UniHS} : UniHS = {_ : A} >< B
     val etatest : {_ : Nat} -> Box (Unit) = ?goal
 }
 

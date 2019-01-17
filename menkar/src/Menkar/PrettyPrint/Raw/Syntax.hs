@@ -29,12 +29,24 @@ instance Unparsable String where
 
 instance Unparsable Name where
   unparse' (Name NonOp name) = ribbon name
-  unparse' (Name Op name) = ribbon $ '_' : name
+  unparse' (Name Op name) = ribbon $ "(" ++ name ++ ")"
   parserName _ = "unqName"
 
+unparseQualified :: Unparsable a => Qualified a -> PrettyTree String
+unparseQualified (Qualified modules name) = (foldr (\modul qname -> modul ++ '.' : qname) "" modules) ++| unparse' name
+{-
 instance Unparsable a => Unparsable (Qualified a) where
   unparse' (Qualified modules name) = (foldr (\modul qname -> modul ++ '.' : qname) "" modules) ++| unparse' name
   parserName (Qualified _ name) = "qualified " ++ parserName name
+-}
+
+instance Unparsable (Qualified String) where
+  unparse' qs = unparseQualified qs
+  parserName _ = "qWord"
+instance Unparsable (Qualified Name) where
+  unparse' qs@(Qualified modules (Name NonOp name)) = unparseQualified qs
+  unparse' qs@(Qualified modules (Name Op name)) = "(" ++| unparseQualified qs |++ ")"
+  parserName _ = "qName"
 
 instance Unparsable Eliminator where
   --unparse' (ElimEnd ArgSpecNext) = ribbon "..."
@@ -196,7 +208,9 @@ instance Unparsable File where
 
 instance Show Name where
   show = showUnparsable
-instance Unparsable a => Show (Qualified a) where
+instance Show (Qualified String) where
+  show = showUnparsable
+instance Show (Qualified Name) where
   show = showUnparsable
 instance Show Eliminator where
   show = showUnparsable
