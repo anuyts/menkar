@@ -32,7 +32,7 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty ModedModality where
   fine2pretty gamma (ModedModality d mu) = ribbonEmpty \\\ [
                 "d " ++| fine2pretty gamma (Mode $ d) |++ " | ",
-                "m " ++| fine2pretty gamma (Modty $ mu)
+                "m " ++| fine2pretty gamma (Modty $ mu) |++ " | "
               ]
 instance (Functor mode, Functor modty,
                   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
@@ -339,8 +339,8 @@ instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Fine2Pretty mode modty Plicity where
   fine2pretty gamma Explicit = ribbonEmpty
-  fine2pretty gamma Implicit = ribbon "~"
-  fine2pretty gamma (Resolves t) = "resolves " ++| fine2pretty gamma t
+  fine2pretty gamma Implicit = ribbon "~ | "
+  fine2pretty gamma (Resolves t) = "resolves " ++| fine2pretty gamma t |++ " | "
 instance (Functor mode, Functor modty,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          Show (Plicity mode modty Void) where
@@ -383,8 +383,8 @@ declAnnots2pretties :: (DeBruijnLevel v,
          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
          ScCtx mode modty v Void -> Declaration declSort content mode modty v -> [PrettyTree String]
 declAnnots2pretties gamma decl = [
-                fine2pretty gamma (_decl'plicity decl) |++ " | ",
-                fine2pretty gamma (_decl'modty decl) |++ " | "
+                fine2pretty gamma (_decl'modty decl),
+                fine2pretty gamma (_decl'plicity decl)
               ]
 
 {-
