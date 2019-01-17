@@ -136,32 +136,45 @@ prompt prefix = do
 
 giveHelp :: IO ()
 giveHelp = do
-  putStrLn $ "quit          Quit Menkar."
-  putStrLn $ "overview      Give an overview of the type-checking results."
-  putStrLn $ "metas         Give an overview of the unsolved meta-variables."
-  putStrLn $ "meta i        Give information about meta-variable ?i (where i is an integer)."
-  putStrLn $ "constraint i  Give information about constraint i (where i is an integer)."
-  putStrLn $ "constraint 0  Print the internal representation of the entire program."
-  putStrLn $ "reports       List other reports produced during type-checking (including goals)."
-  putStrLn $ "help          Print this help."
+  putStrLn $ "q       quit          Quit Menkar."
+  putStrLn $ "o       overview      Give an overview of the type-checking results."
+  putStrLn $ "mm      metas         Give an overview of the unsolved meta-variables."
+  putStrLn $ "m i     meta i        Give information about meta-variable ?i (where i is an integer)."
+  putStrLn $ "c i     constraint i  Give information about constraint i (where i is an integer)."
+  putStrLn $ "c 0     constraint 0  Print the internal representation of the entire program."
+  putStrLn $ "r       reports       List other reports produced during type-checking (including goals)."
+  putStrLn $ "h       help          Print this help."
   --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
-runCommand :: TCState m -> [String] -> IO ()
-runCommand s [] = return ()
-runCommand s ("help" : _) = giveHelp
-runCommand s ("meta" : args) = case args of
+runCommandMeta :: TCState m -> [String] -> IO ()
+runCommandMeta s args = case args of
   [arg] -> case readsPrec 0 arg :: [(Int, String)] of
     [(meta, "")] -> printMeta s meta
     _ -> putStrLn $ "Argument to 'meta' should be an integer."
   _ -> putStrLn $ "Command 'meta' expects one integer argument, e.g. 'meta 5'."
-runCommand s ("metas" : _) = printUnsolvedMetas s
-runCommand s ("constraint" : args) = case args of
+runCommandConstraint :: TCState m -> [String] -> IO ()
+runCommandConstraint s args = case args of
   [arg] -> case readsPrec 0 arg :: [(Int, String)] of
     [(meta, "")] -> printConstraintByIndex s meta
     _ -> putStrLn $ "Argument to 'constraint' should be an integer."
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
-runCommand s ("reports" : _) = sequenceA_ $ _tcState'reports s <&> printReport s
+runCommandReports :: TCState m -> IO ()
+runCommandReports s = sequenceA_ $ _tcState'reports s <&> printReport s
+
+runCommand :: TCState m -> [String] -> IO ()
+runCommand s [] = return ()
+runCommand s ("help" : _) = giveHelp
+runCommand s ("h" : _) = giveHelp
+runCommand s ("meta" : args) = runCommandMeta s args
+runCommand s ("m" : args) = runCommandMeta s args
+runCommand s ("metas" : _) = printUnsolvedMetas s
+runCommand s ("mm" : _) = printUnsolvedMetas s
+runCommand s ("constraint" : args) = runCommandConstraint s args
+runCommand s ("c" : args) = runCommandConstraint s args
+runCommand s ("reports" : _) = runCommandReports s
+runCommand s ("r" : _) = runCommandReports s
 runCommand s ("overview" : _) = printOverview s
+runCommand s ("o" : _) = printOverview s
 runCommand s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
   putStrLn $ "Type 'help' for help."
@@ -172,6 +185,7 @@ consumeCommand s = do
   let splitCommand = words command
   case splitCommand of
     "quit" : _ -> return False
+    "q" : _ -> return False
     _ -> do
       runCommand s splitCommand
       return True
