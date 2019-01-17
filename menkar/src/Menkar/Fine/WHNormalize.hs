@@ -109,7 +109,7 @@ whnormalizeNV :: MonadTC mode modty rel tc =>
   WriterT [Int] tc (Term mode modty v)
 whnormalizeNV parent gamma t@(TermCons _) reason = return . Expr3 $ t   -- Mind glue and weld!
 whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
-whnormalizeNV parent gamma t@(TermMeta meta (Compose depcies)) reason = do
+whnormalizeNV parent gamma t@(TermMeta etaFlag meta (Compose depcies)) reason = do
   --solution <- fromMaybe (Expr3 t) <$> awaitMeta parent reason meta depcies
   maybeSolution <- lift $ awaitMeta parent reason meta depcies
   case maybeSolution of

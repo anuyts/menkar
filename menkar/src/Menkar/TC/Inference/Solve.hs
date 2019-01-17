@@ -52,14 +52,15 @@ newRelatedMetaTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruij
   Term mode modty v ->
   Type mode modty v ->
   Type mode modty v ->
+  Bool ->
   String ->
   tc (Term mode modty vOrig)
-newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 reason = do
+newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 etaFlag reason = do
   let maybeDegOrig = sequenceA $ partialInv <$> deg
   case maybeDegOrig of
     Nothing -> tcBlock parent "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
     Just degOrig -> do
-      t1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
+      t1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig etaFlag reason
       let t1 = subst <$> t1orig
       addNewConstraint
         (JudTermRel deg gamma (Pair3 t1 t2) (Pair3 ty1 ty2))
@@ -82,7 +83,7 @@ newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
   case maybeDegOrig of
     Nothing -> tcBlock parent "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
     Just degOrig -> do
-      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) degOrig gammaOrig reason
+      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) degOrig gammaOrig False reason
       let ty1 = subst <$> ty1orig
       addNewConstraint
         (JudTypeRel deg gamma (Pair3 ty1 ty2))
@@ -152,6 +153,7 @@ newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 t
                  (binding'body binding2)
                  tyBody1
                  tyBody2
+                 True
                  "Inferring body."
   return $ Binding segment1orig body1orig
 
@@ -195,9 +197,11 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
       tyAmbient1orig <- newRelatedMetaType parent deg gammaOrig gamma subst partialInv tyAmbient2 "Inferring ambient type."
       let tyAmbient1 = subst <$> tyAmbient1orig
       tL1orig <-
-        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tL2 tyAmbient1 tyAmbient2 "Inferring left equand."
+        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tL2 tyAmbient1 tyAmbient2
+          True "Inferring left equand."
       tR1orig <-
-        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tR2 tyAmbient1 tyAmbient2 "Inferring right equand."
+        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tR2 tyAmbient1 tyAmbient2
+          True "Inferring right equand."
       return $ EqType tyAmbient1orig tL1orig tR1orig
 
 solveMetaAgainstConstructorTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
@@ -239,23 +243,23 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
             let dmu1orig = wildModedModality
             tmFst1orig <- newRelatedMetaTerm parent (divDeg dmu1orig deg) (VarFromCtx <$> dmu1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmu1 :\\ gamma) subst partialInv tmFst2 tyFst1 tyFst2
-                            "Inferring first component."
+                            True "Inferring first component."
             let tmFst1 = subst <$> tmFst1orig
             let tySnd1 = substLast3 tmFst1 $ Type $ binding'body sigmaBinding1
             let tySnd2 = substLast3 tmFst2 $ Type $ binding'body sigmaBinding2
             -- CMODE: deg should probably live in vOrig
             let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
-            tyFst1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig "Inferring type of first component."
+            tyFst1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig False "Inferring type of first component."
             let sigmaSeg1orig = Declaration
                                   (_decl'name $ binding'segment $ sigmaBinding1)
                                   dmu1orig
                                   Explicit -- CMODE
                                   (Type tyFst1orig)
             tySnd1orig <- newMetaTermNoCheck (Just parent) (VarWkn <$> degOrig)
-                               (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) "Inferring type of second component."
+                                (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) False "Inferring type of second component."
             let sigmaBinding1orig = Binding sigmaSeg1orig tySnd1orig
             tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
-                            "Inferring second component."
+                            True "Inferring second component."
             return $ Pair sigmaBinding1orig tmFst1orig tmSnd1orig
         ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
         (_, _, _, _) -> tcBlock parent "Need to know domains and codomains of Sigma-types."
@@ -271,11 +275,11 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
             let dmu1orig = wildModedModality
             tmUnbox1orig <- newRelatedMetaTerm parent (divDeg dmu1orig deg) (VarFromCtx <$> dmu1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmu1 :\\ gamma) subst partialInv tmUnbox2 tyUnbox1 tyUnbox2
-                            "Inferring box content."
+                            True "Inferring box content."
             let tmUnbox1 = subst <$> tmUnbox1orig
             -- CMODE: deg should probably live in vOrig
             let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
-            tyUnbox1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig "Inferring type of box content."
+            tyUnbox1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig False "Inferring type of box content."
             let boxSeg1orig = Declaration
                                   (_decl'name $ boxSeg1)
                                   dmu1orig
@@ -287,7 +291,7 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
     ConsZero -> return ConsZero
     ConsSuc t2 -> do
       let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
-      t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat "Inferring predecessor."
+      t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat False "Inferring predecessor."
       return $ ConsSuc t1orig
     ConsRefl -> return ConsRefl
 
@@ -371,6 +375,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             (fmap $ fmap subst)
             (sequenceA . fmap sequenceA . (fmap $ fmap partialInv))
             t2 ty1 ty2
+            True
             "Inferring pair clause."
         return $ ElimSigma clausePair1orig
       (_, _) -> unreachable
@@ -405,6 +410,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             (fmap subst)
             (sequenceA . fmap partialInv)
             t2 ty1 ty2
+            True
             "Inferring box clause."
         return $ ElimBox boxClause1orig
       (_, _) -> unreachable
@@ -414,7 +420,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
       let tyCZ2 = substLast3 (Expr3 $ TermCons $ ConsZero :: Term mode modty _) $ _namedBinding'body motive2
       clauseZero1orig <-
         newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv clauseZero2 tyCZ1 tyCZ2
-          "Inferring zero clause."
+          False "Inferring zero clause."
       -----------------
       let nat = (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
       let namePred = _namedBinding'name clauseSuc2
@@ -448,6 +454,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
           (fmap $ fmap subst)
           (sequenceA . fmap sequenceA . (fmap $ fmap partialInv))
           t2 tyCS1 tyCS2
+          True
           "Inferring pair clause."
       return $ ElimNat clauseZero1orig clauseSuc1orig
 
@@ -489,6 +496,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                       arg2
                       (_segment'content $ binding'segment piBinding1)
                       (_segment'content $ binding'segment piBinding2)
+                      True
                       "Inferring argument."
         return $ App arg1orig
       (_, _) -> unreachable
@@ -558,6 +566,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                         crefl2
                         (substLast3 tL1 $ substLast3 refl $ _namedBinding'body $ _namedBinding'body motive1)
                         (substLast3 tL2 $ substLast3 refl $ _namedBinding'body $ _namedBinding'body motive2)
+                        True
                         "Inferring refl clause."
         return $ ElimEq motive1orig crefl1orig
       (_, _) -> unreachable
@@ -613,6 +622,10 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                              eliminee2
                              (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1)
                              (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee2)
+                             False
+                               {- This is the reason this flag exists:
+                                  eliminees should not be solved by eta-expansion!
+                                  Doing so could create loops. -}
                              "Inferring eliminee."
         let eliminee1 = subst <$> eliminee1orig
         eliminator1orig <- newRelatedEliminator parent deg gammaOrig gamma subst partialInv
@@ -622,7 +635,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                              eliminator2
                              ty1 ty2
         return $ Expr3 $ TermElim dmu1orig eliminee1orig tyEliminee1orig eliminator1orig
-      TermMeta _ _ -> unreachable
+      TermMeta _ _ _ -> unreachable
       TermWildcard -> unreachable
       TermQName _ _ -> unreachable
       TermSmartElim _ _ _ -> unreachable
@@ -742,7 +755,7 @@ tryToSolveTerm :: (MonadTC mode modty rel tc, Eq v, DeBruijnLevel v) =>
   tc ()
 tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 metasTyBlocked metasTy2 = case tBlocked of
   -- tBlocked should be a meta
-  (Expr3 (TermMeta meta depcies)) ->
+  (Expr3 (TermMeta etaFlag meta depcies)) ->
     tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2 metasTyBlocked metasTy2
   -- if tBlocked is not a meta, then we should just block on its submetas
   _ -> tcBlock parent "Cannot solve relation: one side is blocked on a meta-variable."

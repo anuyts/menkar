@@ -1,0 +1,3 @@
+module Test where {
+	val reflBox0 {box0 : Box Nat} : ?a == .{Nat} box0 ... = refl ...
+}

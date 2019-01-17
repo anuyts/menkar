@@ -44,7 +44,10 @@ class (
   newMetaTermNoCheck :: (DeBruijnLevel v) =>
     Maybe (Constraint mode modty rel)
     -> rel v {-^ Degree up to which it should be solved -}
-    -> Ctx Type mode modty v Void -> String -> sc (Term mode modty v)
+    -> Ctx Type mode modty v Void
+    -> Bool {-^ Whether it can be solved using eta-expansion. -}
+    -> String
+    -> sc (Term mode modty v)
   newMetaMode ::
     Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> sc (mode v)
   newMetaModty ::
@@ -53,7 +56,7 @@ class (
 
 instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
   annot4annot gamma qstring args = lift $ annot4annot gamma qstring args
-  newMetaTermNoCheck maybeParent deg gamma reason = lift $ newMetaTermNoCheck maybeParent deg gamma reason
+  newMetaTermNoCheck maybeParent deg gamma etaFlag reason = lift $ newMetaTermNoCheck maybeParent deg gamma etaFlag reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
   newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
   scopeFail msg = lift $ scopeFail msg
@@ -117,7 +120,7 @@ class (
 
 await :: (MonadTC mode modty rel tc) =>
   Constraint mode modty rel -> String -> Term mode modty v -> tc (Maybe (Term mode modty v))
-await parent reason (Expr3 (TermMeta meta (Compose depcies))) = runMaybeT $ do
+await parent reason (Expr3 (TermMeta flagEta meta (Compose depcies))) = runMaybeT $ do
   term <- MaybeT $ awaitMeta parent reason meta depcies
   MaybeT $ await parent reason term
 await parent reason t = return $ Just t
@@ -137,10 +140,11 @@ newMetaTerm :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   rel v ->
   Ctx Type mode modty v Void ->
   Type mode modty v ->
+  Bool ->
   String ->
   tc (Term mode modty v)
-newMetaTerm maybeParent deg gamma ty reason = do
-  t <- newMetaTermNoCheck maybeParent deg gamma reason
+newMetaTerm maybeParent deg gamma ty etaFlag reason = do
+  t <- newMetaTermNoCheck maybeParent deg gamma etaFlag reason
   addNewConstraint
     (JudTerm gamma t ty)
     maybeParent
@@ -161,7 +165,7 @@ newMetaType :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   String ->
   tc (Type mode modty v)
 newMetaType maybeParent deg gamma reason = do
-  t <- Type <$> newMetaTermNoCheck maybeParent deg gamma reason
+  t <- Type <$> newMetaTermNoCheck maybeParent deg gamma False {-Solving types using eta is rather pointless. -} reason
   addNewConstraint
     (JudType gamma t)
     maybeParent
@@ -177,7 +181,7 @@ newMetaTypeRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   String ->
   tc (Type mode modty v)
 newMetaTypeRel maybeParent deg gamma ty2 reason = do
-  ty1 <- Type <$> newMetaTermNoCheck maybeParent deg (fstCtx gamma) reason
+  ty1 <- Type <$> newMetaTermNoCheck maybeParent deg (fstCtx gamma) True reason
   addNewConstraint
     (JudTypeRel deg gamma (Pair3 ty1 ty2))
     maybeParent

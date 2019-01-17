@@ -317,7 +317,7 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma ConsRefl ty = do
   tyAmbient <- newMetaType (Just parent) eqDeg gamma "Inferring ambient type."
-  t <- newMetaTerm (Just parent) eqDeg gamma tyAmbient "Inferring self-equand."
+  t <- newMetaTerm (Just parent) eqDeg gamma tyAmbient True "Inferring self-equand."
   addNewConstraint
     (JudTypeRel
       eqDeg
@@ -607,13 +607,13 @@ checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
     (Just parent)
     "Type-checking eliminee."
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
-checkTermNV parent gamma t@(TermMeta meta (Compose depcies)) ty = do
+checkTermNV parent gamma t@(TermMeta etaFlag meta (Compose depcies)) ty = do
   maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
   t' <- case maybeT of
     Nothing -> do
       -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
       -- place to request eta-expansion.
-      addNewConstraint
+      when etaFlag $ addNewConstraint
         (JudEta gamma (Expr3 t) ty)
         (Just parent)
         "Eta-expand meta if possible."

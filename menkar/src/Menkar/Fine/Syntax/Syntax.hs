@@ -259,7 +259,8 @@ data TermNV (mode :: * -> *) (modty :: * -> *) (v :: *) =
     (Term mode modty v) {-^ eliminee -}
     (UniHSConstructor mode modty v) {-^ eliminee's type -}
     (Eliminator mode modty v) {-^ eliminator -} |
-  TermMeta Int (Compose [] (Term mode modty) v) |
+  {-| Boolean: Whether the meta may be solved using eta-expansion. Always true except when inferring an eliminee. -}
+  TermMeta Bool Int (Compose [] (Term mode modty) v) |
   TermWildcard {-^ A meta that need not be solved. -} |
   TermQName Raw.QName (LeftDivided (Telescoped Type ValRHS) mode modty v) |
   TermSmartElim

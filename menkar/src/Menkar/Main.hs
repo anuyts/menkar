@@ -55,7 +55,7 @@ printMetaInfo :: DeBruijnLevel v => TCState m -> Int -> MetaInfo m v -> IO ()
 printMetaInfo s meta info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  let tMeta = Expr3 $ TermMeta meta $ Compose $ Var3 <$> listAll Proxy
+  let tMeta = Expr3 $ TermMeta True meta $ Compose $ Var3 <$> listAll Proxy
   putStr $ show $ JudTerm (_metaInfo'context info) tMeta (Type $ Expr3 $ TermWildcard)
   putStrLn $ ""
   case _metaInfo'maybeSolution info of

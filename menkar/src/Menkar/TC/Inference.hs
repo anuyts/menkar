@@ -41,6 +41,7 @@ checkEtaForNormalType parent gamma t (Pi piBinding) = do
             eqDeg
             (gamma :.. (VarFromCtx <$> binding'segment piBinding))
             (Type $ binding'body piBinding)
+            True
             "Infer function body."
   addNewConstraint
     (JudTermRel
@@ -61,12 +62,14 @@ checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
                    eqDeg
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content $ binding'segment $ sigmaBinding)
+                   True
                    "Infer first projection."
         tmSnd <- newMetaTerm
                    (Just parent)
                    eqDeg
                    gamma
                    (Type $ substLast3 tmFst $ binding'body sigmaBinding)
+                   True
                    "Infer second projection."
         addNewConstraint
           (JudTermRel
@@ -99,6 +102,7 @@ checkEtaForNormalType parent gamma t (BoxType segBox) =
                    eqDeg
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content segBox)
+                   True
                    "Infer box content."
     addNewConstraint
       (JudTermRel
@@ -135,7 +139,7 @@ checkEta parent gamma t (Type ty) = do
           TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons
           TermCons _ -> tcFail parent' $ "Type is not a type."
           TermElim _ _ _ _ -> return ()
-          TermMeta _ _ -> unreachable
+          TermMeta _ _ _ -> unreachable
           TermWildcard -> unreachable
           TermQName _ _ -> unreachable
           TermSmartElim _ _ _ -> unreachable

@@ -217,7 +217,7 @@ insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators resul
   let dmuArg = _segment'modty $ binding'segment $ piBinding
   let tyArg = _segment'content $ binding'segment $ piBinding
   -- CMOD: degree should be multiplied by dmuArg here!
-  arg <- newMetaTerm (Just parent) eqDeg (VarFromCtx <$> dmuArg :\\ gamma) tyArg "Inferring implicit argument."
+  arg <- newMetaTerm (Just parent) eqDeg (VarFromCtx <$> dmuArg :\\ gamma) tyArg True "Inferring implicit argument."
   apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult
 
 autoEliminate ::
@@ -263,7 +263,7 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     (_, []) ->
       unreachable {-checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult-}
     (_, SmartElimDots : []) ->
-      autoEliminate parent gamma dmuElim eliminee tyEliminee [] result tyResult $
+      autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult $
       Just $ checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
     (_, SmartElimDots : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     -- `t ...` (end elimination now)

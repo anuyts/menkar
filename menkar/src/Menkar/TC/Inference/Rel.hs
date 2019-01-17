@@ -607,7 +607,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1
       "Relating eliminees."
     checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
   (Expr3 (TermElim _ _ _ _), _) -> tcFail parent "False."
-  (Expr3 (TermMeta _ _), _) -> unreachable
+  (Expr3 (TermMeta _ _ _), _) -> unreachable
   (Expr3 (TermWildcard), _) -> unreachable
   (Expr3 (TermQName _ _), _) -> unreachable
   (Expr3 (TermSmartElim _ _ _), _) -> unreachable

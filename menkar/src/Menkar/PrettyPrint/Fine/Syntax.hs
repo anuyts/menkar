@@ -289,8 +289,8 @@ instance (Functor mode, Functor modty,
   fine2pretty gamma (TermCons consTerm) = fine2pretty gamma consTerm
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) =
     elimination2pretty gamma mod eliminee tyEliminee eliminator
-  fine2pretty gamma (TermMeta i (Compose depcies)) =
-    ribbon ("?" ++ show i)
+  fine2pretty gamma (TermMeta etaFlag i (Compose depcies)) =
+    ribbon ("?" ++ show i ++ (if etaFlag then "" else "-no-eta"))
     \\\ ((|++ "}") . (" .{" ++|) . fine2pretty gamma <$> depcies)
   fine2pretty gamma TermWildcard = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) = Raw.unparse' qname
