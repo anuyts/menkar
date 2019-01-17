@@ -28,7 +28,7 @@ ctx2pretty (CtxEmpty d) = "{context-mode : " ++| fine2pretty ScCtxEmpty (Mode d 
 ctx2pretty (gamma :.. seg) = haveDB gamma $ ctx2pretty gamma \+\ [fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> seg)]
 ctx2pretty (seg :^^ gamma) = todo
 ctx2pretty (gamma :<...> modul) = haveDB gamma $ ctx2pretty gamma
-ctx2pretty (dmu :\\ gamma) = haveDB gamma $ fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> dmu) |++ "\\ ("
+ctx2pretty (dmu :\\ gamma) = haveDB gamma $ "[" ++| fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> dmu) |++ "] \\ ("
                              \\\ [ctx2pretty gamma]
                              /// ribbon ")"
 
