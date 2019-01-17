@@ -107,24 +107,21 @@ instance Unparsable Expr where
   parserName _ = "expr"
 
 instance Unparsable Annotation where
+  unparse' (Annotation qstr Nothing) = unparse' qstr |++ " | "
+  unparse' (Annotation qstr (Just arg)) = (unparse' qstr \\\ [unparse' arg]) |++ " | "
+  {-
   unparse' (Annotation qname []) = unparse' qname
   unparse' (Annotation qname elims) = "[" ++| unparse' qname
                                             \\\ ((" " ++|) . unparse' <$> elims)
                                             /// ribbon "]"
+  -}
   parserName _ = "annotation"
-  
-unparseAnnotationBrackets :: Annotation -> PrettyTree String
-unparseAnnotationBrackets (Annotation qname []) = "[" ++| unparse' qname |++ "]"
-unparseAnnotationBrackets annot = unparse' annot
 
 unparseAnnotationClause :: [Annotation] -> PrettyTree String
-unparseAnnotationClause [] = ribbonEmpty
-unparseAnnotationClause annots = ribbonEmpty
-                                 \\\ (|++ " ") . unparse' <$> annots
-                                 /// ribbon "| "
+unparseAnnotationClause annots = ribbonEmpty \\\ unparse' <$> annots
 
 unparseEntryAnnotations :: [Annotation] -> PrettyTree String
-unparseEntryAnnotations annots = treeGroup $ (|++ " ") . unparseAnnotationBrackets <$> annots
+unparseEntryAnnotations annots = "[" ++| unparseAnnotationClause annots |++ "]"
 
 instance Unparsable Segment where
   unparse' (Segment decl) = "{" ++| content |++ "} "

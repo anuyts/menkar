@@ -51,7 +51,7 @@ expr3to1smart e = expr2to1 . expr3to2 $ e
 -----------------------------------------------------------
 
 {-| One item in the annotation clause. -}
-data Annotation = Annotation (Qualified String) [Eliminator] --deriving Show
+data Annotation = Annotation (Qualified String) (Maybe Expr) --deriving Show
 
 newtype Segment = Segment (Declaration DeclSortSegment) --deriving Show
 

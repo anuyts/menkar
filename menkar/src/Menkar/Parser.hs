@@ -66,6 +66,12 @@ manyTry = many . MP.try
 someTry :: CanParse m => m a -> m [a]
 someTry = some . MP.try
 
+someSep :: CanParse m => m () -> m a -> m [a]
+someSep sep p = (:) <$> (optional sep *> p) <*> manyTry (sep *> p) <* optional sep
+
+manySep :: CanParse m => m () -> m a -> m [a]
+manySep sep p = ([] <$ optionalTry sep) <|> someSep sep p
+
 infixl 3 <?|>
 
 -- characters ----------------------------------------------
@@ -404,11 +410,9 @@ expr = Raw.Expr <$> some atom
 
 -- high-level subparsers -----------------------------------
 
--- annotations
+-- annotations - old
 
---haskellAnnotation :: CanParse m => m Raw.Annotation
---haskellAnnotation = Raw.AnnotationHaskell <$> haskellCodeBracketed
-
+{-
 atomicAnnotation :: CanParse m => m Raw.Annotation
 atomicAnnotation = (\qword -> Raw.Annotation qword []) <$> qWord
 
@@ -426,49 +430,27 @@ annotationClause = MP.label "annotation clause" $ MP.try $ many annotation <* pi
 
 entryAnnotation :: CanParse m => m Raw.Annotation
 entryAnnotation = compoundAnnotation
+-}
+
+-- annotations - new
+
+annotation :: CanParse m => m Raw.Annotation
+annotation = MP.label "annotation" $ do
+  annotName <- qWord
+  annotArg <- optional expr
+  return $ Raw.Annotation annotName annotArg
+
+segmentAnnotations :: CanParse m => m [Raw.Annotation]
+segmentAnnotations = manyTry $ annotation <* pipe
+
+entryAnnotations :: CanParse m => m [Raw.Annotation]
+entryAnnotations = brackets $ manySep pipe annotation
 
 -- telescopes
 
---segmentNamesAndColon :: CanParse m => m Raw.LHSNames
---segmentNamesAndColon = Raw.SomeNamesForTelescope <$> some unqName <* keyword ":"
-
---segmentConstraintColon :: CanParse m => m Raw.LHSNames
---segmentConstraintColon = Raw.NoNameForConstraint <$ keyword "-:"
-
-{-
-constraint :: CanParse m => m Raw.LHS
-constraint = accols $ do
-      annots <- fromMaybe [] <$> optionalTry annotationClause
-      keyword "-:"
-      typ <- expr
-      return $ Raw.LHS {
-        Raw.annotationsLHS = annots,
-        Raw.namesLHS = Raw.NoNameForConstraint,
-        Raw.contextLHS = Raw.Telescope [],
-        Raw.typeLHS = Just typ
-      }
-
-argument :: CanParse m => m Raw.LHS 
-argument = accols $ do
-      annots <- fromMaybe [] <$> optionalTry annotationClause
-      --names <- segmentNamesAndColon <|> segmentConstraintColon
-      names <- Raw.SomeNamesForTelescope <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore))
-      context <- telescopeMany
-      maybeType <- optional $ keyword ":" *> expr
-      return $ Raw.LHS {
-        Raw.annotationsLHS = annots,
-        Raw.namesLHS = names,
-        Raw.contextLHS = context,
-        Raw.typeLHS = maybeType
-      }
-
-segment :: CanParse m => m Raw.Segment
-segment = MP.label "telescope segment" $ Raw.Segment <$> (argument <?|> constraint)
--}
-
 segment :: CanParse m => m Raw.Segment
 segment = MP.label "telescope segment" $ accols $ do
-      annots <- fromMaybe [] <$> optionalTry annotationClause
+      annots <- segmentAnnotations --fromMaybe [] <$> optionalTry annotationClause
       names <- Raw.DeclNamesSegment <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore))
       --context <- telescopeMany
       maybeType <- optional $ keyword ":" *> expr
@@ -487,7 +469,7 @@ telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segmen
 
 lhs :: CanParse m => Raw.EntryHeader declSort -> m (Raw.Declaration declSort)
 lhs header = MP.label "LHS" $ do
-  annots <- many entryAnnotation
+  annots <- entryAnnotations --many entryAnnotation
   name <- case header of
     Raw.HeaderToplevelModule -> do
       qname <- qName
