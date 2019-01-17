@@ -188,8 +188,8 @@ symbol = lexeme . MP.string
 pipe :: CanParse m => m ()
 pipe = void $ symbol "|"
 
-tickPrecise :: CanParse m => m ()
-tickPrecise = void $ MP.string "`"
+--tickPrecise :: CanParse m => m ()
+--tickPrecise = void $ MP.string "`"
 underscorePrecise :: CanParse m => m ()
 underscorePrecise = void $ MP.string "_"
 dotPrecise :: CanParse m => m ()
@@ -212,6 +212,9 @@ accols = MP.between (symbol "{") (symbol "}")
 
 brackets :: CanParse m => m a -> m a
 brackets = MP.between (symbol "[") (symbol "]")
+
+ticks :: CanParse m => m a -> m a
+ticks = MP.between (symbol "`") (symbol "`")
 
 charByType :: CanParse m => CharType -> m Char
 charByType ct = MP.label (describeCharType ct) $ MP.satisfy (\ c -> charType c == ct)
@@ -307,8 +310,8 @@ qualified p = lexeme $ do
 qName :: CanParse m => m Raw.QName
 qName = MP.label "qualified identifier" $ qualified unqName
 
-tickedQName :: CanParse m => m Raw.QName
-tickedQName = tickPrecise *> qName
+--tickedQName :: CanParse m => m Raw.QName
+--tickedQName = ticks $ qName
 
 unqOp :: CanParse m => m Raw.Name
 unqOp = MP.label "unqualified operator" $ nonStickyLexeme $ Raw.Name Raw.Op <$> opPrecise
@@ -439,7 +442,7 @@ operand :: CanParse m => m Raw.Operand
 operand = (Raw.OperandTelescope <$> telescopeSome) <?|> (Raw.OperandExpr <$> expr2)
 
 operatorHead :: CanParse m => m Raw.Expr3
-operatorHead = (tickPrecise *> expr3) <|> (Raw.ExprQName . Raw.Qualified [] <$> unqOp)
+operatorHead = (ticks $ Raw.ExprParens <$> expr) <|> (Raw.ExprQName . Raw.Qualified [] <$> unqOp)
 operator :: CanParse m => m Raw.Elimination
 operator = MP.label "operator with eliminations" $ Raw.Elimination <$> operatorHead <*> opEliminators
 

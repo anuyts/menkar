@@ -33,7 +33,7 @@ jud2pretty :: forall mode modty rel .
 jud2pretty (JudType gamma ty) =
   ctx2pretty gamma \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty]
 jud2pretty (JudTypeRel deg gamma (Pair3 ty1 ty2)) =
-  ctx2pretty gamma \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty1 |++ " =[]= " |+| fine2pretty (ctx2scCtx gamma) ty2]
+  ctx2pretty gamma \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) (Pair3 ty1 ty2)]
   -- CMODE print the degree
 jud2pretty (JudTerm gamma t ty) =
   ctx2pretty gamma \\\ [
@@ -41,7 +41,7 @@ jud2pretty (JudTerm gamma t ty) =
     " : " ++| fine2pretty (ctx2scCtx gamma) ty]
 jud2pretty (JudTermRel deg gamma (Pair3 t1 t2) ty) =
   ctx2pretty gamma \\\ [
-    _vdash_ ++| fine2pretty (ctx2scCtx gamma) t1 |++ " =[]= " |+| fine2pretty (ctx2scCtx gamma) t2,
+    _vdash_ ++| fine2pretty (ctx2scCtx gamma) (Pair3 t1 t2),
     " : " ++| fine2pretty (ctx2scCtx gamma) ty]
   -- CMODE print the degree
 jud2pretty (JudEta gamma t ty) =

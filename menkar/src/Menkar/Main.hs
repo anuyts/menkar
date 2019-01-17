@@ -138,7 +138,7 @@ giveHelp :: IO ()
 giveHelp = do
   putStrLn $ "q       quit          Quit Menkar."
   putStrLn $ "o       overview      Give an overview of the type-checking results."
-  putStrLn $ "mm      metas         Give an overview of the unsolved meta-variables."
+  putStrLn $ "m       metas         Give an overview of the unsolved meta-variables."
   putStrLn $ "m i     meta i        Give information about meta-variable ?i (where i is an integer)."
   putStrLn $ "c i     constraint i  Give information about constraint i (where i is an integer)."
   putStrLn $ "c 0     constraint 0  Print the internal representation of the entire program."
@@ -165,10 +165,10 @@ runCommand :: TCState m -> [String] -> IO ()
 runCommand s [] = return ()
 runCommand s ("help" : _) = giveHelp
 runCommand s ("h" : _) = giveHelp
+runCommand s ("metas" : _) = printUnsolvedMetas s
+runCommand s ("m" : []) = printUnsolvedMetas s
 runCommand s ("meta" : args) = runCommandMeta s args
 runCommand s ("m" : args) = runCommandMeta s args
-runCommand s ("metas" : _) = printUnsolvedMetas s
-runCommand s ("mm" : _) = printUnsolvedMetas s
 runCommand s ("constraint" : args) = runCommandConstraint s args
 runCommand s ("c" : args) = runCommandConstraint s args
 runCommand s ("reports" : _) = runCommandReports s
