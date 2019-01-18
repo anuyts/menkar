@@ -333,7 +333,7 @@ buildDeclaration ::
   (forall w . DeBruijnLevel w => Ctx Type mode modty w Void -> sc (content mode modty w)) ->
   TelescopedPartialDeclaration rawDeclSort Type content mode modty v ->
   sc [Declaration fineDeclSort (Telescoped Type content) mode modty v]
-buildDeclaration gamma generateContent partDecl = runListT $ do
+buildDeclaration gamma generateContent partDecl = do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
@@ -347,20 +347,20 @@ buildDeclaration gamma generateContent partDecl = runListT $ do
         telescopedContent <- mapTelescopedDB (
             \ wkn gammadelta (Maybe3 content) -> case content of
               Compose (Just content') -> return content'
-              Compose (Nothing) -> lift $ generateContent gammadelta
+              Compose (Nothing) -> generateContent gammadelta
           ) gamma $ _pdecl'content partDecl
           {-case _pdecl'content partDecl of
           Compose (Just ty') -> return ty'
           Compose Nothing -> lift $ generateContent-}
             --type4newImplicit gammadelta {- TODO adapt this for general telescoped declarations. -}
-        name <- case _pdecl'names partDecl of
+        names <- case _pdecl'names partDecl of
           Nothing -> assertFalse $ "Nameless partial declaration!"
-          Just (Raw.DeclNamesSegment maybeNames) -> DeclNameSegment <$> (ListT . return $ maybeNames)
+          Just (Raw.DeclNamesSegment maybeNames) -> return $ DeclNameSegment <$> maybeNames
           Just (Raw.DeclNamesToplevelModule qname) -> assertFalse $ "Didn't expect a toplevel module here."
-          Just (Raw.DeclNamesModule string) -> return $ DeclNameModule string
-          Just (Raw.DeclNamesVal name) -> return $ DeclNameVal name
+          Just (Raw.DeclNamesModule string) -> return $ [DeclNameModule string]
+          Just (Raw.DeclNamesVal name) -> return $ [DeclNameVal name]
             --ListT . nameHandler $ _pdecl'names partDecl
-        return Declaration {
+        return $ names <&> \ name -> Declaration {
           _decl'name = name,
           _decl'modty = ModedModality d mu,
           _decl'plicity = plic,
