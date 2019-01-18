@@ -22,6 +22,15 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - lens == 4.17
+- transformers == 0.5.5.0
+- mtl == 2.2.2
+- nat == 0.3
+- hashable == 1.2.7.0
+- MissingH == 1.4.1.0
+- unordered-containers == 0.2.9.0
+- Unique == 0.4.7.5
+- megaparsec == 7.0.4
+- containers == 0.5.11.0
 
 library:
   source-dirs: src
@@ -47,3 +56,34 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - menkar
+
+ghc-options:
+- -fwarn-incomplete-patterns
+- -Wno-partial-type-signatures
+
+default-extensions:
+- DeriveTraversable
+- MultiParamTypeClasses
+- FlexibleContexts
+- FlexibleInstances
+- StandaloneDeriving
+- TypeOperators
+- DeriveGeneric
+- DefaultSignatures
+- DeriveAnyClass
+- KindSignatures
+- GADTs
+- RankNTypes
+- DataKinds
+- PolyKinds
+- TypeFamilies
+- FunctionalDependencies
+- TypeApplications
+- PartialTypeSignatures
+- PatternSynonyms
+- LambdaCase
+- ScopedTypeVariables
+- TemplateHaskell
+- TupleSections
+- ExistentialQuantification
+- ApplicativeDo
