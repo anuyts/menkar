@@ -14,7 +14,10 @@ import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.Fine.Multimode.Trivial
 
+import Control.Exception.AssertFalse
+
 import Control.Monad.State.Lazy
+import Control.Monad.Fail
 import GHC.Generics (U1 (..))
 import Text.PrettyPrint.Tree
 import Data.Functor.Compose
@@ -38,6 +41,9 @@ evalSimpleScoper (SimpleScoper prog) = evalStateT prog 0
 
 fresh :: MonadState Int m => m Int
 fresh = state $ \ i -> (i, i+1)
+
+instance MonadFail SimpleScoper where
+  fail s = unreachable
 
 instance MonadScoper U1 U1 U1 SimpleScoper where
   annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of

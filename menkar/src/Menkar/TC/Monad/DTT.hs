@@ -32,6 +32,7 @@ import Control.Monad.Cont
 import Control.Monad.State.Lazy
 import Control.Monad.List
 import Control.Monad.Except
+import Control.Monad.Fail
 import Control.Lens
 import Unsafe.Coerce
 
@@ -107,6 +108,9 @@ data TCError m =
 
 newtype TCT m a = TCT {unTCT :: MContT TCResult (ExceptT (TCError m) (StateT (TCState m) ({-ListT-}  m))) a}
   deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
+
+instance (Monad m) => MonadFail (TCT m) where
+  fail s = unreachable
 
 getTCT :: (Monad m) => TCT m () -> TCState m -> m (Either (TCError m) TCResult, TCState m)
 getTCT program initState = flip runStateT initState $ runExceptT $ evalMContT $ unTCT program

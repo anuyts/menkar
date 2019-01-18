@@ -6,13 +6,14 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import Menkar.Fine.Context
 import Menkar.Fine.Multimode
-import qualified Menkar.Raw.Syntax as Raw
+import qualified Menkar.Raw.Syntax as Raw 
 --import Menkar.Scoper.Monad
 
 import Data.Void
 import Control.Monad.Trans.Class
 import Data.Functor.Compose
 import Control.Monad.Trans.Maybe
+import Control.Monad.Fail
 
 data Constraint mode modty rel = Constraint {
     constraint'judgement :: Judgement mode modty rel,
@@ -22,7 +23,7 @@ data Constraint mode modty rel = Constraint {
   }
 
 class (
-    Monad sc,
+    MonadFail sc,
     Traversable mode,
     Traversable modty,
     Traversable rel,
@@ -54,7 +55,7 @@ class (
     Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> sc (modty v)
   scopeFail :: String -> sc a
 
-instance (MonadScoper mode modty rel sc, MonadTrans mT, Monad (mT sc)) => MonadScoper mode modty rel (mT sc) where
+instance (MonadScoper mode modty rel sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper mode modty rel (mT sc) where
   annot4annot gamma qstring maybeArg = lift $ annot4annot gamma qstring maybeArg
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = lift $ newMetaTermNoCheck maybeParent deg gamma etaFlag reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason

@@ -1,0 +1,89 @@
+name:                menkar
+version:             0.1.0.0
+github:              "githubuser/menkar"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2019 Author name here"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/menkar#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- lens == 4.17
+- transformers == 0.5.5.0
+- mtl == 2.2.2
+- nat == 0.3
+- hashable == 1.2.7.0
+- MissingH == 1.4.1.0
+- unordered-containers == 0.2.9.0
+- Unique == 0.4.7.5
+- megaparsec == 7.0.4
+- containers == 0.5.11.0
+
+library:
+  source-dirs: src
+
+executables:
+  menkar-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - menkar
+
+tests:
+  menkar-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - menkar
+
+ghc-options:
+- -fwarn-incomplete-patterns
+- -Wno-partial-type-signatures
+
+default-extensions:
+- DeriveTraversable
+- MultiParamTypeClasses
+- FlexibleContexts
+- FlexibleInstances
+- StandaloneDeriving
+- TypeOperators
+- DeriveGeneric
+- DefaultSignatures
+- DeriveAnyClass
+- KindSignatures
+- GADTs
+- RankNTypes
+- DataKinds
+- PolyKinds
+- TypeFamilies
+- FunctionalDependencies
+- TypeApplications
+- PartialTypeSignatures
+- PatternSynonyms
+- LambdaCase
+- ScopedTypeVariables
+- TemplateHaskell
+- TupleSections
+- ExistentialQuantification
+- ApplicativeDo
