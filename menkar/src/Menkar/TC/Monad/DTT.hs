@@ -142,6 +142,12 @@ typeCheck :: Monad m => TCT m ()
 typeCheck = do
   commitTasks -- just to be sure
   tasks <- use tcState'tasks
+  --scopeFail "Mumblemaster"
+  --when (Prelude.null tasks) unreachable
+  --when (not $ Prelude.null tasks) unreachable
+  --when False unreachable
+  --when True unreachable
+  --unreachable
   case tasks of
     [] -> return ()
     (task : moreTasks) -> do

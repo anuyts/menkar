@@ -22,15 +22,15 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - lens == 4.17
-- transformers == 0.5.5.0
-- mtl == 2.2.2
 - nat == 0.3
-- hashable == 1.2.7.0
-- MissingH == 1.4.1.0
-- unordered-containers == 0.2.9.0
-- Unique == 0.4.7.5
+- Unique == 0.4.7.1
 - megaparsec == 7.0.4
-- containers == 0.5.11.0
+- hashable == 1.2.6.1
+- MissingH == 1.4.0.1
+- transformers == 0.5.2.0
+- mtl == 2.2.1
+- unordered-containers == 0.2.8.0
+- containers == 0.5.7.1
 
 library:
   source-dirs: src
@@ -86,4 +86,3 @@ default-extensions:
 - TemplateHaskell
 - TupleSections
 - ExistentialQuantification
-- ApplicativeDo
