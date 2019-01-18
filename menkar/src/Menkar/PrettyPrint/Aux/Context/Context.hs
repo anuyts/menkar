@@ -100,3 +100,10 @@ mapTelescopedScDB f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescopedScDB (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
 mapTelescopedScDB f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescopedScDB f (() ::\\ gamma) stuff
+  
+haveScDB :: ScCtx mode modty v Void -> ((DeBruijnLevel v) => t) -> t
+haveScDB (ScCtxEmpty) t = t
+haveScDB (gamma ::.. _) t = haveScDB gamma t
+haveScDB (_ ::^^ gamma) t = todo
+haveScDB (gamma ::<...> _) t = haveScDB gamma t
+haveScDB (_ ::\\ gamma) t = haveScDB gamma t

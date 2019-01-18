@@ -446,6 +446,13 @@ mapTelescopedSimpleDB f (Telescoped rhs) = Telescoped <$> f id rhs
 mapTelescopedSimpleDB f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimpleDB (f . (. VarWkn)) stuff
 mapTelescopedSimpleDB f (mu :** stuff) = (mu :**) <$> mapTelescopedSimpleDB f stuff
 
+{-
+_telescoped'content :: Telescoped ty rhs mode modty v -> rhs mode modty w
+_telescoped'content (Telescoped rhs) = rhs
+_telescoped'content (seg :|- telescopedRHS) = _telescoped'content telescopedRHS
+_telescoped'content (dmu :** telescopedRHS) = _telescoped'content telescopedRHS
+-}
+
 data ValRHS (mode :: * -> *) (modty :: * -> *) (v :: *) =
   ValRHS {_val'term :: Term mode modty v, _val'type :: Type mode modty v}
   deriving (Functor, Foldable, Traversable, Generic1)

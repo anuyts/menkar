@@ -6,8 +6,10 @@ import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.PrettyPrint.Aux.Context
+import Menkar.Fine.LookupQName
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
+
 import Text.PrettyPrint.Tree
 import Data.Void
 import Data.Maybe
@@ -293,7 +295,14 @@ instance (Functor mode, Functor modty,
     ribbon ("?" ++ show i ++ (if etaFlag then "" else "-no-eta"))
     \\\ ((|++ "}") . (" .{" ++|) . fine2pretty gamma <$> depcies)
   fine2pretty gamma TermWildcard = ribbon "_"
-  fine2pretty gamma (TermQName qname lookupresult) = Raw.unparse' qname
+  fine2pretty gamma (TermQName qname lookupresult) =
+    case _leftDivided'content lookupresult of
+      (dmu :** telescopedVal) -> getConst $ mapTelescopedSc
+        (\ wkn gammadelta valRHS -> case _val'term valRHS of
+            Var3 v -> haveScDB gammadelta $ Const $ var2pretty gammadelta v
+            _ -> Const $ Raw.unparse' qname
+        ) gamma telescopedVal
+      _ -> Raw.unparse' qname
     --case _leftDivided'content lookupresult of
     --Telescoped (ValRHS (Var3 v) _) -> var2pretty gamma v
     --_ -> Raw.unparse' qname
