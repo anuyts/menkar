@@ -2,7 +2,6 @@
 
 module Text.PrettyPrint.Tree where
 
-import Data.Tree
 import Data.Functor.Identity
 import Data.Foldable
 import Data.Maybe
