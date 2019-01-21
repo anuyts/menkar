@@ -55,6 +55,9 @@ data MetaInfo m v = MetaInfo {
   _metaInfo'context :: Ctx Type U1 U1 v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
+  {-| If solved, info about the solution.
+      If unsolved, a list of blocked problems, from new to old, from outermost to innermost.
+  -}
   _metaInfo'maybeSolution :: Either [([Int {- all metas blocking this thing -}], BlockInfo m v)] (SolutionInfo m v)
   }
 isDormant :: MetaInfo m v -> Bool
@@ -102,9 +105,11 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 
 data TCError m =
   TCErrorConstraintBound |
+  {-| The outermost blocked @awaitMeta@ is first in the list. -}
   TCErrorBlocked (Constraint U1 U1 U1) String [(Int, ForSomeDeBruijnLevel (BlockInfo m))] |
   TCErrorTCFail TCReport |
-  TCErrorScopeFail String
+  TCErrorScopeFail String |
+  TCErrorInternal (Maybe (Constraint U1 U1 U1)) String
 
 newtype TCT m a = TCT {unTCT :: MContT TCResult (ExceptT (TCError m) (StateT (TCState m) ({-ListT-}  m))) a}
   deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
@@ -180,7 +185,8 @@ catchBlocks :: (Monad m) => TCT m TCResult -> TCT m TCResult
 catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blocks -> do
     let blockingMetas = fst <$> blocks
-    sequenceA_ $ blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
+    -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
+    sequenceA_ $ reverse blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
       tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
         ForSomeDeBruijnLevel $ over (metaInfo'maybeSolution . _LeftUnsafe)
           ((blockingMetas, unsafeCoerce blockInfo) :) metaInfo
@@ -220,11 +226,16 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
   solveMeta parent meta getSolution = do
     ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
     case _metaInfo'maybeSolution metaInfo of
-      Right _ -> unreachable
+      Right _ -> throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
       Left blocks -> do
         solution <- getSolution $ _metaInfo'context metaInfo
         -- Unblock blocked constraints
-        sequenceA_ $ blocks <&> \ (blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k) -> do
+        sequenceA_ $ blocks <&> \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k) -> do
+          {- @meta@ is currently being solved.
+             @block@ represents a problem blocked by this meta.
+             @k@ expresses how to unblock the problem if THIS meta is solved.
+             @blockingMetas@ is a list of other metas that can unblock this problem; they have their own @k@.
+          -}
           -- Check whether this is the first meta (among those on which this constraint is blocked) to be resolved.
           allAreUnsolved <- fmap (not . getAny . fold) $ sequenceA $ blockingMetas <&>
             \blockingMeta -> fmap (Any . forThisDeBruijnLevel isSolved) $ use $
@@ -275,10 +286,14 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
             -- Try to continue with an unsolved meta
             k Nothing `catchError` \case
               TCErrorBlocked blockParent blockReason blocks -> do
+                -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
+                -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
+                let blocks' = Prelude.filter (\(blockMeta, blockInfo) -> blockMeta /= meta) blocks
                 let blockInfo = BlockInfo blockParent blockReason reasonAwait $
                       k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
                 -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
-                throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks)
+                throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks')
+                -- throwError $ TCErrorBlocked blockParent blockReason (blocks ++ [(meta, ForSomeDeBruijnLevel blockInfo)])
                 --tcState'metaMap . at meta .=
                 --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e

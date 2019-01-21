@@ -155,7 +155,7 @@ runCommandMeta s args = case args of
 runCommandConstraint :: TCState m -> [String] -> IO ()
 runCommandConstraint s args = case args of
   [arg] -> case readsPrec 0 arg :: [(Int, String)] of
-    [(meta, "")] -> printConstraintByIndex s meta
+    [(i, "")] -> printConstraintByIndex s i
     _ -> putStrLn $ "Argument to 'constraint' should be an integer."
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
 runCommandReports :: TCState m -> IO ()
@@ -221,6 +221,15 @@ interactAfterTask task = do
                 putStrLn "SCOPING ERROR"
                 putStrLn "-------------"
                 putStrLn msg
+              TCErrorInternal maybeParent msg -> do
+                putStrLn "------------------------------"
+                putStrLn "INTERNAL ERROR (please report)"
+                putStrLn "------------------------------"
+                putStrLn msg
+                case maybeParent of
+                  Nothing -> return ()
+                  Just parent -> printConstraint parent
+                interactiveMode s
   
 
 checkMagic :: IO ()
