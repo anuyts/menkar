@@ -11,4 +11,11 @@ module Test where {
     val runit+ {~ | n : Nat}
         : (n + 0) == n
         = indNat (x > (x + 0) == x) (refl ...) (x > e > cong suc e) n
+    val assoc {~ | m n o : Nat}
+        : (m + (n + o)) == ((m + n) + o)
+        = indNat
+            (x > (x + (n + o)) == ((x + n) + o))
+            (refl ...)
+            (x > e > cong suc e)
+            m
 }
