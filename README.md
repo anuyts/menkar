@@ -1,29 +1,39 @@
-# Menkar
-Menkar is (will be) a dependently typed programming language supporting the following features:
+# Menkar - the multimode presheaf proof assistant
+Menkar is (will be) a dependently typed programming language with a special focus on supporting modal and even multimode type systems, as well as type systems based on presheaf models.
 
-* implicit arguments in the sense of Agda,
+It is named after the star [Alpha Ceti](https://en.wikipedia.org/wiki/Alpha_Ceti).
+
+## Features
+Currently supported features include:
+
+* type-checking of basic MLTT with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
+* a single universe that (inconsistently) contains itself,
+* implicit arguments in the sense of Agda.
+
+Partly implemented features include:
+
+* support for multimode modality systems,
+* support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a fibrant universe to a possibly non-fibrant (Hofmann-Streicher)-universe whose codes can be promoted to the type level continuously,
+* a [definitional relatedness](https://doi.org/10.1145/3209108.3209119) checker (despite linking to Nuyts & Devriese, the concept was coined by Andrea Vezzosi), which may allow for the non-consideration of irrelevant subterms during conversion-checking.
+
+Planned and partly implemented features include:
+
 * instance arguments - a feature analogous to Agda's [instance arguments](https://doi.org/10.1145/2034574.2034796) and Haskell's typeclasses.
 A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved.
-* support for multimode modality systems
-* support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a fibrant universe to a possibly non-fibrant (Hofmann-Streicher)-universe whose codes can be promoted to the type level continuously.
-* a 'crisp' modality for dependencies that respect no relational structure whatsoever
+* the resolution-features necessary to implement a relatedness-checker *within* Menkar,
 * internal crisp mode and modality polymorphism,
-* internal shape-irrelevant universe polymorphism,
 * support for context exponentiation (for working with dependably [atomic](https://ncatlab.org/nlab/show/tiny+object) objects),
-* internal presheaf operators, to wit: **fresh weakening** (for non-cartesian base categories), amazing dependent right adjoints (which we prefer to call **transpension types**), and the **initial type extension** (also called Weld type).
-From these, one can implement the **final type extension** (Glue) and the **Ψ-type**.
-* the possibility to implement inductive and co-inductive types from scratch by unsafely resizing their Church encoding
-(which is about as unsafe as omitting the strict positivity check),
-* erasure of irrelevant subterms,
-* non-unique resolution of irrelevant metavariables,
-* subtyping (very long term - even for universes we can use a lift function).
+* internal presheaf operators, to wit: **fresh weakening** (the left adjoint to the Π-type over substructural shape variables), [amazing](https://ncatlab.org/nlab/show/amazing+right+adjoint) dependent right adjoints (which we prefer to call **transpension types**; these are right adjoint to the Π-type over substructural shape variables), the **initial type extension** (also called Weld) and the **final type extension** (also called Glue). From these, one can implement Moulin's [**Ψ-type**](https://research.chalmers.se/publication/235758).
+* perhaps a (somewhat unsound) framework to build inductive and co-inductive types from scratch,
+* subtyping (very long term).
 
-It is named after the star Alpha Ceti.
+## Type systems
+Some type systems that we aim to support, are:
 
-## Loading/building
-Here are some packages currently in use:
+* MLTT (already supported),
+* cubical type theory,
+* [degrees of relatedness](https://people.cs.kuleuven.be/~andreas.nuyts/paper-reldtt.pdf) - hence also [ParamDTT](https://doi.org/10.1145/3110276),
+* directed type theory,
+* guarded type theory with [time warps](https://arxiv.org/abs/1805.11021v1).
 
-* ~~`categories` - Note: you need to add `PolyKinds` to Control.Categorical.Functor.~~
-* `lens`
-* `megaparsec`
-* `nat`
+Where applicable, we may or may not want to include diagonals, symmetries and connections in the base category, as well as generalize from binary to n-ary systems.
