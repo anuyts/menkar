@@ -35,11 +35,10 @@ Code
   |
   |  parser
   V
-Raw syntax: operators, eliminators, lambdas, telescopes; no variable or name binding
+Raw syntax: operators, eliminators, telescopes; no lambdas, no variable or name binding
   |
   |  scoper
   |
-  |--> [(eliminate, smartelim)]
   V
 Fine syntax
   |
@@ -50,26 +49,21 @@ Fine syntax (well-typed)
 
 Normalization
 =============
-
-Before proceeding, context, expression and type are weak-head-normalized.
-This process yields 2 results:
-
-* the normalized context/expression
-* a list of variables, postulates and metas that evaluation is blocked on.
+The type-checker frequently attempts to weak-head-normalize expressions. This process yields 2 results:
+* the (maximally) weak-head-normalized expression (in whbf, see below),
+* a list of metavariables that weak-head-normalization is blocked on (this list is empty if the returned expression is weak-head-normal).
 
 Note that we have multi-eliminations, e.g. `unglue (P ? f) g` reduces if `P` becomes true and if `g` becomes a `glue` term. Hence, we can at the same time be blocked on metavariable `P` and neutral due to `g`.
 
-~~Weld, implication, assertion and their constructors/eliminators do not reduce at Top. Rather, they are kept as **decorations** which are ignored by definitional relations. So we can only be blocked on one variable/neutral at the same time. So when normalizing, you can choose whether you want to keep or remove such decorations. (You still want to know whether something is neutral/blocked w.r.t. decoration-removing normalization)~~
-
-NOTE: The only face predicate i-related to Top (`i < Top`) is Top. So we never need to relate non-reduced and reduced types. (This is only true if Box Top does not reduce. We can be equally expressive by having an equality predicate for every i-interval instead of just for I.)
+NOTE: The only face predicate i-related to Top (`i ⌢ Top`) is Top. So we never need to relate non-reduced and reduced types. (This is only true if Box Top does not reduce. We can be equally expressive by having an equality predicate for every i-interval instead of just for I.)
 
 **Contexts** are not normalized. There is instead a proof-calculus with J-rule as well as an eliminator
 ```
 {C {P : Prop}{p : P} : Uni}{c : C Top tt}{P : Prop}{p : P} -> C P p
 ```
 This is the only approach that allows neutral propositions and still lets substitution preserve definitional equality.
-Note: systems need eliminable propositions, so as to be sure that you can check they are consistent on overlaps.
-Note: therefore, you need to save the context as an argument to a system! Or have compound system elimination rules which is essentially the same.
+
+Note: systems take one term and one extension of that term.
 
 Classification
 --------------
@@ -93,13 +87,6 @@ expression = whbf | reducible
 Type-checker
 ============
 
-Types of metas
---------------
-* implicits
-   * goals: do not inhabit, so that the user can see the constraints.
-* instances: These are just implicits, but you add an additional constraint that the implicit must be equal to an output of the resolution.
-* ~~elaborations (don't solve them, just wait)~~ - smart eliminations are just terms.
-
 Declarations
 ------------
 For a declaration, we check everything at the same time.
@@ -110,7 +97,7 @@ Judgements
 ----------
 * If there are 0 ways to derive the judgement, we issue an error but (if this is the only thread) might want to continue type-checking those judgements that do not presuppose one that has now failed.
 * If there is 1 way to derive the judgement, we add the premises as constraints and remove the current judgement from the constraints.
-* If there are multiple distinct ways (notably, for instance resolution), we postpone as until everything else is blocked or solved, then fork. Every branch in which type-checking succeeds, should ultimately yield the same (definitionally equal) solutions for all original metavariables. Before splitting, announce to the TC-monad the precise judgement that makes you split (with stack-trace). In every thread, announce the assumption you make.
+* If there are multiple distinct ways (notably, for instance resolution), we postpone as long as possible, until everything else is blocked or solved, then fork. Every branch in which type-checking succeeds, should ultimately yield the same (definitionally equal) solutions for all original metavariables. Before splitting, announce to the TC-monad the precise judgement that makes you split (with stack-trace). In every thread, announce the assumption you make.
 * Sometimes (notably for smart elimination) there are multiple possible derivations, but we can pick one by pattern matching on a whnf. The variable/neutral case is included in the pattern match.
 
 At the end of a thread
@@ -118,7 +105,7 @@ At the end of a thread
 A thread can terminate the following ways:
 
 * Failure: a constraint is required that does not hold.
-* Success: after the constraint solving phase, every object of interest is known up to the desired accuracy. **Subsequently**, there exists some joint resolution of all metas satisfying all remaining constraints.
+* Success: all constraints hold and all metavariables have been solved. Future improvement (?): after the constraint solving phase, every object of interest is known up to the desired accuracy. **Subsequently**, there exists some joint resolution of all metas satisfying all remaining constraints.
 * Unresolved metas: after the constraint solving phase, some objects of interest are not known up to the desired accuracy.
 * Unresolved existence of metas: all objects of interest are known up to the desired accuracy, but we failed to spawn a solution to the remaining metas and constraints.
 
@@ -129,13 +116,10 @@ Aftermath
 * If one or more threads succeeded and agree up to the desired accuracy, just report the solutions of the goals.
 * If multiple threads succeeded and do not agree up to the desired accuracy, report the choices of all successful threads.
 
-Discreteness: internal or external?
------------------------------------
-* Δ UniHS is certainly discrete, so it makes sense to use 0-relatedness for conversion checking. However, types whose equality is checked, may be flat in a certain argument, which is then required to be =-related. I guess the solution is that when you define a thing, you can specify that you care about its identity only up to i-relatedness.
-* In directed type theory, this is a different story, as we want to use arrows for coercion checking, and an arrow in Δ UniHS is just a mapsto in UniHS, which is only good enough for conversion if we know our type is functorial. In that case, it seems safe to conclude that if `a :~>: b`, then `F a :~>: F b`, since the morphism `φ` from `F a` to `F b` is such that for every `fa : F a` there is a definitional mapsto from `fa` to `φ fa`. So I guess every time you put something behind the `:`, the type checker will look for an instance of functoriality :-)
-
 Relatedness checking
 --------------------
+(This may not be exactly what I implemented.)
+
 * If checking Top-relatedness: succeed.
 * Weak head normalize everything (no decorations).
 * If the type has eta, eta expand and recurse. †
@@ -159,14 +143,8 @@ Replace the meta with a head and a bunch of new metas. Instance arguments to the
 Term judgement
 --------------
 * Weak head normalize everything (no decorations)
-* If the term is a pure implicit and the type has eta, eta-solve the implicit and recurse.
 * If the term is a pure implicit, block.
 * Do whatever is appropriate given the term's head.
-
-Smart term judgement
---------------------
-* introduce an elaboration-meta
-* require that the smart term elaborates to the meta
 
 Smart elimination judgement
 ---------------------------
@@ -176,11 +154,8 @@ Gamma |- EliminandType @ smart eliminations ~> dumb eliminations
 
 * weak head normalize the type (keep decorations)
 * if there is no elimination, auto-eliminate as long as the type admits.
-* if there is a `.~`, require that it be the last and stop.
 * if the first elimination of the smart term matches the type, use it.
 * otherwise, auto-eliminate once. (This includes peeling off a decoration)
-
-Is this worth the effort!? NO
 
 Substructurality
 ================
@@ -190,7 +165,7 @@ Subsequently, we divide by `i \between`, causing the new shape variable to disap
 
 Instance arguments
 ==================
-If you give a record an instance field, then the corresponding projection is added as a clause to the resolution.
+If you give a record an instance field, then the corresponding projection is added as a clause to the resolution. (This requires a 'var' resolution which just tries to plug in a variable.)
 
 (Co)-inductive types
 ====================

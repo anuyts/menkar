@@ -10,13 +10,13 @@ Currently supported features include:
 * a single universe that (inconsistently) contains itself,
 * implicit arguments in the sense of Agda.
 
-Partly implemented features include:
+Partly implemented (but presently unusable) features include:
 
 * support for multimode modality systems,
 * support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a fibrant universe to a possibly non-fibrant (Hofmann-Streicher)-universe whose codes can be promoted to the type level continuously,
 * a [definitional relatedness](https://doi.org/10.1145/3209108.3209119) checker (despite linking to Nuyts & Devriese, the concept was coined by Andrea Vezzosi), which may allow for the non-consideration of irrelevant subterms during conversion-checking.
 
-Planned and partly implemented features include:
+Planned features include:
 
 * instance arguments - a feature analogous to Agda's [instance arguments](https://doi.org/10.1145/2034574.2034796) and Haskell's typeclasses.
 A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved.
