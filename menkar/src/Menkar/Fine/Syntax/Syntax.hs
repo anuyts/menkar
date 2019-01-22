@@ -58,7 +58,7 @@ data DependentModality (mode :: * -> *) (modty :: * -> *) (v :: *) =
   NonDependentModality (ModedModality mode modty v) | Flat (mode v)
   --DependentModality {dmodDom :: mode v, dmodCod :: mode (Maybe v), dmodMod :: modty v}
   deriving (Functor, Foldable, Traversable, Generic1)
-deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode (Term mode modty), CanSwallow (Term mode modty) modty (Term mode modty)) =>
+LookupResult mode modty (VarOpenCtx v w)deriving instance (Functor mode, Functor modty, CanSwallow (Term mode modty) mode (Term mode modty), CanSwallow (Term mode modty) modty (Term mode modty)) =>
   CanSwallow (Term mode modty) (DependentModality mode modty) (Term mode modty)
 -}
 
@@ -109,6 +109,11 @@ deriving instance (
     CanSwallow (Term mode modty) (content mode modty)
   ) => CanSwallow (Term mode modty) (ModApplied content mode modty)
 
+data LookupResult mode modty v =
+  LookupResultVar v |
+  LookupResultVal (LeftDivided (Telescoped Type ValRHS) mode modty v) |
+  LookupResultNothing
+  deriving (Functor, Foldable, Traversable, Generic1)
 
 {-
 modedLeftAdjoint :: ModedModality mode modty v -> ModedContramodality mode modty v

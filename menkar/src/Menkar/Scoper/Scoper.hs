@@ -59,8 +59,9 @@ qname ::
 qname gamma rawQName =
   let maybeLdivTelescopedVal = lookupQName gamma rawQName
   in case maybeLdivTelescopedVal of
-       Nothing -> scopeFail $ "Not in scope: " ++ Raw.unparse rawQName
-       Just ldivTelescopedVal -> return $ Expr3 $ TermQName rawQName $ unVarFromCtx <$> ldivTelescopedVal
+       LookupResultNothing -> scopeFail $ "Not in scope: " ++ Raw.unparse rawQName
+       LookupResultVar v -> return $ Var3 (unVarFromCtx v)
+       LookupResultVal ldivTelescopedVal -> return $ Expr3 $ TermQName rawQName $ unVarFromCtx <$> ldivTelescopedVal
   
 {-| @'expr3' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 expr3 :: (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
@@ -477,8 +478,8 @@ segments2telescoped gamma (fineSeg:fineSegs) = do
   case maybeNewName of
     Nothing -> return ()
     Just newName -> case lookupQName gamma (Raw.Qualified [] newName) of
-      Nothing -> return ()
-      Just _ -> scopeFail $ "Shadowing is not allowed in variable names; already in scope: " ++ unparse newName
+      LookupResultNothing -> return ()
+      _ -> scopeFail $ "Shadowing is not allowed in variable names; already in scope: " ++ unparse newName
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
 segment ::
@@ -531,8 +532,8 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
         return $ ValRHS fineTm fineTy
     ) gamma
   case lookupQName gamma (Raw.Qualified [] $ _val'name val) of
-    Nothing -> return val
-    Just _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ unparse (_val'name val)
+    LookupResultNothing -> return val
+    _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ unparse (_val'name val)
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule ::

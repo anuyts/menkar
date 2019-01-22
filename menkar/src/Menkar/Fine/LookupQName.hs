@@ -203,60 +203,64 @@ lookupQNameModule modul qname =
   lookupQNameEntryList (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
 lookupQName :: (Multimode mode modty) =>
-  Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided (Telescoped Type ValRHS) mode modty (VarOpenCtx v w))
-lookupQName (CtxEmpty _) qname = Nothing
+  Ctx Type mode modty v w -> Raw.QName -> LookupResult mode modty (VarOpenCtx v w)
+lookupQName (CtxEmpty _) qname = LookupResultNothing
 lookupQName (gamma :.. seg) qname = case _segment'name seg of
-  Nothing -> wkn <$> lookupQName gamma qname
+  Nothing -> wkn $ lookupQName gamma qname
   Just varname -> case qname of
     Raw.Qualified [] name -> if name == varname
-                                then Just $ LeftDivided d (ModedModality d (idMod d)) $
+                                then LookupResultVar (VarFromCtx VarLast)
+                                     {-Just $ LeftDivided d (ModedModality d (idMod d)) $
                                      (wkn $ _segment'modty seg)
-                                     :** Telescoped (ValRHS (Var3 $ VarFromCtx $ VarLast) (wkn $ _segment'content seg))
-                                else wkn <$> lookupQName gamma qname
-    _ -> wkn <$> lookupQName gamma qname
+                                     :** Telescoped (ValRHS (Var3 $ VarFromCtx $ VarLast) (wkn $ _segment'content seg))-}
+                                else wkn $ lookupQName gamma qname
+    _ -> wkn $ lookupQName gamma qname
   where wkn :: (Functor f) => f (VarOpenCtx v' w') -> f (VarOpenCtx (VarExt v') w')
         wkn = fmap (bimap VarWkn id)
         d = ctx'mode $ gamma :.. seg
 lookupQName (seg :^^ gamma) qname = case _segment'name seg of
-  Nothing -> wkn <$> lookupQName gamma qname
+  Nothing -> wkn $ lookupQName gamma qname
   Just varname -> case qname of
     Raw.Qualified [] name -> if name == varname
-                                then Just $ LeftDivided d (ModedModality d (idMod d)) $
+                                then LookupResultVar (VarFromCtx VarFirst)
+                                     {-Just $ LeftDivided d (ModedModality d (idMod d)) $
                                      (VarBeforeCtx <$> _segment'modty seg)
                                      :** Telescoped
                                        (ValRHS (Var3 $ VarFromCtx $ VarFirst) (VarBeforeCtx <$> _segment'content seg))
-                                else wkn <$> lookupQName gamma qname
-    _ -> wkn <$> lookupQName gamma qname
+                                     -}
+                                else wkn $ lookupQName gamma qname
+    _ -> wkn $ lookupQName gamma qname
   where wkn :: (Functor f) => f (VarOpenCtx v' (VarExt w')) -> f (VarOpenCtx (VarLeftExt v') w')
         wkn = fmap varLeftEat
         d = ctx'mode $ seg :^^ gamma
 lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
-  Just t -> Just $ LeftDivided
+  Just t -> LookupResultVal $ LeftDivided
                      d (ModedModality d (idMod d))
                      (wkn t)
-  Nothing -> wkn <$> lookupQName gamma qname
+  Nothing -> wkn $ lookupQName gamma qname
   where wkn :: (Functor f) => f (VarOpenCtx v' w) -> f (VarOpenCtx (VarInModule v') w)
         wkn = fmap (bimap VarInModule id)
         d = ctx'mode $ gamma :<...> modul
 lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
-  Nothing -> Nothing
-  Just (LeftDivided dOrig dmu' seg) ->
+  LookupResultVar v -> LookupResultVar v
+  LookupResultNothing -> LookupResultNothing
+  LookupResultVal (LeftDivided dOrig dmu' seg) ->
     let d = modality'dom dmu
         mu = modality'mod dmu
         d' = modality'dom dmu'
         mu' = modality'mod dmu'
-    in Just $ LeftDivided dOrig (ModedModality d (compMod mu' d' mu)) seg
+    in LookupResultVal $ LeftDivided dOrig (ModedModality d (compMod mu' d' mu)) seg
 
 ------------------------
 
+{-
 lookupQNameTerm :: (Multimode mode modty, Functor (Type mode modty)) =>
   Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided (Telescoped Type Term) mode modty (VarOpenCtx v w))
 lookupQNameTerm gamma qname =
   over leftDivided'content
     (runIdentity . mapTelescopedSimple (\wkn val -> Identity $ _val'term val))
   <$> lookupQName gamma qname
-
-  
+-}
   --over leftDivided'content (_val'term . _modApplied'content . telescoped2modalQuantified) <$> lookupQName gamma qname
 
 ------------------------

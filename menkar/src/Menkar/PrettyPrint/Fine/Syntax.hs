@@ -295,7 +295,8 @@ instance (Functor mode, Functor modty,
     ribbon ("?" ++ show i ++ (if etaFlag then "" else "-no-eta"))
     \\\ ((|++ "}") . (" .{" ++|) . fine2pretty gamma <$> depcies)
   fine2pretty gamma TermWildcard = ribbon "_"
-  fine2pretty gamma (TermQName qname lookupresult) =
+  fine2pretty gamma (TermQName qname lookupresult) = Raw.unparse' qname
+    {-
     case _leftDivided'content lookupresult of
       (dmu :** telescopedVal) -> getConst $ mapTelescopedSc
         (\ wkn gammadelta valRHS -> case _val'term valRHS of
@@ -303,6 +304,7 @@ instance (Functor mode, Functor modty,
             _ -> Const $ Raw.unparse' qname
         ) gamma telescopedVal
       _ -> Raw.unparse' qname
+    -}
     --case _leftDivided'content lookupresult of
     --Telescoped (ValRHS (Var3 v) _) -> var2pretty gamma v
     --_ -> Raw.unparse' qname
