@@ -37,3 +37,9 @@ Some type systems that we aim to support, are:
 * guarded type theory with [time warps](https://arxiv.org/abs/1805.11021v1).
 
 Where applicable, we may or may not want to include diagonals, symmetries and connections in the base category, as well as generalize from binary to n-ary systems.
+
+## Other remarks
+Menkar is still in early development. We absolutely do not guarantee any form of backwards compatibility at this stage.
+
+## More info?
+Don't hesitate to contact me if this project sparks your interest.
