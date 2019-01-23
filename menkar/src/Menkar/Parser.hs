@@ -564,3 +564,6 @@ file = MP.between manySpace MP.eof $ do
   case Raw.entry'header themodule of
     Raw.HeaderToplevelModule -> return $ Raw.File themodule
     _ -> fail $ "Top level entry should be a module : " ++ Raw.unparse themodule
+
+bulk :: CanParse m => m [Raw.AnyEntry]
+bulk = MP.between manySpace MP.eof $ many entry

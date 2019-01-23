@@ -6,6 +6,7 @@ import System.IO
 import qualified Menkar.Parser as P
 import qualified Menkar.Scoper as S
 import Menkar.TC.Monad.DTT
+import qualified Menkar.Raw as Raw
 import Menkar.Fine
 import Menkar.Fine.Multimode.Trivial.MagicContext
 import Menkar.TC
@@ -26,6 +27,7 @@ import GHC.Generics (U1 (..))
 import Control.Monad.Except
 import Data.Foldable
 import Control.Lens
+import System.Exit
 
 printConstraint :: Constraint U1 U1 U1 -> IO ()
 printConstraint c = do
@@ -242,6 +244,27 @@ checkMagic = interactAfterTask $ do
   
 mainArgs :: [String] -> IO ()
 mainArgs args = do
+  rawEntries <- fmap concat $ sequenceA $ args <&> \path -> do
+    code <- readFile path
+    let errorOrRawFile = P.parse P.bulk path code
+    case errorOrRawFile of
+      Left e -> do
+          putStrLn "-------------"
+          putStrLn "PARSING ERROR"
+          putStrLn "-------------"
+          putStrLn $ "path: " ++ path
+          putStrLn $ MP.errorBundlePretty e
+          exitSuccess
+      Right rawEntries -> return rawEntries
+  interactAfterTask $ do
+    fineModule <- S.bulk magicContext rawEntries
+    addNewConstraint
+      (JudEntry magicContext fineModule)
+      Nothing
+      "Type-checking everything."
+    typeCheck
+{-
+mainArgs args = do
   case args of
     [path] -> do
       code <- readFile path
@@ -261,6 +284,7 @@ mainArgs args = do
                 typeCheck
     xs -> do
       putStrLn "This program should be given a file path as its sole argument."
+-}
 
 main :: IO ()
 main = mainArgs =<< (System.Environment.getArgs :: IO [String])

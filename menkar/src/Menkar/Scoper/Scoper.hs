@@ -602,3 +602,19 @@ file ::
   Raw.File ->
   sc (Entry mode modty v)
 file gamma rawFile = entry gamma (Raw.file2nestedModules rawFile)
+
+bulk ::
+  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
+  Ctx Type mode modty v Void ->
+  [Raw.AnyEntry] ->
+  sc (Entry mode modty v)
+bulk gamma rawEntries = do
+    let rawModuleLHS = Raw.Declaration
+          []
+          (Raw.DeclNamesModule "Root")
+          (Raw.Telescope [])
+          Raw.DeclContentEmpty
+    let rawModuleRHS = Raw.RHSModule $ rawEntries
+    let rawModule = Raw.EntryLR Raw.HeaderModule rawModuleLHS rawModuleRHS
+    entry gamma rawModule
+  
