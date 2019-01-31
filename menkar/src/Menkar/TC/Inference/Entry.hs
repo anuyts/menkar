@@ -8,6 +8,7 @@ import Menkar.Fine.Judgement
 import Data.Void
 import Data.Foldable
 import Data.Functor.Compose
+import Data.List (inits)
 import Control.Monad.State.Lazy
 
 checkSegment :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
@@ -70,11 +71,11 @@ checkModuleRHS :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
   ModuleRHS mode modty v ->
   tc ()
 checkModuleRHS parent gamma (ModuleRHS (Compose entries)) =
-  flip evalStateT [] $ forM_ (reverse entries) $ \ entry -> do
-    prevEntries <- get
-    lift $ checkEntry parent (gamma :<...> ModuleRHS (Compose prevEntries)) entry
-    put $ (fmap VarFromCtx <$> entry) : prevEntries
-  --sequenceA_ $ checkEntry parent (gamma :<...> _modul) <$> reverse entries
+  forM_ revEntriesWithPreds $ \ (entry, prevEntries) -> do
+    checkEntry parent (gamma :<...> ModuleRHS (Compose prevEntries)) entry
+  where revEntries = reverse entries
+        revEntries' = fmap (fmap (fmap VarFromCtx)) revEntries
+        revEntriesWithPreds = zip revEntries (inits revEntries')
 
 -------------------------
 
