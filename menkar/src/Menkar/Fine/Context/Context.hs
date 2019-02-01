@@ -14,20 +14,21 @@ import GHC.Generics
 import Data.Functor.Identity
 import Control.Lens
 import Data.Proxy
+import Data.Kind
 
 {-| @'mapTelescoped' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
-mapTelescoped :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty)) =>
-  (forall w . (v -> w) -> Ctx ty mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
-  (Ctx ty mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+mapTelescoped :: (Functor h, SysTrav sys, Functor (ty sys)) =>
+  (forall w . (v -> w) -> Ctx ty sys w Void -> rhs1 sys w -> h (rhs2 sys w)) ->
+  (Ctx ty sys v Void -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescoped f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescoped (f . (. VarWkn)) (gamma :.. (VarFromCtx <$> seg)) stuff
 mapTelescoped f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescoped f ((VarFromCtx <$> dmu) :\\ gamma) stuff
 {-| @'mapTelescopedDB' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
-mapTelescopedDB :: (Functor h, Functor mode, Functor modty, Functor (ty mode modty), DeBruijnLevel v) =>
-  (forall w . DeBruijnLevel w => (v -> w) -> Ctx ty mode modty w Void -> rhs1 mode modty w -> h (rhs2 mode modty w)) ->
-  (Ctx ty mode modty v Void -> Telescoped ty rhs1 mode modty v -> h (Telescoped ty rhs2 mode modty v))
+mapTelescopedDB :: (Functor h, SysTrav sys, Functor (ty sys), DeBruijnLevel v) =>
+  (forall w . DeBruijnLevel w => (v -> w) -> Ctx ty sys w Void -> rhs1 sys w -> h (rhs2 sys w)) ->
+  (Ctx ty sys v Void -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedDB f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescopedDB f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescopedDB (f . (. VarWkn)) (gamma :.. (VarFromCtx <$> seg)) stuff
@@ -36,52 +37,49 @@ mapTelescopedDB f gamma (dmu :** stuff) = (dmu :**) <$>
 
 --------------------------
 
-{- | @'Ctx' t mode modty v w@ is the type of contexts with
+{- | @'Ctx' t sys v w@ is the type of contexts with
      types of type @t@,
      modes of type @mode@,
      modalities of type @modty@,
      introducing @v@-many variables,
      and itself depending on variables of type @w@.
 -}
-data Ctx (t :: (* -> *) -> (* -> *) -> * -> *) (mode :: * -> *) (modty :: * -> *) (v :: *) (w :: *) where
+data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) (w :: *) where
   {-| Empty context. -}
-  CtxEmpty :: mode w -> Ctx t mode modty Void w
+  CtxEmpty :: Mode sys w -> Ctx t sys Void w
   {-| Extended context -}
-  (:..) :: Ctx t mode modty v w -> Segment t mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarExt v) w
+  (:..) :: Ctx t sys v w -> Segment t sys (VarOpenCtx v w) -> Ctx t sys (VarExt v) w
   {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
       it right away and annotate some further variables as quantified over the new variable. -}
-  (:^^) :: Segment t mode modty w -> Ctx t mode modty v (VarExt w) -> Ctx t mode modty (VarLeftExt v) w
+  (:^^) :: Segment t sys w -> Ctx t sys v (VarExt w) -> Ctx t sys (VarLeftExt v) w
   {-| Context extended with siblings defined in a certain module. -}
-  (:<...>) :: Ctx t mode modty v w -> ModuleRHS mode modty (VarOpenCtx v w) -> Ctx t mode modty (VarInModule v) w
+  (:<...>) :: Ctx t sys v w -> ModuleRHS sys (VarOpenCtx v w) -> Ctx t sys (VarInModule v) w
   {-| Context divided by a modality. -}
-  (:\\) :: ModedModality mode modty (VarOpenCtx v w) -> Ctx t mode modty v w -> Ctx t mode modty v w
+  (:\\) :: ModedModality sys (VarOpenCtx v w) -> Ctx t sys v w -> Ctx t sys v w
 infixl 3 :.., :^^, :<...>, :\\
-deriving instance (Functor mode, Functor modty, Functor (t mode modty)) => Functor (Ctx t mode modty v)
-deriving instance (Foldable mode, Foldable modty, Foldable (t mode modty)) => Foldable (Ctx t mode modty v)
-deriving instance (Traversable mode, Traversable modty, Traversable (t mode modty)) => Traversable (Ctx t mode modty v)
+deriving instance (SysTrav sys, Functor (t sys)) => Functor (Ctx t sys v)
+deriving instance (SysTrav sys, Foldable (t sys)) => Foldable (Ctx t sys v)
+deriving instance (SysTrav sys, Traversable (t sys)) => Traversable (Ctx t sys v)
 instance (
-    Functor mode,
-    Functor modty,
-    Functor (t mode modty),
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (t mode modty)
+    SysSyntax (Term sys) sys,
+    Functor (t sys),
+    CanSwallow (Term sys) (t sys)
   ) =>
-    CanSwallow (Term mode modty) (Ctx t mode modty v) where
+    CanSwallow (Term sys) (Ctx t sys v) where
   swallow (CtxEmpty d) = CtxEmpty $ swallow d
   swallow (gamma :.. seg) = swallow gamma :.. swallow (fmap sequenceA seg)
   swallow (seg :^^ gamma) = swallow seg :^^ swallow (fmap sequenceA gamma)
   swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
   swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
 
-ctx'mode :: Multimode mode modty => Ctx ty mode modty v w -> mode (VarOpenCtx v w)
+ctx'mode :: Multimode sys => Ctx ty sys v w -> Mode sys (VarOpenCtx v w)
 ctx'mode (CtxEmpty d) = VarBeforeCtx <$> d
 ctx'mode (gamma :.. seg) = bimap VarWkn id <$> ctx'mode gamma
 ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
 ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
 ctx'mode (dmu :\\ gamma) = modality'dom dmu
 
-haveDB :: Ctx ty mode modty v Void -> ((DeBruijnLevel v) => t) -> t
+haveDB :: Ctx ty sys v Void -> ((DeBruijnLevel v) => t) -> t
 haveDB (CtxEmpty d) t = t
 haveDB (gamma :.. seg) t = haveDB gamma t
 haveDB (seg :^^ gamma) t = todo
@@ -89,31 +87,25 @@ haveDB (gamma :<...> modul) t = haveDB gamma t
 haveDB (dmu :\\ gamma) t = haveDB gamma t
 
 mapSegment :: (
-    Functor mode,
-    Functor modty,
-    Functor (ty0 mode modty),
-    Functor (ty1 mode modty),
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (ty0 mode modty),
-    CanSwallow (Term mode modty) (ty1 mode modty)
+    SysTrav sys,
+    Functor (ty0 sys),
+    Functor (ty1 sys),
+    CanSwallow (Term sys) (ty0 sys),
+    CanSwallow (Term sys) (ty1 sys)
   ) =>
-  (forall mode' modty' v' . ty0 mode' modty' v' -> ty1 mode' modty' v') ->
-  Segment ty0 mode modty v -> Segment ty1 mode modty v
+  (forall sys' v' . ty0 sys' v' -> ty1 sys' v') ->
+  Segment ty0 sys v -> Segment ty1 sys v
 mapSegment f seg = over decl'content f seg
   
 mapCtx :: (
-    Functor mode,
-    Functor modty,
-    Functor (ty0 mode modty),
-    Functor (ty1 mode modty),
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (ty0 mode modty),
-    CanSwallow (Term mode modty) (ty1 mode modty)
+    SysTrav sys,
+    Functor (ty0 sys),
+    Functor (ty1 sys),
+    CanSwallow (Term sys) (ty0 sys),
+    CanSwallow (Term sys) (ty1 sys)
   ) =>
-  (forall mode' modty' v' . ty0 mode' modty' v' -> ty1 mode' modty' v') ->
-  Ctx ty0 mode modty v w -> Ctx ty1 mode modty v w
+  (forall sys' v' . ty0 sys' v' -> ty1 sys' v') ->
+  Ctx ty0 sys v w -> Ctx ty1 sys v w
 mapCtx f (CtxEmpty d) = CtxEmpty d
 mapCtx f (gamma :.. seg) = mapCtx f gamma :.. mapSegment f seg
 mapCtx f (seg :^^ gamma) = mapSegment f seg :^^ mapCtx f gamma
@@ -121,48 +113,39 @@ mapCtx f (gamma :<...> modul) = mapCtx f gamma :<...> modul
 mapCtx f (dmu :\\ gamma) = dmu :\\ mapCtx f gamma
 
 duplicateCtx :: (
-    Functor mode,
-    Functor modty,
-    Functor (ty mode modty),
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (ty mode modty)
+    SysTrav sys,
+    Functor (ty sys),
+    CanSwallow (Term sys) (ty sys)
   ) =>
-  Ctx ty mode modty v w -> Ctx (Pair3 ty) mode modty v w
-duplicateCtx = mapCtx (\ty -> Pair3 ty ty)
+  Ctx ty sys v w -> Ctx (Twice2 ty) sys v w
+duplicateCtx = mapCtx (\ty -> Twice2 ty ty)
 
 fstCtx, sndCtx :: (
-    Functor mode,
-    Functor modty,
-    Functor (ty mode modty),
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (ty mode modty)
+    SysTrav sys,
+    Functor (ty sys),
+    CanSwallow (Term sys) (ty sys)
   ) =>
-  Ctx (Pair3 ty) mode modty v w -> Ctx ty mode modty v w
-fstCtx = mapCtx (\(Pair3 ty1 ty2) -> ty1)
-sndCtx = mapCtx (\(Pair3 ty1 ty2) -> ty2)
+  Ctx (Twice2 ty) sys v w -> Ctx ty sys v w
+fstCtx = mapCtx (\(Twice2 ty1 ty2) -> ty1)
+sndCtx = mapCtx (\(Twice2 ty1 ty2) -> ty2)
 
 flipCtx :: (
-    Functor mode,
-    Functor modty,
-    Functor (ty mode modty),
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty,
-    CanSwallow (Term mode modty) (ty mode modty)
+    SysTrav sys,
+    Functor (ty sys),
+    CanSwallow (Term sys) (ty sys)
   ) =>
-  Ctx (Pair3 ty) mode modty v w -> Ctx (Pair3 ty) mode modty v w
-flipCtx = mapCtx (\(Pair3 ty1 ty2) -> Pair3 ty2 ty1)
+  Ctx (Twice2 ty) sys v w -> Ctx (Twice2 ty) sys v w
+flipCtx = mapCtx (\(Twice2 ty1 ty2) -> Twice2 ty2 ty1)
 
-ctx'sizeProxy :: Ctx ty mode modty v w -> Proxy v
+ctx'sizeProxy :: Ctx ty sys v w -> Proxy v
 ctx'sizeProxy gamma = Proxy
 
 {-
 -- TODO: you need a left division here!
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`
 -- because `f <$> (g <$> x)` is much less efficient than `f . g <$> x`.
-getSegment :: (Functor mode, Functor modty, Functor (t mode modty)) =>
-  Ctx t mode modty v w -> v -> Segment t mode modty (VarOpenCtx v w)
+getSegment :: (Functor mode, Functor modty, Functor (t sys)) =>
+  Ctx t sys v w -> v -> Segment t sys (VarOpenCtx v w)
 getSegment CtxEmpty _ = unreachable
 getSegment (gamma :.. segT) VarLast = bimap VarWkn id <$> segT
 getSegment (gamma :.. segT) (VarWkn v) = bimap VarWkn id <$> getSegment gamma v
