@@ -40,7 +40,7 @@ class (
   -}
   newMetaTermNoCheck :: (DeBruijnLevel v) =>
     Maybe (Constraint sys)
-    -> rel v {-^ Degree up to which it should be solved -}
+    -> Degree sys v {-^ Degree up to which it should be solved -}
     -> Ctx Type sys v Void
     -> Bool {-^ Whether it can be solved using eta-expansion. -}
     -> String
@@ -134,7 +134,7 @@ addNewConstraint judgement parent reason = addConstraint =<< defConstraint judge
 -- | Not to be used by the Scoper.
 newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
-  rel v ->
+  Degree sys v ->
   Ctx Type sys v Void ->
   Type sys v ->
   Bool ->
@@ -157,7 +157,7 @@ newMetaTerm maybeParent deg gamma ty etaFlag reason = do
 -- | Not to be used by the Scoper.
 newMetaType :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
-  rel v ->
+  Degree sys v ->
   Ctx Type sys v Void ->
   String ->
   tc (Type sys v)
@@ -172,7 +172,7 @@ newMetaType maybeParent deg gamma reason = do
 -- | Not to be used by the Scoper.
 newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
-  rel v ->
+  Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Type sys v ->
   String ->

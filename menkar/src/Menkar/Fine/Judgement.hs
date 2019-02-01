@@ -57,7 +57,7 @@ data Judgement (sys :: KSys) where
     Type sys v ->
     Judgement sys
   JudTypeRel :: (DeBruijnLevel v) =>
-    rel v ->
+    Degree sys v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice2 Type sys v ->
     Judgement sys
@@ -70,7 +70,7 @@ data Judgement (sys :: KSys) where
     Type sys v ->
     Judgement sys
   JudTermRel :: (DeBruijnLevel v) =>
-    rel v ->
+    Degree sys v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice2 Term sys v ->
     Twice2 Type sys v ->

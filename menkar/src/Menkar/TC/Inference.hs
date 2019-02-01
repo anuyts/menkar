@@ -26,29 +26,29 @@ import Control.Monad.Writer.Lazy
 
 -------
 
-checkEtaForNormalType ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Term mode modty v ->
-  UniHSConstructor mode modty v ->
+checkEtaForNormalType :: forall sys tc v .
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Term sys v ->
+  UniHSConstructor sys v ->
   tc ()
 checkEtaForNormalType parent gamma t (UniHS _) = return ()
 checkEtaForNormalType parent gamma t (Pi piBinding) = do
-  let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Pi piBinding
+  let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ Pi piBinding
   body <- newMetaTerm
             (Just parent)
-            eqDeg
+            (eqDeg :: Degree sys _)
             (gamma :.. (VarFromCtx <$> binding'segment piBinding))
             (Type $ binding'body piBinding)
             True
             "Infer function body."
   addNewConstraint
     (JudTermRel
-      eqDeg
+      (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
-      (Pair3 t (Expr3 $ TermCons $ Lam $ Binding (binding'segment piBinding) body))
-      (Pair3 ty ty)
+      (Twice2 t (Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) body))
+      (Twice2 ty ty)
     )
     (Just parent)
     "Eta-expand"
@@ -56,60 +56,60 @@ checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
   in  if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
       then do
-        let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
+        let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
         tmFst <- newMetaTerm
                    (Just parent)
-                   eqDeg
+                   (eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content $ binding'segment $ sigmaBinding)
                    True
                    "Infer first projection."
         tmSnd <- newMetaTerm
                    (Just parent)
-                   eqDeg
+                   (eqDeg :: Degree sys _)
                    gamma
-                   (Type $ substLast3 tmFst $ binding'body sigmaBinding)
+                   (Type $ substLast2 tmFst $ binding'body sigmaBinding)
                    True
                    "Infer second projection."
         addNewConstraint
           (JudTermRel
-            eqDeg
+            (eqDeg :: Degree sys _)
             (duplicateCtx gamma)
-            (Pair3 t (Expr3 $ TermCons $ Pair sigmaBinding tmFst tmSnd))
-            (Pair3 ty ty)
+            (Twice2 t (Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd))
+            (Twice2 ty ty)
           )
           (Just parent)
           "Eta-expand."
       else return ()
 checkEtaForNormalType parent gamma t EmptyType = return ()
 checkEtaForNormalType parent gamma t UnitType =
-  let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ UnitType
+  let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ UnitType
   in  addNewConstraint
         (JudTermRel
-          eqDeg
+          (eqDeg :: Degree sys _)
           (duplicateCtx gamma)
-          (Pair3 t (Expr3 $ TermCons $ ConsUnit))
-          (Pair3 ty ty)
+          (Twice2 t (Expr2 $ TermCons $ ConsUnit))
+          (Twice2 ty ty)
         )
         (Just parent)
         "Eta-expand"
 checkEtaForNormalType parent gamma t (BoxType segBox) =
   if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
   then do
-    let ty = Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType segBox
+    let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType segBox
     tmContent <- newMetaTerm
                    (Just parent)
-                   eqDeg
+                   (eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content segBox)
                    True
                    "Infer box content."
     addNewConstraint
       (JudTermRel
-        eqDeg
+        (eqDeg :: Degree sys _)
         (duplicateCtx gamma)
-        (Pair3 t (Expr3 $ TermCons $ ConsBox segBox tmContent))
-        (Pair3 ty ty)
+        (Twice2 t (Expr2 $ TermCons $ ConsBox segBox tmContent))
+        (Twice2 ty ty)
       )
       (Just parent)
       "Eta-expand"
@@ -119,11 +119,11 @@ checkEtaForNormalType parent gamma t NatType = return ()
 checkEtaForNormalType parent gamma t (EqType _ _ _) = return ()
 
 checkEta ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 checkEta parent gamma t (Type ty) = do
   (whnTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
@@ -134,8 +134,8 @@ checkEta parent gamma t (Type ty) = do
                    (Just parent)
                    "Weak-head-normalized type."
       case whnTy of
-        Var3 v -> return ()
-        Expr3 whnTyNV -> case whnTyNV of
+        Var2 v -> return ()
+        Expr2 whnTyNV -> case whnTyNV of
           TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons
           TermCons _ -> tcFail parent' $ "Type is not a type."
           TermElim _ _ _ _ -> return ()
@@ -152,8 +152,8 @@ checkEta parent gamma t (Type ty) = do
 -------
 
 checkConstraint ::
-  (MonadTC mode modty rel tc) =>
-  Constraint mode modty rel -> tc ()
+  (MonadTC sys tc) =>
+  Constraint sys -> tc ()
 checkConstraint parent = case constraint'judgement parent of
   
   {-
@@ -181,18 +181,18 @@ checkConstraint parent = case constraint'judgement parent of
              (Just parent)
              topDeg
              (ModedModality dataMode irrMod :\\ gamma)
-             (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+             (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
              "Infer universe level of type."-}
     addNewConstraint
       (JudTerm gamma ty (hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) {-lvl-}))
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
 
-  JudTypeRel deg gamma (Pair3 ty1 ty2) -> checkTypeRel parent deg gamma ty1 ty2
+  JudTypeRel deg gamma (Twice2 ty1 ty2) -> checkTypeRel parent deg gamma ty1 ty2
 
   JudTerm gamma t ty -> checkTerm parent gamma t ty
 
-  JudTermRel deg gamma (Pair3 t1 t2) (Pair3 ty1 ty2) -> checkTermRel parent deg gamma t1 t2 ty1 ty2
+  JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> checkTermRel parent deg gamma t1 t2 ty1 ty2
 
   JudEta gamma t tyT -> checkEta parent gamma t tyT
 
