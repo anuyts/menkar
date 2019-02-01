@@ -8,7 +8,8 @@ import qualified Menkar.Scoper as S
 import Menkar.TC.Monad.DTT
 import qualified Menkar.Raw as Raw
 import Menkar.Fine
-import Menkar.Fine.Multimode.Trivial.MagicContext
+import Menkar.Systems.Trivial.Fine
+import Menkar.Systems.Trivial.MagicContext
 import Menkar.TC
 
 import Menkar.PrettyPrint.Fine
@@ -29,12 +30,12 @@ import Data.Foldable
 import Control.Lens
 import System.Exit
 
-printConstraint :: Constraint U1 U1 U1 -> IO ()
+printConstraint :: Constraint Trivial -> IO ()
 printConstraint c = do
   putStrLn $ "Constraint " ++ show (constraint'id c) ++ ":"
   putStr $ show $ constraint'judgement c
 
-printTrace :: Constraint U1 U1 U1 -> IO ()
+printTrace :: Constraint Trivial -> IO ()
 printTrace c = do
   printConstraint c
   putStrLn ""
@@ -57,8 +58,8 @@ printMetaInfo :: DeBruijnLevel v => TCState m -> Int -> MetaInfo m v -> IO ()
 printMetaInfo s meta info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  let tMeta = Expr3 $ TermMeta True meta $ Compose $ Var3 <$> listAll Proxy
-  putStr $ show $ JudTerm (_metaInfo'context info) tMeta (Type $ Expr3 $ TermWildcard)
+  let tMeta = Expr2 $ TermMeta True meta $ Compose $ Var2 <$> listAll Proxy
+  putStr $ show $ JudTerm (_metaInfo'context info) tMeta (Type $ Expr2 $ TermWildcard)
   putStrLn $ ""
   case _metaInfo'maybeSolution info of
     Right solutionInfo -> do
