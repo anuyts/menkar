@@ -5,7 +5,7 @@ module Menkar.TC.Monad.DTT where
 import Menkar.Basic
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
-import Menkar.Fine.Multimode.Trivial
+import Menkar.Systems.Trivial.Fine
 import Menkar.TC.Monad
 import Menkar.TC.Inference
 import qualified Menkar.Raw as Raw
@@ -39,20 +39,20 @@ import Unsafe.Coerce
 type TCResult = () --TCSuccess | TCWaiting
 
 data SolutionInfo m v = SolutionInfo {
-  _solutionInfo'parent :: Constraint U1 U1 U1,
-  _solutionInfo'solution :: Term U1 U1 v
+  _solutionInfo'parent :: Constraint Trivial,
+  _solutionInfo'solution :: Term Trivial v
   }
 
 data BlockInfo m v = BlockInfo {
-  _blockInfo'parent :: Constraint U1 U1 U1,
+  _blockInfo'parent :: Constraint Trivial,
   _blockInfo'reasonBlock :: String,
   _blockInfo'reasonAwait :: String,
-  _blockInfo'cont :: (Maybe (Term U1 U1 v) -> TCT m TCResult)
+  _blockInfo'cont :: (Maybe (Term Trivial v) -> TCT m TCResult)
   }
 
 data MetaInfo m v = MetaInfo {
-  _metaInfo'maybeParent :: Maybe (Constraint U1 U1 U1),
-  _metaInfo'context :: Ctx Type U1 U1 v Void,
+  _metaInfo'maybeParent :: Maybe (Constraint Trivial),
+  _metaInfo'context :: Ctx Type Trivial v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
   {-| If solved, info about the solution.
@@ -72,7 +72,7 @@ isBlockingStuff metaInfo = case _metaInfo'maybeSolution metaInfo of
 isSolved (MetaInfo maybeParent gamma reason maybeSolution) = isRight maybeSolution
 
 data TCReport = TCReport {
-  _tcReport'parent :: Constraint U1 U1 U1,
+  _tcReport'parent :: Constraint Trivial,
   _tcReport'reason :: String
   }
 
@@ -80,7 +80,7 @@ data TCState m = TCState {
   _tcState'metaCounter :: Int,
   _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo m)),
   _tcState'constraintCounter :: Int,
-  _tcState'constraintMap :: IntMap (Constraint U1 U1 U1),
+  _tcState'constraintMap :: IntMap (Constraint Trivial),
   _tcState'reports :: [TCReport],
   _tcState'newTasks :: [TCT m ()], -- always empty unless during constraint check; to be run from back to front
   _tcState'tasks :: [TCT m ()] -- to be run from front to back
@@ -106,10 +106,10 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 data TCError m =
   TCErrorConstraintBound |
   {-| The outermost blocked @awaitMeta@ is first in the list. -}
-  TCErrorBlocked (Constraint U1 U1 U1) String [(Int, ForSomeDeBruijnLevel (BlockInfo m))] |
+  TCErrorBlocked (Constraint Trivial) String [(Int, ForSomeDeBruijnLevel (BlockInfo m))] |
   TCErrorTCFail TCReport |
   TCErrorScopeFail String |
-  TCErrorInternal (Maybe (Constraint U1 U1 U1)) String
+  TCErrorInternal (Maybe (Constraint Trivial)) String
 
 newtype TCT m a = TCT {unTCT :: MContT TCResult (ExceptT (TCError m) (StateT (TCState m) ({-ListT-}  m))) a}
   deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
@@ -160,7 +160,7 @@ typeCheck = do
       task
       typeCheck
 
-instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
+instance {-# OVERLAPPING #-} (Monad m) => MonadScoper Trivial (TCT m) where
   
   annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
     (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
@@ -171,8 +171,8 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper U1 U1 U1 (TCT m) where
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = do
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
-    let depcies = Compose $ Var3 <$> listAll Proxy
-    return $ Expr3 $ TermMeta etaFlag meta depcies
+    let depcies = Compose $ Var2 <$> listAll Proxy
+    return $ Expr2 $ TermMeta etaFlag meta depcies
 
   newMetaMode maybeParent gamma reason = return U1
 
@@ -198,12 +198,12 @@ catchBlocks action = resetDC $ action `catchError` \case
       -}
   e -> throwError e
 
-checkConstraintTC :: (Monad m) => Constraint U1 U1 U1 -> TCT m ()
+checkConstraintTC :: (Monad m) => Constraint Trivial -> TCT m ()
 checkConstraintTC c = catchBlocks $ do
   checkConstraint c
   commitTasks
   
-instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
+instance {-# OVERLAPPING #-} (Monad m) => MonadTC Trivial (TCT m) where
   
   --newConstraintID = tcState'constraintCounter <<%= (+1)
   defConstraint jud maybeParent reason = do
@@ -312,11 +312,11 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC U1 U1 U1 (TCT m) where
     typeCheck
 
 selfcontainedNoSched :: (Monad m) =>
-  Constraint U1 U1 U1 -> TCT m a -> TCT m a
+  Constraint Trivial -> TCT m a -> TCT m a
 selfcontainedNoSched parent (TCT ma) = TCT $ mapMContT (selfcontainedNoContNoSched parent) ma
 
 selfcontainedNoContNoSched :: (Monad m) =>
-  Constraint U1 U1 U1 ->
+  Constraint Trivial ->
   ExceptT (TCError m) (StateT (TCState m) m) a ->
   ExceptT (TCError m) (StateT (TCState m) m) a
 selfcontainedNoContNoSched parent ma = do

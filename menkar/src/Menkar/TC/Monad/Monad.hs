@@ -111,7 +111,7 @@ class (
   tcBlock :: Constraint sys -> String -> tc a
   tcReport :: Constraint sys -> String -> tc ()
   tcFail :: Constraint sys -> String -> tc a
-  leqMod :: modty v -> modty v -> tc Bool
+  leqMod :: Modality sys v -> Modality sys v -> tc Bool
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
   --selfcontained :: Constraint sys -> tc () -> tc ()
 
