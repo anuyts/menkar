@@ -4,38 +4,40 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw
+
 import Data.Bifunctor
 import Data.Maybe
 import Control.Lens
 import Data.Functor.Identity
 import Control.Exception.AssertFalse
 import Data.Void
+import Data.Kind hiding (Type)
 
 -- TODOMOD means todo for modalities
 
 ----------------------------
 
-telescoped2lambda :: Telescoped Type ValRHS mode modty v -> Term mode modty v
+telescoped2lambda :: Telescoped Type ValRHS sys v -> Term sys v
 telescoped2lambda (Telescoped valRHS) = _val'term valRHS
-telescoped2lambda (seg :|- telescopedValRHS) = Expr3 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedValRHS)
-telescoped2lambda (dmu :** telescopedValRHS) = Expr3 $ TermCons $ ConsBox
+telescoped2lambda (seg :|- telescopedValRHS) = Expr2 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedValRHS)
+telescoped2lambda (dmu :** telescopedValRHS) = Expr2 $ TermCons $ ConsBox
   (Declaration (DeclNameSegment Nothing) dmu Explicit (Type $ telescoped2pi telescopedValRHS))
   (telescoped2lambda telescopedValRHS)
 
-telescoped2pi :: Telescoped Type ValRHS mode modty v -> Term mode modty v
+telescoped2pi :: Telescoped Type ValRHS sys v -> Term sys v
 telescoped2pi (Telescoped valRHS) = case _val'type valRHS of Type ty -> ty
-telescoped2pi (seg :|- telescopedValRHS) = Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedValRHS)
-telescoped2pi (dmu :** telescopedValRHS) = Expr3 $ TermCons $ ConsUniHS $ BoxType $
+telescoped2pi (seg :|- telescopedValRHS) = Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedValRHS)
+telescoped2pi (dmu :** telescopedValRHS) = Expr2 $ TermCons $ ConsUniHS $ BoxType $
   Declaration (DeclNameSegment Nothing) dmu Explicit (Type $ telescoped2pi telescopedValRHS)
 
-telescoped2quantified :: (Functor mode, Functor modty) =>
-  Telescoped Type ValRHS mode modty v -> ValRHS mode modty v
+telescoped2quantified :: (SysTrav sys) =>
+  Telescoped Type ValRHS sys v -> ValRHS sys v
 telescoped2quantified telescopedVal = ValRHS
   (telescoped2lambda $ telescopedVal)
   (Type $ telescoped2pi $ telescopedVal)
 
-telescoped2modalQuantified :: (Multimode mode modty) =>
-  Telescoped Type ValRHS mode modty v -> ModApplied ValRHS mode modty v
+telescoped2modalQuantified :: (Multimode sys) =>
+  Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v
 telescoped2modalQuantified (dmu :** telescopedVal) =
   let ModApplied dmu' val = telescoped2modalQuantified telescopedVal
   in  ModApplied (compModedModality dmu dmu') val
@@ -45,7 +47,7 @@ telescoped2modalQuantified telescopedVal = ModApplied (idModedModality wildMode)
 
 {-
 lookupQNameEntryList :: (Functor mode, Functor modty) =>
-  [Entry mode modty v] -> Raw.QName -> Maybe (Term mode modty v, Type mode modty v, ModedModality mode modty v)
+  [Entry sys v] -> Raw.QName -> Maybe (Term sys v, Type sys v, ModedModality sys v)
 lookupQNameEntryList [] qname = Nothing
 lookupQNameEntryList (EntryVal val : entries) qname
   | qname == Raw.Qualified [] (_val'name val) = Just $ runIdentity $
@@ -70,7 +72,7 @@ lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
 
 {-
 lookupQNameEntryListTerm :: (Functor mode, Functor modty) =>
-  [Entry mode modty v] -> Raw.QName -> Maybe (Term mode modty v)
+  [Entry sys v] -> Raw.QName -> Maybe (Term sys v)
 lookupQNameEntryListTerm [] qname = Nothing
 lookupQNameEntryListTerm (EntryVal val : entries) qname
   | qname == Raw.Qualified [] (_val'name val) = Just $ telescoped2lambda $ runIdentity $
@@ -88,12 +90,12 @@ lookupQNameEntryListTerm (EntryModule modul : entries) qname = case qname of
     else lookupQNameEntryListTerm entries qname
 
 lookupQNameModuleTerm :: (Functor mode, Functor modty) =>
-  ModuleRHS mode modty v -> Raw.QName -> Maybe (Term mode modty v)
+  ModuleRHS sys v -> Raw.QName -> Maybe (Term sys v)
 lookupQNameModuleTerm modul qname =
   lookupQNameEntryListTerm (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
-lookupQNameTerm :: (Functor mode, Functor modty, Functor (ty mode modty)) =>
-  Ctx ty mode modty v w -> Raw.QName -> Maybe (Term mode modty (VarOpenCtx v w))
+lookupQNameTerm :: (Functor mode, Functor modty, Functor (ty sys)) =>
+  Ctx ty sys v w -> Raw.QName -> Maybe (Term sys (VarOpenCtx v w))
 lookupQNameTerm CtxEmpty qname = Nothing
 lookupQNameTerm (gamma :.. seg) qname = case _segment'name seg of
   Nothing -> wkn $ lookupQNameTerm gamma qname
@@ -127,7 +129,7 @@ lookupQNameTerm (dkappa :\\ gamma) qname = lookupQNameTerm gamma qname
 
 {-
 lookupQNameEntryListType :: (Functor mode, Functor modty) =>
-  [Entry mode modty v] -> Raw.QName -> Maybe (Type mode modty v)
+  [Entry sys v] -> Raw.QName -> Maybe (Type sys v)
 lookupQNameEntryListType [] qname = Nothing
 lookupQNameEntryListType (EntryVal val : entries) qname
   | qname == Raw.Qualified [] (_val'name val) = Just $ Type . telescoped2pi $ runIdentity $
@@ -145,12 +147,12 @@ lookupQNameEntryListType (EntryModule modul : entries) qname = case qname of
     else lookupQNameEntryListType entries qname
 
 lookupQNameModuleType :: (Functor mode, Functor modty) =>
-  ModuleRHS mode modty v -> Raw.QName -> Maybe (Type mode modty v)
+  ModuleRHS sys v -> Raw.QName -> Maybe (Type sys v)
 lookupQNameModuleType modul qname =
   lookupQNameEntryListType (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
 lookupQNameType :: (Functor mode, Functor modty) =>
-  Ctx Type mode modty v w -> Raw.QName -> Maybe (Type mode modty (VarOpenCtx v w))
+  Ctx Type sys v w -> Raw.QName -> Maybe (Type sys (VarOpenCtx v w))
 lookupQNameType CtxEmpty qname = Nothing
 lookupQNameType (gamma :.. seg) qname = case _segment'name seg of
   Nothing -> wkn $ lookupQNameType gamma qname
@@ -182,8 +184,8 @@ lookupQNameType (dkappa :\\ gamma) qname = lookupQNameType gamma qname
 
 ----------------------------
 
-lookupQNameEntryList :: (Functor mode, Functor modty) =>
-  [Entry mode modty v] -> Raw.QName -> Maybe (Telescoped Type ValRHS mode modty v)
+lookupQNameEntryList :: (SysTrav sys) =>
+  [Entry sys v] -> Raw.QName -> Maybe (Telescoped Type ValRHS sys v)
 lookupQNameEntryList [] qname = Nothing
 lookupQNameEntryList (EntryVal val : entries) qname
   | qname == Raw.Qualified [] (_val'name val) = Just $ _decl'modty val :** _decl'content val
@@ -197,13 +199,13 @@ lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
       ) $ _decl'content modul
     else lookupQNameEntryList entries qname
     
-lookupQNameModule :: (Functor mode, Functor modty) =>
-  ModuleRHS mode modty v -> Raw.QName -> Maybe (Telescoped Type ValRHS mode modty v)
+lookupQNameModule :: (SysTrav sys) =>
+  ModuleRHS sys v -> Raw.QName -> Maybe (Telescoped Type ValRHS sys v)
 lookupQNameModule modul qname =
   lookupQNameEntryList (fmap (fmap (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
-lookupQName :: (Multimode mode modty) =>
-  Ctx Type mode modty v w -> Raw.QName -> LookupResult mode modty (VarOpenCtx v w)
+lookupQName :: (Multimode sys) =>
+  Ctx Type sys v w -> Raw.QName -> LookupResult sys (VarOpenCtx v w)
 lookupQName (CtxEmpty _) qname = LookupResultNothing
 lookupQName (gamma :.. seg) qname = case _segment'name seg of
   Nothing -> wkn $ lookupQName gamma qname
@@ -254,8 +256,8 @@ lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
 ------------------------
 
 {-
-lookupQNameTerm :: (Multimode mode modty, Functor (Type mode modty)) =>
-  Ctx Type mode modty v w -> Raw.QName -> Maybe (LeftDivided (Telescoped Type Term) mode modty (VarOpenCtx v w))
+lookupQNameTerm :: (Multimode sys, Functor (Type sys)) =>
+  Ctx Type sys v w -> Raw.QName -> Maybe (LeftDivided (Telescoped Type Term) sys (VarOpenCtx v w))
 lookupQNameTerm gamma qname =
   over leftDivided'content
     (runIdentity . mapTelescopedSimple (\wkn val -> Identity $ _val'term val))
@@ -266,9 +268,9 @@ lookupQNameTerm gamma qname =
 ------------------------
 
 {-
--- TODOMOD: you need to change output type to @LeftDivided Type mode modty (VarOpenCtx v w)@
+-- TODOMOD: you need to change output type to @LeftDivided Type sys (VarOpenCtx v w)@
 lookupVarType :: (Functor mode, Functor modty) =>
-  Ctx Type mode modty v w -> v -> Type mode modty (VarOpenCtx v w)
+  Ctx Type sys v w -> v -> Type sys (VarOpenCtx v w)
 lookupVarType (CtxEmpty _) v = absurd v
 lookupVarType (gamma :.. seg) (VarLast) = bimap VarWkn id <$> _segment'content seg
 lookupVarType (gamma :.. seg) (VarWkn v) = bimap VarWkn id <$> lookupVarType gamma v
@@ -284,8 +286,8 @@ lookupVarType (dkappa :\\ gamma) v = lookupVarType gamma v
 lookupVarType gamma v = unreachable
 -}
 
-lookupVar :: (Multimode mode modty) =>
-  Ctx Type mode modty v w -> v -> LeftDivided (Segment Type) mode modty (VarOpenCtx v w)
+lookupVar :: (Multimode sys) =>
+  Ctx Type sys v w -> v -> LeftDivided (Segment Type) sys (VarOpenCtx v w)
 lookupVar (CtxEmpty d) v = absurd v
 lookupVar (gamma :.. seg) (VarLast) = LeftDivided d (ModedModality d (idMod d)) $ bimap VarWkn id <$> seg
   where d = ctx'mode (gamma :.. seg)
