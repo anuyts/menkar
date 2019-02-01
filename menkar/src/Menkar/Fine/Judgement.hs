@@ -10,127 +10,128 @@ import Data.Bifunctor
 import Data.Maybe
 import GHC.Generics
 import Data.Functor.Identity
+import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 
-data Judgement (mode :: * -> *) (modty :: * -> *) (rel :: * -> *) where
+data Judgement (sys :: KSys) (rel :: * -> *) where
 
   {-
   -- | @'JudType' gamma@ means @gamma |- ctx@
   JudCtx ::
-    Ctx Type mode modty v Void ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Judgement sys rel
   JudCtxRel ::
-    Ctx (Pair3 Type) mode modty v Void ->
-    Judgement mode modty rel
+    Ctx (Twice2 Type) sys v Void ->
+    Judgement sys rel
   -}
 
   {-
   -- | @'JudMode' gamma d@ means that @d@ is a valid mode in context @gamma@.
   -- | Premises: @'JudCtx'@
   JudMode ::
-    Ctx Type mode modty v Void ->
-    Mode mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Mode sys v ->
+    Judgement sys rel
   JudModeRel ::
-    Ctx (Pair3 Type) mode modty v Void ->
-    Pair3 Mode mode modty v ->
-    Judgement mode modty rel
+    Ctx (Twice2 Type) sys v Void ->
+    Twice2 Mode sys v ->
+    Judgement sys rel
   -}
 
   {-
   JudSegment ::
-    Ctx Type mode modty v Void ->
-    Segment mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Segment sys v ->
+    Judgement sys rel
   JudSegmentRel ::
     rel v ->
-    Ctx (Pair3 Type) mode modty v Void ->
-    Pair3 (Segment Type) mode modty v ->
-    Judgement mode modty rel
+    Ctx (Twice2 Type) sys v Void ->
+    Twice2 (Segment Type) sys v ->
+    Judgement sys rel
   -}
 
   -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
   -- | Premises: @'JudCtx'@
   JudType :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    Type mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Type sys v ->
+    Judgement sys rel
   JudTypeRel :: (DeBruijnLevel v) =>
     rel v ->
-    Ctx (Pair3 Type) mode modty v Void ->
-    Pair3 Type mode modty v ->
-    Judgement mode modty rel
+    Ctx (Twice2 Type) sys v Void ->
+    Twice2 Type sys v ->
+    Judgement sys rel
     
   -- | @'JudTerm' gamma t tyT@ means @gamma |- t : tyT@.
   -- | Premises: @'JudCtx', 'JudType'@
   JudTerm :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    Term mode modty v ->
-    Type mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Term sys v ->
+    Type sys v ->
+    Judgement sys rel
   JudTermRel :: (DeBruijnLevel v) =>
     rel v ->
-    Ctx (Pair3 Type) mode modty v Void ->
-    Pair3 Term mode modty v ->
-    Pair3 Type mode modty v ->
-    Judgement mode modty rel
+    Ctx (Twice2 Type) sys v Void ->
+    Twice2 Term sys v ->
+    Twice2 Type sys v ->
+    Judgement sys rel
     
   -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.
   -- | Premises: @'JudCtx', 'JudType', 'JudTerm'@
   JudEta :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    Term mode modty v ->
-    Type mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Term sys v ->
+    Type sys v ->
+    Judgement sys rel
     
   -- | @'JudSmartElim' gamma t tyT es r@ means @gamma |- (t : tyT) es ~> r@.
   -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
   JudSmartElim :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-    Term mode modty v {-^ eliminee -} ->
-    Type mode modty v ->
-    [SmartEliminator mode modty v] {-^ eliminators -} ->
-    Term mode modty v {-^ result -} ->
-    Type mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    ModedModality sys v {-^ modality by which the eliminee is used -} ->
+    Term sys v {-^ eliminee -} ->
+    Type sys v ->
+    [SmartEliminator sys v] {-^ eliminators -} ->
+    Term sys v {-^ result -} ->
+    Type sys v ->
+    Judgement sys rel
     
   -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
   -- | Premises: @'JudTerm' gamma t tyT@
   JudGoal :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
+    Ctx Type sys v Void ->
     String ->
-    Term mode modty v ->
-    Type mode modty v ->
-    Judgement mode modty rel
+    Term sys v ->
+    Type sys v ->
+    Judgement sys rel
     
   -- | @'JudResolve' gamma t r tyT@ means @gamma |- t ~> r : tyT@ where @t@ is a resolution call.
   -- | Premises?
   JudResolve :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
+    Ctx Type sys v Void ->
     {- resolution call goes here -> -}
-    Term mode modty v ->
-    Type mode modty v ->
-    Judgement mode modty rel
+    Term sys v ->
+    Type sys v ->
+    Judgement sys rel
     
   -- JudAccuracy: "This term should be known up to that accuracy"
 
   JudSegment :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    Segment Type mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Segment Type sys v ->
+    Judgement sys rel
 
   JudVal :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    Val mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Val sys v ->
+    Judgement sys rel
 
   JudModule :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    Module mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Module sys v ->
+    Judgement sys rel
 
   JudEntry :: (DeBruijnLevel v) =>
-    Ctx Type mode modty v Void ->
-    Entry mode modty v ->
-    Judgement mode modty rel
+    Ctx Type sys v Void ->
+    Entry sys v ->
+    Judgement sys rel
