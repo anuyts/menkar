@@ -8,7 +8,11 @@ Currently supported features include:
 
 * type-checking of basic MLTT with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
 * a single universe that (inconsistently) contains itself,
-* implicit arguments in the sense of Agda.
+* smart eliminations, including
+   * implicit arguments in the sense of Agda,
+   * named arguments,
+   * implicit unboxing,
+   * named and numbered projections for nested Σ-types.
 
 Partly implemented (but presently unusable) features include:
 
