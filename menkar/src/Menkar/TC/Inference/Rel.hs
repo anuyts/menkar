@@ -19,70 +19,70 @@ import Control.Monad
 import Control.Monad.Writer.Lazy
 
 checkSegmentRel ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Segment Type mode modty v ->
-  Segment Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Segment Type sys v ->
+  Segment Type sys v ->
   tc ()
 checkSegmentRel parent deg gamma seg1 seg2 = do
   -- CMOD check equality of modalities
   let d' = unVarFromCtx <$> ctx'mode gamma
-  let uni = hs2type $ UniHS d' -- $ Expr3 TermWildcard
+  let uni = hs2type $ UniHS d' -- $ Expr2 TermWildcard
   addNewConstraint
     (JudTermRel
       deg
       gamma
-      (Pair3
+      (Twice2
         (unType $ _segment'content seg1)
         (unType $ _segment'content seg2)
       )
-      (Pair3 uni uni)
+      (Twice2 uni uni)
     )
     (Just parent)
     "Relating domains."      
 
 checkPiOrSigmaRel ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Binding Type Term mode modty v ->
-  Binding Type Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Binding Type Term sys v ->
+  Binding Type Term sys v ->
+  Type sys v ->
+  Type sys v ->
   tc ()
 checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
     let seg1 = (binding'segment binding1)
     let seg2 = (binding'segment binding2)
     let dom2 = _segment'content $ binding'segment binding2
-    let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
+    let seg = over decl'content (\ dom1 -> Twice2 dom1 dom2) seg1
     let d' = unVarFromCtx <$> ctx'mode gamma
-    let uni = hs2type $ UniHS (VarWkn <$> d') -- $ Expr3 TermWildcard
+    let uni = hs2type $ UniHS (VarWkn <$> d') -- $ Expr2 TermWildcard
     checkSegmentRel parent deg gamma seg1 seg2
     addNewConstraint
       (JudTermRel
         (VarWkn <$> deg)
         (gamma :.. VarFromCtx <$> seg)
-        (Pair3
+        (Twice2
           (binding'body binding1)
           (binding'body binding2)
         )
-        (Pair3 uni uni)
+        (Twice2 uni uni)
       )
       (Just parent)
       "Relating codomains."
 
 checkUniHSConstructorRel ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  UniHSConstructor mode modty v ->
-  UniHSConstructor mode modty v ->
-  Type mode modty v {-^ May not be normal -} ->
-  Type mode modty v {-^ May not be normal -} ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  Type sys v {-^ May not be normal -} ->
+  Type sys v {-^ May not be normal -} ->
   tc ()
 checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (UniHS d1 {-lvl1-}, UniHS d2 {-lvl2-}) -> return ()
@@ -92,8 +92,8 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       (JudTermRel
         (divDeg irrModedModality deg)
         (irrModedModality :\\ gamma)
-        (Pair3 lvl1 lvl2)
-        (Pair3 nat nat)
+        (Twice2 lvl1 lvl2)
+        (Twice2 nat nat)
       )
       (Just parent)
       "Relating levels."-}
@@ -112,15 +112,15 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (NatType, _) -> tcFail parent "False."
   (EqType tyAmbient1 tL1 tR1, EqType tyAmbient2 tL2 tR2) -> do
     addNewConstraint
-      (JudTypeRel deg gamma (Pair3 tyAmbient1 tyAmbient2))
+      (JudTypeRel deg gamma (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating ambient types."
     addNewConstraint
-      (JudTermRel deg gamma (Pair3 tL1 tL2) (Pair3 tyAmbient1 tyAmbient2))
+      (JudTermRel deg gamma (Twice2 tL1 tL2) (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating left equands."
     addNewConstraint
-      (JudTermRel deg gamma (Pair3 tR1 tR2) (Pair3 tyAmbient1 tyAmbient2))
+      (JudTermRel deg gamma (Twice2 tR1 tR2) (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating right equands."
   (EqType _ _ _, _) -> tcFail parent "False."
@@ -128,23 +128,23 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
 
 --------------------------------
 
-checkConstructorTermRel :: forall mode modty rel tc v .
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  ConstructorTerm mode modty v ->
-  ConstructorTerm mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkConstructorTermRel :: forall sys tc v .
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  ConstructorTerm sys v ->
+  ConstructorTerm sys v ->
+  Type sys v ->
+  Type sys v ->
   [Int] ->
   [Int] ->
   tc ()
 checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
   (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
   (ConsUniHS _, _) -> tcFail parent "False."
-  (Lam binding, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, Lam binding) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (Lam binding, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, Lam binding) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
   (Pair sigmaBinding1 fst1 snd1, Pair sigmaBinding2 fst2 snd2) -> do
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
         dom1 = _segment'content $ binding'segment $ sigmaBinding1
@@ -155,8 +155,8 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       (JudTermRel
         (divDeg dmu deg)
         (VarFromCtx <$> dmu :\\ gamma)
-        (Pair3 fst1 fst2)
-        (Pair3 dom1 dom2)
+        (Twice2 fst1 fst2)
+        (Twice2 dom1 dom2)
       )
       (Just parent)
       "Relating first components."
@@ -164,18 +164,18 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       (JudTermRel
         deg
         gamma
-        (Pair3 snd1 snd2)
-        (Pair3
-          (Type $ substLast3 fst1 $ cod1)
-          (Type $ substLast3 fst2 $ cod2)
+        (Twice2 snd1 snd2)
+        (Twice2
+          (Type $ substLast2 fst1 $ cod1)
+          (Type $ substLast2 fst2 $ cod2)
         )
       )
       (Just parent)
       "Relating second components."
-  (Pair _ _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, Pair _ _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
-  (ConsUnit, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, ConsUnit) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (Pair _ _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, Pair _ _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (ConsUnit, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, ConsUnit) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
   (ConsBox boxSeg1 unbox1, ConsBox boxSeg2 unbox2) -> do
     let dmu = _segment'modty $ boxSeg1
         dom1 = _segment'content $ boxSeg1
@@ -184,19 +184,19 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       (JudTermRel
         (divDeg dmu deg)
         (VarFromCtx <$> dmu :\\ gamma)
-        (Pair3 unbox1 unbox2)
-        (Pair3 dom1 dom2)
+        (Twice2 unbox1 unbox2)
+        (Twice2 dom1 dom2)
       )
       (Just parent)
       "Relating box contents."
-  (ConsBox _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr3 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, ConsBox _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr3 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (ConsBox _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (_, ConsBox _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
   (ConsZero, ConsZero) -> return ()
   (ConsZero, _) -> tcFail parent "False."
   (ConsSuc n1, ConsSuc n2) -> do
-    let nat = Type $ Expr3 $ TermCons $ ConsUniHS $ NatType
+    let nat = Type $ Expr2 $ TermCons $ ConsUniHS $ NatType
     addNewConstraint
-      (JudTermRel deg gamma (Pair3 n1 n2) (Pair3 nat nat))
+      (JudTermRel deg gamma (Twice2 n1 n2) (Twice2 nat nat))
       (Just parent)
       "Relating predecessors."
   (ConsSuc _, _) -> tcFail parent "False."
@@ -204,22 +204,22 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
   (ConsRefl, _) -> tcFail parent "False."
   --(_, _) -> _checkConstructorTermRel
 
-checkDependentEliminatorRel :: forall mode modty rel tc v .
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  ModedModality mode modty v {-^ Modality by which the eliminee is eliminated. -} ->
-  Term mode modty v ->
-  Term mode modty v ->
-  UniHSConstructor mode modty v ->
-  UniHSConstructor mode modty v ->
-  NamedBinding Type mode modty v ->
-  NamedBinding Type mode modty v ->
-  DependentEliminator mode modty v ->
-  DependentEliminator mode modty v ->
-  Type mode modty v {-^ May not be whnormal. -} ->
-  Type mode modty v {-^ May not be whnormal. -} ->
+checkDependentEliminatorRel :: forall sys tc v .
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  ModedModality sys v {-^ Modality by which the eliminee is eliminated. -} ->
+  Term sys v ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  NamedBinding Type sys v ->
+  NamedBinding Type sys v ->
+  DependentEliminator sys v ->
+  DependentEliminator sys v ->
+  Type sys v {-^ May not be whnormal. -} ->
+  Type sys v {-^ May not be whnormal. -} ->
   tc ()
 checkDependentEliminatorRel parent deg gamma dmu
   eliminee1 eliminee2
@@ -230,39 +230,39 @@ checkDependentEliminatorRel parent deg gamma dmu
     case (clauses1, clauses2) of
       (ElimSigma pairClause1, ElimSigma pairClause2) -> case (tyEliminee1, tyEliminee2) of
         (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
-          let segFst :: Segment (Pair3 Type) _ _ _
+          let segFst :: Segment (Twice2 Type) _ _
               segFst = Declaration
                          (DeclNameSegment $ _namedBinding'name pairClause1)
                          (compModedModality dmu (_segment'modty $ binding'segment $ sigmaBinding1))
                          Explicit
-                         (Pair3
+                         (Twice2
                            (_segment'content $ binding'segment $ sigmaBinding1)
                            (_segment'content $ binding'segment $ sigmaBinding2)
                          )
-          let segSnd :: Segment (Pair3 Type) _ _ (VarExt _)
+          let segSnd :: Segment (Twice2 Type) _ (VarExt _)
               segSnd = Declaration
                          (DeclNameSegment $ _namedBinding'name $ _namedBinding'body pairClause1)
                          (VarWkn <$> dmu)
                          Explicit
-                         (Pair3
+                         (Twice2
                            (Type $ binding'body sigmaBinding1)
                            (Type $ binding'body sigmaBinding2)
                          )
-          let subst' :: Binding Type Term _ _ _ -> VarExt _ -> Term _ _ (VarExt (VarExt _))
+          let subst' :: Binding Type Term _ _ -> VarExt _ -> Term _ (VarExt (VarExt _))
               subst' sigmaBinding VarLast =
-                Expr3 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var3 $ VarWkn VarLast) (Var3 VarLast)
-              subst' sigmaBinding (VarWkn v) = Var3 $ VarWkn $ VarWkn $ v
-              subst :: Binding Type Term _ _ _ -> Type _ _ (VarExt _) -> Type _ _ (VarExt (VarExt _))
+                Expr2 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var2 $ VarWkn VarLast) (Var2 VarLast)
+              subst' sigmaBinding (VarWkn v) = Var2 $ VarWkn $ VarWkn $ v
+              subst :: Binding Type Term _ _ -> Type _ (VarExt _) -> Type _ (VarExt (VarExt _))
               subst sigmaBinding = swallow . fmap (subst' sigmaBinding)
           addNewConstraint
             (JudTermRel
               (VarWkn . VarWkn <$> deg)
               (gamma :.. VarFromCtx <$> segFst :.. VarFromCtx <$> segSnd)
-              (Pair3
+              (Twice2
                 (_namedBinding'body $ _namedBinding'body $ pairClause1)
                 (_namedBinding'body $ _namedBinding'body $ pairClause2)
               )
-              (Pair3
+              (Twice2
                 (subst sigmaBinding1 $ _namedBinding'body motive1)
                 (subst sigmaBinding2 $ _namedBinding'body motive2)
               )
@@ -275,27 +275,27 @@ checkDependentEliminatorRel parent deg gamma dmu
       (ElimSigma _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (ElimBox boxClause1, ElimBox boxClause2) -> case (tyEliminee1, tyEliminee2) of
         (BoxType boxSeg1, BoxType boxSeg2) -> do
-           let segContent :: Segment (Pair3 Type) _ _ _
+           let segContent :: Segment (Twice2 Type) _ _
                segContent = Declaration
                               (DeclNameSegment $ _namedBinding'name boxClause1)
                               (compModedModality dmu (_segment'modty boxSeg1))
                               Explicit
-                              (Pair3
+                              (Twice2
                                 (_segment'content boxSeg1)
                                 (_segment'content boxSeg2)
                               )
-           let subst :: Segment Type _ _ _ -> VarExt _ -> Term _ _ (VarExt _)
-               subst boxSeg VarLast = Expr3 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var3 VarLast
-               subst boxSeg (VarWkn v) = Var3 $ VarWkn v
+           let subst :: Segment Type _ _ -> VarExt _ -> Term _ (VarExt _)
+               subst boxSeg VarLast = Expr2 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var2 VarLast
+               subst boxSeg (VarWkn v) = Var2 $ VarWkn v
            addNewConstraint
              (JudTermRel
                (VarWkn <$> deg)
                (gamma :.. VarFromCtx <$> segContent)
-               (Pair3
+               (Twice2
                  (_namedBinding'body $ boxClause1)
                  (_namedBinding'body $ boxClause2)
                )
-               (Pair3
+               (Twice2
                  (swallow $ subst boxSeg1 <$> (_namedBinding'body motive1))
                  (swallow $ subst boxSeg2 <$> (_namedBinding'body motive2))
                )
@@ -309,49 +309,49 @@ checkDependentEliminatorRel parent deg gamma dmu
       (ElimEmpty, ElimEmpty) -> return ()
       (ElimEmpty, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (ElimNat clauseZero1 clauseSuc1, ElimNat clauseZero2 clauseSuc2) -> do
-        let substZ :: VarExt v -> Term mode modty v
-            substZ VarLast = Expr3 $ TermCons $ ConsZero
-            substZ (VarWkn v) = Var3 v
+        let substZ :: VarExt v -> Term sys v
+            substZ VarLast = Expr2 $ TermCons $ ConsZero
+            substZ (VarWkn v) = Var2 v
         addNewConstraint
           (JudTermRel
             deg
             gamma
-            (Pair3 clauseZero1 clauseZero2)
-            (Pair3
+            (Twice2 clauseZero1 clauseZero2)
+            (Twice2
               (swallow $ substZ <$> _namedBinding'body motive1)
               (swallow $ substZ <$> _namedBinding'body motive2)
             )
           )
           (Just parent)
           "Relating zero clauses."
-        let nat = (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-        let segPred :: Segment (Pair3 Type) _ _ _
+        let nat = (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
+        let segPred :: Segment (Twice2 Type) _ _
             segPred = Declaration
                         (DeclNameSegment $ _namedBinding'name clauseSuc1)
                         dmu
                         Explicit
-                        (Pair3 nat nat)
-        let segHyp :: Segment (Pair3 Type) _ _ (VarExt _)
+                        (Twice2 nat nat)
+        let segHyp :: Segment (Twice2 Type) _ (VarExt _)
             segHyp = Declaration
                        (DeclNameSegment $ _namedBinding'name $ _namedBinding'body clauseSuc1)
                        (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
                        Explicit
-                       (Pair3
+                       (Twice2
                          (_namedBinding'body motive1)
                          (_namedBinding'body motive2)
                        )
-        let substS :: VarExt v -> Term mode modty (VarExt (VarExt v))
-            substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
-            substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
+        let substS :: VarExt v -> Term sys (VarExt (VarExt v))
+            substS VarLast = Expr2 $ TermCons $ ConsSuc $ Var2 $ VarWkn VarLast
+            substS (VarWkn v) = Var2 $ VarWkn $ VarWkn v
         addNewConstraint
           (JudTermRel
             (VarWkn . VarWkn <$> deg)
             (gamma :.. VarFromCtx <$> segPred :.. VarFromCtx <$> segHyp)
-            (Pair3
+            (Twice2
               (_namedBinding'body $ _namedBinding'body $ clauseSuc1)
               (_namedBinding'body $ _namedBinding'body $ clauseSuc2)
             )
-            (Pair3
+            (Twice2
               (swallow $ substS <$> _namedBinding'body motive1)
               (swallow $ substS <$> _namedBinding'body motive2)
             )
@@ -361,20 +361,20 @@ checkDependentEliminatorRel parent deg gamma dmu
       (ElimNat _ _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       --(_, _) -> _checkDependentEliminatorRel
       
-checkEliminatorRel :: forall mode modty rel tc v .
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  ModedModality mode modty v ->
-  Term mode modty v ->
-  Term mode modty v ->
-  UniHSConstructor mode modty v ->
-  UniHSConstructor mode modty v ->
-  Eliminator mode modty v ->
-  Eliminator mode modty v ->
-  Type mode modty v {-^ May not be whnormal. -} ->
-  Type mode modty v {-^ May not be whnormal. -} ->
+checkEliminatorRel :: forall sys tc v .
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  ModedModality sys v ->
+  Term sys v ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  Eliminator sys v ->
+  Eliminator sys v ->
+  Type sys v {-^ May not be whnormal. -} ->
+  Type sys v {-^ May not be whnormal. -} ->
   tc ()
 checkEliminatorRel parent deg gamma dmu
   eliminee1 eliminee2
@@ -390,8 +390,8 @@ checkEliminatorRel parent deg gamma dmu
         (JudTermRel
           (divDeg dmu deg)
           (VarFromCtx <$> dmu :\\ gamma)
-          (Pair3 arg1 arg2)
-          (Pair3 dom1 dom2)
+          (Twice2 arg1 arg2)
+          (Twice2 dom1 dom2)
         )
         (Just parent)
         "Relating arguments."
@@ -410,12 +410,12 @@ checkEliminatorRel parent deg gamma dmu
           (DeclNameSegment $ _namedBinding'name motive1)
           dmu
           Explicit
-          (Pair3 (hs2type tyEliminee1) (hs2type tyEliminee2))
+          (Twice2 (hs2type tyEliminee1) (hs2type tyEliminee2))
     addNewConstraint
       (JudTypeRel
         (VarWkn <$> deg)
         (gamma :.. VarFromCtx <$> seg)
-        (Pair3 (_namedBinding'body motive1) (_namedBinding'body motive2))
+        (Twice2 (_namedBinding'body motive1) (_namedBinding'body motive2))
       )
       (Just parent)
       "Relating the motives."
@@ -434,28 +434,28 @@ checkEliminatorRel parent deg gamma dmu
                (DeclNameSegment $ _namedBinding'name motive1)
                dmu
                Explicit
-               (Pair3 tyAmbient1 tyAmbient2)
+               (Twice2 tyAmbient1 tyAmbient2)
       let segEq = Declaration
                (DeclNameSegment $ _namedBinding'name $ _namedBinding'body $ motive1)
                (VarWkn <$> dmu)
                Explicit
-               (Pair3
-                 (hs2type $ EqType (VarWkn <$> tyAmbient1) (VarWkn <$> tL1) (Var3 VarLast))
-                 (hs2type $ EqType (VarWkn <$> tyAmbient2) (VarWkn <$> tL2) (Var3 VarLast))
+               (Twice2
+                 (hs2type $ EqType (VarWkn <$> tyAmbient1) (VarWkn <$> tL1) (Var2 VarLast))
+                 (hs2type $ EqType (VarWkn <$> tyAmbient2) (VarWkn <$> tL2) (Var2 VarLast))
                )
       addNewConstraint
         (JudTypeRel
           (VarWkn . VarWkn <$> deg)
           (gamma :.. VarFromCtx <$> segR :.. VarFromCtx <$> segEq)
-          (Pair3 (_namedBinding'body $ _namedBinding'body motive1)
+          (Twice2 (_namedBinding'body $ _namedBinding'body motive1)
                  (_namedBinding'body $ _namedBinding'body motive2))
         )
         (Just parent)
         "Relating the motives"
       addNewConstraint
-        (JudTermRel deg gamma (Pair3 crefl1 crefl2) $ Pair3
-          (substLast3 tL1 $ substLast3 (Expr3 $ TermCons $ ConsRefl :: Term mode modty _) $ bodyMotive1)
-          (substLast3 tL2 $ substLast3 (Expr3 $ TermCons $ ConsRefl :: Term mode modty _) $ bodyMotive2)
+        (JudTermRel deg gamma (Twice2 crefl1 crefl2) $ Twice2
+          (substLast2 tL1 $ substLast2 (Expr2 $ TermCons $ ConsRefl :: Term sys _) $ bodyMotive1)
+          (substLast2 tL2 $ substLast2 (Expr2 $ TermCons $ ConsRefl :: Term sys _) $ bodyMotive2)
         )
         (Just parent)
         "Relating elimination clauses for the refl constructor."
@@ -465,34 +465,34 @@ checkEliminatorRel parent deg gamma dmu
 
 {-| Relate a constructor-term with a whnormal non-constructor term.
 -}
-checkTermRelEta :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  ConstructorTerm mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkTermRelEta :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  ConstructorTerm sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
   [Int] ->
   [Int] ->
   tc ()
 checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = case c1 of
   ConsUniHS _ -> tcFail parent "False."
   Lam lambdaBinding1 -> case (metasTy1, metasTy2, ty1, ty2) of
-    ([], [], Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
+    ([], [], Expr2 (TermCons (ConsUniHS (Pi piBinding1))), Expr2 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
       let seg1 = binding'segment lambdaBinding1
       let dom2 = _segment'content $ binding'segment piBinding2
-      let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
+      let seg = over decl'content (\ dom1 -> Twice2 dom1 dom2) seg1
       let app1 = binding'body lambdaBinding1
-      let app2 = Expr3 $ TermElim
+      let app2 = Expr2 $ TermElim
             (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-            (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var3 VarLast)
+            (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
       addNewConstraint
         (JudTermRel
           (VarWkn <$> deg)
           (gamma :.. VarFromCtx <$> seg)
-          (Pair3 app1 app2)
-          (Pair3
+          (Twice2 app1 app2)
+          (Twice2
             (Type $ binding'body piBinding1)
             (Type $ binding'body piBinding2)
           )
@@ -507,15 +507,15 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
     let d' = unVarFromCtx <$> ctx'mode gamma
     when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This sigma-type has no eta-rule.)"
     case (metasTy1, metasTy2, ty1, ty2) of
-      ([], [], Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
-        let tFst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
-        let tSnd2 = Expr3 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
+      ([], [], Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
+        let tFst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
+        let tSnd2 = Expr2 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
         addNewConstraint
           (JudTermRel
             (divDeg dmu deg)
             (VarFromCtx <$> dmu :\\ gamma)
-            (Pair3 tFst1 tFst2)
-            (Pair3
+            (Twice2 tFst1 tFst2)
+            (Twice2
               (_segment'content $ binding'segment sigmaBinding1)
               (_segment'content $ binding'segment sigmaBinding2)
             )
@@ -526,10 +526,10 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
           (JudTermRel
             deg
             gamma
-            (Pair3 tSnd1 tSnd2)
-            (Pair3
-              (Type $ substLast3 tFst1 $ binding'body sigmaBinding1)
-              (Type $ substLast3 tFst2 $ binding'body sigmaBinding2)
+            (Twice2 tSnd1 tSnd2)
+            (Twice2
+              (Type $ substLast2 tFst1 $ binding'body sigmaBinding1)
+              (Type $ substLast2 tFst2 $ binding'body sigmaBinding2)
             )
           )
           (Just parent)
@@ -543,14 +543,14 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
     let d' = unVarFromCtx <$> ctx'mode gamma
     when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This box-type has no eta-rule.)"
     case (metasTy1, metasTy2, ty1, ty2) of
-      ([], [], Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
-        let tUnbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
+      ([], [], Expr2 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr2 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
+        let tUnbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
         addNewConstraint
           (JudTermRel
             (divDeg dmu deg)
             (VarFromCtx <$> dmu :\\ gamma)
-            (Pair3 tUnbox1 tUnbox2)
-            (Pair3
+            (Twice2 tUnbox1 tUnbox2)
+            (Twice2
               (_segment'content $ boxSeg1)
               (_segment'content $ boxSeg2)
             )
@@ -565,34 +565,34 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
 
 {-| Relate 2 non-variable whnormal terms.
 -}
-checkTermRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkTermRelWHNTerms :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
   [Int] ->
   [Int] ->
   tc ()
 checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
-  (Expr3 (TermCons c1), Expr3 (TermCons c2)) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
-  (Expr3 (TermCons c1), _) -> checkTermRelEta parent deg          gamma  c1 t2 ty1 ty2 metasTy1 metasTy2
-  (_, Expr3 (TermCons c2)) -> checkTermRelEta parent deg (flipCtx gamma) c2 t1 ty2 ty1 metasTy2 metasTy1
-  (Var3 v1, Var3 v2) -> if v1 == v2
+  (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
+  (Expr2 (TermCons c1), _) -> checkTermRelEta parent deg          gamma  c1 t2 ty1 ty2 metasTy1 metasTy2
+  (_, Expr2 (TermCons c2)) -> checkTermRelEta parent deg (flipCtx gamma) c2 t1 ty2 ty1 metasTy2 metasTy1
+  (Var2 v1, Var2 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
-  (Var3 v, _) -> tcFail parent "False."
-  (Expr3 (TermElim dmu1 eliminee1 tyEliminee1 eliminator1), Expr3 (TermElim dmu2 eliminee2 tyEliminee2 eliminator2)) -> do
-    let tyEliminee1' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee1
-    let tyEliminee2' = Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee2
+  (Var2 v, _) -> tcFail parent "False."
+  (Expr2 (TermElim dmu1 eliminee1 tyEliminee1 eliminator1), Expr2 (TermElim dmu2 eliminee2 tyEliminee2 eliminator2)) -> do
+    let tyEliminee1' = Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee1
+    let tyEliminee2' = Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee2
     -- CMOD dmu1 == dmu2
     addNewConstraint
       (JudTypeRel
         (divDeg dmu1 deg)
         (VarFromCtx <$> dmu1 :\\ gamma)
-        (Pair3 tyEliminee1' tyEliminee2')
+        (Twice2 tyEliminee1' tyEliminee2')
       )
       (Just parent)
       "Relating eliminees' types."
@@ -600,89 +600,89 @@ checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1
       (JudTermRel
         (divDeg dmu1 deg)
         (VarFromCtx <$> dmu1 :\\ gamma)
-        (Pair3 eliminee1 eliminee2)
-        (Pair3 tyEliminee1' tyEliminee2')
+        (Twice2 eliminee1 eliminee2)
+        (Twice2 tyEliminee1' tyEliminee2')
       )
       (Just parent)
       "Relating eliminees."
     checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
-  (Expr3 (TermElim _ _ _ _), _) -> tcFail parent "False."
-  (Expr3 (TermMeta _ _ _), _) -> unreachable
-  (Expr3 (TermWildcard), _) -> unreachable
-  (Expr3 (TermQName _ _), _) -> unreachable
-  (Expr3 (TermSmartElim _ _ _), _) -> unreachable
-  (Expr3 (TermGoal _ _), _) -> unreachable
-  (Expr3 (TermProblem t), _) -> tcFail parent "Nonsensical term."
+  (Expr2 (TermElim _ _ _ _), _) -> tcFail parent "False."
+  (Expr2 (TermMeta _ _ _), _) -> unreachable
+  (Expr2 (TermWildcard), _) -> unreachable
+  (Expr2 (TermQName _ _), _) -> unreachable
+  (Expr2 (TermSmartElim _ _ _), _) -> unreachable
+  (Expr2 (TermGoal _ _), _) -> unreachable
+  (Expr2 (TermProblem t), _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
 {-
 {-| Relate 2 whnormal terms.
 -}
-checkTermRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkTermRelWHNTerms :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
   [Int] ->
   [Int] ->
   tc ()
 checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
-        (Var3 v1, Var3 v2) -> if v1 == v2
+        (Var2 v1, Var2 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
-        (Expr3 tnv1, Expr3 tnv2) -> checkTermNVRelWHNTerms parent deg gamma tnv1 tnv2 ty1 ty2 metasTy1 metasTy2
-        (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
-        (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
+        (Expr2 tnv1, Expr2 tnv2) -> checkTermNVRelWHNTerms parent deg gamma tnv1 tnv2 ty1 ty2 metasTy1 metasTy2
+        (Var2 _, Expr2 _) -> tcFail parent "Cannot relate variable and non-variable."
+        (Expr2 _, Var2 _) -> tcFail parent "Cannot relate non-variable and variable."
 -}
 
 {-
-checkTermRelWHN :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkTermRelWHN :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
   tc ()
 checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2) = case (ty1, ty2) of
   -- Pi types: eta-expand
-  (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), Expr3 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
+  (Expr2 (TermCons (ConsUniHS (Pi piBinding1))), Expr2 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
     let seg1 = binding'segment piBinding1
     let dom2 = _segment'content $ binding'segment piBinding2
-    let seg = over decl'content (\ dom1 -> Pair3 dom1 dom2) seg1
-    let app1 = Expr3 $ TermElim
+    let seg = over decl'content (\ dom1 -> Twice2 dom1 dom2) seg1
+    let app1 = Expr2 $ TermElim
           (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-          (VarWkn <$> t1) (VarWkn <$> Pi piBinding1) (App $ Var3 VarLast)
-    let app2 = Expr3 $ TermElim
+          (VarWkn <$> t1) (VarWkn <$> Pi piBinding1) (App $ Var2 VarLast)
+    let app2 = Expr2 $ TermElim
           (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-          (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var3 VarLast)
+          (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
     addNewConstraint
       (JudTermRel
         (VarWkn <$> deg)
         (gamma :.. VarFromCtx <$> seg)
-        (Pair3 app1 app2)
-        (Pair3
+        (Twice2 app1 app2)
+        (Twice2
           (Type $ binding'body piBinding1)
           (Type $ binding'body piBinding2)
         )
       )
       (Just parent)
       "Eta: Relating function bodies."
-  (Expr3 (TermCons (ConsUniHS (Pi piBinding1))), _) ->
+  (Expr2 (TermCons (ConsUniHS (Pi piBinding1))), _) ->
     tcFail parent "Types are presumed to be related."
   -- Sigma types: eta expand if allowed
-  (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
+  (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
     -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
     let d' = unVarFromCtx <$> ctx'mode gamma
-    let fst1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Sigma sigmaBinding1) Fst
-    let fst2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
-    let snd1 = Expr3 $ TermElim (idModedModality d') t1 (Sigma sigmaBinding1) Snd
-    let snd2 = Expr3 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
+    let fst1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Sigma sigmaBinding1) Fst
+    let fst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
+    let snd1 = Expr2 $ TermElim (idModedModality d') t1 (Sigma sigmaBinding1) Snd
+    let snd2 = Expr2 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
     if not (sigmaHasEta dmu d')
       then checkTermRelNoEta  parent deg gamma t1 t2 (Type ty1) (Type ty2)
       else do
@@ -690,8 +690,8 @@ checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2) = case (ty1, ty2) o
           (JudTermRel
             (divDeg dmu deg)
             (VarFromCtx <$> dmu :\\ gamma)
-            (Pair3 fst1 fst2)
-            (Pair3
+            (Twice2 fst1 fst2)
+            (Twice2
               (_segment'content $ binding'segment sigmaBinding1)
               (_segment'content $ binding'segment sigmaBinding2)
             )
@@ -702,27 +702,27 @@ checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2) = case (ty1, ty2) o
           (JudTermRel
             deg
             gamma
-            (Pair3 snd1 snd2)
-            (Pair3
-              (Type $ substLast3 fst1 $ binding'body sigmaBinding1)
-              (Type $ substLast3 fst2 $ binding'body sigmaBinding2)
+            (Twice2 snd1 snd2)
+            (Twice2
+              (Type $ substLast2 fst1 $ binding'body sigmaBinding1)
+              (Type $ substLast2 fst2 $ binding'body sigmaBinding2)
             )
           )
           (Just parent)
           "Eta: relating second projections"
-  (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding1))), _) ->
+  (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1))), _) ->
     tcFail parent "Types are presumed to be related."
   -- Unit type: eta-expand
-  (Expr3 (TermCons (ConsUniHS UnitType)), Expr3 (TermCons (ConsUniHS UnitType))) -> return ()
-  (Expr3 (TermCons (ConsUniHS UnitType)), _) ->
+  (Expr2 (TermCons (ConsUniHS UnitType)), Expr2 (TermCons (ConsUniHS UnitType))) -> return ()
+  (Expr2 (TermCons (ConsUniHS UnitType)), _) ->
     tcFail parent "Types are presumed to be related."
   -- Box type: eta-expand
-  (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr3 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
+  (Expr2 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr2 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
     -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ boxSeg1
     let d' = unVarFromCtx <$> ctx'mode gamma
-    let unbox1 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (BoxType boxSeg1) Unbox
-    let unbox2 = Expr3 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
+    let unbox1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (BoxType boxSeg1) Unbox
+    let unbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
     if not (sigmaHasEta dmu d')
       then checkTermRelNoEta  parent deg gamma t1 t2 (Type ty1) (Type ty2)
       else do
@@ -730,26 +730,26 @@ checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2) = case (ty1, ty2) o
           (JudTermRel
             (divDeg dmu deg)
             (VarFromCtx <$> dmu :\\ gamma)
-            (Pair3 unbox1 unbox2)
-            (Pair3
+            (Twice2 unbox1 unbox2)
+            (Twice2
               (_segment'content boxSeg1)
               (_segment'content boxSeg2)
             )
           )
           (Just parent)
           "Eta: Relating box contents."
-  (Expr3 (TermCons (ConsUniHS (BoxType boxSeg1))), _) ->
+  (Expr2 (TermCons (ConsUniHS (BoxType boxSeg1))), _) ->
     tcFail parent "Types are presumed to be related."
   (_, _) -> checkTermRelNoEta parent deg gamma t1 t2 (Type ty1) (Type ty2)
 
-checkTermRelWHNTerms :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkTermRelWHNTerms :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
   [Int] ->
   [Int] ->
   tc ()
@@ -761,14 +761,14 @@ checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metas
     (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 -}
 
-checkTermRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Term mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkTermRel :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
   tc ()
 checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
   -- Top-relatedness is always ok.
@@ -784,8 +784,8 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
             (JudTermRel
               deg
               gamma
-              (Pair3 t1 t2)
-              (Pair3 (Type ty1) (Type ty2))
+              (Twice2 t1 t2)
+              (Twice2 (Type ty1) (Type ty2))
             )
             (Just parent)
             "Weak-head-normalize everything"
@@ -802,7 +802,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
       {-
       case (whnT1, whnT2) of
         -- If both sides are constructors: compare them
-        (Expr3 (TermCons c1), Expr3 (TermCons c2)) ->
+        (Expr2 (TermCons c1), Expr2 (TermCons c2)) ->
           checkConstructorTermRel whnparent deg gamma c1 c2 (Type whnTy1) (Type whnTy2)
         -- Otherwise, we want to eta-expand, so one of the types needs to be weak-head-normal
         (_, _) -> case (metasTy1, metasTy2) of
@@ -824,29 +824,29 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
 
       {- CANNOT COMPARE VARIABLES YET: what if we're in the unit type?
       case (whnT1, whnT2) of
-        (Var3 v1, Var3 v2) -> if v1 == v2
+        (Var2 v1, Var2 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
-        (Expr3 tnv1, Expr3 tnv2) -> _compareExprs
-        (Var3 _, Expr3 _) -> tcFail parent "Cannot relate variable and non-variable."
-        (Expr3 _, Var3 _) -> tcFail parent "Cannot relate non-variable and variable."
+        (Expr2 tnv1, Expr2 tnv2) -> _compareExprs
+        (Var2 _, Expr2 _) -> tcFail parent "Cannot relate variable and non-variable."
+        (Expr2 _, Var2 _) -> tcFail parent "Cannot relate non-variable and variable."
       -}
 
-checkTypeRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Type mode modty v ->
-  Type mode modty v ->
+checkTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Type sys v ->
+  Type sys v ->
   tc ()
 checkTypeRel parent deg gamma (Type ty1) (Type ty2) =
-  let uni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr3 $ TermWildcard)
+  let uni = Type $ Expr2 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr2 $ TermWildcard)
   in  addNewConstraint
         (JudTermRel
           deg
           gamma
-          (Pair3 ty1 ty2)
-          (Pair3 uni uni)
+          (Twice2 ty1 ty2)
+          (Twice2 uni uni)
         )
         (Just parent)
         "Checking relatedness of types in a Hofmann-Streicher universe."
