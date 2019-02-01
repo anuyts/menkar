@@ -15,7 +15,7 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
   sigmaHasEta :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> Bool
   divModedModality :: ModedModality sys v -> ModedModality sys v -> ModedModality sys v
 
-class (SysSyntax (Term sys) sys) => Degrees sys where
+class (SysSyntax (Term sys) sys, Multimode sys) => Degrees sys where
   eqDeg :: (Degree sys) v
   topDeg :: (Degree sys) v
   divDeg :: ModedModality sys v -> (Degree sys) v -> (Degree sys) v
