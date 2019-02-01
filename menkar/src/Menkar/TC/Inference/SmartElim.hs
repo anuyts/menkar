@@ -25,45 +25,45 @@ import Control.Monad.Trans.Maybe
 
 {-| Handles a smartelim-judgement with 0 eliminations.
 -}
-checkSmartElimDone ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Type mode modty v ->
-  Term mode modty v ->
-  Type mode modty v ->
+checkSmartElimDone :: forall sys tc v .
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Type sys v ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult = do
       addNewConstraint
         (JudTypeRel
-          eqDeg
+          (eqDeg :: Degree sys _)
           (duplicateCtx gamma)
-          (Pair3 tyEliminee tyResult)
+          (Twice2 tyEliminee tyResult)
         )
         (Just parent)
         "End of elimination: checking if types match."
       addNewConstraint
         (JudTermRel
-          eqDeg
+          (eqDeg :: Degree sys _)
           (duplicateCtx gamma)
-          (Pair3 eliminee result)
-          (Pair3 tyEliminee tyResult)
+          (Twice2 eliminee result)
+          (Twice2 tyEliminee tyResult)
         )
         (Just parent)
         "End of elimination: checking if results match"
 
 unbox ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Segment Type mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Segment Type sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
   let dmuBox = _segment'modty boxSeg
@@ -75,7 +75,7 @@ unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
     (JudSmartElim
       gamma
       dmuElim'
-      (Expr3 $ TermElim
+      (Expr2 $ TermElim
         (dmuUnbox)
         eliminee
         (BoxType boxSeg)
@@ -90,15 +90,15 @@ unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult = do
     "Unboxing."
 
 projFst ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Binding Type Term mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Binding Type Term sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult = do
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
@@ -109,7 +109,7 @@ projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
     (JudSmartElim
       gamma
       dmuElim'
-      (Expr3 $ TermElim
+      (Expr2 $ TermElim
         (dmuProjFst)
         eliminee
         (Sigma sigmaBinding)
@@ -124,26 +124,26 @@ projFst parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
     "First projection."
 
 projSnd ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Binding Type Term mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Binding Type Term sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult = do
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuSigma (modality'dom dmuElim))
-  let tmFst = (Expr3 $ TermElim
+  let tmFst = (Expr2 $ TermElim
                 (dmuProjFst)
                 eliminee
                 (Sigma sigmaBinding)
                 Fst
               )
-  let tmSnd = (Expr3 $ TermElim
+  let tmSnd = (Expr2 $ TermElim
                 (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
                 eliminee
                 (Sigma sigmaBinding)
@@ -154,7 +154,7 @@ projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
       gamma
       dmuElim
       tmSnd
-      (Type $ substLast3 tmFst $ binding'body sigmaBinding)
+      (Type $ substLast2 tmFst $ binding'body sigmaBinding)
       eliminators
       result
       tyResult
@@ -163,16 +163,16 @@ projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult =
     "Second projection."
 
 apply ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Binding Type Term mode modty v ->
-  Term mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Binding Type Term sys v ->
+  Term sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = do
   let dmuArg = _segment'modty $ binding'segment $ piBinding
@@ -188,13 +188,13 @@ apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = 
     (JudSmartElim
       gamma
       dmuElim
-      (Expr3 $ TermElim
+      (Expr2 $ TermElim
         (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
         eliminee
         (Pi piBinding)
         (App arg)
       )
-      (Type $ substLast3 arg $ binding'body piBinding)
+      (Type $ substLast2 arg $ binding'body piBinding)
       eliminators
       result
       tyResult
@@ -202,34 +202,35 @@ apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult = 
     (Just parent)
     "Applying function: checking further elimination."
 
-insertImplicitArgument ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Binding Type Term mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+insertImplicitArgument :: forall sys tc v .
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Binding Type Term sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult = do
   let dmuArg = _segment'modty $ binding'segment $ piBinding
   let tyArg = _segment'content $ binding'segment $ piBinding
   -- CMOD: degree should be multiplied by dmuArg here!
-  arg <- newMetaTerm (Just parent) eqDeg (VarFromCtx <$> dmuArg :\\ gamma) tyArg True "Inferring implicit argument."
+  arg <- newMetaTerm (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuArg :\\ gamma)
+           tyArg True "Inferring implicit argument."
   apply parent gamma dmuElim eliminee piBinding arg eliminators result tyResult
 
 autoEliminate ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Type mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Type sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   Maybe (tc ()) ->
   tc ()
 autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult maybeAlternative = do
@@ -237,25 +238,25 @@ autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResu
            Nothing -> tcFail parent $ "Cannot auto-eliminate."
            Just alternative' -> alternative'
   case tyEliminee of
-    Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))) ->
+    Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))) ->
       case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> alternative
         Implicit -> insertImplicitArgument parent gamma dmuElim eliminee piBinding eliminators result tyResult
         Resolves _ -> todo
-    Type (Expr3 (TermCons (ConsUniHS (BoxType boxSeg)))) ->
+    Type (Expr2 (TermCons (ConsUniHS (BoxType boxSeg)))) ->
       unbox parent gamma dmuElim eliminee boxSeg eliminators result tyResult
     _ -> alternative
 
 checkSmartElimForNormalType ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Type mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Type sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators result tyResult =
   case (tyEliminee, eliminators) of
@@ -273,7 +274,7 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     -- `t (...)` (not syntax)
     (_, SmartElimEnd Raw.ArgSpecExplicit : []) -> unreachable
     -- `f .{a = ...}` (match argument name)
-    (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
+    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimEnd (Raw.ArgSpecNamed name) : []) ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
       then checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
       else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
@@ -282,15 +283,15 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
       autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `f arg`
     -}
-    (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecExplicit arg : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecExplicit arg : eliminators') ->
       case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
         _ -> autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `f .{arg}`
-    (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecNext arg : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecNext arg : eliminators') ->
       apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
     -- `f .{a = arg}`
-    (Type (Expr3 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg (Raw.ArgSpecNamed name) arg : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg (Raw.ArgSpecNamed name) arg : eliminators') ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
       then apply parent gamma dmuElim eliminee piBinding arg eliminators' result tyResult
       else autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
@@ -298,7 +299,7 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
     (_, SmartElimArg _ _ : eliminators') ->
       autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
     -- `pair .componentName`
-    (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNamed name) : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNamed name) : eliminators') ->
       -- if the given name is the name of the first component
       if Just name == (_segment'name $ binding'segment $ sigmaBinding)
       -- then project out the first component and continue
@@ -306,14 +307,14 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
       -- else project out the second component and try again
       else projSnd parent gamma dmuElim eliminee sigmaBinding eliminators result tyResult
     -- `pair .i`
-    (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNumbered i) : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNumbered i) : eliminators') ->
       if i == 1
       -- then project out the first component and continue
       then projFst parent gamma dmuElim eliminee sigmaBinding eliminators' result tyResult
       -- else project out the second component and decrement
       else let decEliminators = SmartElimProj (Raw.ProjSpecNumbered $ i - 1) : eliminators'
            in  projSnd parent gamma dmuElim eliminee sigmaBinding decEliminators result tyResult
-    (Type (Expr3 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecTail i) : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecTail i) : eliminators') ->
       if i == 1
       -- then do nothing
       then addNewConstraint
@@ -327,15 +328,15 @@ checkSmartElimForNormalType parent gamma dmuElim eliminee tyEliminee eliminators
       autoEliminate parent gamma dmuElim eliminee tyEliminee eliminators result tyResult Nothing
 
 checkSmartElim ::
-  (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModedModality mode modty v {-^ modality by which the eliminee is used -} ->
-  Term mode modty v ->
-  Type mode modty v ->
-  [SmartEliminator mode modty v] ->
-  Term mode modty v ->
-  Type mode modty v ->
+  (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ modality by which the eliminee is used -} ->
+  Term sys v ->
+  Type sys v ->
+  [SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
   tc ()
 checkSmartElim parent gamma dmuElim eliminee tyEliminee [] result tyResult =
   checkSmartElimDone parent gamma dmuElim eliminee tyEliminee result tyResult
