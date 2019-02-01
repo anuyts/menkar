@@ -11,10 +11,10 @@ import Data.Functor.Compose
 import Data.List (inits)
 import Control.Monad.State.Lazy
 
-checkSegment :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Segment Type mode modty v ->
+checkSegment :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Segment Type sys v ->
   tc ()
 checkSegment parent gamma seg = do
   let dmu = _segment'modty seg
@@ -26,16 +26,16 @@ checkSegment parent gamma seg = do
     (Just parent)
     "Checking segment's type."
 
-checkTelescoped :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
+checkTelescoped :: (MonadTC sys tc, DeBruijnLevel v) =>
   ( forall w .
     (DeBruijnLevel w) =>
-    Ctx Type mode modty w Void ->
-    rhs mode modty w ->
+    Ctx Type sys w Void ->
+    rhs sys w ->
     tc ()
   ) ->
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Telescoped Type rhs mode modty v ->
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Telescoped Type rhs sys v ->
   tc ()
 checkTelescoped checkRHS parent gamma (Telescoped rhs) = checkRHS gamma rhs
 checkTelescoped checkRHS parent gamma (seg :|- telescopedRHS) = do
@@ -50,10 +50,10 @@ checkTelescoped checkRHS parent gamma (dmu :** telescopedRHS) = do
 
 -------------------------
 
-checkValRHS :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ValRHS mode modty v ->
+checkValRHS :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ValRHS sys v ->
   tc ()
 checkValRHS parent gamma valRHS = do
   addNewConstraint
@@ -65,10 +65,10 @@ checkValRHS parent gamma valRHS = do
     (Just parent)
     "Type-checking RHS."
 
-checkModuleRHS :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  ModuleRHS mode modty v ->
+checkModuleRHS :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModuleRHS sys v ->
   tc ()
 checkModuleRHS parent gamma (ModuleRHS (Compose entries)) =
   forM_ revEntriesWithPreds $ \ (entry, prevEntries) -> do
@@ -79,30 +79,30 @@ checkModuleRHS parent gamma (ModuleRHS (Compose entries)) =
 
 -------------------------
 
-checkVal :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Val mode modty v ->
+checkVal :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Val sys v ->
   tc ()
 checkVal parent gamma val = do
   -- CMODE plicity (instance)
   -- CMODE mode/modality
   checkTelescoped (checkValRHS parent) parent gamma (_decl'content val)
 
-checkModule :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Module mode modty v ->
+checkModule :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Module sys v ->
   tc ()
 checkModule parent gamma modul = do
   -- CMODE plicity (instance)
   -- CMODE mode modality
   checkTelescoped (checkModuleRHS parent) parent gamma (_decl'content modul)
 
-checkEntry :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Constraint mode modty rel ->
-  Ctx Type mode modty v Void ->
-  Entry mode modty v ->
+checkEntry :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Entry sys v ->
   tc ()
 checkEntry parent gamma entry = do
   let (jud, reason) = case entry of
