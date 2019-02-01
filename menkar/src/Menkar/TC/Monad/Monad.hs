@@ -14,28 +14,24 @@ import Control.Monad.Trans.Class
 import Data.Functor.Compose
 import Control.Monad.Trans.Maybe
 import Control.Monad.Fail
+import Data.Kind hiding (Type, Constraint)
 
-data Constraint mode modty rel = Constraint {
-    constraint'judgement :: Judgement mode modty rel,
-    constraint'parent :: Maybe (Constraint mode modty rel),
+data Constraint sys = Constraint {
+    constraint'judgement :: Judgement sys,
+    constraint'parent :: Maybe (Constraint sys),
     constraint'reason :: String,
     constraint'id :: Int
   }
 
 class (
     MonadFail sc,
-    Traversable mode,
-    Traversable modty,
-    Traversable rel,
-    Degrees mode modty rel
+    Degrees sys
   ) => MonadScoper
-    (mode :: * -> *)
-    (modty :: * -> *)
-    (rel :: * -> *)
+    (sys :: KSys)
     (sc :: * -> *)
-    | sc -> mode, sc -> modty, sc -> rel where
-  annot4annot :: (DeBruijnLevel v) => Ctx Type mode modty v Void -> 
-    Raw.Qualified String -> Maybe (Term mode modty v) -> sc (Annotation mode modty v)
+    | sc -> sys where
+  annot4annot :: (DeBruijnLevel v) => Ctx Type sys v Void -> 
+    Raw.Qualified String -> Maybe (Term sys v) -> sc (Annotation sys v)
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
@@ -43,19 +39,19 @@ class (
       later on.
   -}
   newMetaTermNoCheck :: (DeBruijnLevel v) =>
-    Maybe (Constraint mode modty rel)
+    Maybe (Constraint sys)
     -> rel v {-^ Degree up to which it should be solved -}
-    -> Ctx Type mode modty v Void
+    -> Ctx Type sys v Void
     -> Bool {-^ Whether it can be solved using eta-expansion. -}
     -> String
-    -> sc (Term mode modty v)
+    -> sc (Term sys v)
   newMetaMode ::
-    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> sc (mode v)
+    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (mode v)
   newMetaModty ::
-    Maybe (Constraint mode modty rel) -> Ctx Type mode modty v Void -> String -> sc (modty v)
+    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (modty v)
   scopeFail :: String -> sc a
 
-instance (MonadScoper mode modty rel sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper mode modty rel (mT sc) where
+instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
   annot4annot gamma qstring maybeArg = lift $ annot4annot gamma qstring maybeArg
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = lift $ newMetaTermNoCheck maybeParent deg gamma etaFlag reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
@@ -63,43 +59,43 @@ instance (MonadScoper mode modty rel sc, MonadTrans mT, MonadFail (mT sc)) => Mo
   scopeFail msg = lift $ scopeFail msg
 
 class (
-    Degrees mode modty rel,
-    MonadScoper mode modty rel tc
-  ) => MonadTC mode modty rel tc | tc -> mode, tc -> modty, tc -> rel where
-  --term4newImplicit :: Ctx ty mode modty v Void -> tc (Term mode modty v)
-  --mode4newImplicit :: Ctx ty mode modty v Void -> tc (mode v)
-  --modty4newImplicit :: Ctx ty mode modty v Void -> tc (modty v)
+    Degrees sys,
+    MonadScoper sys tc
+  ) => MonadTC sys tc | tc -> sys where
+  --term4newImplicit :: Ctx ty sys v Void -> tc (Term sys v)
+  --mode4newImplicit :: Ctx ty sys v Void -> tc (mode v)
+  --modty4newImplicit :: Ctx ty sys v Void -> tc (modty v)
   --genVarName :: tc Raw.Name
   --newConstraintID :: tc Int
   {-| Create and register a new constraint. -}
   defConstraint ::
-    Judgement mode modty rel ->
-    Maybe (Constraint mode modty rel) ->
+    Judgement sys ->
+    Maybe (Constraint sys) ->
     String ->
-    tc (Constraint mode modty rel)
+    tc (Constraint sys)
   {-| Add a check for this constraint to the task stack. -}
-  addConstraint :: Constraint mode modty rel -> tc ()
+  addConstraint :: Constraint sys -> tc ()
   addNewConstraint ::
-    Judgement mode modty rel ->
-    Maybe (Constraint mode modty rel) ->
+    Judgement sys ->
+    Maybe (Constraint sys) ->
     String ->
     tc()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
-  addConstraintReluctantly :: Constraint mode modty rel -> tc ()
+  addConstraintReluctantly :: Constraint sys -> tc ()
   {-| Provide a solution for the meta. All continuations thus unblocked are added to the task stack. -}
   solveMeta ::
-    Constraint mode modty rel ->
+    Constraint sys ->
     Int ->
     (forall tc' v .
-      (MonadTC mode modty rel tc', Eq v, DeBruijnLevel v) =>
-      Ctx Type mode modty v Void ->
-      tc' (Term mode modty v)
+      (MonadTC sys tc', Eq v, DeBruijnLevel v) =>
+      Ctx Type sys v Void ->
+      tc' (Term sys v)
     ) -> tc ()
   --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
   ---}
-  --getMeta :: Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
+  --getMeta :: Int -> [Term sys v] -> tc (Maybe (Term sys v))
   --{-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
-  --blockOnMetas :: [Int] -> Constraint mode modty rel -> tc ()
+  --blockOnMetas :: [Int] -> Constraint sys -> tc ()
   {-| Returns the meta's solution if the meta has been solved.
       Otherwise, returns @Nothing@. Then you have two options:
       1) Deal with it.
@@ -108,42 +104,42 @@ class (
          are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
          run with the soluiton.
       It is an error to await the same meta twice. -}
-  awaitMeta :: Constraint mode modty rel -> String -> Int -> [Term mode modty v] -> tc (Maybe (Term mode modty v))
+  awaitMeta :: Constraint sys -> String -> Int -> [Term sys v] -> tc (Maybe (Term sys v))
   {-| Aborts (rather than cancels) computation.
       For every call to @'awaitMeta'@ that didn't yield a result, the continuation as of that point
       is saved. The first time one of the corresponding metas is resolved, the continuation from that point will be run. -}
-  tcBlock :: Constraint mode modty rel -> String -> tc a
-  tcReport :: Constraint mode modty rel -> String -> tc ()
-  tcFail :: Constraint mode modty rel -> String -> tc a
+  tcBlock :: Constraint sys -> String -> tc a
+  tcReport :: Constraint sys -> String -> tc ()
+  tcFail :: Constraint sys -> String -> tc a
   leqMod :: modty v -> modty v -> tc Bool
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
-  --selfcontained :: Constraint mode modty rel -> tc () -> tc ()
+  --selfcontained :: Constraint sys -> tc () -> tc ()
 
-await :: (MonadTC mode modty rel tc) =>
-  Constraint mode modty rel -> String -> Term mode modty v -> tc (Maybe (Term mode modty v))
-await parent reason (Expr3 (TermMeta flagEta meta (Compose depcies))) = runMaybeT $ do
+await :: (MonadTC sys tc) =>
+  Constraint sys -> String -> Term sys v -> tc (Maybe (Term sys v))
+await parent reason (Expr2 (TermMeta flagEta meta (Compose depcies))) = runMaybeT $ do
   term <- MaybeT $ awaitMeta parent reason meta depcies
   MaybeT $ await parent reason term
 await parent reason t = return $ Just t
 
 {-
-addNewConstraint :: MonadTC mode modty rel tc =>
-  Judgement mode modty rel ->
-  Maybe (Constraint mode modty rel) ->
+addNewConstraint :: MonadTC sys tc =>
+  Judgement sys ->
+  Maybe (Constraint sys) ->
   String ->
   tc()
 addNewConstraint judgement parent reason = addConstraint =<< defConstraint judgement parent reason
 -}
 
 -- | Not to be used by the Scoper.
-newMetaTerm :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Maybe (Constraint mode modty rel) ->
+newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Maybe (Constraint sys) ->
   rel v ->
-  Ctx Type mode modty v Void ->
-  Type mode modty v ->
+  Ctx Type sys v Void ->
+  Type sys v ->
   Bool ->
   String ->
-  tc (Term mode modty v)
+  tc (Term sys v)
 newMetaTerm maybeParent deg gamma ty etaFlag reason = do
   t <- newMetaTermNoCheck maybeParent deg gamma etaFlag reason
   addNewConstraint
@@ -159,12 +155,12 @@ newMetaTerm maybeParent deg gamma ty etaFlag reason = do
   return t
 
 -- | Not to be used by the Scoper.
-newMetaType :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Maybe (Constraint mode modty rel) ->
+newMetaType :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Maybe (Constraint sys) ->
   rel v ->
-  Ctx Type mode modty v Void ->
+  Ctx Type sys v Void ->
   String ->
-  tc (Type mode modty v)
+  tc (Type sys v)
 newMetaType maybeParent deg gamma reason = do
   t <- Type <$> newMetaTermNoCheck maybeParent deg gamma False {-Solving types using eta is rather pointless. -} reason
   addNewConstraint
@@ -174,34 +170,34 @@ newMetaType maybeParent deg gamma reason = do
   return t
 
 -- | Not to be used by the Scoper.
-newMetaTypeRel :: (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-  Maybe (Constraint mode modty rel) ->
+newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
+  Maybe (Constraint sys) ->
   rel v ->
-  Ctx (Pair3 Type) mode modty v Void ->
-  Type mode modty v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Type sys v ->
   String ->
-  tc (Type mode modty v)
+  tc (Type sys v)
 newMetaTypeRel maybeParent deg gamma ty2 reason = do
   ty1 <- Type <$> newMetaTermNoCheck maybeParent deg (fstCtx gamma) True reason
   addNewConstraint
-    (JudTypeRel deg gamma (Pair3 ty1 ty2))
+    (JudTypeRel deg gamma (Twice2 ty1 ty2))
     maybeParent
     reason
   return ty1
 
-newMetaModedModality :: MonadScoper mode modty rel tc =>
-  Maybe (Constraint mode modty rel) ->
-  Ctx Type mode modty v Void ->
+newMetaModedModality :: MonadScoper sys tc =>
+  Maybe (Constraint sys) ->
+  Ctx Type sys v Void ->
   String ->
-  tc (ModedModality mode modty v)
+  tc (ModedModality sys v)
 newMetaModedModality parent gamma reason = do
   d <- newMetaMode parent gamma reason
   mu <- newMetaModty parent gamma reason
   return $ ModedModality d mu
 
 {-
-instance (MonadTC mode modty rel tc, MonadTrans mT, Monad (mT tc)) =>
-  MonadTC mode modty rel (mT tc) where
+instance (MonadTC sys tc, MonadTrans mT, Monad (mT tc)) =>
+  MonadTC sys (mT tc) where
   --term4newImplicit gamma = lift $ term4newImplicit gamma
   --mode4newImplicit gamma = lift $ mode4newImplicit gamma
   --modty4newImplicit gamma = lift $ modty4newImplicit gamma

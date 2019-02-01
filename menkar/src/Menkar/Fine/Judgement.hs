@@ -13,16 +13,16 @@ import Data.Functor.Identity
 import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 
-data Judgement (sys :: KSys) (rel :: * -> *) where
+data Judgement (sys :: KSys) where
 
   {-
   -- | @'JudType' gamma@ means @gamma |- ctx@
   JudCtx ::
     Ctx Type sys v Void ->
-    Judgement sys rel
+    Judgement sys
   JudCtxRel ::
     Ctx (Twice2 Type) sys v Void ->
-    Judgement sys rel
+    Judgement sys
   -}
 
   {-
@@ -31,23 +31,23 @@ data Judgement (sys :: KSys) (rel :: * -> *) where
   JudMode ::
     Ctx Type sys v Void ->
     Mode sys v ->
-    Judgement sys rel
+    Judgement sys
   JudModeRel ::
     Ctx (Twice2 Type) sys v Void ->
     Twice2 Mode sys v ->
-    Judgement sys rel
+    Judgement sys
   -}
 
   {-
   JudSegment ::
     Ctx Type sys v Void ->
     Segment sys v ->
-    Judgement sys rel
+    Judgement sys
   JudSegmentRel ::
     rel v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice2 (Segment Type) sys v ->
-    Judgement sys rel
+    Judgement sys
   -}
 
   -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
@@ -55,12 +55,12 @@ data Judgement (sys :: KSys) (rel :: * -> *) where
   JudType :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Type sys v ->
-    Judgement sys rel
+    Judgement sys
   JudTypeRel :: (DeBruijnLevel v) =>
     rel v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice2 Type sys v ->
-    Judgement sys rel
+    Judgement sys
     
   -- | @'JudTerm' gamma t tyT@ means @gamma |- t : tyT@.
   -- | Premises: @'JudCtx', 'JudType'@
@@ -68,13 +68,13 @@ data Judgement (sys :: KSys) (rel :: * -> *) where
     Ctx Type sys v Void ->
     Term sys v ->
     Type sys v ->
-    Judgement sys rel
+    Judgement sys
   JudTermRel :: (DeBruijnLevel v) =>
     rel v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice2 Term sys v ->
     Twice2 Type sys v ->
-    Judgement sys rel
+    Judgement sys
     
   -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.
   -- | Premises: @'JudCtx', 'JudType', 'JudTerm'@
@@ -82,7 +82,7 @@ data Judgement (sys :: KSys) (rel :: * -> *) where
     Ctx Type sys v Void ->
     Term sys v ->
     Type sys v ->
-    Judgement sys rel
+    Judgement sys
     
   -- | @'JudSmartElim' gamma t tyT es r@ means @gamma |- (t : tyT) es ~> r@.
   -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
@@ -94,7 +94,7 @@ data Judgement (sys :: KSys) (rel :: * -> *) where
     [SmartEliminator sys v] {-^ eliminators -} ->
     Term sys v {-^ result -} ->
     Type sys v ->
-    Judgement sys rel
+    Judgement sys
     
   -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
   -- | Premises: @'JudTerm' gamma t tyT@
@@ -103,7 +103,7 @@ data Judgement (sys :: KSys) (rel :: * -> *) where
     String ->
     Term sys v ->
     Type sys v ->
-    Judgement sys rel
+    Judgement sys
     
   -- | @'JudResolve' gamma t r tyT@ means @gamma |- t ~> r : tyT@ where @t@ is a resolution call.
   -- | Premises?
@@ -112,26 +112,26 @@ data Judgement (sys :: KSys) (rel :: * -> *) where
     {- resolution call goes here -> -}
     Term sys v ->
     Type sys v ->
-    Judgement sys rel
+    Judgement sys
     
   -- JudAccuracy: "This term should be known up to that accuracy"
 
   JudSegment :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Segment Type sys v ->
-    Judgement sys rel
+    Judgement sys
 
   JudVal :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Val sys v ->
-    Judgement sys rel
+    Judgement sys
 
   JudModule :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Module sys v ->
-    Judgement sys rel
+    Judgement sys
 
   JudEntry :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Entry sys v ->
-    Judgement sys rel
+    Judgement sys
