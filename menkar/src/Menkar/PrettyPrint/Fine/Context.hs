@@ -22,7 +22,7 @@ import Control.Lens
 ctx2pretty :: forall v sys ty .
   (DeBruijnLevel v,
    SysTrav sys, Functor (ty sys),
-   Fine2Pretty sys Mode, Fine2Pretty sys Modality, Fine2Pretty sys ty) =>
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v Void -> PrettyTree String
 ctx2pretty (CtxEmpty d) = "{context-mode : " ++| fine2pretty ScCtxEmpty d |++ "}"
 ctx2pretty (gamma :.. seg) = haveDB gamma $ ctx2pretty gamma \+\ [fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> seg)]
@@ -35,14 +35,14 @@ ctx2pretty (dmu :\\ gamma) = haveDB gamma $ "[" ++| fine2pretty (ctx2scCtx gamma
 ctx2string :: forall v sys ty .
   (DeBruijnLevel v,
    SysTrav sys, Functor (ty sys),
-   Fine2Pretty sys Mode, Fine2Pretty sys Modality, Fine2Pretty sys ty) =>
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v Void -> String
 ctx2string gamma = render defaultRenderState $ ctx2pretty gamma
 
 instance
   (DeBruijnLevel v,
    SysTrav sys, Functor (ty sys),
-   Fine2Pretty sys Mode, Fine2Pretty sys Modality, Fine2Pretty sys ty) =>
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
   Show (Ctx ty sys v Void) where
   show = ctx2string
 
@@ -50,7 +50,7 @@ instance
 ctx2pretties :: forall v sys ty .
   (DeBruijnLevel v,
    SysTrav sys, Functor (ty sys),
-   Fine2Pretty sys Mode, Fine2Pretty sys Modty, Fine2Pretty sys ty) =>
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys Modty, Fine2Pretty sys ty) =>
   Ctx ty sys v Void -> [PrettyTree String]
 ctx2pretties (CtxEmpty d) = ["{[" ++| fine2pretty ScCtxEmpty (Mode d :: Mode sys Void) |++ "]}"]
 ctx2pretties (gamma :.. seg) = haveDB gamma $ ctx2pretties gamma ++ [fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> seg)]
@@ -63,7 +63,7 @@ ctx2pretties (dmu :\\ gamma) = haveDB gamma $ [fine2pretty (ctx2scCtx gamma) (un
 ctx2pretty :: forall v sys ty .
   (DeBruijnLevel v,
    SysTrav sys, Functor (ty sys),
-   Fine2Pretty sys Mode, Fine2Pretty sys Modty, Fine2Pretty sys ty) =>
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys Modty, Fine2Pretty sys ty) =>
   Ctx ty sys v Void -> PrettyTree String
 ctx2pretty (CtxEmpty d) = "{[" ++| fine2pretty ScCtxEmpty (Mode d :: Mode sys Void) |++ "]}"
 ctx2pretty (gamma :.. seg) = haveDB gamma $ ctx2pretty gamma ||| fine2pretty (ctx2scCtx gamma) (unVarFromCtx <$> seg)

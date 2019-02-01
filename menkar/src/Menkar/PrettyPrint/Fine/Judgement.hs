@@ -28,7 +28,7 @@ _vdash_ = [' ', vdash, ' ']
 
 jud2pretty :: forall sys .
   (SysTrav sys,
-   Fine2Pretty sys Mode, Fine2Pretty sys Modality) =>
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
   Judgement sys -> PrettyTree String
 jud2pretty (JudType gamma ty) =
   ctx2pretty gamma \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty]
@@ -73,6 +73,6 @@ jud2pretty (JudEntry gamma entry) = ctx2pretty gamma \\\ [_vdash ++ " <declarati
 --jud2pretty jud = _jud2pretty
 
 instance (SysTrav sys,
-          Fine2Pretty sys Mode, Fine2Pretty sys Modality)
+          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
          => Show (Judgement sys) where
   show jud = render (RenderState 100 "  " "    ") $ jud2pretty jud
