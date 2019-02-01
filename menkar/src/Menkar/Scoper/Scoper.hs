@@ -33,10 +33,10 @@ import Data.Number.Nat
 
 {-| @'eliminator' gamma rawElim@ scopes @rawElim@ to a fine smart eliminator. -}
 eliminator ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Eliminator ->
-  sc (SmartEliminator mode modty v)
+  sc (SmartEliminator sys v)
 eliminator gamma (Raw.ElimDots) = return SmartElimDots
 --eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
@@ -45,43 +45,43 @@ eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
 natLiteral ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Nat -> sc (Term mode modty v)
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Nat -> sc (Term sys v)
 natLiteral n
-  | n == 0 = return $ Expr3 $ TermCons $ ConsZero
-  | otherwise = Expr3 . TermCons . ConsSuc <$> natLiteral (n - 1)
+  | n == 0 = return $ Expr2 $ TermCons $ ConsZero
+  | otherwise = Expr2 . TermCons . ConsSuc <$> natLiteral (n - 1)
 
 qname ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.QName ->
-  sc (Term mode modty v)
+  sc (Term sys v)
 qname gamma rawQName =
   let maybeLdivTelescopedVal = lookupQName gamma rawQName
   in case maybeLdivTelescopedVal of
        LookupResultNothing -> scopeFail $ "Not in scope: " ++ Raw.unparse rawQName
-       LookupResultVar v -> return $ Var3 (unVarFromCtx v)
-       LookupResultVal ldivTelescopedVal -> return $ Expr3 $ TermQName rawQName $ unVarFromCtx <$> ldivTelescopedVal
+       LookupResultVar v -> return $ Var2 (unVarFromCtx v)
+       LookupResultVal ldivTelescopedVal -> return $ Expr2 $ TermQName rawQName $ unVarFromCtx <$> ldivTelescopedVal
   
 {-| @'expr3' gamma rawExpr@ scopes @rawExpr@ to a term. -}
-expr3 :: (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  Raw.Expr3 ->
-  sc (Term mode modty v)
+expr3 :: (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Raw.ExprC ->
+  sc (Term sys v)
 expr3 gamma (Raw.ExprQName rawQName) = qname gamma rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = natLiteral n
 expr3 gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing eqDeg gamma True "Infer explicitly omitted value."
 expr3 gamma (Raw.ExprGoal str) = do
   result <- newMetaTermNoCheck Nothing eqDeg gamma True "Infer goal's value."
-  return $ Expr3 $ TermGoal str result
+  return $ Expr2 $ TermGoal str result
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
 elimination ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Elimination ->
-  sc (Term mode modty v)
+  sc (Term sys v)
 elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   fineEliminee <- expr3 gamma rawEliminee -- CMOD: Fix context
   --fineTy <- type4newImplicit gamma
@@ -90,7 +90,7 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
     [] -> return fineEliminee
     _  -> do
       fineResult <- newMetaTermNoCheck Nothing eqDeg gamma True "Infer result of smart elimination."
-      return . Expr3 $ TermSmartElim fineEliminee (Compose fineElims) fineResult
+      return . Expr2 $ TermSmartElim fineEliminee (Compose fineElims) fineResult
   --theMode <- mode4newImplicit gamma
   {-pushConstraint $ Constraint {
       constraintJudgement = JudSmartElim gamma fineEliminee fineTy fineElims fineResult,
@@ -101,21 +101,21 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
 
 {-| @'expr2' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 expr2 ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  Raw.Expr2 ->
-  sc (Term mode modty v)
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Raw.ExprB ->
+  sc (Term sys v)
 expr2 gamma (Raw.ExprElimination rawElim) = elimination gamma rawElim
 
 --------------------------------------------------
 
 {-| @'simpleLambda' gamma rawArg rawBody@ scopes the Menkar lambda-expression @<rawArg> > <rawBody>@ to a term. -}
 simpleLambda ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  Raw.Expr2 ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Raw.ExprB ->
   Raw.Expr ->
-  sc (Term mode modty v)
+  sc (Term sys v)
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
     dmu <- newMetaModedModality Nothing (irrModedModality :\\ gamma) "Infer domain mode/modality."
@@ -132,64 +132,64 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
           _decl'content = fineTy
         }
     fineBody <- expr (gamma :.. (VarFromCtx <$> fineSeg)) rawBody
-    return . Expr3 . TermCons . Lam $ Binding fineSeg fineBody
+    return . Expr2 . TermCons . Lam $ Binding fineSeg fineBody
 simpleLambda gamma rawArg rawBody =
   scopeFail $
   "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
 
 {-| @'buildPi' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> -> <fineCod>@ to a term. -}
 buildPi ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  Segment Type mode modty v ->
-  Term mode modty (VarExt v) ->
-  sc (Term mode modty v)
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Segment Type sys v ->
+  Term sys (VarExt v) ->
+  sc (Term sys v)
 buildPi gamma fineSeg fineCod = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
-  return $ Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding fineSeg fineCod
+  return $ Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding fineSeg fineCod
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  Segment Type mode modty v ->
-  Term mode modty (VarExt v) ->
-  sc (Term mode modty v)
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Segment Type sys v ->
+  Term sys (VarExt v) ->
+  sc (Term sys v)
 buildSigma gamma fineSeg fineCod = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
-  return $ Expr3 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg fineCod
+  return $ Expr2 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg fineCod
   
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  Segment Type mode modty v ->
-  Term mode modty (VarExt v) ->
-  sc (Term mode modty v)
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Segment Type sys v ->
+  Term sys (VarExt v) ->
+  sc (Term sys v)
 buildLambda gamma fineSeg fineCod =
-  return $ Expr3 $ TermCons $ Lam $ Binding fineSeg fineCod
+  return $ Expr2 $ TermCons $ Lam $ Binding fineSeg fineCod
 
 {-| @'binder2' build gamma fineSegs rawArgs rawBody@ scopes the Menkar expression
     @<fineSegs> **> <rawArgs> **> rawBody@ to a term, where
     @build gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> **> <fineBody>@ to a term. -}
 binder2 ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
+  (MonadScoper sys sc, DeBruijnLevel v) =>
   ( forall w .
     DeBruijnLevel w =>
-    Ctx Type mode modty w Void ->
-    Segment Type mode modty w ->
-    Term mode modty (VarExt w) ->
-    sc (Term mode modty w)
+    Ctx Type sys w Void ->
+    Segment Type sys w ->
+    Term sys (VarExt w) ->
+    sc (Term sys w)
   ) ->
-  Ctx Type mode modty v Void ->
-  Telescoped Type Unit3 mode modty v ->
+  Ctx Type sys v Void ->
+  Telescoped Type Unit2 sys v ->
       {-^ remainder of the already-scoped part of the telescope on the left of the operator -}
   [Raw.Segment] -> {-^ telescope on the left of the operator -}
   Raw.Expr -> {-^ operand on the right of the operator -}
-  sc (Term mode modty v)
-binder2 build gamma (Telescoped Unit3) rawArgs rawBody = binder build gamma rawArgs rawBody
+  sc (Term sys v)
+binder2 build gamma (Telescoped Unit2) rawArgs rawBody = binder build gamma rawArgs rawBody
 binder2 build gamma (fineSeg :|- fineSegs) rawArgs rawBody =
   build gamma fineSeg =<< binder2 build (gamma :.. (VarFromCtx <$> fineSeg)) fineSegs rawArgs rawBody
 binder2 build gamma (mu :** fineSegs) rawArgs rawBody = unreachable
@@ -198,18 +198,18 @@ binder2 build gamma (mu :** fineSegs) rawArgs rawBody = unreachable
     @<rawArgs> **> rawBody@ to a term, where
     @build gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> **> <fineBody>@ to a term. -}
 binder ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
+  (MonadScoper sys sc, DeBruijnLevel v) =>
   ( forall w .
     DeBruijnLevel w =>
-    Ctx Type mode modty w Void ->
-    Segment Type mode modty w ->
-    Term mode modty (VarExt w) ->
-    sc (Term mode modty w)
+    Ctx Type sys w Void ->
+    Segment Type sys w ->
+    Term sys (VarExt w) ->
+    sc (Term sys w)
   ) ->
-  Ctx Type mode modty v Void ->
+  Ctx Type sys v Void ->
   [Raw.Segment] -> {-^ telescope on the left of the operator -}
   Raw.Expr -> {-^ operand on the right of the operator -}
-  sc (Term mode modty v)
+  sc (Term sys v)
 binder build gamma [] rawBody = expr gamma rawBody
 binder build gamma (rawArg:rawArgs) rawBody = do
   fineArgTelescoped <- segment gamma rawArg
@@ -218,12 +218,12 @@ binder build gamma (rawArg:rawArgs) rawBody = do
 {-| @'telescopeOperation' gamma rawTheta rawOp maybeRawExprR@ scopes the Menkar expression
     @<rawTheta> <rawOp> <maybeRawExprR>@ to a term. -}
 telescopeOperation ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Telescope -> {-^ telescope on the left of the operator -}
   Raw.Elimination -> {-^ the operator -}
   Maybe (Raw.Expr) -> {-^ operand on the right of the operator -}
-  sc (Term mode modty v)
+  sc (Term sys v)
 telescopeOperation gamma rawTheta
     rawOp@(Raw.Elimination _ (_ : _)) maybeRawExprR =
   scopeFail $ "Smart eliminations used on a binding operator: " ++ Raw.unparse rawOp
@@ -244,29 +244,29 @@ telescopeOperation gamma theta rawOp maybeRawExprR =
 {-
 type Fixity = Double
 data Associativity = AssocLeft | AssocRight | AssocAlone
-data OpTree mode modty v =
-  OpLeaf (Term mode modty v) |
+data OpTree sys v =
+  OpLeaf (Term sys v) |
   OpNode {
-    nodeOp :: (Term mode modty v),
+    nodeOp :: (Term sys v),
     nodeFixity :: Fixity,
     nodeAssoc :: Associativity,
-    nodeLOperand :: (OpTree mode modty v),
-    nodeROperand :: (OpTree mode modty v)
+    nodeLOperand :: (OpTree sys v),
+    nodeROperand :: (OpTree sys v)
     } |
   OpTelescoped {
-    nodeOp :: (Term mode modty v),
+    nodeOp :: (Term sys v),
     nodeFixity :: Fixity,
     nodeAssoc :: Associativity,
-    nodeTelescope :: (OpTree mode modty v),
-    nodeROperand :: (OpTree mode modty v)
+    nodeTelescope :: (OpTree sys v),
+    nodeROperand :: (OpTree sys v)
     }
   deriving (Functor, Foldable, Traversable, Generic1)
 
-exprToTree :: MonadScoper mode modty rel sc =>
-  Ctx Type mode modty v ->
+exprToTree :: MonadScoper sys sc =>
+  Ctx Type sys v ->
   mode v ->
   Raw.Expr ->
-  sc (OpTree mode modty v)
+  sc (OpTree sys v)
 exprToTree gamma _ = _exprToTree
 -}
 
@@ -274,10 +274,10 @@ exprToTree gamma _ = _exprToTree
 {-| @'expr' gamma rawExpr@ scopes @rawExpr@ to a term.
     For now, every operator is right associative with equal precedence. -}
 expr ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Expr ->
-  sc (Term mode modty v)
+  sc (Term sys v)
 -- Operator-free expression (e.g. @5@)
 expr gamma (Raw.ExprOps (Raw.OperandExpr rawExpr) Nothing) = expr2 gamma rawExpr
 -- Simple lambda (e.g. @x > f x@)
@@ -307,10 +307,10 @@ expr gamma (Raw.ExprOps (Raw.OperandTelescope rawTheta) (Just (rawOp, maybeRawEx
 
 {-| @'annotation' gamma rawAnnot@ scopes @rawAnnot@ to an annotation. -}
 annotation ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Annotation ->
-  sc (Annotation mode modty v)
+  sc (Annotation sys v)
 annotation gamma (Raw.Annotation (Raw.Qualified [] "~") Nothing) = return AnnotImplicit
 annotation gamma (Raw.Annotation qstring maybeRawArg) = do
   maybeFineArg <- sequenceA $ expr gamma <$> maybeRawArg
@@ -327,13 +327,13 @@ type instance ScopeDeclSort Raw.DeclSortSegment = DeclSortSegment
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
 buildDeclaration ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v,
-   ScopeDeclSort rawDeclSort ~ fineDeclSort, Functor (Type mode modty)) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v,
+   ScopeDeclSort rawDeclSort ~ fineDeclSort, Functor (Type sys)) =>
+  Ctx Type sys v Void ->
   {-| How to generate content if absent in the partial telescoped declaration. -}
-  (forall w . DeBruijnLevel w => Ctx Type mode modty w Void -> sc (content mode modty w)) ->
-  TelescopedPartialDeclaration rawDeclSort Type content mode modty v ->
-  sc [Declaration fineDeclSort (Telescoped Type content) mode modty v]
+  (forall w . DeBruijnLevel w => Ctx Type sys w Void -> sc (content sys w)) ->
+  TelescopedPartialDeclaration rawDeclSort Type content sys v ->
+  sc [Declaration fineDeclSort (Telescoped Type content) sys v]
 buildDeclaration gamma generateContent partDecl = do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
@@ -346,7 +346,7 @@ buildDeclaration gamma generateContent partDecl = do
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit
         telescopedContent <- mapTelescopedDB (
-            \ wkn gammadelta (Maybe3 content) -> case content of
+            \ wkn gammadelta (Maybe2 content) -> case content of
               Compose (Just content') -> return content'
               Compose (Nothing) -> generateContent gammadelta
           ) gamma $ _pdecl'content partDecl
@@ -374,12 +374,12 @@ buildDeclaration gamma generateContent partDecl = do
      For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
-buildTelescopedDeclaration :: (MonadScoper mode modty rel sc, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
-  Ctx Type mode modty v Void ->
+buildTelescopedDeclaration :: (MonadScoper sys sc, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
+  Ctx Type sys v Void ->
   {-| How to generate content if absent in the partial telescoped declaration. -}
-  (forall w . Ctx Type mode modty w Void -> sc (content mode modty w)) ->
-  TelescopedPartialDeclaration rawDeclSort Type content mode modty v ->
-  sc [TelescopedDeclaration fineDeclSort Type content mode modty v]
+  (forall w . Ctx Type sys w Void -> sc (content sys w)) ->
+  TelescopedPartialDeclaration rawDeclSort Type content sys v ->
+  sc [TelescopedDeclaration fineDeclSort Type content sys v]
 buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTelescopedDBSc (
     \ wkn gammadelta partDecl -> ListT $ buildDeclaration gammadelta (generateContent gammadelta) partDecl
   ) gamma partTDecl
@@ -391,10 +391,10 @@ buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTeles
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
 buildSegment :: 
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  PartialSegment Type mode modty v ->
-  sc [Segment Type mode modty v]
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  PartialSegment Type sys v ->
+  sc [Segment Type sys v]
 buildSegment gamma partSeg = runListT $ do
   teleSeg <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False "Infer type."
              in  ListT $ buildDeclaration gamma gen partSeg
@@ -405,10 +405,10 @@ buildSegment gamma partSeg = runListT $ do
     
 {-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ to a partial telescoped declaration. -}
 partialTelescopedDeclaration ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Declaration rawDeclSort ->
-  sc (TelescopedPartialDeclaration rawDeclSort Type Type mode modty v)
+  sc (TelescopedPartialDeclaration rawDeclSort Type Type sys v)
 partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclaration) $ do
   --telescope
   fineDelta <- telescope gamma $ Raw.decl'telescope rawDecl
@@ -416,9 +416,9 @@ partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclarat
   pdecl'names .= (Just $ Raw.decl'names rawDecl)
   --type
   fineContent <- mapTelescopedDB (
-      \wkn gammadelta Unit3 -> case Raw.decl'content rawDecl of
-        Raw.DeclContentEmpty -> return $ Maybe3 $ Compose $ Nothing
-        Raw.DeclContent rawTy -> Maybe3 . Compose . Just <$> do
+      \wkn gammadelta Unit2 -> case Raw.decl'content rawDecl of
+        Raw.DeclContentEmpty -> return $ Maybe2 $ Compose $ Nothing
+        Raw.DeclContent rawTy -> Maybe2 . Compose . Just <$> do
           --fineLvl <- term4newImplicit gammadelta
           Type <$> expr gammadelta rawTy
     ) gamma fineDelta
@@ -448,15 +448,15 @@ partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclarat
 
 {-| @'partialSegment' gamma rawSeg@ scopes @rawSeg@ to a partial segment. -}
 partialSegment ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Declaration Raw.DeclSortSegment ->
-  --sc [Segment Type mode modty v]
-  sc (PartialSegment Type mode modty v)
+  --sc [Segment Type sys v]
+  sc (PartialSegment Type sys v)
 partialSegment gamma rawSeg = do
   telescopedPartSeg <- partialTelescopedDeclaration gamma rawSeg
   case _pdecl'content telescopedPartSeg of
-    Telescoped (Maybe3 ty) -> flip pdecl'content telescopedPartSeg $ \_ -> return $ Telescoped $ Maybe3 ty
+    Telescoped (Maybe2 ty) -> flip pdecl'content telescopedPartSeg $ \_ -> return $ Telescoped $ Maybe2 ty
     _ -> unreachable -- nested segments encountered
 
 {-
@@ -466,13 +466,13 @@ partialSegment gamma rawSeg = do
 -}
 
 {-| Chain a list of fine segments to a fine telescope; while avoiding shadowing. -}
-segments2telescoped :: --MonadScoper mode modty rel sc =>
-  (MonadScoper mode modty rel sc, Functor mode, Functor modty) =>
-  Ctx Type mode modty v Void ->
-  [Segment Type mode modty v] ->
-  sc (Telescoped Type Unit3 mode modty v)
+segments2telescoped :: --MonadScoper sys sc =>
+  (MonadScoper sys sc, SysTrav sys) =>
+  Ctx Type sys v Void ->
+  [Segment Type sys v] ->
+  sc (Telescoped Type Unit2 sys v)
 segments2telescoped gamma [] =
-  return $ Telescoped Unit3
+  return $ Telescoped Unit2
 segments2telescoped gamma (fineSeg:fineSegs) = do
   let DeclNameSegment maybeNewName = _decl'name fineSeg
   case maybeNewName of
@@ -483,32 +483,32 @@ segments2telescoped gamma (fineSeg:fineSegs) = do
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
 segment ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Segment ->
-  sc (Telescoped Type Unit3 mode modty v)
+  sc (Telescoped Type Unit2 sys v)
 segment gamma (Raw.Segment rawDecl) = do
   partialSeg <- partialSegment gamma rawDecl
   segments2telescoped gamma =<< buildSegment gamma partialSeg
 
 {-| scope a partly fine, partly raw telescope to a fine telescope. -}
 telescope2 ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
-  Telescoped Type Unit3 mode modty v ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Telescoped Type Unit2 sys v ->
   Raw.Telescope ->
-  sc (Telescoped Type Unit3 mode modty v)
-telescope2 gamma (Telescoped Unit3) rawTele = telescope gamma rawTele
+  sc (Telescoped Type Unit2 sys v)
+telescope2 gamma (Telescoped Unit2) rawTele = telescope gamma rawTele
 telescope2 gamma (fineSeg :|- fineSegs) rawTele =
   (fineSeg :|-) <$> telescope2 (gamma :.. (VarFromCtx <$> fineSeg)) fineSegs rawTele
 telescope2 gamma (mu :** fineSegs) rawTele = unreachable
 
 telescope ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Telescope ->
-  sc (Telescoped Type Unit3 mode modty v)
-telescope gamma (Raw.Telescope []) = return $ Telescoped Unit3
+  sc (Telescoped Type Unit2 sys v)
+telescope gamma (Raw.Telescope []) = return $ Telescoped Unit2
 telescope gamma (Raw.Telescope (rawSeg : rawSegs)) = do
   fineFrontSegs <- segment gamma rawSeg
   telescope2 gamma fineFrontSegs (Raw.Telescope rawSegs)
@@ -517,11 +517,11 @@ telescope gamma (Raw.Telescope (rawSeg : rawSegs)) = do
 
 {-| Scope a raw LHS and a raw value RHS to a value, or fail. -}
 val ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Declaration Raw.DeclSortVal ->
   Raw.RHS Raw.DeclSortVal ->
-  sc (Val mode modty v)
+  sc (Val sys v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
   [fineLHS] <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False "Infer type."
@@ -537,11 +537,11 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.AnyEntry ->
-  ModuleRHS mode modty v ->
-  sc (ModuleRHS mode modty v)
+  ModuleRHS sys v ->
+  sc (ModuleRHS sys v)
 entryInModule gamma rawEntry fineModule = do
   let gammaModule = gamma :<...> VarFromCtx <$> fineModule
         {-(Left <$> ModuleInScope {
@@ -553,61 +553,61 @@ entryInModule gamma rawEntry fineModule = do
 
 {-| @'entriesInModule' gamma fineModule rawEntry@ scopes @rawEntries@ as part of the module @fineModule@ -}
 entriesInModule ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   [Raw.AnyEntry] ->
-  ModuleRHS mode modty v ->
-  sc (ModuleRHS mode modty v)
+  ModuleRHS sys v ->
+  sc (ModuleRHS sys v)
 entriesInModule gamma rawEntries fineModule = foldl (>>=) (return fineModule) (entryInModule gamma <$> rawEntries)
 
 {-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
 modul ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Declaration (Raw.DeclSortModule False) ->
   Raw.RHS (Raw.DeclSortModule False) ->
-  sc (Module mode modty v)
+  sc (Module sys v)
 modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
   partialLHSUntyped <- flip pdecl'content partialLHS $ mapTelescopedDB (
-      \wkn gammadelta (Maybe3 maybeFineTy) -> case maybeFineTy of
-        Compose Nothing -> return $ Maybe3 $ Compose Nothing
+      \wkn gammadelta (Maybe2 maybeFineTy) -> case maybeFineTy of
+        Compose Nothing -> return $ Maybe2 $ Compose Nothing
         Compose (Just fineTy) -> scopeFail $ "Modules do not have a type: " ++ Raw.unparse rawLHS
     ) gamma
-  [fineLHS] <- buildDeclaration gamma (\gammadelta -> return Unit3) partialLHSUntyped
+  [fineLHS] <- buildDeclaration gamma (\gammadelta -> return Unit2) partialLHSUntyped
   flip decl'content fineLHS $ mapTelescopedDB (
-      \wkn gammadelta Unit3 -> entriesInModule gammadelta rawEntries newModule
+      \wkn gammadelta Unit2 -> entriesInModule gammadelta rawEntries newModule
     ) gamma
 --modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
 entry ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.Entry rawDeclSort ->
-  sc (Entry mode modty v)
+  sc (Entry sys v)
 entry gamma (Raw.EntryLR Raw.HeaderVal rawLHS rawRHS) = EntryVal <$> val gamma rawLHS rawRHS
 entry gamma (Raw.EntryLR Raw.HeaderModule rawLHS rawRHS) = EntryModule <$> modul gamma rawLHS rawRHS
 entry gamma rawEntry = scopeFail $ "Nonsensical or unsupported entry: " ++ Raw.unparse rawEntry
 
 anyEntry ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.AnyEntry ->
-  sc (Entry mode modty v)
+  sc (Entry sys v)
 anyEntry gamma (Raw.AnyEntry rawEntry) = entry gamma rawEntry
 
 file ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   Raw.File ->
-  sc (Entry mode modty v)
+  sc (Entry sys v)
 file gamma rawFile = entry gamma (Raw.file2nestedModules rawFile)
 
 bulk ::
-  (MonadScoper mode modty rel sc, DeBruijnLevel v) =>
-  Ctx Type mode modty v Void ->
+  (MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   [Raw.AnyEntry] ->
-  sc (Entry mode modty v)
+  sc (Entry sys v)
 bulk gamma rawEntries = do
     let rawModuleLHS = Raw.Declaration
           []

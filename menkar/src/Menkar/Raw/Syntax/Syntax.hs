@@ -18,7 +18,7 @@ data Eliminator =
   -- case; induction
   --deriving Show
 
-data Expr3 =
+data ExprC =
   ExprQName QName |
   ExprParens Expr |
   ExprNatLiteral Nat |
@@ -26,25 +26,25 @@ data Expr3 =
   ExprGoal String
   --deriving Show
 
-data Elimination = Elimination Expr3 [Eliminator] --deriving Show
+data Elimination = Elimination ExprC [Eliminator] --deriving Show
 addEliminators :: Elimination -> [Eliminator] -> Elimination
 addEliminators (Elimination e elims) moreElims = Elimination e (elims ++ moreElims)
 
-data Expr2 =
+data ExprB =
   ExprElimination Elimination
   --deriving Show
 
-data Operand = OperandTelescope Telescope | OperandExpr Expr2 --deriving Show
+data Operand = OperandTelescope Telescope | OperandExpr ExprB --deriving Show
 
 data Expr = ExprOps Operand (Maybe (Elimination, Maybe Expr)) --deriving Show
 
-expr3to2 :: Expr3 -> Expr2
+expr3to2 :: ExprC -> ExprB
 expr3to2 e = ExprElimination $ Elimination e []
-expr2to1 :: Expr2 -> Expr
+expr2to1 :: ExprB -> Expr
 expr2to1 e = ExprOps (OperandExpr e) Nothing
-expr3to1 :: Expr3 -> Expr
+expr3to1 :: ExprC -> Expr
 expr3to1 = expr2to1 . expr3to2
-expr3to1smart :: Expr3 -> Expr
+expr3to1smart :: ExprC -> Expr
 expr3to1smart (ExprParens e) = e
 --expr3to1smart ExprImplicit = expr2to1 $ ExprElimination $ Elimination ExprImplicit [ElimEnd ArgSpecNext]
 expr3to1smart e = expr2to1 . expr3to2 $ e

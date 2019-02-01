@@ -67,7 +67,7 @@ instance Unparsable Eliminator where
   parserName (ElimArg _ _) = "eliminator"
   parserName (ElimProj _) = "eliminator"
 
-instance Unparsable Expr3 where
+instance Unparsable ExprC where
   unparse' (ExprQName qname) = unparse' qname
   unparse' (ExprParens expr) = "(" ++| unparse' expr |++ ")"
   unparse' (ExprNatLiteral n) = ribbon $ show n
@@ -83,7 +83,7 @@ instance Unparsable Elimination where
   unparse' (Elimination expr3 eliminators) = unparse' expr3 \\\ (" " ++|) . unparse' <$> eliminators
   parserName _ = "elimination"
 
-instance Unparsable Expr2 where
+instance Unparsable ExprB where
   unparse' (ExprElimination elim) = unparse' elim
   parserName _ = "expr2"
 
@@ -211,11 +211,11 @@ instance Show (Qualified Name) where
   show = showUnparsable
 instance Show Eliminator where
   show = showUnparsable
-instance Show Expr3 where
+instance Show ExprC where
   show = showUnparsable
 instance Show Elimination where
   show = showUnparsable
-instance Show Expr2 where
+instance Show ExprB where
   show = showUnparsable
 instance Show Operand where
   show = showUnparsable
