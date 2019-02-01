@@ -3,7 +3,7 @@
 
 module Menkar.Fine.Syntax.Syntax where
 
-import Menkar.Fine.System.TypeInterface
+import Menkar.Fine.Syntax.System
 import Menkar.Fine.Syntax.Substitution hiding (Expr (..))
 import Menkar.Basic.Context
 import qualified Menkar.Raw.Syntax as Raw
@@ -94,31 +94,31 @@ LookupResult sys (VarOpenCtx v w)deriving instance (Functor mode, Functor modty,
 
 data ModedModality (sys :: KSys) (v :: *) =
   ModedModality {modality'dom :: Mode sys v, modality'mod :: Modality sys v}
-deriving instance (TravSys sys) => Functor (ModedModality sys)
-deriving instance (TravSys sys) => Foldable (ModedModality sys)
-deriving instance (TravSys sys) => Traversable (ModedModality sys)
-deriving instance (TravSys sys) => Generic1 (ModedModality sys)
-deriving instance (PreSys (Term sys) sys) => CanSwallow (Term sys) (ModedModality sys)
+deriving instance (SysTrav sys) => Functor (ModedModality sys)
+deriving instance (SysTrav sys) => Foldable (ModedModality sys)
+deriving instance (SysTrav sys) => Traversable (ModedModality sys)
+deriving instance (SysTrav sys) => Generic1 (ModedModality sys)
+deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModedModality sys)
 
 data ModedContramodality (sys :: KSys) (v :: *) =
   ModedContramodality {contramodality'dom :: Mode sys v, contramodality'rightAdjoint :: Modality sys v}
-deriving instance (TravSys sys) => Functor (ModedContramodality sys)
-deriving instance (TravSys sys) => Foldable (ModedContramodality sys)
-deriving instance (TravSys sys) => Traversable (ModedContramodality sys)
-deriving instance (TravSys sys) => Generic1 (ModedContramodality sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (ModedContramodality sys)
+deriving instance (SysTrav sys) => Foldable (ModedContramodality sys)
+deriving instance (SysTrav sys) => Traversable (ModedContramodality sys)
+deriving instance (SysTrav sys) => Generic1 (ModedContramodality sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ModedContramodality sys)
 
 data LeftDivided content (sys :: KSys) v = LeftDivided {
     _leftDivided'originalMode :: (Mode sys) v,
     _leftDivided'modality :: ModedModality sys v,
     _leftDivided'content :: content sys v}
-deriving instance (TravSys sys, Functor (content sys)) => Functor (LeftDivided content sys)
-deriving instance (TravSys sys, Foldable (content sys)) => Foldable (LeftDivided content sys)
-deriving instance (TravSys sys, Traversable (content sys)) => Traversable (LeftDivided content sys)
-deriving instance (TravSys sys) => Generic1 (LeftDivided content sys)
+deriving instance (SysTrav sys, Functor (content sys)) => Functor (LeftDivided content sys)
+deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (LeftDivided content sys)
+deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (LeftDivided content sys)
+deriving instance (SysTrav sys) => Generic1 (LeftDivided content sys)
 deriving instance (
-    PreSys (Term sys) sys,
+    SysSyntax (Term sys) sys,
     Functor (content sys),
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (LeftDivided content sys)
@@ -126,12 +126,12 @@ deriving instance (
 data ModApplied content (sys :: KSys) v = ModApplied {
     _modApplied'modality :: ModedModality sys v,
     _modApplied'content :: content sys v}
-deriving instance (TravSys sys, Functor (content sys)) => Functor (ModApplied content sys)
-deriving instance (TravSys sys, Foldable (content sys)) => Foldable (ModApplied content sys)
-deriving instance (TravSys sys, Traversable (content sys)) => Traversable (ModApplied content sys)
-deriving instance (TravSys sys) => Generic1 (ModApplied content sys)
+deriving instance (SysTrav sys, Functor (content sys)) => Functor (ModApplied content sys)
+deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (ModApplied content sys)
+deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (ModApplied content sys)
+deriving instance (SysTrav sys) => Generic1 (ModApplied content sys)
 deriving instance (
-    PreSys (Term sys) sys,
+    SysSyntax (Term sys) sys,
     Functor (content sys),
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (ModApplied content sys)
@@ -140,10 +140,10 @@ data LookupResult (sys :: KSys) v =
   LookupResultVar v |
   LookupResultVal (LeftDivided (Telescoped Type ValRHS) sys v) |
   LookupResultNothing
-deriving instance (TravSys sys) => Functor (LookupResult sys)
-deriving instance (TravSys sys) => Foldable (LookupResult sys)
-deriving instance (TravSys sys) => Traversable (LookupResult sys)
-deriving instance (TravSys sys) => Generic1 (LookupResult sys)
+deriving instance (SysTrav sys) => Functor (LookupResult sys)
+deriving instance (SysTrav sys) => Foldable (LookupResult sys)
+deriving instance (SysTrav sys) => Traversable (LookupResult sys)
+deriving instance (SysTrav sys) => Generic1 (LookupResult sys)
 
 {-
 modedLeftAdjoint :: ModedModality sys v -> ModedContramodality sys v
@@ -162,12 +162,12 @@ data Binding
     binding'segment :: Segment lhs sys v,
     binding'body :: rhs sys (VarExt v)
   }
-deriving instance (TravSys sys, Functor (lhs sys), Functor (rhs sys)) => Functor (Binding lhs rhs sys)
-deriving instance (TravSys sys, Foldable (lhs sys), Foldable (rhs sys)) => Foldable (Binding lhs rhs sys)
-deriving instance (TravSys sys, Traversable (lhs sys), Traversable (rhs sys)) => Traversable (Binding lhs rhs sys)
-deriving instance (TravSys sys, Functor (lhs sys), Functor (rhs sys)) => Generic1 (Binding lhs rhs sys)
+deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs sys)) => Functor (Binding lhs rhs sys)
+deriving instance (SysTrav sys, Foldable (lhs sys), Foldable (rhs sys)) => Foldable (Binding lhs rhs sys)
+deriving instance (SysTrav sys, Traversable (lhs sys), Traversable (rhs sys)) => Traversable (Binding lhs rhs sys)
+deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs sys)) => Generic1 (Binding lhs rhs sys)
 deriving instance (
-    PreSys (Term sys) sys,
+    SysSyntax (Term sys) sys,
     Functor (lhs sys),
     Functor (rhs sys),
     CanSwallow (Term sys) (lhs sys),
@@ -181,12 +181,12 @@ data NamedBinding
     _namedBinding'name :: Maybe Raw.Name,
     _namedBinding'body :: rhs sys (VarExt v)
   }
-deriving instance (TravSys sys, Functor (rhs sys)) => Functor (NamedBinding rhs sys)
-deriving instance (TravSys sys, Foldable (rhs sys)) => Foldable (NamedBinding rhs sys)
-deriving instance (TravSys sys, Traversable (rhs sys)) => Traversable (NamedBinding rhs sys)
-deriving instance (TravSys sys, Functor (rhs sys)) => Generic1 (NamedBinding rhs sys)
+deriving instance (SysTrav sys, Functor (rhs sys)) => Functor (NamedBinding rhs sys)
+deriving instance (SysTrav sys, Foldable (rhs sys)) => Foldable (NamedBinding rhs sys)
+deriving instance (SysTrav sys, Traversable (rhs sys)) => Traversable (NamedBinding rhs sys)
+deriving instance (SysTrav sys, Functor (rhs sys)) => Generic1 (NamedBinding rhs sys)
 deriving instance (
-    PreSys (Term sys) sys,
+    SysSyntax (Term sys) sys,
     Functor (rhs sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (NamedBinding rhs sys)
@@ -206,11 +206,11 @@ data UniHSConstructor (sys :: KSys) (v :: *) =
   BoxType (Segment Type sys v) |
   NatType |
   EqType (Type sys v) (Term sys v) (Term sys v)
-deriving instance (TravSys sys) => Functor (UniHSConstructor sys)
-deriving instance (TravSys sys) => Foldable (UniHSConstructor sys)
-deriving instance (TravSys sys) => Traversable (UniHSConstructor sys)
-deriving instance (TravSys sys) => Generic1 (UniHSConstructor sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (UniHSConstructor sys)
+deriving instance (SysTrav sys) => Foldable (UniHSConstructor sys)
+deriving instance (SysTrav sys) => Traversable (UniHSConstructor sys)
+deriving instance (SysTrav sys) => Generic1 (UniHSConstructor sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (UniHSConstructor sys)
 
 hs2term :: UniHSConstructor sys v -> Term sys v
@@ -236,11 +236,11 @@ data ConstructorTerm (sys :: KSys) (v :: *) =
   ConsZero |
   ConsSuc (Term sys v) |
   ConsRefl
-deriving instance (TravSys sys) => Functor (ConstructorTerm sys)
-deriving instance (TravSys sys) => Foldable (ConstructorTerm sys)
-deriving instance (TravSys sys) => Traversable (ConstructorTerm sys)
-deriving instance (TravSys sys) => Generic1 (ConstructorTerm sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (ConstructorTerm sys)
+deriving instance (SysTrav sys) => Foldable (ConstructorTerm sys)
+deriving instance (SysTrav sys) => Traversable (ConstructorTerm sys)
+deriving instance (SysTrav sys) => Generic1 (ConstructorTerm sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ConstructorTerm sys)
 
 data SmartEliminator (sys :: KSys) (v :: *) =
@@ -248,11 +248,11 @@ data SmartEliminator (sys :: KSys) (v :: *) =
   --SmartElimEnd Raw.ArgSpec |
   SmartElimArg Raw.ArgSpec (Term sys v) |
   SmartElimProj Raw.ProjSpec
-deriving instance (TravSys sys) => Functor (SmartEliminator sys)
-deriving instance (TravSys sys) => Foldable (SmartEliminator sys)
-deriving instance (TravSys sys) => Traversable (SmartEliminator sys)
-deriving instance (TravSys sys) => Generic1 (SmartEliminator sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (SmartEliminator sys)
+deriving instance (SysTrav sys) => Foldable (SmartEliminator sys)
+deriving instance (SysTrav sys) => Traversable (SmartEliminator sys)
+deriving instance (SysTrav sys) => Generic1 (SmartEliminator sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (SmartEliminator sys)
 
 data DependentEliminator (sys :: KSys) (v :: *) =
@@ -260,11 +260,11 @@ data DependentEliminator (sys :: KSys) (v :: *) =
   ElimBox (NamedBinding Term sys v) |
   ElimEmpty |
   ElimNat (Term sys v) (NamedBinding (NamedBinding Term) sys v)
-deriving instance (TravSys sys) => Functor (DependentEliminator sys)
-deriving instance (TravSys sys) => Foldable (DependentEliminator sys)
-deriving instance (TravSys sys) => Traversable (DependentEliminator sys)
-deriving instance (TravSys sys) => Generic1 (DependentEliminator sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (DependentEliminator sys)
+deriving instance (SysTrav sys) => Foldable (DependentEliminator sys)
+deriving instance (SysTrav sys) => Traversable (DependentEliminator sys)
+deriving instance (SysTrav sys) => Generic1 (DependentEliminator sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (DependentEliminator sys)
 
 data Eliminator (sys :: KSys) (v :: *) =
@@ -281,11 +281,11 @@ data Eliminator (sys :: KSys) (v :: *) =
     _eliminator'motive :: (NamedBinding Type sys v),
     _eliminator'clauses :: DependentEliminator sys v} |
   ElimEq (NamedBinding (NamedBinding Type) sys v) (Term sys v)
-deriving instance (TravSys sys) => Functor (Eliminator sys)
-deriving instance (TravSys sys) => Foldable (Eliminator sys)
-deriving instance (TravSys sys) => Traversable (Eliminator sys)
-deriving instance (TravSys sys) => Generic1 (Eliminator sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (Eliminator sys)
+deriving instance (SysTrav sys) => Foldable (Eliminator sys)
+deriving instance (SysTrav sys) => Traversable (Eliminator sys)
+deriving instance (SysTrav sys) => Generic1 (Eliminator sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Eliminator sys)
 
 -- | This doesn't seem particularly useful.
@@ -294,11 +294,11 @@ newtype Type (sys :: KSys) (v :: *) = Type {unType :: Term sys v}
     (UniHSConstructor sys v) {-^ Type -} |
   ElTerm {-^ Eliminator'ish -}
     (Term sys v) {-^ Type -}-}
-deriving instance (TravSys sys) => Functor (Type sys)
-deriving instance (TravSys sys) => Foldable (Type sys)
-deriving instance (TravSys sys) => Traversable (Type sys)
-deriving instance (TravSys sys) => Generic1 (Type sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (Type sys)
+deriving instance (SysTrav sys) => Foldable (Type sys)
+deriving instance (SysTrav sys) => Traversable (Type sys)
+deriving instance (SysTrav sys) => Generic1 (Type sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Type sys)
 
 ------------------------------------
@@ -325,11 +325,11 @@ data TermNV (sys :: KSys) (v :: *) =
     (Term sys v) {-^ result -} |
   TermProblem {-^ Wrapper of terms that make no sense. -}
     (Term sys v)
-deriving instance (TravSys sys) => Functor (TermNV sys)
-deriving instance (TravSys sys) => Foldable (TermNV sys)
-deriving instance (TravSys sys) => Traversable (TermNV sys)
-deriving instance (TravSys sys) => Generic1 (TermNV sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (TermNV sys)
+deriving instance (SysTrav sys) => Foldable (TermNV sys)
+deriving instance (SysTrav sys) => Traversable (TermNV sys)
+deriving instance (SysTrav sys) => Generic1 (TermNV sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (TermNV sys)
 
 type Term = Expr2 TermNV
@@ -344,22 +344,22 @@ data Annotation (sys :: KSys) v =
   AnnotModality (Modality sys v) |
   AnnotImplicit
   --AnnotResolves (Term )
-deriving instance (TravSys sys) => Functor (Annotation sys)
-deriving instance (TravSys sys) => Foldable (Annotation sys)
-deriving instance (TravSys sys) => Traversable (Annotation sys)
-deriving instance (TravSys sys) => Generic1 (Annotation sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (Annotation sys)
+deriving instance (SysTrav sys) => Foldable (Annotation sys)
+deriving instance (SysTrav sys) => Traversable (Annotation sys)
+deriving instance (SysTrav sys) => Generic1 (Annotation sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Annotation sys)
 
 data Plicity (sys :: KSys) v =
   Explicit |
   Implicit |
   Resolves (Term sys v) -- this may change
-deriving instance (TravSys sys) => Functor (Plicity sys)
-deriving instance (TravSys sys) => Foldable (Plicity sys)
-deriving instance (TravSys sys) => Traversable (Plicity sys)
-deriving instance (TravSys sys) => Generic1 (Plicity sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (Plicity sys)
+deriving instance (SysTrav sys) => Foldable (Plicity sys)
+deriving instance (SysTrav sys) => Traversable (Plicity sys)
+deriving instance (SysTrav sys) => Generic1 (Plicity sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Plicity sys)
 
 data DeclSort = DeclSortVal | DeclSortModule | DeclSortSegment | DeclSortValSpec
@@ -400,12 +400,12 @@ data Declaration
     _decl'plicity :: Plicity sys v,
     _decl'content :: content sys v
   }
-deriving instance (TravSys sys, Functor (content sys)) => Functor (Declaration declSort content sys)
-deriving instance (TravSys sys, Foldable (content sys)) => Foldable (Declaration declSort content sys)
-deriving instance (TravSys sys, Traversable (content sys)) => Traversable (Declaration declSort content sys)
-deriving instance (TravSys sys) => Generic1 (Declaration declSort content sys)
+deriving instance (SysTrav sys, Functor (content sys)) => Functor (Declaration declSort content sys)
+deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (Declaration declSort content sys)
+deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (Declaration declSort content sys)
+deriving instance (SysTrav sys) => Generic1 (Declaration declSort content sys)
 deriving instance (
-    PreSys (Term sys) sys,
+    SysSyntax (Term sys) sys,
     Functor (content sys),
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (Declaration declSort content sys)
@@ -424,15 +424,15 @@ data TelescopedPartialDeclaration
     _pdecl'plicity :: Compose Maybe (Plicity sys) v,
     _pdecl'content :: Telescoped ty (Maybe2 content) sys v
     }
-deriving instance (TravSys sys, Functor (ty sys), Functor (content sys))
+deriving instance (SysTrav sys, Functor (ty sys), Functor (content sys))
   => Functor (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (TravSys sys, Foldable (ty sys), Foldable (content sys))
+deriving instance (SysTrav sys, Foldable (ty sys), Foldable (content sys))
   => Foldable (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (TravSys sys, Traversable (ty sys), Traversable (content sys))
+deriving instance (SysTrav sys, Traversable (ty sys), Traversable (content sys))
   => Traversable (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (TravSys sys) => Generic1 (TelescopedPartialDeclaration declSort ty content sys)
+deriving instance (SysTrav sys) => Generic1 (TelescopedPartialDeclaration declSort ty content sys)
 deriving instance (
-    PreSys (Term sys) sys,
+    SysSyntax (Term sys) sys,
     Functor (ty sys),
     Functor (content sys),
     CanSwallow (Term sys) (ty sys),
@@ -475,12 +475,12 @@ data Telescoped
   Telescoped (rhs sys v) |
   Segment ty sys v :|- Telescoped ty rhs sys (VarExt v) |
   ModedModality sys v :** Telescoped ty rhs sys v
-deriving instance (TravSys sys, Functor (ty sys), Functor (rhs sys)) => Functor (Telescoped ty rhs sys)
-deriving instance (TravSys sys, Foldable (ty sys), Foldable (rhs sys)) => Foldable (Telescoped ty rhs sys)
-deriving instance (TravSys sys, Traversable (ty sys), Traversable (rhs sys)) => Traversable (Telescoped ty rhs sys)
-deriving instance (TravSys sys, Functor (ty sys), Functor (rhs sys)) => Generic1 (Telescoped ty rhs sys)
+deriving instance (SysTrav sys, Functor (ty sys), Functor (rhs sys)) => Functor (Telescoped ty rhs sys)
+deriving instance (SysTrav sys, Foldable (ty sys), Foldable (rhs sys)) => Foldable (Telescoped ty rhs sys)
+deriving instance (SysTrav sys, Traversable (ty sys), Traversable (rhs sys)) => Traversable (Telescoped ty rhs sys)
+deriving instance (SysTrav sys, Functor (ty sys), Functor (rhs sys)) => Generic1 (Telescoped ty rhs sys)
 deriving instance (
-    PreSys (Term sys) sys,
+    SysSyntax (Term sys) sys,
     Functor (ty sys),
     Functor (rhs sys),
     CanSwallow (Term sys) (ty sys),
@@ -494,14 +494,14 @@ joinTelescoped (seg :|- ttr) = seg :|- joinTelescoped ttr
 joinTelescoped (mu :** ttr) = mu :** joinTelescoped ttr
 
 {-| @'mapTelescopedSimple' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
-mapTelescopedSimple :: (Functor h, TravSys sys, Functor (ty sys)) =>
+mapTelescopedSimple :: (Functor h, SysTrav sys, Functor (ty sys)) =>
   (forall w . (v -> w) -> rhs1 sys w -> h (rhs2 sys w)) ->
   (Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedSimple f (Telescoped rhs) = Telescoped <$> f id rhs
 mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (. VarWkn)) stuff
 mapTelescopedSimple f (mu :** stuff) = (mu :**) <$> mapTelescopedSimple f stuff
 {-| @'mapTelescopedSimpleDB' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
-mapTelescopedSimpleDB :: (Functor h, TravSys sys, Functor (ty sys), DeBruijnLevel v) =>
+mapTelescopedSimpleDB :: (Functor h, SysTrav sys, Functor (ty sys), DeBruijnLevel v) =>
   (forall w . DeBruijnLevel w => (v -> w) -> rhs1 sys w -> h (rhs2 sys w)) ->
   (Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedSimpleDB f (Telescoped rhs) = Telescoped <$> f id rhs
@@ -517,11 +517,11 @@ _telescoped'content (dmu :** telescopedRHS) = _telescoped'content telescopedRHS
 
 data ValRHS sys (v :: *) =
   ValRHS {_val'term :: Term sys v, _val'type :: Type sys v}
-deriving instance (TravSys sys) => Functor (ValRHS sys)
-deriving instance (TravSys sys) => Foldable (ValRHS sys)
-deriving instance (TravSys sys) => Traversable (ValRHS sys)
-deriving instance (TravSys sys) => Generic1 (ValRHS sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (ValRHS sys)
+deriving instance (SysTrav sys) => Foldable (ValRHS sys)
+deriving instance (SysTrav sys) => Traversable (ValRHS sys)
+deriving instance (SysTrav sys) => Generic1 (ValRHS sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ValRHS sys)
 
 {-
@@ -552,11 +552,11 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term sys) mode, CanS
 {-| The entries are stored in REVERSE ORDER. -}
 newtype ModuleRHS sys (v :: *) =
   ModuleRHS {_moduleRHS'content :: (Compose [] (Entry sys) (VarInModule v))}
-deriving instance (TravSys sys) => Functor (ModuleRHS sys)
-deriving instance (TravSys sys) => Foldable (ModuleRHS sys)
-deriving instance (TravSys sys) => Traversable (ModuleRHS sys)
-deriving instance (TravSys sys) => Generic1 (ModuleRHS sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (ModuleRHS sys)
+deriving instance (SysTrav sys) => Foldable (ModuleRHS sys)
+deriving instance (SysTrav sys) => Traversable (ModuleRHS sys)
+deriving instance (SysTrav sys) => Generic1 (ModuleRHS sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ModuleRHS sys)
 
 --type Module = TelescopedDeclaration DeclSortModule Type ModuleRHS
@@ -576,11 +576,11 @@ _module'name modul = case _decl'name modul of
   DeclNameModule name -> name
 
 data Entry sys (v :: *) = EntryVal (Val sys v) | EntryModule (Module sys v)
-deriving instance (TravSys sys) => Functor (Entry sys)
-deriving instance (TravSys sys) => Foldable (Entry sys)
-deriving instance (TravSys sys) => Traversable (Entry sys)
-deriving instance (TravSys sys) => Generic1 (Entry sys)
-deriving instance (PreSys (Term sys) sys) =>
+deriving instance (SysTrav sys) => Functor (Entry sys)
+deriving instance (SysTrav sys) => Foldable (Entry sys)
+deriving instance (SysTrav sys) => Traversable (Entry sys)
+deriving instance (SysTrav sys) => Generic1 (Entry sys)
+deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Entry sys)
 
 makeLenses ''ModuleRHS
@@ -592,7 +592,7 @@ moduleRHS'entries = moduleRHS'content . _Wrapped'
   
 type Telescope ty = Telescoped ty Unit2
 
-telescoped'telescope :: (TravSys sys, Functor (ty sys)) =>
+telescoped'telescope :: (SysTrav sys, Functor (ty sys)) =>
   Telescoped ty rhs sys v -> Telescope ty sys v
 telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit2)
 

@@ -2,50 +2,41 @@ module Menkar.Fine.Multimode where
 
 import Menkar.Fine.Syntax
 
-class (
-    Functor mode,
-    Functor modty,
-    CanSwallow (Term mode modty) mode,
-    CanSwallow (Term mode modty) modty
-  ) => Multimode mode modty | mode -> modty, modty -> mode where
-  idMod :: mode v -> modty v
-  compMod :: modty v -> mode v -> modty v -> modty v
-  wildMode :: mode v -- to be abolished!
-  wildModty :: modty v -- to be abolished!
-  flatMod :: modty v
+class (SysSyntax (Term sys) sys) => Multimode sys where
+  idMod :: Mode sys v -> Modality sys v
+  compMod :: (Modality sys) v -> (Mode sys) v -> (Modality sys) v -> (Modality sys) v
+  wildMode :: (Mode sys) v -- to be abolished!
+  wildModty :: (Modality sys) v -- to be abolished!
+  flatMod :: (Modality sys) v
   -- right adjoint to flatMod
-  irrMod :: modty v
-  dataMode :: mode v
-  approxLeftAdjointProj :: ModedModality mode modty v -> mode v {-^ the codomain -} -> modty v
-  sigmaHasEta :: ModedModality mode modty v -> mode v {-^ the codomain -} -> Bool
-  divModedModality :: ModedModality mode modty v -> ModedModality mode modty v -> ModedModality mode modty v
+  irrMod :: (Modality sys) v
+  dataMode :: (Mode sys) v
+  approxLeftAdjointProj :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> (Modality sys) v
+  sigmaHasEta :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> Bool
+  divModedModality :: ModedModality sys v -> ModedModality sys v -> ModedModality sys v
 
-class (
-    Multimode mode modty,
-    Functor rel,
-    CanSwallow (Term mode modty) rel
-  ) => Degrees mode modty rel | rel -> mode, rel -> modty where
-  eqDeg :: rel v
-  topDeg :: rel v
-  divDeg :: ModedModality mode modty v -> rel v -> rel v
-  isTopDeg :: rel v -> Bool
-  isEqDeg :: rel v -> Bool
+class (SysSyntax (Term sys) sys) => Degrees sys where
+  eqDeg :: (Degree sys) v
+  topDeg :: (Degree sys) v
+  divDeg :: ModedModality sys v -> (Degree sys) v -> (Degree sys) v
+  isTopDeg :: (Degree sys) v -> Bool
+  isEqDeg :: (Degree sys) v -> Bool
 
 --------------
 
-idModedModality :: (Multimode mode modty) => mode v -> ModedModality mode modty v
+idModedModality :: (Multimode sys) => (Mode sys) v -> ModedModality sys v
 idModedModality d = ModedModality d (idMod d)
 
-compModedModality :: (Multimode mode modty) =>
-  ModedModality mode modty v -> ModedModality mode modty v -> ModedModality mode modty v
+compModedModality :: (Multimode sys) =>
+  ModedModality sys v -> ModedModality sys v -> ModedModality sys v
 compModedModality (ModedModality d' mu') (ModedModality d mu) = ModedModality d (compMod mu' d' mu)
 
-irrModedModality :: (Multimode mode modty) => ModedModality mode modty v
+irrModedModality :: (Multimode sys) => ModedModality sys v
 irrModedModality = ModedModality dataMode irrMod
 
-wildModedModality :: (Multimode mode modty) => ModedModality mode modty v
+wildModedModality :: (Multimode sys) => ModedModality sys v
 wildModedModality = ModedModality wildMode wildModty
 
-modedApproxLeftAdjointProj :: (Multimode mode modty) =>
-  ModedModality mode modty v -> mode v {-^ the codomain -} -> ModedModality mode modty v
+modedApproxLeftAdjointProj :: (Multimode sys) =>
+  ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> ModedModality sys v
 modedApproxLeftAdjointProj dmu d' = ModedModality d' $ approxLeftAdjointProj dmu d'
