@@ -12,7 +12,7 @@ import Menkar.Fine.Multimode
 import Menkar.PrettyPrint.Fine
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
-import Menkar.Fine.Multimode.Trivial
+import Menkar.Systems.Trivial.Fine
 
 import Control.Exception.AssertFalse
 
@@ -45,7 +45,7 @@ fresh = state $ \ i -> (i, i+1)
 instance MonadFail SimpleScoper where
   fail s = unreachable
 
-instance MonadScoper U1 U1 U1 SimpleScoper where
+instance MonadScoper Trivial SimpleScoper where
   annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
     (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
     _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
@@ -53,14 +53,14 @@ instance MonadScoper U1 U1 U1 SimpleScoper where
            )
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = do
     i <- fresh
-    return $ Expr3 $ TermMeta etaFlag i $ Compose $ Var3 <$> scListVariables (ctx2scCtx gamma)
+    return $ Expr2 $ TermMeta etaFlag i $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
   newMetaMode maybeParent gamma reason = return U1
   newMetaModty maybeParent gamma reason = return U1
   scopeFail msg = SimpleScoper $ lift $ Left msg
 
 ---------------------------
 
-testscope :: String -> IO (Either _ (Either String (Entry U1 U1 Void)))
+testscope :: String -> IO (Either _ (Either String (Entry Trivial Void)))
 testscope filename = do
   errorOrRawFile <- P.testparse filename
   return $ evalSimpleScoper . file (CtxEmpty U1) <$> errorOrRawFile

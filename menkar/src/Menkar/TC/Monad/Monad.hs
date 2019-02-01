@@ -46,9 +46,9 @@ class (
     -> String
     -> sc (Term sys v)
   newMetaMode ::
-    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (mode v)
+    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Mode sys v)
   newMetaModty ::
-    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (modty v)
+    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Modality sys v)
   scopeFail :: String -> sc a
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where

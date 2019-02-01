@@ -2,6 +2,9 @@ module Menkar.Systems.Trivial.Fine where
 
 import Menkar.Fine.Syntax
 import Menkar.Fine.Multimode
+import Menkar.PrettyPrint.Fine.Syntax
+
+import Text.PrettyPrint.Tree
 
 import GHC.Generics (U1 (..))
 
@@ -15,12 +18,12 @@ instance SysTrav Trivial where
 
 instance SysSyntax (Term Trivial) Trivial where
 
-  {-
-instance Fine2Pretty Trivial Mode where
-  fine2pretty gamma (Mode U1) = ribbon "data"
-instance Fine2Pretty Trivial Modality where
-  fine2pretty gamma (Modty U1) = ribbon "hoc"
-  -}
+  
+instance Fine2Pretty Trivial U1 where
+  fine2pretty gamma U1 = ribbon "*"
+--instance Fine2Pretty Trivial U1 where
+--  fine2pretty gamma U1 = ribbon "hoc"
+  
 instance Multimode Trivial where
   idMod U1 = U1
   compMod U1 U1 U1 = U1
