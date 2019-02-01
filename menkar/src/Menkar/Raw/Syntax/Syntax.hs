@@ -7,6 +7,7 @@ import Menkar.Basic.Syntax
 import Data.Number.Nat
 import Data.String.Utils (replace)
 import Data.Hashable
+import Data.Kind
 import GHC.Generics
 
 data Eliminator =

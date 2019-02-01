@@ -86,3 +86,4 @@ default-extensions:
 - TemplateHaskell
 - TupleSections
 - ExistentialQuantification
+- TypeInType

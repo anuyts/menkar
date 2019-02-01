@@ -8,6 +8,7 @@ import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Control.Applicative
 import GHC.Generics
+import Data.Kind
 
 class CanSwallow (f :: * -> *) (g :: * -> *) where
   swallow :: g (f v) -> g v
@@ -64,6 +65,37 @@ instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
     The idea is that any other syntactic class can be defined as @Compose g (Expr e)@, for some functor g.
     Then automatically, @Compose g (Expr e)@ is a swallowing functor.
 -}
+data Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) =
+  Var2 v
+  | Expr2 (e a v)
+  deriving (Functor, Foldable, Traversable)
+deriving instance (Eq v, Eq (e a v)) => Eq (Expr2 e a v)
+
+instance CanSwallow (Expr2 e a) (e a) => CanSwallow (Expr2 e a) (Expr2 e a) where
+  swallow (Var2 ev) = ev
+  swallow (Expr2 eev) = Expr2 (swallow eev)
+
+instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Applicative (Expr2 e a) where
+  pure = Var2
+  tf <*> tv = swallow $ fmap (<$> tv) tf
+
+instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Monad (Expr2 e a) where
+  tv >>= f = swallow $ f <$> tv
+
+substLast2 :: (Functor f, CanSwallow (Expr2 e a) f) => Expr2 e a v -> f (VarExt v) -> f v
+substLast2 ev fextv = swallow $ substLast' <$> fextv
+  where substLast' :: VarExt _ -> Expr2 _ _ _
+        substLast' VarLast = ev
+        substLast' (VarWkn v) = Var2 v
+
+-------------------------------------------
+
+{-
+{-| @'Expr' e v@ is the type of expressions with variables from 'v' and non-variables from 'e v'.
+    The constraints @('Functor' e, 'Swallows' e ('Expr' e))@ should hold.
+    The idea is that any other syntactic class can be defined as @Compose g (Expr e)@, for some functor g.
+    Then automatically, @Compose g (Expr e)@ is a swallowing functor.
+-}
 data Expr3 (e :: ka -> kb -> * -> *) (a :: ka) (b :: kb) (v :: *) =
   Var3 v
   | Expr3 (e a b v)
@@ -81,6 +113,13 @@ instance (Functor (e a b), CanSwallow (Expr3 e a b) (e a b)) => Applicative (Exp
 
 instance (Functor (e a b), CanSwallow (Expr3 e a b) (e a b)) => Monad (Expr3 e a b) where
   tv >>= f = swallow $ f <$> tv
+
+substLast3 :: (Functor f, CanSwallow (Expr3 e a b) f) => Expr3 e a b v -> f (VarExt v) -> f v
+substLast3 ev fextv = swallow $ substLast' <$> fextv
+  where substLast' :: VarExt _ -> Expr3 _ _ _ _
+        substLast' VarLast = ev
+        substLast' (VarWkn v) = Var3 v
+-}
 
 --------------------------------------------
 
@@ -110,14 +149,6 @@ instance (CanSwallow e f, CanSwallow e g) => CanSwallow e (f :*: g) where
 
 instance (CanSwallow e h, Functor h, Traversable g, Applicative e) => CanSwallow e (h :.: g) where
   swallow (Comp1 hgex) = Comp1 $ swallow $ fmap sequenceA hgex
-
---------------------------------------------
-
-substLast3 :: (Functor f, CanSwallow (Expr3 e a b) f) => Expr3 e a b v -> f (VarExt v) -> f v
-substLast3 ev fextv = swallow $ substLast' <$> fextv
-  where substLast' :: VarExt _ -> Expr3 _ _ _ _
-        substLast' VarLast = ev
-        substLast' (VarWkn v) = Var3 v
 
 --------------------------------------------
 
