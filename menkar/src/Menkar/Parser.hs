@@ -316,7 +316,7 @@ qName = qNonOp <|> parens qOp
 
 -- expression subparsers -----------------------------------
 
-expr3 :: CanParse m => m Raw.Expr3
+expr3 :: CanParse m => m Raw.ExprC
 expr3 = MP.label "atomic expression" $
   (Raw.ExprParens <$> parens expr) <|>
   (Raw.ExprImplicit <$ loneUnderscore) <?|>
@@ -376,13 +376,13 @@ annotEliminators = MP.label "annotation eliminators" $ manyTry annotEliminator
 elimination :: CanParse m => m Raw.Elimination
 elimination = Raw.Elimination <$> expr3 <*> eliminators
 
-expr2 :: CanParse m => m Raw.Expr2
+expr2 :: CanParse m => m Raw.ExprB
 expr2 = MP.label "operator-free expression" $ Raw.ExprElimination <$> elimination
 
 operand :: CanParse m => m Raw.Operand
 operand = (Raw.OperandTelescope <$> telescopeSome) <?|> (Raw.OperandExpr <$> expr2)
 
-operatorHead :: CanParse m => m Raw.Expr3
+operatorHead :: CanParse m => m Raw.ExprC
 operatorHead = (ticks $ Raw.ExprParens <$> expr) <|> (Raw.ExprQName <$> qOp)
 operator :: CanParse m => m Raw.Elimination
 operator = MP.label "operator with eliminations" $ Raw.Elimination <$> operatorHead <*> opEliminators
