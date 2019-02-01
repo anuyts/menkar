@@ -5,9 +5,9 @@ import Data.Kind
 
 type KSys = *
 
-type family Mode :: KSys -> * -> *
-type family Modality :: KSys -> * -> *
-type family Degree :: KSys -> * -> *
+type family Mode (sys :: KSys) = (mode :: * -> *) | mode -> sys
+type family Modality (sys :: KSys) = (modality :: * -> *) | modality -> sys
+type family Degree (sys :: KSys) = (degree :: * -> *) | degree -> sys
 
 class (Traversable (Mode sys),
        Traversable (Modality sys),

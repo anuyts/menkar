@@ -87,3 +87,4 @@ default-extensions:
 - TupleSections
 - ExistentialQuantification
 - TypeInType
+- TypeFamilyDependencies

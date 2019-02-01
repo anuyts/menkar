@@ -18,12 +18,12 @@ import Control.Monad
 -- CMODE means you need to check a mode
 -- CMODTY means you need to check a modality
 
-checkPiOrSigma ::
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    Binding Type Term mode modty v ->
-    Type mode modty v ->
+checkPiOrSigma :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Binding Type Term sys v ->
+    Type sys v ->
     tc ()
 checkPiOrSigma parent gamma binding ty = do
   -- CMODE
@@ -32,15 +32,15 @@ checkPiOrSigma parent gamma binding ty = do
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
-           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
            "Infer level."-}
   let currentUni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
   ---------
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3 currentUni ty)
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2 currentUni ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -65,38 +65,38 @@ checkPiOrSigma parent gamma binding ty = do
 
 -------
 
-checkUni ::
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    Type mode modty v ->
+checkUni :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Type sys v ->
     tc ()
 checkUni parent gamma ty = do
   {-lvl <- newMetaTerm
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
-           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
            "Infer level."-}
   let currentUni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
   ---------
   addNewConstraint
     (JudTypeRel
-      eqDeg
+      (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
-      (Pair3 currentUni ty)
+      (Twice2 currentUni ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
 
 -------
 
-checkUniHSConstructor ::
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    UniHSConstructor mode modty v ->
-    Type mode modty v ->
+checkUniHSConstructor :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    UniHSConstructor sys v ->
+    Type sys v ->
     tc ()
 checkUniHSConstructor parent gamma (UniHS d {-lvl-}) ty = do
   -- CMODE d
@@ -105,7 +105,7 @@ checkUniHSConstructor parent gamma (UniHS d {-lvl-}) ty = do
     (JudTerm
       (ModedModality dataMode irrMod :\\ gamma)
       lvl
-      (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+      (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
     )
     (Just parent)
     "Checking the level."-}
@@ -114,17 +114,17 @@ checkUniHSConstructor parent gamma (UniHS d {-lvl-}) ty = do
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
-           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
            ("Inferring some level. The level of the universe we're checking, " ++
            "plus this level, plus 1 is the level of the containing universe.")
   let biggerLvl =
         -- biggerLvl = suc (lvl + anyLvl)
-        Expr3 . TermCons . ConsSuc $
-        Expr3 $ TermElim (idModedModality dataMode) lvl NatType $
-        ElimDep (NamedBinding Nothing $ Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) $
+        Expr2 . TermCons . ConsSuc $
+        Expr2 $ TermElim (idModedModality dataMode) lvl NatType $
+        ElimDep (NamedBinding Nothing $ Type $ Expr2 $ TermCons $ ConsUniHS $ NatType) $
         ElimNat
           anyLvl
-          (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr3 . TermCons . ConsSuc $ Var3 VarLast)-}
+          (NamedBinding Nothing $ NamedBinding (Just $ Raw.Name Raw.NonOp "l")$ Expr2 . TermCons . ConsSuc $ Var2 VarLast)-}
   checkUni parent gamma ty
 checkUniHSConstructor parent gamma (Pi binding) ty = checkPiOrSigma parent gamma binding ty
 checkUniHSConstructor parent gamma (Sigma binding) ty = checkPiOrSigma parent gamma binding ty
@@ -135,15 +135,15 @@ checkUniHSConstructor parent gamma (BoxType seg) ty = do
            (Just parent)
            topDeg
            (ModedModality dataMode irrMod :\\ gamma)
-           (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
+           (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
            "Infer level."-}
-  let currentUni = Type $ Expr3 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
+  let currentUni = Type $ Expr2 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
   ---------
   addNewConstraint
     (JudTypeRel
-      eqDeg
+      (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
-      (Pair3 currentUni ty)
+      (Twice2 currentUni ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -174,12 +174,12 @@ checkUniHSConstructor parent gamma (EqType tyAmbient tyL tyR) ty = do
 --checkUniHSConstructor parent gamma t ty = _checkUniHSConstructor
 -- CMODE do we allow Empty, Unit and Nat in arbitrary mode? I guess not...
 
-checkConstructorTerm ::
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    ConstructorTerm mode modty v ->
-    Type mode modty v ->
+checkConstructorTerm :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    ConstructorTerm sys v ->
+    Type sys v ->
     tc ()
 checkConstructorTerm parent gamma (ConsUniHS t) ty = checkUniHSConstructor parent gamma t ty
 checkConstructorTerm parent gamma (Lam binding) ty = do
@@ -196,7 +196,7 @@ checkConstructorTerm parent gamma (Lam binding) ty = do
   ----------
   codomain <- newMetaType
                 (Just parent)
-                eqDeg
+                (eqDeg :: Degree sys _)
                 (gamma :.. (VarFromCtx <$> binding'segment binding))
                 "Inferring codomain."
   addNewConstraint
@@ -210,17 +210,17 @@ checkConstructorTerm parent gamma (Lam binding) ty = do
   ----------
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3
-        (Type $ Expr3 $ TermCons $ ConsUniHS $ Pi $ Binding (binding'segment binding) $ unType codomain)
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
+        (Type $ Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding (binding'segment binding) $ unType codomain)
         ty
       )
     )
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
-  let sigmaType = Type $ Expr3 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
+  let sigmaType = Type $ Expr2 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
   ----------
   addNewConstraint
     (JudType gamma sigmaType)
@@ -236,9 +236,9 @@ checkConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
     (Just parent)
     "Type-checking first component."
   ----------
-  let subst :: VarExt _ -> Term _ _ _
+  let subst :: VarExt _ -> Term _ _
       subst VarLast = t1
-      subst (VarWkn v) = Var3 v
+      subst (VarWkn v) = Var2 v
   addNewConstraint
     (JudTerm gamma t2 (Type $ join $ subst <$> binding'body sigmaBinding))
     (Just parent)
@@ -246,9 +246,9 @@ checkConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
   ----------
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3 sigmaType ty)
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2 sigmaType ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -257,14 +257,14 @@ checkConstructorTerm parent gamma ConsUnit ty = do
   ----------
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ UnitType) ty)
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2 (Type $ Expr2 $ TermCons $ ConsUniHS $ UnitType) ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma (ConsBox typeSegment t) ty = do
-  let boxType = Type $ Expr3 $ TermCons $ ConsUniHS $ BoxType typeSegment
+  let boxType = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType typeSegment
   ----------
   addNewConstraint
     (JudType gamma boxType)
@@ -282,9 +282,9 @@ checkConstructorTerm parent gamma (ConsBox typeSegment t) ty = do
   ----------
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3 boxType ty)
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2 boxType ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -293,9 +293,9 @@ checkConstructorTerm parent gamma ConsZero ty = do
   ----------
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) ty)
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2 (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType) ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -303,26 +303,26 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
   -- CMODE
   ----------
   addNewConstraint
-    (JudTerm gamma t (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType))
+    (JudTerm gamma t (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType))
     (Just parent)
     "Type-checking predecessor."
   ----------
   addNewConstraint
     (JudTypeRel
-      eqDeg
+      (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
-      (Pair3 (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType) ty)
+      (Twice2 (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType) ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma ConsRefl ty = do
-  tyAmbient <- newMetaType (Just parent) eqDeg gamma "Inferring ambient type."
-  t <- newMetaTerm (Just parent) eqDeg gamma tyAmbient True "Inferring self-equand."
+  tyAmbient <- newMetaType (Just parent) (eqDeg :: Degree sys _) gamma "Inferring ambient type."
+  t <- newMetaTerm (Just parent) (eqDeg :: Degree sys _) gamma tyAmbient True "Inferring self-equand."
   addNewConstraint
     (JudTypeRel
-      eqDeg
+      (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
-      (Pair3 (hs2type $ EqType tyAmbient t t) ty)
+      (Twice2 (hs2type $ EqType tyAmbient t t) ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -330,34 +330,34 @@ checkConstructorTerm parent gamma ConsRefl ty = do
 
 -------
 
-checkDependentEliminator :: forall mode modty rel tc v .
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    ModedModality mode modty v ->
-    Term mode modty v ->
-    UniHSConstructor mode modty v ->
-    NamedBinding Type mode modty v ->
-    DependentEliminator mode modty v ->
-    Type mode modty v ->
+checkDependentEliminator :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    ModedModality sys v ->
+    Term sys v ->
+    UniHSConstructor sys v ->
+    NamedBinding Type sys v ->
+    DependentEliminator sys v ->
+    Type sys v ->
     tc ()
 checkDependentEliminator parent gamma dmu eliminee
     tyEliminee@(Sigma sigmaBinding) motive (ElimSigma clause) ty = do
-  let segFst :: Segment Type _ _ _
+  let segFst :: Segment Type _ _
       segFst = Declaration
                  (DeclNameSegment $ _namedBinding'name clause)
                  (compModedModality dmu (_segment'modty $ binding'segment $ sigmaBinding))
                  Explicit
                  (_segment'content $ binding'segment $ sigmaBinding)
-  let segSnd :: Segment Type _ _ (VarExt _)
+  let segSnd :: Segment Type _ (VarExt _)
       segSnd = Declaration
                  (DeclNameSegment $ _namedBinding'name $ _namedBinding'body clause)
                  (VarWkn <$> dmu)
                  Explicit
                  (Type $ binding'body sigmaBinding)
-  let subst :: VarExt _ -> Term _ _ (VarExt (VarExt _))
-      subst VarLast = Expr3 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var3 $ VarWkn VarLast) (Var3 VarLast)
-      subst (VarWkn v) = Var3 $ VarWkn $ VarWkn v
+  let subst :: VarExt _ -> Term _ (VarExt (VarExt _))
+      subst VarLast = Expr2 $ TermCons $ Pair (VarWkn . VarWkn <$> sigmaBinding) (Var2 $ VarWkn VarLast) (Var2 VarLast)
+      subst (VarWkn v) = Var2 $ VarWkn $ VarWkn v
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> segFst) :.. (VarFromCtx <$> segSnd))
@@ -370,15 +370,15 @@ checkDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimSigma clause) ty = unreachable
 checkDependentEliminator parent gamma dmu eliminee
     tyEliminee@(BoxType boxSeg) motive (ElimBox clause) ty = do
-  let segContent :: Segment Type _ _ _
+  let segContent :: Segment Type _ _
       segContent = Declaration
                      (DeclNameSegment $ _namedBinding'name clause)
                      (compModedModality dmu (_segment'modty boxSeg))
                      Explicit
                      (_segment'content boxSeg)
-  let subst :: VarExt _ -> Term _ _ (VarExt _)
-      subst VarLast = Expr3 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var3 VarLast
-      subst (VarWkn v) = Var3 $ VarWkn v
+  let subst :: VarExt _ -> Term _ (VarExt _)
+      subst VarLast = Expr2 $ TermCons $ ConsBox (VarWkn <$> boxSeg) $ Var2 VarLast
+      subst (VarWkn v) = Var2 $ VarWkn v
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> segContent))
@@ -395,28 +395,28 @@ checkDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimEmpty) ty = unreachable
 checkDependentEliminator parent gamma dmu eliminee
     NatType motive (ElimNat cz cs) ty = do
-  let substZ :: VarExt v -> Term mode modty v
-      substZ VarLast = Expr3 $ TermCons $ ConsZero
-      substZ (VarWkn v) = Var3 v
+  let substZ :: VarExt v -> Term sys v
+      substZ VarLast = Expr2 $ TermCons $ ConsZero
+      substZ (VarWkn v) = Var2 v
   addNewConstraint
     (JudTerm gamma cz (swallow $ substZ <$> _namedBinding'body motive))
     (Just parent)
     "Type-checking zero clause."
-  let segPred :: Segment Type _ _ _
+  let segPred :: Segment Type _ _
       segPred = Declaration
                   (DeclNameSegment $ _namedBinding'name cs)
                   dmu
                   Explicit
-                  (Type $ Expr3 $ TermCons $ ConsUniHS $ NatType)
-  let segHyp :: Segment Type _ _ (VarExt _)
+                  (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
+  let segHyp :: Segment Type _ (VarExt _)
       segHyp = Declaration
                   (DeclNameSegment $ _namedBinding'name $ _namedBinding'body cs)
                   (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
                   Explicit
                   (_namedBinding'body motive)
-  let substS :: VarExt v -> Term mode modty (VarExt (VarExt v))
-      substS VarLast = Expr3 $ TermCons $ ConsSuc $ Var3 $ VarWkn VarLast
-      substS (VarWkn v) = Var3 $ VarWkn $ VarWkn v
+  let substS :: VarExt v -> Term sys (VarExt (VarExt v))
+      substS VarLast = Expr2 $ TermCons $ ConsSuc $ Var2 $ VarWkn VarLast
+      substS (VarWkn v) = Var2 $ VarWkn $ VarWkn v
   addNewConstraint
     (JudTerm
       (gamma :.. (VarFromCtx <$> segPred) :.. (VarFromCtx <$> segHyp))
@@ -431,15 +431,15 @@ checkDependentEliminator parent gamma dmu eliminee
 -------
 
 {-| Checks whether the eliminator applies and has the correct output type. -}
-checkEliminator :: forall mode modty rel tc v .
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    ModedModality mode modty v ->
-    Term mode modty v ->
-    UniHSConstructor mode modty v ->
-    Eliminator mode modty v ->
-    Type mode modty v ->
+checkEliminator :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    ModedModality sys v ->
+    Term sys v ->
+    UniHSConstructor sys v ->
+    Eliminator sys v ->
+    Type sys v ->
     tc ()
 checkEliminator parent gamma dmu eliminee (Pi binding) (App arg) ty = do
   let dmu = _segment'modty $ binding'segment $ binding
@@ -448,14 +448,14 @@ checkEliminator parent gamma dmu eliminee (Pi binding) (App arg) ty = do
     (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) arg dom)
     (Just parent)
     "Type-checking argument."
-  let subst :: VarExt _ -> Term _ _ _
+  let subst :: VarExt _ -> Term _ _
       subst VarLast = arg
-      subst (VarWkn v) = Var3 v
+      subst (VarWkn v) = Var2 v
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
         (Type $ join $ subst <$> binding'body binding)
         ty
       )
@@ -466,9 +466,9 @@ checkEliminator parent gamma dmu eliminee tyEliminee (App arg) ty = unreachable
 checkEliminator parent gamma dmu eliminee (Sigma binding) Fst ty = do
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
         (_segment'content $ binding'segment binding)
         ty
       )
@@ -482,14 +482,14 @@ checkEliminator parent gamma dmu eliminee
       muSigma = modality'mod $ _segment'modty $ binding'segment $ binding
       dSnd = unVarFromCtx <$> ctx'mode gamma
       muProj = approxLeftAdjointProj (ModedModality dFst muSigma) dSnd
-      subst :: VarExt _ -> Term _ _ _
-      subst VarLast = Expr3 $ TermElim (ModedModality dSnd muProj) eliminee tyEliminee Fst
-      subst (VarWkn v) = Var3 v
+      subst :: VarExt _ -> Term _ _
+      subst VarLast = Expr2 $ TermElim (ModedModality dSnd muProj) eliminee tyEliminee Fst
+      subst (VarWkn v) = Var2 v
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
         (Type $ join $ subst <$> binding'body binding)
         ty
       )
@@ -501,9 +501,9 @@ checkEliminator parent gamma dmu eliminee
     tyEliminee@(BoxType segment) Unbox ty = do
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
         (_segment'content segment)
         ty
       )
@@ -512,15 +512,15 @@ checkEliminator parent gamma dmu eliminee
     "Checking whether actual type equals expected type."
 checkEliminator parent gamma dmu eliminee tyEliminee Unbox ty = unreachable
 checkEliminator parent gamma dmu eliminee
-    tyEliminee@(Pi (Binding seg (Expr3 (TermCons (ConsUniHS (EqType tyAmbient tL tR)))))) Funext ty = do
+    tyEliminee@(Pi (Binding seg (Expr2 (TermCons (ConsUniHS (EqType tyAmbient tL tR)))))) Funext ty = do
   let tyPiAmbient = hs2type $ Pi $ Binding seg $ unType tyAmbient
-  let tLamL = Expr3 $ TermCons $ Lam $ Binding seg $ tL
-  let tLamR = Expr3 $ TermCons $ Lam $ Binding seg $ tR
+  let tLamL = Expr2 $ TermCons $ Lam $ Binding seg $ tL
+  let tLamR = Expr2 $ TermCons $ Lam $ Binding seg $ tR
   addNewConstraint
     (JudTypeRel
-      eqDeg
+      (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
-      (Pair3
+      (Twice2
         (hs2type $ EqType tyPiAmbient tLamL tLamR)
         ty
       )
@@ -536,20 +536,20 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
         (DeclNameSegment $ _namedBinding'name motive)
         dmu
         Explicit
-        (Type $ Expr3 $ TermCons $ ConsUniHS tyEliminee)
+        (Type $ Expr2 $ TermCons $ ConsUniHS tyEliminee)
       )
       (_namedBinding'body motive)
     )
     (Just parent)
     "Type-checking motive."
-  let subst :: VarExt _ -> Term _ _ _
+  let subst :: VarExt _ -> Term _ _
       subst VarLast = eliminee
-      subst (VarWkn v) = Var3 v
+      subst (VarWkn v) = Var2 v
   addNewConstraint
     (JudTypeRel
-      eqDeg
-      (mapCtx (\ty -> Pair3 ty ty) gamma)
-      (Pair3
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
         (swallow $ subst <$> _namedBinding'body motive)
         ty
       )
@@ -564,7 +564,7 @@ checkEliminator parent gamma dmu eliminee (EqType tyAmbient tL tR) (ElimEq motiv
                (DeclNameSegment $ _namedBinding'name $ _namedBinding'body $ motive)
                (VarWkn <$> dmu)
                Explicit
-               (hs2type $ EqType (VarWkn <$> tyAmbient) (VarWkn <$> tL) (Var3 VarLast))
+               (hs2type $ EqType (VarWkn <$> tyAmbient) (VarWkn <$> tL) (Var2 VarLast))
   addNewConstraint
     (JudType
       (gamma :.. VarFromCtx <$> segR :.. VarFromCtx <$> segEq)
@@ -573,14 +573,14 @@ checkEliminator parent gamma dmu eliminee (EqType tyAmbient tL tR) (ElimEq motiv
     (Just parent)
     "Checking the motive"
   addNewConstraint
-    (JudTerm gamma crefl (substLast3 tL $ substLast3 (Expr3 $ TermCons $ ConsRefl :: Term mode modty _) $ bodyMotive))
+    (JudTerm gamma crefl (substLast2 tL $ substLast2 (Expr2 $ TermCons $ ConsRefl :: Term sys _) $ bodyMotive))
     (Just parent)
     "Type-checking refl-clause."
   addNewConstraint
     (JudTypeRel
-      eqDeg
+      (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
-      (Pair3 (substLast3 tR $ substLast3 (VarWkn <$> eliminee) $ bodyMotive) ty)
+      (Twice2 (substLast2 tR $ substLast2 (VarWkn <$> eliminee) $ bodyMotive) ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."
@@ -588,22 +588,22 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimEq motive crefl) ty = 
 
 -------
     
-checkTermNV :: forall mode modty rel tc v .
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    TermNV mode modty v ->
-    Type mode modty v ->
+checkTermNV :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    TermNV sys v ->
+    Type sys v ->
     tc ()
 checkTermNV parent gamma (TermCons c) ty = checkConstructorTerm parent gamma c ty
 checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
   -- CMODE CMODTY
   addNewConstraint
-    (JudType ((VarFromCtx <$> dmu) :\\ gamma) (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee))
+    (JudType ((VarFromCtx <$> dmu) :\\ gamma) (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee))
     (Just parent)
     "Checking type of eliminee."
   addNewConstraint
-    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) eliminee (Type $ Expr3 $ TermCons $ ConsUniHS $ tyEliminee))
+    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee))
     (Just parent)
     "Type-checking eliminee."
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
@@ -614,7 +614,7 @@ checkTermNV parent gamma t@(TermMeta etaFlag meta (Compose depcies)) ty = do
       -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
       -- place to request eta-expansion.
       when etaFlag $ addNewConstraint
-        (JudEta gamma (Expr3 t) ty)
+        (JudEta gamma (Expr2 t) ty)
         (Just parent)
         "Eta-expand meta if possible."
       tcBlock parent "I want to know what I'm supposed to type-check."
@@ -641,9 +641,9 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
         then do
           addNewConstraint
             (JudTypeRel
-              eqDeg
-              (mapCtx (\ty -> Pair3 ty ty) gamma)
-              (Pair3
+              (eqDeg :: Degree sys _)
+              (mapCtx (\ty -> Twice2 ty ty) gamma)
+              (Twice2
                 (unVarFromCtx <$> (_val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedVal))
                 (Type ty)
               )
@@ -653,7 +653,7 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) ty = do
   dmuElim <- newMetaModedModality (Just parent) (irrModedModality :\\ gamma) "Infer modality of smart elimination."
-  tyEliminee <- newMetaType (Just parent) eqDeg (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
+  tyEliminee <- newMetaType (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
   addNewConstraint
     (JudTerm gamma eliminee tyEliminee)
@@ -686,14 +686,14 @@ checkTermNV parent gamma TermWildcard ty = unreachable
 
 -------
 
-checkTerm ::
-    (MonadTC mode modty rel tc, DeBruijnLevel v) =>
-    Constraint mode modty rel ->
-    Ctx Type mode modty v Void ->
-    Term mode modty v ->
-    Type mode modty v ->
+checkTerm :: forall sys tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Term sys v ->
+    Type sys v ->
     tc ()
-checkTerm parent gamma (Var3 v) (Type ty) = do
+checkTerm parent gamma (Var2 v) (Type ty) = do
   let ldivSeg = lookupVar gamma v
   varAccessible <- leqMod
     (modality'mod . _decl'modty . _leftDivided'content $ ldivSeg)
@@ -702,9 +702,9 @@ checkTerm parent gamma (Var3 v) (Type ty) = do
     then do
       addNewConstraint
         (JudTypeRel
-          eqDeg
-          (mapCtx (\ty -> Pair3 ty ty) gamma)
-          (Pair3
+          (eqDeg :: Degree sys _)
+          (mapCtx (\ty -> Twice2 ty ty) gamma)
+          (Twice2
             (unVarFromCtx <$> (_decl'content . _leftDivided'content $ ldivSeg))
             (Type ty)
           )
@@ -712,4 +712,4 @@ checkTerm parent gamma (Var3 v) (Type ty) = do
         (Just parent)
         "Checking whether actual type equals expected type."
     else tcFail parent $ "Variable cannot be used here: modality restrictions are too strong."
-checkTerm parent gamma (Expr3 t) ty = checkTermNV parent gamma t ty
+checkTerm parent gamma (Expr2 t) ty = checkTermNV parent gamma t ty
