@@ -26,22 +26,22 @@ vdash_ = vdash : " "
 _vdash = [' ', vdash]
 _vdash_ = [' ', vdash, ' ']
 
-jud2pretty :: forall mode modty rel .
-  (Functor mode, Functor modty,
-   Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty) =>
-  Judgement mode modty rel -> PrettyTree String
+jud2pretty :: forall sys .
+  (SysTrav sys,
+   Fine2Pretty sys Mode, Fine2Pretty sys Modality) =>
+  Judgement sys -> PrettyTree String
 jud2pretty (JudType gamma ty) =
   ctx2pretty gamma \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty]
-jud2pretty (JudTypeRel deg gamma (Pair3 ty1 ty2)) =
-  ctx2pretty gamma \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) (Pair3 ty1 ty2)]
+jud2pretty (JudTypeRel deg gamma (Twice2 ty1 ty2)) =
+  ctx2pretty gamma \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) (Twice2 ty1 ty2)]
   -- CMODE print the degree
 jud2pretty (JudTerm gamma t ty) =
   ctx2pretty gamma \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t,
     " : " ++| fine2pretty (ctx2scCtx gamma) ty]
-jud2pretty (JudTermRel deg gamma (Pair3 t1 t2) ty) =
+jud2pretty (JudTermRel deg gamma (Twice2 t1 t2) ty) =
   ctx2pretty gamma \\\ [
-    _vdash_ ++| fine2pretty (ctx2scCtx gamma) (Pair3 t1 t2),
+    _vdash_ ++| fine2pretty (ctx2scCtx gamma) (Twice2 t1 t2),
     " : " ++| fine2pretty (ctx2scCtx gamma) ty]
   -- CMODE print the degree
 jud2pretty (JudEta gamma t ty) =
@@ -72,7 +72,7 @@ jud2pretty (JudModule gamma modul) = ctx2pretty gamma \\\ [_vdash ++ " <module> 
 jud2pretty (JudEntry gamma entry) = ctx2pretty gamma \\\ [_vdash ++ " <declaration> " ++| fine2pretty (ctx2scCtx gamma) entry]
 --jud2pretty jud = _jud2pretty
 
-instance (Functor mode, Functor modty,
-          Fine2Pretty mode modty Mode, Fine2Pretty mode modty Modty)
-         => Show (Judgement mode modty rel) where
+instance (SysTrav sys,
+          Fine2Pretty sys Mode, Fine2Pretty sys Modality)
+         => Show (Judgement sys) where
   show jud = render (RenderState 100 "  " "    ") $ jud2pretty jud
