@@ -166,7 +166,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper Trivial (TCT m) where
   annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
     (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
     _ -> scopeFail $ "Illegal annotation: " ++ (render
-             (Raw.unparse' qstring \\\ (maybeToList $ fine2pretty (ctx2scCtx gamma) <$> maybeArg))
+             (Raw.unparse' qstring \\\ (maybeToList $ ($? id) . fine2pretty (ctx2scCtx gamma) <$> maybeArg))
              $? id
            )
 

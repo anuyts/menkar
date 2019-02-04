@@ -20,7 +20,7 @@ instance SysSyntax (Term Trivial) Trivial where
 
   
 instance Fine2Pretty Trivial U1 where
-  fine2pretty gamma U1 = ribbon "*"
+  fine2pretty gamma U1 opts = ribbon "*"
 --instance Fine2Pretty Trivial U1 where
 --  fine2pretty gamma U1 = ribbon "hoc"
   

@@ -16,6 +16,7 @@ import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
 
 import Control.Exception.AssertFalse
+import Data.Omissible
 
 import Text.Megaparsec.Error as MP
 
@@ -65,9 +66,9 @@ printMetaInfo s meta info = do
     Right solutionInfo -> do
       putStrLn "Solution:"
       putStrLn "---------"
-      putStr   $ fine2string (ctx2scCtx $ _metaInfo'context info) tMeta
+      putStr   $ fine2string (ctx2scCtx $ _metaInfo'context info) tMeta $? id
       putStr   $ " = "
-      putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) $ _solutionInfo'solution solutionInfo
+      putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) (_solutionInfo'solution solutionInfo) $? id
       printConstraint $ _solutionInfo'parent solutionInfo
     Left blocks -> do
       putStrLn "Unsolved"

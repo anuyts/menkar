@@ -37,16 +37,16 @@ instance Omissible FineAlgorithmOptions where
 
 data Fine2PrettyOptions sys = Fine2PrettyOptions {
   -- | How to render.
-  _finePretty'renderOptions :: RenderOptions,
+  _fine2pretty'renderOptions :: RenderOptions,
   -- | Instead of listing all dependencies, plug them into the smart elimination / ... being resolved.
-  _finePretty'humanReadableMetas :: Bool,
-  _finePretty'smartElimOptions :: FineAlgorithmOptions,
-  _finePretty'goalOptions :: FineAlgorithmOptions,
+  _fine2pretty'humanReadableMetas :: Bool,
+  _fine2pretty'smartElimOptions :: FineAlgorithmOptions,
+  _fine2pretty'goalOptions :: FineAlgorithmOptions,
   -- | When printing a solved meta, print its solution instead.
-  _finePretty'printSolutions :: Maybe (ForSomeDeBruijnLevel (Term sys)),
+  _fine2pretty'printSolutions :: Maybe (ForSomeDeBruijnLevel (Term sys)),
   -- | When printing contexts, explicity print left divisions, rather than computing the divided
   -- | modality.
-  _finePretty'explicitLeftDivision :: Bool
+  _fine2pretty'explicitLeftDivision :: Bool
   }
 
 makeLenses ''Fine2PrettyOptions
@@ -66,7 +66,7 @@ instance Omissible (Fine2PrettyOptions sys) where
 class Fine2Pretty sys t | t -> sys where
   fine2pretty :: DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> PrettyTree String
   fine2string :: DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> String
-  fine2string gamma x opts = render (fine2pretty gamma x opts) $ _finePretty'renderOptions opts
+  fine2string gamma x opts = render (fine2pretty gamma x opts) $ _fine2pretty'renderOptions opts
 
 ---------------------------
 
