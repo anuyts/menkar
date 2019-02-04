@@ -1,9 +1,12 @@
 module Menkar.Basic.Context.Variable where
 
-import Data.Bifunctor
 import Control.Exception.AssertFalse
+
+import Data.Bifunctor
 import Data.Void
 import Data.Number.Nat
+
+import GHC.Stack
 
 data VarExt v = VarWkn v | VarLast
   deriving (Show, Functor, Foldable, Traversable, Eq)
@@ -19,6 +22,12 @@ instance Bifunctor VarOpenCtx where
 unVarFromCtx :: VarOpenCtx v Void -> v
 unVarFromCtx (VarFromCtx v) = v
 unVarFromCtx (VarBeforeCtx w) = absurd w
+unVarBeforeCtxUnsafe :: HasCallStack => VarOpenCtx v w -> w
+unVarBeforeCtxUnsafe (VarFromCtx v) = unreachable
+unVarBeforeCtxUnsafe (VarBeforeCtx w) = w
+externalizeVar :: VarOpenCtx v Void -> VarOpenCtx u v
+externalizeVar (VarFromCtx v) = VarBeforeCtx v
+externalizeVar (VarBeforeCtx w) = absurd w
 
 varLeftEat :: VarOpenCtx v (VarExt w) -> VarOpenCtx (VarLeftExt v) w
 varLeftEat (VarBeforeCtx (VarWkn w)) = VarBeforeCtx w

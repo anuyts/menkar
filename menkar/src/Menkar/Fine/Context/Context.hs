@@ -140,6 +140,15 @@ flipCtx = mapCtx (\(Twice2 ty1 ty2) -> Twice2 ty2 ty1)
 ctx'sizeProxy :: Ctx ty sys v w -> Proxy v
 ctx'sizeProxy gamma = Proxy
 
+externalizeCtx :: (SysTrav sys, Functor (ty sys)) => Ctx ty sys v Void -> Ctx ty sys v v
+externalizeCtx (CtxEmpty d) = CtxEmpty d
+externalizeCtx (gamma :.. seg) =
+  VarWkn <$> externalizeCtx gamma :.. VarBeforeCtx . VarWkn . unVarFromCtx <$> seg
+externalizeCtx (seg :^^ gamma) = todo
+externalizeCtx (gamma :<...> modul) =
+  VarInModule <$> externalizeCtx gamma :<...> VarBeforeCtx . VarInModule . unVarFromCtx <$> modul
+externalizeCtx (dmu :\\ gamma) = externalizeVar <$> dmu :\\ externalizeCtx gamma
+
 {-
 -- TODO: you need a left division here!
 -- this can be further optimized by first returning `exists w . (segment w, w -> v)`

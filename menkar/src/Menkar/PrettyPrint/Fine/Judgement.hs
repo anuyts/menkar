@@ -6,6 +6,7 @@ import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
+import Menkar.Fine.Multimode
 import Menkar.PrettyPrint.Aux.Context
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
@@ -29,7 +30,7 @@ _vdash = [' ', vdash]
 _vdash_ = [' ', vdash, ' ']
 
 jud2pretty :: forall sys .
-  (SysTrav sys,
+  (Multimode sys,
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
   Judgement sys -> Fine2PrettyOptions sys -> PrettyTree String
 jud2pretty (JudType gamma ty) opts =
@@ -74,7 +75,7 @@ jud2pretty (JudModule gamma modul) opts = ctx2pretty gamma opts \\\ [_vdash ++ "
 jud2pretty (JudEntry gamma entry) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <declaration> " ++| fine2pretty (ctx2scCtx gamma) entry opts]
 --jud2pretty jud = _jud2pretty
 
-instance (SysTrav sys,
+instance (Multimode sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
          => Show (Judgement sys) where
   show jud = render (jud2pretty jud $? id) $? id

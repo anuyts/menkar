@@ -7,6 +7,7 @@ import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.PrettyPrint.Aux.Context
 import Menkar.Fine.LookupQName
+import Menkar.Fine.Multimode
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 
@@ -46,7 +47,8 @@ data Fine2PrettyOptions sys = Fine2PrettyOptions {
   _fine2pretty'printSolutions :: Maybe (ForSomeDeBruijnLevel (Term sys)),
   -- | When printing contexts, explicity print left divisions, rather than computing the divided
   -- | modality.
-  _fine2pretty'explicitLeftDivision :: Bool
+  _fine2pretty'explicitLeftDivision :: Bool,
+  _fine2pretty'printTypeAnnotations :: Bool
   }
 
 makeLenses ''Fine2PrettyOptions
@@ -59,7 +61,8 @@ instance Omissible (Fine2PrettyOptions sys) where
     omit
     omit
     Nothing
-    True
+    False
+    False
 
 ---------------------------
 
@@ -177,12 +180,14 @@ typed2pretty :: (DeBruijnLevel v,
   Type sys v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
-typed2pretty gamma t ty opts = fine2pretty gamma t opts
-{-  ribbon "(ofType" \\\ [
-      " (" ++| fine2pretty gamma ty opts |++ ")",
-      " (" ++| fine2pretty gamma t opts |++ ")"
-    ] ///
-  ribbon ")" -}
+typed2pretty gamma t ty opts
+  | _fine2pretty'printTypeAnnotations opts =
+      ribbon "(ofType" \\\ [
+          " (" ++| fine2pretty gamma ty opts |++ ")",
+          " (" ++| fine2pretty gamma t opts |++ ")"
+        ] ///
+      ribbon ")"
+  | otherwise = fine2pretty gamma t opts
 
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
@@ -451,12 +456,23 @@ tdeclAnnots2pretties gamma tdecl =
           ) gamma tdecl)
 -}
 
+seg2pretty ::
+  (DeBruijnLevel v,
+   Multimode sys, Functor (ty sys),
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
+   Maybe (ModedModality sys v) -> ScCtx sys v Void -> Segment ty sys v -> Fine2PrettyOptions sys -> PrettyTree String
+seg2pretty (Just dmu) gamma seg opts = seg2pretty Nothing gamma seg' opts
+  where seg' = over decl'modty (divModedModality dmu) $ seg
+seg2pretty Nothing gamma seg opts = fine2pretty gamma seg opts
+
 instance (SysTrav sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Fine2Pretty sys (Segment ty sys) where
-  fine2pretty gamma seg opts = ribbon " {" \\\
-    prettyAnnots ///
-    (declName2pretty gamma (DeclNameSegment $ _segment'name seg) opts) |++ " : " |+| prettyType |++ "}"
+  fine2pretty gamma seg opts =
+    ribbon " {" \\\
+      prettyAnnots ///
+    (declName2pretty gamma (DeclNameSegment $ _segment'name seg) opts)
+        |++ " : " |+| prettyType |++ "}"
     where
       prettyAnnots = declAnnots2pretties gamma seg opts
       prettyType = fine2pretty gamma (_decl'content seg) opts
