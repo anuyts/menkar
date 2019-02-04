@@ -241,24 +241,24 @@ elimination2pretty gamma eliminee (Unbox boxSeg) = todo
 elimination2pretty gamma eliminee (ElimNat motive cz cs) = todo
 -}
 elimination2pretty gamma dmu eliminee tyEliminee (App arg) opts =
-    "(" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ")" \\\
+    "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ")" \\\
       [
       " .{" ++| fine2pretty gamma arg opts |++ "}"
       ]
 elimination2pretty gamma dmu eliminee tyEliminee (Fst) opts =
-  "(" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") .1 "
+  "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") .1 "
 elimination2pretty gamma dmu eliminee tyEliminee (Snd) opts =
-  "(" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") ..2 "
+  "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") ..2 "
 elimination2pretty gamma dmu eliminee tyEliminee (Unbox) opts =
-  "unbox (" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") "
+  "unbox (" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
 elimination2pretty gamma dmu eliminee tyEliminee (Funext) opts =
-  "funext (" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") "
+  "funext (" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
 elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clausePair)) opts =
   ribbon "indSigma " \\\ [
       fine2pretty gamma dmu opts,
       "(" ++| fine2pretty gamma motive opts |++ ") ",
       "(" ++| fine2pretty gamma clausePair opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") "
+      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
     ]
   {-
   ribbon "let {" \\\ [
@@ -268,7 +268,7 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clau
                                         (DeclNameSegment $ _namedBinding'name motive)
                                         dmu
                                         Explicit
-                                        (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee)
+                                        (hs2type $ tyEliminee)
                                       )
                                       (unType $ _namedBinding'body motive)
                                     )),
@@ -284,13 +284,13 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimBox clause
       fine2pretty gamma dmu opts,
       "(" ++| fine2pretty gamma motive opts |++ ") ",
       "(" ++| fine2pretty gamma clauseBox opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") "
+      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
     ]
 elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimEmpty)) opts =
   ribbon "indEmpty " \\\ [
       fine2pretty gamma dmu opts,
       "(" ++| fine2pretty gamma motive opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") "
+      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
     ]
 elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimNat clauseZero clauseSuc)) opts =
   ribbon "indNat " \\\ [
@@ -298,7 +298,7 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimNat clause
       "(" ++| fine2pretty gamma motive opts |++ ") ",
       "(" ++| fine2pretty gamma clauseZero opts |++ ") ",
       "(" ++| fine2pretty gamma clauseSuc opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee) opts |++ ") "
+      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
     ]
 elimination2pretty gamma dmu eliminee tyEliminee (ElimEq motive crefl) opts =
   ribbon "ind== " \\\ [
