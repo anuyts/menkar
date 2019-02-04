@@ -19,7 +19,7 @@ module Data.Omissible where
 class Omissible a where
   omitted :: a
 
-($?) :: Omissible a => (a -> b) -> (a -> a) -> b
+($?) :: Omissible a => (b -> c) -> (a -> b) -> c
 f $? g = f $ g omitted
 infixr 0 $?
 

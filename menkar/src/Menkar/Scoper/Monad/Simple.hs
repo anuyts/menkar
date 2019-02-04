@@ -15,6 +15,7 @@ import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.Systems.Trivial.Fine
 
 import Control.Exception.AssertFalse
+import Data.Omissible
 
 import Control.Monad.State.Lazy
 import Control.Monad.Fail
@@ -48,8 +49,9 @@ instance MonadFail SimpleScoper where
 instance MonadScoper Trivial SimpleScoper where
   annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
     (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
-    _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
-             Raw.unparse' qstring \\\ (maybeToList $ fine2pretty (ctx2scCtx gamma) <$> maybeArg)
+    _ -> scopeFail $ "Illegal annotation: " ++ (render
+             (Raw.unparse' qstring \\\ (maybeToList $ fine2pretty (ctx2scCtx gamma) <$> maybeArg))
+             $? id
            )
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = do
     i <- fresh

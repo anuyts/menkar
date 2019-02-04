@@ -2,9 +2,12 @@
 
 module Menkar.PrettyPrint.Raw.Syntax where
 
-import Control.Exception.AssertFalse
 import Menkar.Raw.Syntax
+
+import Control.Exception.AssertFalse
 import Text.PrettyPrint.Tree
+import Data.Omissible
+
 import Data.Maybe
 
 --showshowdoc :: Doc -> String
@@ -14,7 +17,7 @@ class Unparsable x where
   unparse' :: x -> PrettyTree String
   parserName :: x -> String
   unparse :: x -> String
-  unparse x = render (RenderState 100 "  " "    ") $ unparse' x
+  unparse x = render (unparse' x) $? id
   showUnparsable :: x -> String
   showUnparsable x = "(quickParse (manySpace *> " ++ parserName x ++ " <* eof) \"\n" ++ unparse x ++ "\n\")"
 

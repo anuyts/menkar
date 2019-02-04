@@ -9,9 +9,11 @@ import Menkar.Fine.Judgement
 import Menkar.PrettyPrint.Aux.Context
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
-import Text.PrettyPrint.Tree
 import Menkar.PrettyPrint.Fine.Syntax
 import Menkar.PrettyPrint.Fine.Context
+
+import Text.PrettyPrint.Tree
+import Data.Omissible
 
 import Data.Void
 import Data.Maybe
@@ -75,4 +77,4 @@ jud2pretty (JudEntry gamma entry) = ctx2pretty gamma \\\ [_vdash ++ " <declarati
 instance (SysTrav sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
          => Show (Judgement sys) where
-  show jud = render (RenderState 100 "  " "    ") $ jud2pretty jud
+  show jud = render (jud2pretty jud) $? id

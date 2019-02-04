@@ -11,6 +11,8 @@ import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 
 import Text.PrettyPrint.Tree
+import Data.Omissible
+
 import Data.Void
 import Data.Maybe
 import Data.Proxy
@@ -25,7 +27,7 @@ charYielding = '\x2198'
 class Fine2Pretty sys t | t -> sys where
   fine2pretty :: DeBruijnLevel v => ScCtx sys v Void -> t v -> PrettyTree String
   fine2string :: DeBruijnLevel v => ScCtx sys v Void -> t v -> String
-  fine2string gamma x = render (RenderState 100 "  " "    ") $ fine2pretty gamma x
+  fine2string gamma x = render (fine2pretty gamma x) $? id
 
 ---------------------------
 
@@ -365,7 +367,7 @@ declName2pretty gamma (DeclNameSegment maybeName) = (fromMaybe (ribbon "_") $ Ra
                                               |++ (toSubscript $ show $ size (Proxy :: Proxy v))
 declName2pretty gamma (DeclNameValSpec) = ribbon "<VALSPECNAME>"
 instance Show (DeclName declSort) where
-  show declName = "[DeclName|\n" ++ render defaultRenderState (declName2pretty ScCtxEmpty declName) ++ "\n|]"
+  show declName = "[DeclName|\n" ++ (render (declName2pretty ScCtxEmpty declName) $? id) ++ "\n|]"
 
 {-| Prettyprints a telescope. -}
 telescope2pretties :: (DeBruijnLevel v,

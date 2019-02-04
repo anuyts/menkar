@@ -2,6 +2,8 @@
 
 module Text.PrettyPrint.Tree where
 
+import Data.Omissible
+
 import Data.Functor.Identity
 import Data.Foldable
 import Data.Maybe
@@ -9,6 +11,19 @@ import Data.Char
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Exception.AssertFalse
+import Control.Lens
+
+data RenderState = RenderState {
+  _render'widthLeft :: Int,
+  _render'currentIndent :: String,
+  _render'indentStep :: String}
+type RenderOptions = RenderState
+defaultRenderState = (RenderState 100 "  " "    ")
+
+instance Omissible RenderState where
+  omitted = defaultRenderState
+
+makeLenses ''RenderState
 
 --type TreeText = Tree String
 
@@ -54,26 +69,25 @@ collapseOnce (PrettyTree line sublines (Just (PrettyTree line' sublines' rest'))
 lengthHoriz :: Traversable l => PrettyTree (l c) -> Int
 lengthHoriz = sum . fmap length
 
-data RenderState = RenderState {widthLeft :: Int, currentIndent :: String, indentStep :: String}
 
 --printLn :: RenderState -> String -> String -> String
 
 class (MonadReader RenderState m, MonadWriter String m) => MonadRenderer m where
   
 askWidthLeft :: MonadRenderer m => m Int
-askWidthLeft = widthLeft <$> ask
+askWidthLeft = _render'widthLeft <$> ask
 askCurrentIndent :: MonadRenderer m => m String
-askCurrentIndent = currentIndent <$> ask
+askCurrentIndent = _render'currentIndent <$> ask
 askIndentStep :: MonadRenderer m => m String
-askIndentStep = indentStep <$> ask
+askIndentStep = _render'indentStep <$> ask
 
 indentedLine :: MonadRenderer m => String -> m String
 indentedLine s = (++ (s ++ "\n")) <$> askCurrentIndent
 
 indent :: MonadRenderer m => m a -> m a
 indent = local $ \ state -> state {
-  widthLeft = widthLeft state - length (indentStep state),
-  currentIndent = currentIndent state ++ indentStep state
+  _render'widthLeft = _render'widthLeft state - length (_render'indentStep state),
+  _render'currentIndent = _render'currentIndent state ++ _render'indentStep state
   }
 
 newtype RendererT m a = RendererT {runRendererT :: ReaderT RenderState (WriterT String m) a} deriving (Functor, Applicative)
@@ -132,9 +146,8 @@ renderM tree@(PrettyTree line sublines rest) = do
              indent $ sequenceA_ $ renderM <$> sublines
 -}
 
-render :: RenderState -> PrettyTree String -> String
-render state tree = snd $ unwrapRenderer (renderM tree) state
-defaultRenderState = (RenderState 100 "  " "    ")
+render :: PrettyTree String -> RenderState -> String
+render tree state = snd $ unwrapRenderer (renderM tree) state
 
 -------------------------------------------------------
 

@@ -16,6 +16,7 @@ import Menkar.PrettyPrint.Aux.Context
 import Text.PrettyPrint.Tree
 import Control.Exception.AssertFalse
 import Control.Monad.MCont
+import Data.Omissible
 
 import GHC.Generics (U1 (..))
 import Data.Void
@@ -164,8 +165,9 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper Trivial (TCT m) where
   
   annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
     (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
-    _ -> scopeFail $ "Illegal annotation: " ++ (render defaultRenderState $
-             Raw.unparse' qstring \\\ (maybeToList $ fine2pretty (ctx2scCtx gamma) <$> maybeArg)
+    _ -> scopeFail $ "Illegal annotation: " ++ (render
+             (Raw.unparse' qstring \\\ (maybeToList $ fine2pretty (ctx2scCtx gamma) <$> maybeArg))
+             $? id
            )
 
   newMetaTermNoCheck maybeParent deg gamma etaFlag reason = do

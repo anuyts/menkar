@@ -8,8 +8,10 @@ import Menkar.Fine.Context
 import Menkar.PrettyPrint.Aux.Context
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
-import Text.PrettyPrint.Tree
 import Menkar.PrettyPrint.Fine.Syntax
+
+import Text.PrettyPrint.Tree
+import Data.Omissible
 
 import Data.Void
 import Data.Maybe
@@ -37,7 +39,7 @@ ctx2string :: forall v sys ty .
    SysTrav sys, Functor (ty sys),
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v Void -> String
-ctx2string gamma = render defaultRenderState $ ctx2pretty gamma
+ctx2string gamma = render (ctx2pretty gamma) $? id
 
 instance
   (DeBruijnLevel v,
