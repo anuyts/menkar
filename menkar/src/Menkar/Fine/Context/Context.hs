@@ -79,7 +79,7 @@ ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
 ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
 ctx'mode (dmu :\\ gamma) = modality'dom dmu
 
-haveDB :: Ctx ty sys v Void -> ((DeBruijnLevel v) => t) -> t
+haveDB :: Ctx ty sys v w -> ((DeBruijnLevel v) => t) -> t
 haveDB (CtxEmpty d) t = t
 haveDB (gamma :.. seg) t = haveDB gamma t
 haveDB (seg :^^ gamma) t = todo

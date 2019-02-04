@@ -10,6 +10,7 @@ import Control.Exception.AssertFalse
 import GHC.Generics
 import Data.Void
 import Data.Kind
+import Data.Proxy
 
 -------------------------------------------------------------
 
@@ -103,3 +104,6 @@ haveScDB (gamma ::.. _) t = haveScDB gamma t
 haveScDB (_ ::^^ gamma) t = todo
 haveScDB (gamma ::<...> _) t = haveScDB gamma t
 haveScDB (_ ::\\ gamma) t = haveScDB gamma t
+
+_scCtx'sizeProxy :: ScCtx sys v w -> Proxy v
+_scCtx'sizeProxy gamma = Proxy

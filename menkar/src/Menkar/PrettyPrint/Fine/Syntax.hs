@@ -21,6 +21,7 @@ import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
+import Data.Number.Nat
 
 charYielding :: Char
 charYielding = '\x2198'
@@ -67,8 +68,8 @@ instance Omissible (Fine2PrettyOptions sys) where
 ---------------------------
 
 class Fine2Pretty sys t | t -> sys where
-  fine2pretty :: DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> PrettyTree String
-  fine2string :: DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> String
+  fine2pretty :: forall v . DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> PrettyTree String
+  fine2string :: forall v . DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> String
   fine2string gamma x opts = render (fine2pretty gamma x opts) $ _fine2pretty'renderOptions opts
 
 ---------------------------
@@ -329,9 +330,12 @@ deriving instance (SysTrav sys,
                    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
     => Show (Type sys Void)
 
+nameWithIndex :: Maybe Raw.Name -> Nat -> PrettyTree String
+nameWithIndex maybeName index = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName)
+    |++ (toSubscript $ show $ index)
+
 var2pretty :: DeBruijnLevel v => ScCtx sys v Void -> v -> Fine2PrettyOptions sys -> PrettyTree String
-var2pretty gamma v opts = (fromMaybe (ribbon "_") $ Raw.unparse' <$> scGetName gamma v)
-    |++ (toSubscript $ show $ getDeBruijnLevel Proxy v)
+var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel Proxy v)
 
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -409,8 +413,8 @@ declName2pretty :: forall v sys declSort . DeBruijnLevel v =>
   ScCtx sys v Void -> DeclName declSort -> Fine2PrettyOptions sys -> PrettyTree String
 declName2pretty gamma (DeclNameVal name) opts = Raw.unparse' name
 declName2pretty gamma (DeclNameModule str) opts = ribbon str
-declName2pretty gamma (DeclNameSegment maybeName) opts = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName)
-                                              |++ (toSubscript $ show $ size (Proxy :: Proxy v))
+declName2pretty gamma (DeclNameSegment maybeName) opts =
+  nameWithIndex maybeName (size (Proxy :: Proxy v))
 declName2pretty gamma (DeclNameValSpec) opts = ribbon "<VALSPECNAME>"
 instance Show (DeclName declSort) where
   show declName = "[DeclName|\n" ++ (render (declName2pretty ScCtxEmpty declName $? id) $? id) ++ "\n|]"
@@ -458,24 +462,35 @@ tdeclAnnots2pretties gamma tdecl =
 
 seg2pretty ::
   (DeBruijnLevel v,
+   SysTrav sys, Functor (ty sys),
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
+   ScCtx sys v Void -> Segment ty sys v -> Nat ->
+   Fine2PrettyOptions sys -> PrettyTree String
+seg2pretty gamma seg index opts =
+    ribbon " {" \\\
+      prettyAnnots ///
+    (nameWithIndex (_segment'name seg) index)
+        |++ " : " |+| prettyType |++ "}"
+    where
+      prettyAnnots = declAnnots2pretties gamma seg opts
+      prettyType = fine2pretty gamma (_decl'content seg) opts
+
+dividedSeg2pretty :: forall v sys ty .
+  (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
-   Maybe (ModedModality sys v) -> ScCtx sys v Void -> Segment ty sys v -> Fine2PrettyOptions sys -> PrettyTree String
-seg2pretty (Just dmu) gamma seg opts = seg2pretty Nothing gamma seg' opts
+   Maybe (ModedModality sys v) ->
+   ScCtx sys v Void -> Segment ty sys v -> Nat ->
+   Fine2PrettyOptions sys -> PrettyTree String
+dividedSeg2pretty (Just dmu) gamma seg index opts = dividedSeg2pretty Nothing gamma seg' index opts
   where seg' = over decl'modty (divModedModality dmu) $ seg
-seg2pretty Nothing gamma seg opts = fine2pretty gamma seg opts
+dividedSeg2pretty Nothing gamma seg index opts = seg2pretty gamma seg index opts
 
 instance (SysTrav sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Fine2Pretty sys (Segment ty sys) where
   fine2pretty gamma seg opts =
-    ribbon " {" \\\
-      prettyAnnots ///
-    (declName2pretty gamma (DeclNameSegment $ _segment'name seg) opts)
-        |++ " : " |+| prettyType |++ "}"
-    where
-      prettyAnnots = declAnnots2pretties gamma seg opts
-      prettyType = fine2pretty gamma (_decl'content seg) opts
+    seg2pretty gamma seg (size $ _scCtx'sizeProxy gamma) opts
 instance (SysTrav sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Show (Segment ty sys Void) where

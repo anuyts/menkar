@@ -32,9 +32,14 @@ dividedCtx2pretty :: forall v w sys ty .
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
   Maybe (ModedModality sys v) -> ScCtx sys v Void -> Ctx ty sys w v -> Fine2PrettyOptions sys -> PrettyTree String
 dividedCtx2pretty maybeDRho delta (CtxEmpty d) opts = "{context-mode : " ++| fine2pretty delta d opts |++ "}"
-dividedCtx2pretty maybeDRho delta (gamma :.. seg) opts = --haveDB gamma $
+dividedCtx2pretty maybeDRho delta (gamma :.. seg) opts = haveDB gamma $
   dividedCtx2pretty maybeDRho delta gamma opts
-    \+\ [seg2pretty (maybeDRho) delta (unVarBeforeCtxUnsafe <$> seg) opts]
+    \+\ [
+      dividedSeg2pretty maybeDRho delta
+        (unVarBeforeCtxUnsafe <$> seg)
+        (size $ ctx'sizeProxy gamma)
+        opts
+    ]
 dividedCtx2pretty maybeDRho delta (seg :^^ gamma) opts = todo
 dividedCtx2pretty maybeDRho delta (gamma :<...> modul) opts = --haveDB gamma $
   dividedCtx2pretty maybeDRho delta gamma opts
