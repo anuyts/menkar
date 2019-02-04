@@ -17,10 +17,10 @@ module Data.Omissible where
     @f x y z $ opts & verbose .~ True &? recursive .~ True@
 -}
 class Omissible a where
-  omitted :: a
+  omit :: a
 
 ($?) :: Omissible a => (b -> c) -> (a -> b) -> c
-f $? g = f $ g omitted
+f $? g = f $ g omit
 infixr 0 $?
 
 (&?) :: (a -> b) -> (b -> c) -> (a -> c)

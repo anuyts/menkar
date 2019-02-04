@@ -21,7 +21,7 @@ type RenderOptions = RenderState
 defaultRenderState = (RenderState 100 "  " "    ")
 
 instance Omissible RenderState where
-  omitted = defaultRenderState
+  omit = defaultRenderState
 
 makeLenses ''RenderState
 
