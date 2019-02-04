@@ -26,6 +26,9 @@ import Data.Number.Nat
 charYielding :: Char
 charYielding = '\x2198'
 
+data PrintModuleVerbosity =
+  PrintModuleDots | PrintModuleNames | {-PrintModuleTypes |-} PrintModuleContents
+
 data FineAlgorithmOptions = FineAlgorithmOptions {
   -- | Print goal / smart elimination as its result.
   _fineAlgorithm'suppressAltogether :: Bool,
@@ -49,7 +52,9 @@ data Fine2PrettyOptions sys = Fine2PrettyOptions {
   -- | When printing contexts, explicity print left divisions, rather than computing the divided
   -- | modality.
   _fine2pretty'explicitLeftDivision :: Bool,
-  _fine2pretty'printTypeAnnotations :: Bool
+  _fine2pretty'printTypeAnnotations :: Bool,
+  _fine2pretty'printModule :: PrintModuleVerbosity,
+  _fine2pretty'printModuleInContext :: Maybe (PrintModuleVerbosity)
   }
 
 makeLenses ''Fine2PrettyOptions
@@ -64,6 +69,8 @@ instance Omissible (Fine2PrettyOptions sys) where
     Nothing
     False
     False
+    PrintModuleContents
+    (Just PrintModuleDots)
 
 ---------------------------
 
@@ -526,13 +533,26 @@ instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Val sys Void) where
   show val = "[Val|\n" ++ fine2string ScCtxEmpty val omit ++ "\n|]"
+
+moduleContents2pretty ::
+  (SysTrav sys, DeBruijnLevel v,
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+  ScCtx sys v Void -> ModuleRHS sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
+moduleContents2pretty gamma moduleRHS opts = case _fine2pretty'printModule opts of
+  PrintModuleDots -> [ribbon "..."]
+  PrintModuleNames -> todo
+  PrintModuleContents ->
+    (($ opts) .
+     fine2pretty
+     (gamma ::<...> (VarFromCtx <$> moduleRHS))
+     <$> (reverse $ view moduleRHS'entries moduleRHS)
+    ) >>= (\ entry -> [entry, ribbon "        "])
         
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (ModuleRHS sys) where
   fine2pretty gamma moduleRHS opts = ribbon " where {"
-    \\\ ((($ opts) . fine2pretty (gamma ::<...> (VarFromCtx <$> moduleRHS)) <$> (reverse $ view moduleRHS'entries moduleRHS))
-          >>= (\ entry -> [entry, ribbon "        "]))
+    \\\ moduleContents2pretty gamma moduleRHS opts
     /// ribbon "}"
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>

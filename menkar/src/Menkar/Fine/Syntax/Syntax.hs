@@ -35,8 +35,8 @@ deriving instance CanSwallow (Term sys) (Unit2 sys)
 data Void2 (a :: ka) (b :: kb) = Void2 Void
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance CanSwallow (Term sys) (Void2 sys)
-absurd3 :: Void2 a b -> d
-absurd3 (Void2 v) = absurd v
+absurd2 :: Void2 a b -> d
+absurd2 (Void2 v) = absurd v
 
 newtype Maybe2 t (a :: ka) (b :: kb) = Maybe2 (Compose Maybe (t a) b)
   deriving (Functor, Foldable, Traversable, Generic1)

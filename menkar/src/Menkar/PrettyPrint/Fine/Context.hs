@@ -41,8 +41,25 @@ dividedCtx2pretty maybeDRho delta (gamma :.. seg) opts = haveDB gamma $
         opts
     ]
 dividedCtx2pretty maybeDRho delta (seg :^^ gamma) opts = todo
-dividedCtx2pretty maybeDRho delta (gamma :<...> modul) opts = --haveDB gamma $
-  dividedCtx2pretty maybeDRho delta gamma opts
+dividedCtx2pretty maybeDRho delta (gamma :<...> modul) opts =
+  case _fine2pretty'printModuleInContext opts of
+    Nothing -> printGamma
+    Just p -> printGamma
+      \+\ [
+        let printModule = moduleContents2pretty delta (unVarBeforeCtxUnsafe <$> modul)
+                            $ opts & fine2pretty'printModule .~ p
+        in case maybeDRho of
+             Nothing -> ribbon "{" \\\ printModule /// ribbon "}"
+             Just drho ->
+               ribbon " {"
+                 \\\ [fine2pretty delta
+                        (divModedModality drho $ idModedModality $
+                         unVarBeforeCtxUnsafe <$> ctx'mode gamma)
+                        opts]
+                 \\\ printModule
+               /// ribbon "}"
+      ]
+  where printGamma = dividedCtx2pretty maybeDRho delta gamma opts
 dividedCtx2pretty Nothing delta (dmu :\\ gamma) opts = --haveDB gamma $
   "[" ++| fine2pretty delta (unVarBeforeCtxUnsafe <$> dmu) opts |++ "] \\ ("
                              \\\ [dividedCtx2pretty Nothing delta gamma opts]
