@@ -75,6 +75,12 @@ jud2pretty (JudModule gamma modul) opts = ctx2pretty gamma opts \\\ [_vdash ++ "
 jud2pretty (JudEntry gamma entry) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <declaration> " ++| fine2pretty (ctx2scCtx gamma) entry opts]
 --jud2pretty jud = _jud2pretty
 
+jud2string :: forall sys .
+  (Multimode sys,
+   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+  Judgement sys -> Fine2PrettyOptions sys -> String
+jud2string jud opts = render (jud2pretty jud opts) (_fine2pretty'renderOptions opts)
+
 instance (Multimode sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
          => Show (Judgement sys) where

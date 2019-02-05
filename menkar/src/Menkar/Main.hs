@@ -50,8 +50,9 @@ class WithMainState where
 
 printConstraint :: IORef MainState -> Constraint Trivial -> IO ()
 printConstraint ref c = do
+  mainState <- readIORef ref
   putStrLn $ "Constraint " ++ show (constraint'id c) ++ ":"
-  putStr $ show $ constraint'judgement c
+  putStr $ jud2string (constraint'judgement c) $ _main'fine2prettyOptions mainState
 
 printTrace :: IORef MainState -> Constraint Trivial -> IO ()
 printTrace ref c = do
@@ -74,18 +75,23 @@ printBlockInfo ref s (blockingMetas, blockInfo) = do
 
 printMetaInfo :: DeBruijnLevel v => IORef MainState -> TCState m -> Int -> MetaInfo m v -> IO ()
 printMetaInfo ref s meta info = do
+  mainState <- readIORef ref
   putStrLn $ "Context:"
   putStrLn $ "--------"
   let tMeta = Expr2 $ TermMeta True meta (Compose $ Var2 <$> listAll Proxy) (Compose Nothing)
-  putStr $ show $ JudTerm (_metaInfo'context info) tMeta (Type $ Expr2 $ TermWildcard)
+  putStr $ jud2string (JudTerm (_metaInfo'context info) tMeta (Type $ Expr2 $ TermWildcard))
+           $ _main'fine2prettyOptions mainState
   putStrLn $ ""
   case _metaInfo'maybeSolution info of
     Right solutionInfo -> do
       putStrLn "Solution:"
       putStrLn "---------"
-      putStr   $ fine2string (ctx2scCtx $ _metaInfo'context info) tMeta $? id
+      mainState <- readIORef ref
+      putStr   $ fine2string (ctx2scCtx $ _metaInfo'context info) tMeta
+                 $ mainState ^. main'fine2prettyOptions
       putStr   $ " = "
-      putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) (_solutionInfo'solution solutionInfo) $? id
+      putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) (_solutionInfo'solution solutionInfo)
+                 $ mainState ^. main'fine2prettyOptions
       printConstraint ref $ _solutionInfo'parent solutionInfo
     Left blocks -> do
       putStrLn "Unsolved"
