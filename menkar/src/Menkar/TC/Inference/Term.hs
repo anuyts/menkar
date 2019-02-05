@@ -607,7 +607,7 @@ checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
     (Just parent)
     "Type-checking eliminee."
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
-checkTermNV parent gamma t@(TermMeta etaFlag meta (Compose depcies)) ty = do
+checkTermNV parent gamma t@(TermMeta etaFlag meta (Compose depcies) alg) ty = do
   maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
   t' <- case maybeT of
     Nothing -> do
@@ -651,7 +651,7 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
             (Just parent)
             "Checking whether actual type equals expected type."
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
-checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) ty = do
+checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminators)) result) ty = do
   dmuElim <- newMetaModedModality (Just parent) (irrModedModality :\\ gamma) "Infer modality of smart elimination."
   tyEliminee <- newMetaType (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
@@ -669,7 +669,7 @@ checkTermNV parent gamma (TermSmartElim eliminee (Compose eliminators) result) t
     (JudSmartElim gamma dmuElim eliminee tyEliminee eliminators result ty)
     (Just parent)
     "Smart elimination should reduce to its result."
-checkTermNV parent gamma (TermGoal goalname result) ty = do
+checkTermNV parent gamma (TermAlgorithm (AlgGoal goalname depcies) result) ty = do
   -----
   addNewConstraint
     (JudTerm gamma result ty)

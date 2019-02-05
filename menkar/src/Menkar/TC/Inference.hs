@@ -139,11 +139,10 @@ checkEta parent gamma t (Type ty) = do
           TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons
           TermCons _ -> tcFail parent' $ "Type is not a type."
           TermElim _ _ _ _ -> return ()
-          TermMeta _ _ _ -> unreachable
+          TermMeta _ _ _ _ -> unreachable
           TermWildcard -> unreachable
           TermQName _ _ -> unreachable
-          TermSmartElim _ _ _ -> unreachable
-          TermGoal _ _ -> unreachable
+          TermAlgorithm _ _ -> unreachable
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
     _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
 

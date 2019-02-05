@@ -16,6 +16,7 @@ import Menkar.Fine.LookupQName
 import Control.Exception.AssertFalse
 import Menkar.Fine.Multimode
 import Menkar.PrettyPrint.Raw.Syntax
+import Menkar.PrettyPrint.Aux.Context
 
 import Control.Monad.State.Lazy
 import Control.Monad.List
@@ -71,10 +72,11 @@ expr3 :: (MonadScoper sys sc, DeBruijnLevel v) =>
 expr3 gamma (Raw.ExprQName rawQName) = qname gamma rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = natLiteral n
-expr3 gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing eqDeg gamma True "Infer explicitly omitted value."
+expr3 gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing eqDeg gamma True Nothing "Infer explicitly omitted value."
 expr3 gamma (Raw.ExprGoal str) = do
-  result <- newMetaTermNoCheck Nothing eqDeg gamma True "Infer goal's value."
-  return $ Expr2 $ TermGoal str result
+  let algGoal = AlgGoal str $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
+  result <- newMetaTermNoCheck Nothing eqDeg gamma True (Just $ algGoal) "Infer goal's value."
+  return $ Expr2 $ TermAlgorithm algGoal result
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
 elimination ::
@@ -89,8 +91,9 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   case fineElims of
     [] -> return fineEliminee
     _  -> do
-      fineResult <- newMetaTermNoCheck Nothing eqDeg gamma True "Infer result of smart elimination."
-      return . Expr2 $ TermSmartElim fineEliminee (Compose fineElims) fineResult
+      let alg = AlgSmartElim fineEliminee (Compose fineElims)
+      fineResult <- newMetaTermNoCheck Nothing eqDeg gamma True (Just alg) "Infer result of smart elimination."
+      return . Expr2 $ TermAlgorithm alg fineResult
   --theMode <- mode4newImplicit gamma
   {-pushConstraint $ Constraint {
       constraintJudgement = JudSmartElim gamma fineEliminee fineTy fineElims fineResult,
@@ -119,7 +122,7 @@ simpleLambda ::
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
     dmu <- newMetaModedModality Nothing (irrModedModality :\\ gamma) "Infer domain mode/modality."
-    fineTy <- Type <$> newMetaTermNoCheck Nothing eqDeg (VarFromCtx <$> dmu :\\ gamma) False "Infer domain."
+    fineTy <- Type <$> newMetaTermNoCheck Nothing eqDeg (VarFromCtx <$> dmu :\\ gamma) False Nothing "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
       Raw.ExprImplicit -> return $ Nothing
@@ -396,7 +399,7 @@ buildSegment ::
   PartialSegment Type sys v ->
   sc [Segment Type sys v]
 buildSegment gamma partSeg = runListT $ do
-  teleSeg <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False "Infer type."
+  teleSeg <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False Nothing "Infer type."
              in  ListT $ buildDeclaration gamma gen partSeg
   return $ flip (over decl'content) teleSeg $ \ case
     Telescoped seg -> seg
@@ -524,7 +527,7 @@ val ::
   sc (Val sys v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  [fineLHS] <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False "Infer type."
+  [fineLHS] <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False Nothing "Infer type."
                in  buildDeclaration gamma gen partialLHS
   val <- flip decl'content fineLHS $ mapTelescopedDB (
       \wkn gammadelta fineTy -> do

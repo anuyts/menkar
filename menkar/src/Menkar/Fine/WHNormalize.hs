@@ -109,7 +109,7 @@ whnormalizeNV :: MonadTC sys tc =>
   WriterT [Int] tc (Term sys v)
 whnormalizeNV parent gamma t@(TermCons _) reason = return . Expr2 $ t   -- Mind glue and weld!
 whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
-whnormalizeNV parent gamma t@(TermMeta etaFlag meta (Compose depcies)) reason = do
+whnormalizeNV parent gamma t@(TermMeta etaFlag meta (Compose depcies) alg) reason = do
   --solution <- fromMaybe (Expr2 t) <$> awaitMeta parent reason meta depcies
   maybeSolution <- lift $ awaitMeta parent reason meta depcies
   case maybeSolution of
@@ -125,8 +125,7 @@ whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) reason =
         ModApplied _ quantifiedVal = telescoped2modalQuantified telescopedVal
         quantifiedTerm = _val'term quantifiedVal
     in  whnormalize parent gamma quantifiedTerm reason
-whnormalizeNV parent gamma (TermSmartElim eliminee eliminators result) reason = whnormalize parent gamma result reason
-whnormalizeNV parent gamma (TermGoal str result) reason = whnormalize parent gamma result reason
+whnormalizeNV parent gamma (TermAlgorithm alg result) reason = whnormalize parent gamma result reason
 whnormalizeNV parent gamma t@(TermProblem _) reason = return $ Expr2 t
 
 {- | Either weak-head-normalizes the given term and writes nothing,

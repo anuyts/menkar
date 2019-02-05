@@ -53,9 +53,9 @@ instance MonadScoper Trivial SimpleScoper where
              (Raw.unparse' qstring \\\ (maybeToList $ ($? id) . fine2pretty (ctx2scCtx gamma) <$> maybeArg))
              $? id
            )
-  newMetaTermNoCheck maybeParent deg gamma etaFlag reason = do
+  newMetaTermNoCheck maybeParent deg gamma etaFlag maybeAlg reason = do
     i <- fresh
-    return $ Expr2 $ TermMeta etaFlag i $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
+    return $ Expr2 $ TermMeta etaFlag i (Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)) (Compose maybeAlg)
   newMetaMode maybeParent gamma reason = return U1
   newMetaModty maybeParent gamma reason = return U1
   scopeFail msg = SimpleScoper $ lift $ Left msg

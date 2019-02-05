@@ -34,24 +34,14 @@ data PrintEntryVerbosity = PrintEntryName | PrintEntryNameAnnots | PrintEntryEnt
 data PrintModuleVerbosity = PrintModuleVerbosity {unPrintModuleVerbosity :: Maybe PrintEntryVerbosity}
   --PrintModuleDots | PrintModuleNames | {-PrintModuleTypes |-} PrintModuleContents
 
-data FineAlgorithmOptions = FineAlgorithmOptions {
-  -- | Print goal / smart elimination as its result.
-  _fineAlgorithm'suppressAltogether :: Bool,
-  -- | Do not explicitly view goal / smart elimination.
-  -- | (Only relevant if @'_fineAlgorithm'suppressAltogether'@ is @False@.)
-  _fineAlgorithm'suppressAlgorithm :: Bool
-  }
-
-instance Omissible FineAlgorithmOptions where
-  omit = FineAlgorithmOptions True True
+data PrintAlgorithmVerbosity = PrintAlgorithm | PrintAlgorithmUnderscore | DontPrintAlgorithm
 
 data Fine2PrettyOptions sys = Fine2PrettyOptions {
   -- | How to render.
   _fine2pretty'renderOptions :: RenderOptions,
   -- | Instead of listing all dependencies, plug them into the smart elimination / ... being resolved.
   _fine2pretty'humanReadableMetas :: Bool,
-  _fine2pretty'smartElimOptions :: FineAlgorithmOptions,
-  _fine2pretty'goalOptions :: FineAlgorithmOptions,
+  _fine2pretty'printAlgorithm :: PrintAlgorithmVerbosity,
   -- | When printing a solved meta, print its solution instead.
   _fine2pretty'printSolutions :: Maybe (ForSomeDeBruijnLevel (Term sys)),
   -- | When printing contexts, explicity print left divisions, rather than computing the divided
@@ -64,18 +54,16 @@ data Fine2PrettyOptions sys = Fine2PrettyOptions {
   }
 
 makeLenses ''Fine2PrettyOptions
-makeLenses ''FineAlgorithmOptions
 
 instance Omissible (Fine2PrettyOptions sys) where
   omit = Fine2PrettyOptions {
     _fine2pretty'renderOptions = omit,
     _fine2pretty'humanReadableMetas = True,
-    _fine2pretty'smartElimOptions = omit,
-    _fine2pretty'goalOptions = omit,
+    _fine2pretty'printAlgorithm = PrintAlgorithmUnderscore,
     _fine2pretty'printSolutions = Nothing,
     _fine2pretty'explicitLeftDivision = False,
     _fine2pretty'printTypeAnnotations = False,
-    _fine2pretty'printModule = (PrintModuleVerbosity (Just PrintEntryNameAnnots)),
+    _fine2pretty'printModule = (PrintModuleVerbosity (Just PrintEntryEntirely)),
     _fine2pretty'printModuleInContext = (Just (PrintModuleVerbosity Nothing)),
     _fine2pretty'printEntry = PrintEntryEntirely}
 
@@ -338,6 +326,20 @@ instance (SysTrav sys,
 
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+         Fine2Pretty sys (Algorithm sys) where
+  fine2pretty gamma (AlgGoal str (Compose depcies)) opts =
+    ribbon ("?" ++ str)
+      \\\ ((|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies)
+  fine2pretty gamma (AlgSmartElim eliminee (Compose eliminators)) opts =
+    "(" ++| fine2pretty gamma eliminee opts |++ ")"
+      |+| treeGroup ((" " ++|) . ($ opts) . fine2pretty gamma <$> eliminators)
+instance (SysTrav sys,
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+         Show (Algorithm sys Void) where
+  show alg = "[Algorithm|\n" ++ fine2string ScCtxEmpty alg omit ++ "\n|]"
+
+instance (SysTrav sys,
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Type sys) where
   fine2pretty gamma (Type t) opts = fine2pretty gamma t opts
 deriving instance (SysTrav sys,
@@ -357,9 +359,14 @@ instance (SysTrav sys,
   fine2pretty gamma (TermCons consTerm) opts = fine2pretty gamma consTerm opts
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) opts =
     elimination2pretty gamma mod eliminee tyEliminee eliminator opts
-  fine2pretty gamma (TermMeta etaFlag i (Compose depcies)) opts =
+  fine2pretty gamma (TermMeta etaFlag i (Compose depcies) (Compose maybeAlg)) opts =
     ribbon ("?" ++ show i ++ (if etaFlag then "" else "-no-eta"))
-    \\\ ((|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies)
+    \\\ case maybeAlg of
+          Nothing -> uglySubMeta
+          Just alg -> if _fine2pretty'humanReadableMetas opts
+            then ["\x27ea" ++| fine2pretty gamma alg opts |++ "\x27eb"]
+            else uglySubMeta
+    where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies
   fine2pretty gamma TermWildcard opts = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) opts = Raw.unparse' qname
     {-
@@ -374,12 +381,16 @@ instance (SysTrav sys,
     --case _leftDivided'content lookupresult of
     --Telescoped (ValRHS (Var2 v) _) -> var2pretty gamma v
     --_ -> Raw.unparse' qname
-  fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) opts =
+  fine2pretty gamma (TermAlgorithm alg result) opts = case _fine2pretty'printAlgorithm opts of
+    PrintAlgorithm -> fine2pretty gamma alg opts |++ " \x2198 " |+| fine2pretty gamma result opts
+    PrintAlgorithmUnderscore -> "_ \x2198 " ++| fine2pretty gamma result opts
+    DontPrintAlgorithm -> fine2pretty gamma result opts
+  {-fine2pretty gamma (TermSmartElim eliminee (Compose eliminators) result) opts =
     "(" ++| fine2pretty gamma eliminee opts |++ ")"
       |+| treeGroup ((" " ++|) . ($ opts) . fine2pretty gamma <$> eliminators)
       |++ " \x2198 " |+| fine2pretty gamma result opts
   fine2pretty gamma (TermGoal str result) opts =
-    "?" ++ str ++ " \x2198 " ++| fine2pretty gamma result opts
+    "?" ++ str ++ " \x2198 " ++| fine2pretty gamma result opts-}
   fine2pretty gamma (TermProblem t) opts = "(! " ++| fine2pretty gamma t opts |++ "!)"
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>

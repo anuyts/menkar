@@ -61,7 +61,7 @@ newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 etaFla
   case maybeDegOrig of
     Nothing -> tcBlock parent "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
     Just degOrig -> do
-      t1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig etaFlag reason
+      t1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig etaFlag Nothing reason
       let t1 = subst <$> t1orig
       addNewConstraint
         (JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2))
@@ -85,7 +85,7 @@ newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
   case maybeDegOrig of
     Nothing -> tcBlock parent "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
     Just degOrig -> do
-      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) degOrig gammaOrig False reason
+      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) degOrig gammaOrig False Nothing reason
       let ty1 = subst <$> ty1orig
       addNewConstraint
         (JudTypeRel deg gamma (Twice2 ty1 ty2))
@@ -251,14 +251,16 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
             let tySnd2 = substLast2 tmFst2 $ Type $ binding'body sigmaBinding2
             -- CMODE: deg should probably live in vOrig
             let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
-            tyFst1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig False "Inferring type of first component."
+            tyFst1orig <-
+              newMetaTermNoCheck (Just parent) degOrig gammaOrig False Nothing "Inferring type of first component."
             let sigmaSeg1orig = Declaration
                                   (_decl'name $ binding'segment $ sigmaBinding1)
                                   dmu1orig
                                   Explicit -- CMODE
                                   (Type tyFst1orig)
             tySnd1orig <- newMetaTermNoCheck (Just parent) (VarWkn <$> degOrig)
-                                (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) False "Inferring type of second component."
+                                (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) False Nothing
+                                "Inferring type of second component."
             let sigmaBinding1orig = Binding sigmaSeg1orig tySnd1orig
             tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
                             True "Inferring second component."
@@ -281,7 +283,7 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
             let tmUnbox1 = subst <$> tmUnbox1orig
             -- CMODE: deg should probably live in vOrig
             let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
-            tyUnbox1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig False "Inferring type of box content."
+            tyUnbox1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig False Nothing "Inferring type of box content."
             let boxSeg1orig = Declaration
                                   (_decl'name $ boxSeg1)
                                   dmu1orig
@@ -637,11 +639,10 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                              eliminator2
                              ty1 ty2
         return $ Expr2 $ TermElim dmu1orig eliminee1orig tyEliminee1orig eliminator1orig
-      TermMeta _ _ _ -> unreachable
+      TermMeta _ _ _ _ -> unreachable
       TermWildcard -> unreachable
       TermQName _ _ -> unreachable
-      TermSmartElim _ _ _ -> unreachable
-      TermGoal _ _ -> unreachable
+      TermAlgorithm _ _ -> unreachable
       TermProblem _ -> do
         tcFail parent "Nonsensical term."
 
@@ -757,7 +758,7 @@ tryToSolveTerm :: (MonadTC sys tc, Eq v, DeBruijnLevel v) =>
   tc ()
 tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 metasTyBlocked metasTy2 = case tBlocked of
   -- tBlocked should be a meta
-  (Expr2 (TermMeta etaFlag meta depcies)) ->
+  (Expr2 (TermMeta etaFlag meta depcies alg)) ->
     tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2 metasTyBlocked metasTy2
   -- if tBlocked is not a meta, then we should just block on its submetas
   _ -> tcBlock parent "Cannot solve relation: one side is blocked on a meta-variable."

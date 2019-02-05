@@ -43,6 +43,7 @@ class (
     -> Degree sys v {-^ Degree up to which it should be solved -}
     -> Ctx Type sys v Void
     -> Bool {-^ Whether it can be solved using eta-expansion. -}
+    -> Maybe (Algorithm sys v)
     -> String
     -> sc (Term sys v)
   newMetaMode ::
@@ -53,7 +54,8 @@ class (
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
   annot4annot gamma qstring maybeArg = lift $ annot4annot gamma qstring maybeArg
-  newMetaTermNoCheck maybeParent deg gamma etaFlag reason = lift $ newMetaTermNoCheck maybeParent deg gamma etaFlag reason
+  newMetaTermNoCheck maybeParent deg gamma etaFlag maybeAlg reason =
+    lift $ newMetaTermNoCheck maybeParent deg gamma etaFlag maybeAlg reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
   newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
   scopeFail msg = lift $ scopeFail msg
@@ -117,7 +119,7 @@ class (
 
 await :: (MonadTC sys tc) =>
   Constraint sys -> String -> Term sys v -> tc (Maybe (Term sys v))
-await parent reason (Expr2 (TermMeta flagEta meta (Compose depcies))) = runMaybeT $ do
+await parent reason (Expr2 (TermMeta flagEta meta (Compose depcies) alg)) = runMaybeT $ do
   term <- MaybeT $ awaitMeta parent reason meta depcies
   MaybeT $ await parent reason term
 await parent reason t = return $ Just t
@@ -132,6 +134,8 @@ addNewConstraint judgement parent reason = addConstraint =<< defConstraint judge
 -}
 
 -- | Not to be used by the Scoper.
+-- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
+-- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
   Degree sys v ->
@@ -141,7 +145,7 @@ newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v) =>
   String ->
   tc (Term sys v)
 newMetaTerm maybeParent deg gamma ty etaFlag reason = do
-  t <- newMetaTermNoCheck maybeParent deg gamma etaFlag reason
+  t <- newMetaTermNoCheck maybeParent deg gamma etaFlag Nothing reason
   addNewConstraint
     (JudTerm gamma t ty)
     maybeParent
@@ -155,6 +159,8 @@ newMetaTerm maybeParent deg gamma ty etaFlag reason = do
   return t
 
 -- | Not to be used by the Scoper.
+-- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
+-- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaType :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
   Degree sys v ->
@@ -162,7 +168,7 @@ newMetaType :: (MonadTC sys tc, DeBruijnLevel v) =>
   String ->
   tc (Type sys v)
 newMetaType maybeParent deg gamma reason = do
-  t <- Type <$> newMetaTermNoCheck maybeParent deg gamma False {-Solving types using eta is rather pointless. -} reason
+  t <- Type <$> newMetaTermNoCheck maybeParent deg gamma False Nothing reason
   addNewConstraint
     (JudType gamma t)
     maybeParent
@@ -170,6 +176,8 @@ newMetaType maybeParent deg gamma reason = do
   return t
 
 -- | Not to be used by the Scoper.
+-- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
+-- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
   Degree sys v ->
@@ -178,7 +186,7 @@ newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
   String ->
   tc (Type sys v)
 newMetaTypeRel maybeParent deg gamma ty2 reason = do
-  ty1 <- Type <$> newMetaTermNoCheck maybeParent deg (fstCtx gamma) True reason
+  ty1 <- Type <$> newMetaTermNoCheck maybeParent deg (fstCtx gamma) False Nothing reason
   addNewConstraint
     (JudTypeRel deg gamma (Twice2 ty1 ty2))
     maybeParent

@@ -288,6 +288,20 @@ deriving instance (SysTrav sys) => Generic1 (Eliminator sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Eliminator sys)
 
+data Algorithm sys v =
+  AlgGoal
+    String {-^ goal's name -}
+    (Compose [] (Term sys) v) {-^ dependencies -} |
+  AlgSmartElim
+    (Term sys v) {-^ eliminee -}
+    (Compose [] (SmartEliminator sys) v) {-^ eliminators -}
+deriving instance (SysTrav sys) => Functor (Algorithm sys)
+deriving instance (SysTrav sys) => Foldable (Algorithm sys)
+deriving instance (SysTrav sys) => Traversable (Algorithm sys)
+deriving instance (SysTrav sys) => Generic1 (Algorithm sys)
+deriving instance (SysSyntax (Term sys) sys) =>
+  CanSwallow (Term sys) (Algorithm sys)
+
 -- | This doesn't seem particularly useful.
 newtype Type (sys :: KSys) (v :: *) = Type {unType :: Term sys v}
   {-ElType {-^ Constructor'ish -} 
@@ -312,17 +326,26 @@ data TermNV (sys :: KSys) (v :: *) =
     (Term sys v) {-^ eliminee -}
     (UniHSConstructor sys v) {-^ eliminee's type -}
     (Eliminator sys v) {-^ eliminator -} |
-  {-| Boolean: Whether the meta may be solved using eta-expansion. Always true except when inferring an eliminee. -}
-  TermMeta Bool Int (Compose [] (Term sys) v) |
+  {-| Boolean:  -}
+  TermMeta
+    Bool {-^ Whether the meta may be solved using eta-expansion.
+             Always true except when inferring an eliminee or something that doesn't have eta. -}
+    Int {-^ Meta's index -}
+    (Compose [] (Term sys) v) {-^ Dependencies -}
+    (Compose Maybe (Algorithm sys) v) {-^ Human readable representation -} |
   TermWildcard {-^ A meta that need not be solved. -} |
   TermQName Raw.QName (LeftDivided (Telescoped Type ValRHS) sys v) |
-  TermSmartElim
+  TermAlgorithm
+    (Algorithm sys v)
+    (Term sys v) {-^ result -} |
+  {-TermSmartElim
     (Term sys v) {-^ eliminee -}
     (Compose [] (SmartEliminator sys) v) {-^ eliminators -}
     (Term sys v) {-^ result -} |
   TermGoal
     String {-^ goal's name -}
-    (Term sys v) {-^ result -} |
+    (Compose [] (Term sys) v) {-^ dependencies -}
+    (Term sys v) {-^ result -} |-}
   TermProblem {-^ Wrapper of terms that make no sense. -}
     (Term sys v)
 deriving instance (SysTrav sys) => Functor (TermNV sys)
