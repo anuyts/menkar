@@ -2,6 +2,8 @@
 
 module Menkar.PrettyPrint.Fine.Syntax where
 
+import Prelude hiding (lookup)
+
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
@@ -21,7 +23,9 @@ import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
+import Control.Monad
 import Data.Number.Nat
+import Data.IntMap.Lazy hiding (map, size)
 
 charYielding :: Char
 charYielding = '\x2198'
@@ -43,7 +47,7 @@ data Fine2PrettyOptions sys = Fine2PrettyOptions {
   _fine2pretty'humanReadableMetas :: Bool,
   _fine2pretty'printAlgorithm :: PrintAlgorithmVerbosity,
   -- | When printing a solved meta, print its solution instead.
-  _fine2pretty'printSolutions :: Maybe (ForSomeDeBruijnLevel (Term sys)),
+  _fine2pretty'printSolutions :: Maybe (IntMap (ForSomeDeBruijnLevel (Term sys))),
   -- | When printing contexts, explicity print left divisions, rather than computing the divided
   -- | modality.
   _fine2pretty'explicitLeftDivision :: Bool,
@@ -76,14 +80,14 @@ class Fine2Pretty sys t | t -> sys where
 
 ---------------------------
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (ModedModality sys) where
   fine2pretty gamma (ModedModality d mu) opts = ribbonEmpty \\\ [
                 "d " ++| fine2pretty gamma d opts |++ " | ",
                 "m " ++| fine2pretty gamma mu opts |++ " | "
               ]
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ModedModality sys Void) where
   show dmu = "[ModedModality|\n" ++ fine2string ScCtxEmpty dmu omit ++ "\n|]"
@@ -91,7 +95,7 @@ instance (SysTrav sys,
 deriving instance (Show (Mode sys v), Show (Modality sys v)) => Show (ModedContramodality sys v)
 
 binding2pretty :: (DeBruijnLevel v,
-                  SysTrav sys,
+                  SysSyntax (Term sys) sys,
                   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
                   String -> ScCtx sys v Void -> Binding Type rhs sys v -> Fine2PrettyOptions sys -> PrettyTree String
 binding2pretty opstring gamma binding opts =
@@ -99,16 +103,16 @@ binding2pretty opstring gamma binding opts =
   \\\ [" " ++ opstring ++ " " ++|
        fine2pretty (gamma ::.. (VarFromCtx <$> segment2scSegment (binding'segment binding))) (binding'body binding) opts
       ]
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Fine2Pretty sys (Binding Type rhs sys) where
   fine2pretty gamma binding opts = binding2pretty ">" gamma binding opts
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Show (Binding Type rhs sys Void) where
   show binding = "[Binding|\n" ++ fine2string ScCtxEmpty binding omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (UniHSConstructor sys) where
   fine2pretty gamma (UniHS d {-lvl-}) opts =
@@ -127,12 +131,12 @@ instance (SysTrav sys,
     \\\ ["(" ++| fine2pretty gamma tyL opts |++ ")"]
     /+/ " == .{" ++| fine2pretty gamma tyAmbient opts |++ "} "
     \\\ ["(" ++| fine2pretty gamma tyR opts |++ ")"]
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (UniHSConstructor sys Void) where
   show typeterm = "[UniHSConstructor|\n" ++ fine2string ScCtxEmpty typeterm omit ++ "\n|]"
   
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (ConstructorTerm sys) where
   fine2pretty gamma (ConsUniHS typeterm) opts = fine2pretty gamma typeterm opts
@@ -155,12 +159,12 @@ instance (SysTrav sys,
   fine2pretty gamma (ConsZero) opts = ribbon "zero"
   fine2pretty gamma (ConsSuc t) opts = "suc .{" ++| fine2pretty gamma t opts |++ "}"
   fine2pretty gamma ConsRefl opts = ribbon "refl"
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ConstructorTerm sys Void) where
   show consTerm = "[ConstructorTerm|\n" ++ fine2string ScCtxEmpty consTerm omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (SmartEliminator sys) where
   fine2pretty gamma (SmartElimDots) opts = ribbon "..."
@@ -170,13 +174,13 @@ instance (SysTrav sys,
   fine2pretty gamma (SmartElimArg (Raw.ArgSpecNamed name) term) opts =
     ".{" ++ Raw.unparse name ++ " = " ++| fine2pretty gamma term opts |++ "}"
   fine2pretty gamma (SmartElimProj projSpec) opts = Raw.unparse' (Raw.ElimProj projSpec)
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (SmartEliminator sys Void) where
   show smartElim = "[SmartEliminator|\n" ++ fine2string ScCtxEmpty smartElim omit ++ "\n|]"
 
 typed2pretty :: (DeBruijnLevel v,
-                       SysTrav sys,
+                       SysSyntax (Term sys) sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
   ScCtx sys v Void ->
   Term sys v ->
@@ -192,19 +196,19 @@ typed2pretty gamma t ty opts
       ribbon ")"
   | otherwise = fine2pretty gamma t opts
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Fine2Pretty sys (NamedBinding rhs sys) where
   fine2pretty gamma (NamedBinding maybeName body) opts =
     let gammaExt = gamma ::.. ScSegment maybeName
     in  var2pretty gammaExt VarLast opts |++ " > " |+| fine2pretty gammaExt body opts
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Show (NamedBinding rhs sys Void) where
   show binding = "[NamedBinding|\n" ++ fine2string ScCtxEmpty binding omit ++ "\n|]"
 
 elimination2pretty :: (DeBruijnLevel v,
-                       SysTrav sys,
+                       SysSyntax (Term sys) sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          ScCtx sys v Void ->
          ModedModality sys v ->
@@ -318,13 +322,13 @@ elimination2pretty gamma dmu eliminee tyEliminee (ElimEq motive crefl) opts =
 --elimination2pretty gamma dmu eliminee tyEliminee eliminator = todo
 
 {-
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Eliminator sys Void) where
   show elim = "[Eliminator| x > " ++ render defaultRenderState (elimination2pretty ScCtxEmpty (ribbon "x") elim)
 -}
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Algorithm sys) where
   fine2pretty gamma (AlgGoal str (Compose depcies)) opts =
@@ -333,16 +337,16 @@ instance (SysTrav sys,
   fine2pretty gamma (AlgSmartElim eliminee (Compose eliminators)) opts =
     "(" ++| fine2pretty gamma eliminee opts |++ ")"
       |+| treeGroup ((" " ++|) . ($ opts) . fine2pretty gamma <$> eliminators)
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Algorithm sys Void) where
   show alg = "[Algorithm|\n" ++ fine2string ScCtxEmpty alg omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Type sys) where
   fine2pretty gamma (Type t) opts = fine2pretty gamma t opts
-deriving instance (SysTrav sys,
+deriving instance (SysSyntax (Term sys) sys,
                    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
     => Show (Type sys Void)
 
@@ -353,20 +357,36 @@ nameWithIndex maybeName index = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybe
 var2pretty :: DeBruijnLevel v => ScCtx sys v Void -> v -> Fine2PrettyOptions sys -> PrettyTree String
 var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel Proxy v)
 
-instance (SysTrav sys,
+{-| Never prints a solution instead.
+    Term is required to be a meta.
+-}
+meta2pretty :: (DeBruijnLevel v,
+                       SysSyntax (Term sys) sys,
+                       Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+  ScCtx sys v Void -> TermNV sys v -> Fine2PrettyOptions sys -> PrettyTree String
+meta2pretty gamma tMeta@(TermMeta etaFlag meta (Compose depcies) (Compose maybeAlg)) opts =
+  ribbon ("?" ++ show meta ++ (if etaFlag then "" else "-no-eta"))
+  \\\ case maybeAlg of
+        Nothing -> uglySubMeta
+        Just alg -> if _fine2pretty'humanReadableMetas opts
+                    then ["\x27ea" ++| fine2pretty gamma alg opts |++ "\x27eb"]
+                    else uglySubMeta
+  where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies
+meta2pretty gamma t opts = unreachable
+
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (TermNV sys) where
   fine2pretty gamma (TermCons consTerm) opts = fine2pretty gamma consTerm opts
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) opts =
     elimination2pretty gamma mod eliminee tyEliminee eliminator opts
-  fine2pretty gamma (TermMeta etaFlag i (Compose depcies) (Compose maybeAlg)) opts =
-    ribbon ("?" ++ show i ++ (if etaFlag then "" else "-no-eta"))
-    \\\ case maybeAlg of
-          Nothing -> uglySubMeta
-          Just alg -> if _fine2pretty'humanReadableMetas opts
-            then ["\x27ea" ++| fine2pretty gamma alg opts |++ "\x27eb"]
-            else uglySubMeta
-    where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies
+  fine2pretty gamma tMeta@(TermMeta etaFlag meta (Compose depcies) (Compose maybeAlg)) opts =
+    case _fine2pretty'printSolutions opts of
+      Nothing -> meta2pretty gamma tMeta opts
+      Just solutions -> case lookup meta solutions of
+        Nothing -> meta2pretty gamma tMeta opts
+        Just (ForSomeDeBruijnLevel t) ->
+          fine2pretty gamma (join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
   fine2pretty gamma TermWildcard opts = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) opts = Raw.unparse' qname
     {-
@@ -392,7 +412,7 @@ instance (SysTrav sys,
   fine2pretty gamma (TermGoal str result) opts =
     "?" ++ str ++ " \x2198 " ++| fine2pretty gamma result opts-}
   fine2pretty gamma (TermProblem t) opts = "(! " ++| fine2pretty gamma t opts |++ "!)"
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (TermNV sys Void) where
   show t = "[TermNV|\n" ++ fine2string ScCtxEmpty t omit ++ "\n|]"
@@ -400,36 +420,36 @@ instance (SysTrav sys,
 toSubscript :: String -> String
 toSubscript = map (\ char -> toEnum $ fromEnum char - 48 + 8320)
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (termNV sys)) =>
          Fine2Pretty sys (Expr2 termNV sys) where
   fine2pretty gamma (Var2 v) opts = var2pretty gamma v opts
   fine2pretty gamma (Expr2 t) opts = fine2pretty gamma t opts
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (termNV sys)) =>
          Show (Expr2 termNV sys Void) where
   show e = "[Expr2|\n" ++ fine2string ScCtxEmpty e omit ++ "\n|]"
 
 ----------------------
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Annotation sys) where
   fine2pretty gamma (AnnotMode d) opts = fine2pretty gamma d opts
   fine2pretty gamma (AnnotModality mu) opts = fine2pretty gamma mu opts
   fine2pretty gamma (AnnotImplicit) opts = ribbon "~"
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Annotation sys Void) where
   show annot = "[Annotation|\n" ++ fine2string ScCtxEmpty annot omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Plicity sys) where
   fine2pretty gamma Explicit opts = ribbonEmpty
   fine2pretty gamma Implicit opts = ribbon "~ | "
   fine2pretty gamma (Resolves t) opts = "resolves " ++| fine2pretty gamma t opts |++ " | "
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Plicity sys Void) where
   show plic = "[Plicity|\n" ++ fine2string ScCtxEmpty plic omit ++ "\n|]"
@@ -446,7 +466,7 @@ instance Show (DeclName declSort) where
 
 {-| Prettyprints a telescope. -}
 telescope2pretties :: (DeBruijnLevel v,
-         SysTrav sys, Functor (ty sys),
+         SysSyntax (Term sys) sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          ScCtx sys v Void -> Telescope ty sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 telescope2pretties gamma (Telescoped Unit2) opts = []
@@ -457,17 +477,17 @@ telescope2pretties gamma (mu :** telescope) opts =
     telescope2pretties (() ::\\ gamma) telescope opts /+/
     ribbon "}"
   ]
-instance (SysTrav sys, Functor (ty sys),
+instance (SysSyntax (Term sys) sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Fine2Pretty sys (Telescope ty sys) where
   fine2pretty gamma telescope opts = treeGroup $ telescope2pretties gamma telescope opts
-instance (SysTrav sys, Functor (ty sys),
+instance (SysSyntax (Term sys) sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Show (Telescope ty sys Void) where
   show theta = "[Telescope|\n" ++ fine2string ScCtxEmpty theta omit ++ "\n|]"
 
 declAnnots2pretties :: (DeBruijnLevel v,
-         SysTrav sys,
+         SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          ScCtx sys v Void -> Declaration declSort content sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 declAnnots2pretties gamma decl opts = [
@@ -476,7 +496,7 @@ declAnnots2pretties gamma decl opts = [
               ]
 
 {-
-tdeclAnnots2pretties :: (SysTrav sys, Functor (ty sys),
+tdeclAnnots2pretties :: (SysSyntax (Term sys) sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys ty) =>
          ScCtx sys v Void -> TelescopedDeclaration declSort ty content sys v -> [PrettyTree String]
 tdeclAnnots2pretties gamma tdecl =
@@ -487,7 +507,7 @@ tdeclAnnots2pretties gamma tdecl =
 
 seg2pretty ::
   (DeBruijnLevel v,
-   SysTrav sys, Functor (ty sys),
+   SysSyntax (Term sys) sys, Functor (ty sys),
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
    ScCtx sys v Void -> Segment ty sys v -> Nat ->
    Fine2PrettyOptions sys -> PrettyTree String
@@ -511,29 +531,29 @@ dividedSeg2pretty (Just dmu) gamma seg index opts = dividedSeg2pretty Nothing ga
   where seg' = over decl'modty (divModedModality dmu) $ seg
 dividedSeg2pretty Nothing gamma seg index opts = seg2pretty gamma seg index opts
 
-instance (SysTrav sys, Functor (ty sys),
+instance (SysSyntax (Term sys) sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Fine2Pretty sys (Segment ty sys) where
   fine2pretty gamma seg opts =
     seg2pretty gamma seg (size $ _scCtx'sizeProxy gamma) opts
-instance (SysTrav sys, Functor (ty sys),
+instance (SysSyntax (Term sys) sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Show (Segment ty sys Void) where
   show seg = "[Segment|\n" ++ fine2string ScCtxEmpty seg omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (ValRHS sys) where
   fine2pretty gamma (ValRHS tm ty) opts = treeGroup [
       " : " ++| fine2pretty gamma ty opts,
       " = " ++| fine2pretty gamma tm opts
     ]
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ValRHS sys Void) where
   show valRHS = "[ValRHS|\n" ++ fine2string ScCtxEmpty valRHS omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Val sys) where
   fine2pretty gamma val opts = case _fine2pretty'printEntry opts of
@@ -550,13 +570,13 @@ instance (SysTrav sys,
         getConst (mapTelescopedScDB (
             \ wkn gammadelta t -> Const $ fine2pretty gammadelta t opts
           ) gamma $ _decl'content val)
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Val sys Void) where
   show val = "[Val|\n" ++ fine2string ScCtxEmpty val omit ++ "\n|]"
 
 moduleContents2pretty ::
-  (SysTrav sys, DeBruijnLevel v,
+  (SysSyntax (Term sys) sys, DeBruijnLevel v,
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
   ScCtx sys v Void -> ModuleRHS sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 moduleContents2pretty gamma moduleRHS opts = case unPrintModuleVerbosity $ _fine2pretty'printModule opts of
@@ -571,18 +591,18 @@ moduleContents2pretty gamma moduleRHS opts = case unPrintModuleVerbosity $ _fine
               _ -> [entry |++ ", "]
           )
         
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (ModuleRHS sys) where
   fine2pretty gamma moduleRHS opts = ribbon " where {"
     \\\ moduleContents2pretty gamma moduleRHS opts
     /// ribbon "}"
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ModuleRHS sys Void) where
   show moduleRHS = "[ModuleRHS|\n" ++ fine2string ScCtxEmpty moduleRHS omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Module sys) where
   fine2pretty gamma modul opts = case _fine2pretty'printEntry opts of
@@ -599,22 +619,22 @@ instance (SysTrav sys,
         getConst (mapTelescopedScDB (
             \ wkn gammadelta modulRHS -> Const $ fine2pretty gammadelta modulRHS opts
           ) gamma $ _decl'content modul)
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Module sys Void) where
   show modul = "[Module|\n" ++ fine2string ScCtxEmpty modul omit ++ "\n|]"
 
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Entry sys) where
   fine2pretty gamma (EntryVal val) opts = fine2pretty gamma val opts
   fine2pretty gamma (EntryModule modul) opts = fine2pretty gamma modul opts
-instance (SysTrav sys,
+instance (SysSyntax (Term sys) sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Entry sys Void) where
   show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry omit ++ "\n|]"
 
-instance (SysTrav sys, Functor (ty sys),
+instance (SysSyntax (Term sys) sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Fine2Pretty sys (Twice2 ty sys) where
   fine2pretty gamma (Twice2 ty1 ty2) opts =
