@@ -26,8 +26,13 @@ import Data.Number.Nat
 charYielding :: Char
 charYielding = '\x2198'
 
-data PrintModuleVerbosity =
-  PrintModuleDots | PrintModuleNames | {-PrintModuleTypes |-} PrintModuleContents
+data PrintEntryVerbosity = PrintEntryName | PrintEntryNameAnnots | PrintEntryEntirely
+
+{-| @'PrintModuleVerbosity' Nothing@ indicates that module contents should not be printed.
+    @'PrintModuleVerbosity' (Just p)@ indicates that module contents should be printed according to @p@.
+-}
+data PrintModuleVerbosity = PrintModuleVerbosity {unPrintModuleVerbosity :: Maybe PrintEntryVerbosity}
+  --PrintModuleDots | PrintModuleNames | {-PrintModuleTypes |-} PrintModuleContents
 
 data FineAlgorithmOptions = FineAlgorithmOptions {
   -- | Print goal / smart elimination as its result.
@@ -54,23 +59,25 @@ data Fine2PrettyOptions sys = Fine2PrettyOptions {
   _fine2pretty'explicitLeftDivision :: Bool,
   _fine2pretty'printTypeAnnotations :: Bool,
   _fine2pretty'printModule :: PrintModuleVerbosity,
-  _fine2pretty'printModuleInContext :: Maybe (PrintModuleVerbosity)
+  _fine2pretty'printModuleInContext :: Maybe (PrintModuleVerbosity),
+  _fine2pretty'printEntry :: PrintEntryVerbosity
   }
 
 makeLenses ''Fine2PrettyOptions
 makeLenses ''FineAlgorithmOptions
 
 instance Omissible (Fine2PrettyOptions sys) where
-  omit = Fine2PrettyOptions
-    omit
-    True
-    omit
-    omit
-    Nothing
-    False
-    False
-    PrintModuleContents
-    (Just PrintModuleDots)
+  omit = Fine2PrettyOptions {
+    _fine2pretty'renderOptions = omit,
+    _fine2pretty'humanReadableMetas = True,
+    _fine2pretty'smartElimOptions = omit,
+    _fine2pretty'goalOptions = omit,
+    _fine2pretty'printSolutions = Nothing,
+    _fine2pretty'explicitLeftDivision = False,
+    _fine2pretty'printTypeAnnotations = False,
+    _fine2pretty'printModule = (PrintModuleVerbosity (Just PrintEntryNameAnnots)),
+    _fine2pretty'printModuleInContext = (Just (PrintModuleVerbosity Nothing)),
+    _fine2pretty'printEntry = PrintEntryEntirely}
 
 ---------------------------
 
@@ -518,13 +525,16 @@ instance (SysTrav sys,
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Val sys) where
-  fine2pretty gamma val opts =
-    ribbon "val ["
-    \\\ declAnnots2pretties gamma val opts
-    /// "] " ++| (declName2pretty gamma (_decl'name val) opts)
-    \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content val) opts
-    /// prettyValRHS
+  fine2pretty gamma val opts = case _fine2pretty'printEntry opts of
+    PrintEntryName -> declName2pretty gamma (_decl'name val) opts
+    PrintEntryNameAnnots -> prettyNameAndAnnots
+    PrintEntryEntirely -> prettyNameAndAnnots
+      \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content val) opts
+      /// prettyValRHS
     where
+      prettyNameAndAnnots = ribbon "val ["
+        \\\ declAnnots2pretties gamma val opts
+        /// "] " ++| (declName2pretty gamma (_decl'name val) opts)
       prettyValRHS = 
         getConst (mapTelescopedScDB (
             \ wkn gammadelta t -> Const $ fine2pretty gammadelta t opts
@@ -538,15 +548,17 @@ moduleContents2pretty ::
   (SysTrav sys, DeBruijnLevel v,
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
   ScCtx sys v Void -> ModuleRHS sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
-moduleContents2pretty gamma moduleRHS opts = case _fine2pretty'printModule opts of
-  PrintModuleDots -> [ribbon "..."]
-  PrintModuleNames -> todo
-  PrintModuleContents ->
-    (($ opts) .
+moduleContents2pretty gamma moduleRHS opts = case unPrintModuleVerbosity $ _fine2pretty'printModule opts of
+  Nothing -> [ribbon "..."]
+  Just p ->
+    (($ opts & fine2pretty'printEntry .~ p) .
      fine2pretty
      (gamma ::<...> (VarFromCtx <$> moduleRHS))
      <$> (reverse $ view moduleRHS'entries moduleRHS)
-    ) >>= (\ entry -> [entry, ribbon "        "])
+    ) >>= (\ entry -> case p of
+              PrintEntryEntirely -> [entry, ribbon "        "]
+              _ -> [entry |++ ", "]
+          )
         
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -562,13 +574,16 @@ instance (SysTrav sys,
 instance (SysTrav sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Module sys) where
-  fine2pretty gamma modul opts =
-    ribbon "module  ["
-    \\\ declAnnots2pretties gamma modul opts
-    /// "] " ++| (declName2pretty gamma (_decl'name modul) opts)
-    \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content modul) opts
-    /// prettyModuleRHS
+  fine2pretty gamma modul opts = case _fine2pretty'printEntry opts of
+    PrintEntryName -> declName2pretty gamma (_decl'name modul) opts
+    PrintEntryNameAnnots -> prettyNameAndAnnots
+    PrintEntryEntirely -> prettyNameAndAnnots
+      \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content modul) opts
+      /// prettyModuleRHS
     where
+      prettyNameAndAnnots = ribbon "module  ["
+        \\\ declAnnots2pretties gamma modul opts
+        /// "] " ++| (declName2pretty gamma (_decl'name modul) opts)
       prettyModuleRHS = 
         getConst (mapTelescopedScDB (
             \ wkn gammadelta modulRHS -> Const $ fine2pretty gammadelta modulRHS opts
