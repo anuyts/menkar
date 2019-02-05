@@ -17,6 +17,7 @@ import Menkar.PrettyPrint.Aux.Context
 
 import Control.Exception.AssertFalse
 import Data.Omissible
+import Text.PrettyPrint.Tree
 
 import Text.Megaparsec.Error as MP
 
@@ -25,38 +26,54 @@ import Data.Maybe
 import Data.Proxy
 import Data.Functor.Identity
 import Data.Functor.Compose
+import Data.Foldable
+import Data.IORef
 import GHC.Generics (U1 (..))
 import Control.Monad.Except
-import Data.Foldable
 import Control.Lens
 import System.Exit
+import qualified System.Console.Terminal.Size as System
 
-printConstraint :: Constraint Trivial -> IO ()
-printConstraint c = do
+data MainState = MainState {
+  _main'fine2prettyOptions :: Fine2PrettyOptions Trivial}
+
+makeLenses ''MainState
+
+instance Omissible MainState where
+  omit = MainState {
+    _main'fine2prettyOptions = omit}
+
+class WithMainState where
+  mainState :: IORef MainState
+
+--------------------------
+
+printConstraint :: IORef MainState -> Constraint Trivial -> IO ()
+printConstraint ref c = do
   putStrLn $ "Constraint " ++ show (constraint'id c) ++ ":"
   putStr $ show $ constraint'judgement c
 
-printTrace :: Constraint Trivial -> IO ()
-printTrace c = do
-  printConstraint c
+printTrace :: IORef MainState -> Constraint Trivial -> IO ()
+printTrace ref c = do
+  printConstraint ref c
   putStrLn ""
   putStrLn $ constraint'reason c
   case constraint'parent c of
     Nothing -> return ()
     Just parent -> do
       putStrLn ""
-      printTrace parent
+      printTrace ref parent
 
-printBlockInfo :: DeBruijnLevel v => TCState m -> ([Int], BlockInfo m v) -> IO ()
-printBlockInfo s (blockingMetas, blockInfo) = do
+printBlockInfo :: DeBruijnLevel v => IORef MainState -> TCState m -> ([Int], BlockInfo m v) -> IO ()
+printBlockInfo ref s (blockingMetas, blockInfo) = do
   putStrLn $ ""
   putStrLn $ "Reason for blocking: " ++ _blockInfo'reasonBlock blockInfo
   putStrLn $ "Reason for requesting: " ++ _blockInfo'reasonAwait blockInfo -- not super-useful.
   putStrLn $ "Blocked on:" ++ (fold $ (" ?" ++) . show <$> blockingMetas)
-  printConstraint $ _blockInfo'parent blockInfo
+  printConstraint ref $ _blockInfo'parent blockInfo
 
-printMetaInfo :: DeBruijnLevel v => TCState m -> Int -> MetaInfo m v -> IO ()
-printMetaInfo s meta info = do
+printMetaInfo :: DeBruijnLevel v => IORef MainState -> TCState m -> Int -> MetaInfo m v -> IO ()
+printMetaInfo ref s meta info = do
   putStrLn $ "Context:"
   putStrLn $ "--------"
   let tMeta = Expr2 $ TermMeta True meta (Compose $ Var2 <$> listAll Proxy) (Compose Nothing)
@@ -69,54 +86,54 @@ printMetaInfo s meta info = do
       putStr   $ fine2string (ctx2scCtx $ _metaInfo'context info) tMeta $? id
       putStr   $ " = "
       putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) (_solutionInfo'solution solutionInfo) $? id
-      printConstraint $ _solutionInfo'parent solutionInfo
+      printConstraint ref $ _solutionInfo'parent solutionInfo
     Left blocks -> do
       putStrLn "Unsolved"
       putStrLn "--------"
       putStrLn $ "Blocking " ++ (show $ length blocks) ++ " constraints."
-      sequenceA_ $ blocks <&> printBlockInfo s
+      sequenceA_ $ blocks <&> printBlockInfo ref s
   putStrLn $ ""
   putStrLn $ "Creation"
   putStrLn $ "--------"
   putStrLn $ "Reason: " ++ _metaInfo'reason info
   case _metaInfo'maybeParent info of
     Nothing -> putStrLn "(Created at scope-checking time.)"
-    Just parent -> printConstraint parent
+    Just parent -> printConstraint ref parent
 
-printConstraintByIndex :: TCState m -> Int -> IO ()
-printConstraintByIndex s i =
+printConstraintByIndex :: IORef MainState -> TCState m -> Int -> IO ()
+printConstraintByIndex ref s i =
   if (i < 0 || i >= _tcState'constraintCounter s)
   then putStrLn $ "Constraint index out of bounds."
-  else printTrace $ fromMaybe unreachable $ view (tcState'constraintMap . at i) s
+  else printTrace ref $ fromMaybe unreachable $ view (tcState'constraintMap . at i) s
 
-printMeta :: TCState m -> Int -> IO ()
-printMeta s meta =
+printMeta :: IORef MainState -> TCState m -> Int -> IO ()
+printMeta ref s meta =
   if (meta < 0 || meta >= _tcState'metaCounter s)
   then putStrLn $ "Meta index out of bounds."
   else do
     let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
-    forThisDeBruijnLevel (printMetaInfo s meta) metaInfo
+    forThisDeBruijnLevel (printMetaInfo ref s meta) metaInfo
 
-summarizeUnsolvedMeta :: TCState m -> Int -> MetaInfo m v -> IO ()
-summarizeUnsolvedMeta s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
+summarizeUnsolvedMeta :: IORef MainState -> TCState m -> Int -> MetaInfo m v -> IO ()
+summarizeUnsolvedMeta ref s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
   Right solutionInfo -> return ()
   Left blocks -> putStrLn $
     "?" ++ show meta ++ "    (" ++ show (length blocks) ++ " constraints)    Creation: " ++ _metaInfo'reason metaInfo
 
-printUnsolvedMetas :: TCState m -> IO ()
-printUnsolvedMetas s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
-  summarizeUnsolvedMeta s meta `forThisDeBruijnLevel` metaInfo
+printUnsolvedMetas :: IORef MainState -> TCState m -> IO ()
+printUnsolvedMetas ref s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
+  summarizeUnsolvedMeta ref s meta `forThisDeBruijnLevel` metaInfo
 
-printReport :: TCState m -> TCReport -> IO ()
-printReport s report = do
+printReport :: IORef MainState -> TCState m -> TCReport -> IO ()
+printReport ref s report = do
   putStrLn $ "Report"
   putStrLn $ "------"
   putStrLn $ "Reason: " ++ _tcReport'reason report
-  printConstraint $ _tcReport'parent report
+  printConstraint ref $ _tcReport'parent report
   putStrLn $ ""
 
-printOverview :: TCState m -> IO ()
-printOverview s = do
+printOverview :: IORef MainState -> TCState m -> IO ()
+printOverview ref s = do
   let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
   putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
     ++ show nUnsolved ++ " unsolved (metas),"
@@ -138,8 +155,8 @@ prompt prefix = do
   hFlush stdout
   getLine
 
-giveHelp :: IO ()
-giveHelp = do
+giveHelp :: IORef MainState -> IO ()
+giveHelp ref = do
   putStrLn $ "q       quit          Quit Menkar."
   putStrLn $ "o       overview      Give an overview of the type-checking results."
   putStrLn $ "m       metas         Give an overview of the unsolved meta-variables."
@@ -150,66 +167,67 @@ giveHelp = do
   putStrLn $ "h       help          Print this help."
   --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
-runCommandMeta :: TCState m -> [String] -> IO ()
-runCommandMeta s args = case args of
+runCommandMeta :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommandMeta ref s args = case args of
   [arg] -> case readsPrec 0 arg :: [(Int, String)] of
-    [(meta, "")] -> printMeta s meta
+    [(meta, "")] -> printMeta ref s meta
     _ -> putStrLn $ "Argument to 'meta' should be an integer."
   _ -> putStrLn $ "Command 'meta' expects one integer argument, e.g. 'meta 5'."
-runCommandConstraint :: TCState m -> [String] -> IO ()
-runCommandConstraint s args = case args of
+runCommandConstraint :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommandConstraint ref s args = case args of
   [arg] -> case readsPrec 0 arg :: [(Int, String)] of
-    [(i, "")] -> printConstraintByIndex s i
+    [(i, "")] -> printConstraintByIndex ref s i
     _ -> putStrLn $ "Argument to 'constraint' should be an integer."
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
-runCommandReports :: TCState m -> IO ()
-runCommandReports s = sequenceA_ $ _tcState'reports s <&> printReport s
+runCommandReports :: IORef MainState -> TCState m -> IO ()
+runCommandReports ref s = sequenceA_ $ _tcState'reports s <&> printReport ref s
 
-runCommand :: TCState m -> [String] -> IO ()
-runCommand s [] = return ()
-runCommand s ("help" : _) = giveHelp
-runCommand s ("h" : _) = giveHelp
-runCommand s ("metas" : _) = printUnsolvedMetas s
-runCommand s ("m" : []) = printUnsolvedMetas s
-runCommand s ("meta" : args) = runCommandMeta s args
-runCommand s ("m" : args) = runCommandMeta s args
-runCommand s ("constraint" : args) = runCommandConstraint s args
-runCommand s ("c" : args) = runCommandConstraint s args
-runCommand s ("reports" : _) = runCommandReports s
-runCommand s ("r" : _) = runCommandReports s
-runCommand s ("overview" : _) = printOverview s
-runCommand s ("o" : _) = printOverview s
-runCommand s (command : args) = do
+runCommand :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommand ref s [] = return ()
+runCommand ref s ("help" : _) = giveHelp ref
+runCommand ref s ("h" : _) = giveHelp ref
+runCommand ref s ("metas" : _) = printUnsolvedMetas ref s
+runCommand ref s ("m" : []) = printUnsolvedMetas ref s
+runCommand ref s ("meta" : args) = runCommandMeta ref s args
+runCommand ref s ("m" : args) = runCommandMeta ref s args
+runCommand ref s ("constraint" : args) = runCommandConstraint ref s args
+runCommand ref s ("c" : args) = runCommandConstraint ref s args
+runCommand ref s ("reports" : _) = runCommandReports ref s
+runCommand ref s ("r" : _) = runCommandReports ref s
+runCommand ref s ("overview" : _) = printOverview ref s
+runCommand ref s ("o" : _) = printOverview ref s
+runCommand ref s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
   putStrLn $ "Type 'help' for help."
 
-consumeCommand :: TCState m -> IO Bool
-consumeCommand s = do
+consumeCommand :: IORef MainState -> TCState m -> IO Bool
+consumeCommand ref s = do
   command <- prompt "> "
   let splitCommand = words command
   case splitCommand of
     "quit" : _ -> return False
     "q" : _ -> return False
     _ -> do
-      runCommand s splitCommand
+      runCommand ref s splitCommand
       return True
 
-interactiveMode :: TCState m -> IO ()
-interactiveMode s = do
+interactiveMode :: IORef MainState -> TCState m -> IO ()
+interactiveMode ref s = do
   putStrLn "-------------------------"
   putStrLn "START OF INTERACTIVE MODE"
   putStrLn "-------------------------"
-  printOverview s
+  printOverview ref s
   putStrLn ""
   putStrLn "Type 'quit' to quit, 'help' for help."
-  doUntilFail (consumeCommand s)
+  doUntilFail (consumeCommand ref s)
   return ()
 
 interactAfterTask :: TC () -> IO ()
 interactAfterTask task = do
+          ref <- initMainState
           let (tcResult, s) = flip getTC initTCState $ task
           case tcResult of
-            Right () -> interactiveMode s
+            Right () -> interactiveMode ref s
             Left e -> case e of
               TCErrorConstraintBound -> unreachable
               TCErrorBlocked parent reason blocks -> unreachable
@@ -217,9 +235,9 @@ interactAfterTask task = do
                 putStrLn "------------"
                 putStrLn "TYPING ERROR"
                 putStrLn "------------"
-                printReport s report
+                printReport ref s report
                 let s' = over (tcState'reports) (report :) s
-                interactiveMode s'
+                interactiveMode ref s'
               TCErrorScopeFail msg -> do
                 putStrLn "-------------"
                 putStrLn "SCOPING ERROR"
@@ -232,9 +250,10 @@ interactAfterTask task = do
                 putStrLn msg
                 case maybeParent of
                   Nothing -> return ()
-                  Just parent -> printConstraint parent
-                interactiveMode s
-  
+                  Just parent -> printConstraint ref parent
+                interactiveMode ref s
+
+----------------------------
 
 checkMagic :: IO ()
 checkMagic = interactAfterTask $ do
@@ -243,6 +262,17 @@ checkMagic = interactAfterTask $ do
     Nothing
     "Checking the magic module."
   typeCheck
+
+getWidth :: IO (Maybe Int)
+getWidth = fmap System.width <$> System.size
+
+initMainState :: IO (IORef MainState)
+initMainState = do
+  maybeWidth <- getWidth
+  newIORef $? fromMaybe id $
+    maybeWidth <&> \width -> main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ width
+
+----------------------------
   
 mainArgs :: [String] -> IO ()
 mainArgs args = do
