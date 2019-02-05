@@ -34,6 +34,13 @@ import Control.Lens
 import System.Exit
 import qualified System.Console.Terminal.Size as System
 
+quickRead :: forall a . Read a => String -> Maybe a
+quickRead str = case (readsPrec 0 str :: [(a, String)]) of
+  [(a, "")] -> Just a
+  _ -> Nothing
+
+--------------------------
+
 data MainState = MainState {
   _main'fine2prettyOptions :: Fine2PrettyOptions Trivial}
 
@@ -171,37 +178,86 @@ giveHelp ref = do
   putStrLn $ "c 0     constraint 0  Print the internal representation of the entire program."
   putStrLn $ "r       reports       List other reports produced during type-checking (including goals)."
   putStrLn $ "h       help          Print this help."
+  putStrLn $ "s help  set help      Get help on the set command."
   --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
 runCommandMeta :: IORef MainState -> TCState m -> [String] -> IO ()
 runCommandMeta ref s args = case args of
-  [arg] -> case readsPrec 0 arg :: [(Int, String)] of
-    [(meta, "")] -> printMeta ref s meta
-    _ -> putStrLn $ "Argument to 'meta' should be an integer."
+  [arg] -> case quickRead arg :: Maybe Int of
+    Just meta -> printMeta ref s meta
+    Nothing -> putStrLn $ "Argument to 'meta' should be an integer."
   _ -> putStrLn $ "Command 'meta' expects one integer argument, e.g. 'meta 5'."
 runCommandConstraint :: IORef MainState -> TCState m -> [String] -> IO ()
 runCommandConstraint ref s args = case args of
-  [arg] -> case readsPrec 0 arg :: [(Int, String)] of
-    [(i, "")] -> printConstraintByIndex ref s i
-    _ -> putStrLn $ "Argument to 'constraint' should be an integer."
+  [arg] -> case quickRead arg :: Maybe Int of
+    Just i -> printConstraintByIndex ref s i
+    Nothing -> putStrLn $ "Argument to 'constraint' should be an integer."
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
 runCommandReports :: IORef MainState -> TCState m -> IO ()
 runCommandReports ref s = sequenceA_ $ _tcState'reports s <&> printReport ref s
 
+------------------------
+
+forceLength :: Int -> [a] -> ([a] -> IO ()) -> IO ()
+forceLength l as k
+  | length as == l = k as
+  | otherwise = putStrLn $ "Incorrect number of arguments."
+
+readBool :: String -> (Bool -> IO ()) -> IO ()
+readBool str k
+  | str `elem` ["T", "t", "tt", "true",  "True",  "TRUE",  "y", "Y", "yes", "Yes"] = k True
+  | str `elem` ["F", "f", "ff", "false", "False", "FALSE", "n", "N", "no",  "No" ] = k False
+  | otherwise = putStrLn $ "Not a boolean: " ++ str
+
+readInt :: String -> (Int -> IO ()) -> IO ()
+readInt str k = case quickRead str of
+  Just int -> k int
+  Nothing -> putStrLn $ "Not an integer: " ++ str
+
+giveHelpSet :: IORef MainState -> TCState m -> IO ()
+giveHelpSet ref s = do
+  putStrLn $ "set help                          Get this help."
+  putStrLn $ "set explicit-division <BOOL>      Print left division explicitly."
+  putStrLn $ "set factory                       Restore to factory settings."
+  putStrLn $ "set print-algorithms <INT>        Print algorithm annotations (smart elimination/goal/resolution)."
+  putStrLn $ "                                    0: omit entirely; 1: replace with '_'; 2: print fully."
+  putStrLn $ "set print-entries <INT>           How to print entries (declarations)."
+  putStrLn $ "                                    0: just their name; 1: also annotations; 2: entirely."
+  putStrLn $ "set print-meta-algorithms <BOOL>  Instead of printing a meta's dependencies, print its algorithm."
+  putStrLn $ "set print-modules <INT>           How to print modules. 0: omit contents; n+1: print entries as <n>."
+  putStrLn $ "set print-modules-ctx <INT>       How to print modules in context. 0: not at all; n+1: modules as <n>."
+  putStrLn $ "set print-solutions <BOOL>        Print solutions instead of metas."
+  putStrLn $ "set print-types <BOOL>            Print pedantic type annotations."
+  putStrLn $ "set width <INT>                   Set line width."
+
+runCommandSet :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommandSet ref s [] = giveHelpSet ref s
+runCommandSet ref s ("help" : _) = giveHelpSet ref s
+runCommandSet ref s ("explicit-division" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
+    modifyIORef ref $ main'fine2prettyOptions . fine2pretty'explicitLeftDivision .~ bool
+runCommandSet ref s ("factory" : _) = prepMainState >>= writeIORef ref
+runCommandSet ref s ("width" : args) = forceLength 1 args $ \[str] -> readInt str $ \w ->
+    modifyIORef ref $ main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ w
+runCommandSet ref s _ = giveHelpSet ref s
+
+------------------------
+
 runCommand :: IORef MainState -> TCState m -> [String] -> IO ()
 runCommand ref s [] = return ()
+runCommand ref s ("constraint" : args) = runCommandConstraint ref s args
+runCommand ref s ("c" : args) = runCommandConstraint ref s args
 runCommand ref s ("help" : _) = giveHelp ref
 runCommand ref s ("h" : _) = giveHelp ref
 runCommand ref s ("metas" : _) = printUnsolvedMetas ref s
 runCommand ref s ("m" : []) = printUnsolvedMetas ref s
 runCommand ref s ("meta" : args) = runCommandMeta ref s args
 runCommand ref s ("m" : args) = runCommandMeta ref s args
-runCommand ref s ("constraint" : args) = runCommandConstraint ref s args
-runCommand ref s ("c" : args) = runCommandConstraint ref s args
-runCommand ref s ("reports" : _) = runCommandReports ref s
-runCommand ref s ("r" : _) = runCommandReports ref s
 runCommand ref s ("overview" : _) = printOverview ref s
 runCommand ref s ("o" : _) = printOverview ref s
+runCommand ref s ("reports" : _) = runCommandReports ref s
+runCommand ref s ("r" : _) = runCommandReports ref s
+runCommand ref s ("set" : args) = runCommandSet ref s args
+runCommand ref s ("s" : args) = runCommandSet ref s args
 runCommand ref s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
   putStrLn $ "Type 'help' for help."
@@ -272,11 +328,14 @@ checkMagic = interactAfterTask $ do
 getWidth :: IO (Maybe Int)
 getWidth = fmap System.width <$> System.size
 
-initMainState :: IO (IORef MainState)
-initMainState = do
+prepMainState :: IO MainState
+prepMainState = do
   maybeWidth <- getWidth
-  newIORef $? fromMaybe id $
-    maybeWidth <&> \width -> main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ width
+  return $ omit & fromMaybe id
+    (maybeWidth <&> \width -> main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ width)
+
+initMainState :: IO (IORef MainState)
+initMainState = prepMainState >>= newIORef
 
 ----------------------------
   
