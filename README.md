@@ -7,6 +7,7 @@ It is named after the star [Alpha Ceti][alphaceti].
 Currently supported features include:
 
 * type-checking of basic MLTT with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
+* a command-line interaction mode that provides the user with a wealth of information, including stack traces for almost everything,
 * a single universe that (inconsistently) contains itself,
 * smart eliminations, including
    * implicit arguments in the sense of Agda,

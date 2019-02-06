@@ -113,7 +113,33 @@ data Judgement (sys :: KSys) where
     Type sys v ->
     Judgement sys
     
-  -- JudAccuracy: "This term should be known up to that accuracy"
+  JudMode :: (DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Mode sys v ->
+    Judgement sys
+  JudModeRel :: (DeBruijnLevel v) =>
+    Ctx (Twice2 Type) sys v Void ->
+    Mode sys v ->
+    Mode sys v ->
+    Judgement sys
+
+  JudModality :: (DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Modality sys v ->
+    Mode sys v ->
+    Mode sys v ->
+    Judgement sys
+  JudModalityRel :: (DeBruijnLevel v) =>
+    Ctx (Twice2 Type) sys v Void ->
+    Modality sys v ->
+    Modality sys v ->
+    Mode sys v ->
+    Mode sys v ->
+    Judgement sys
+
+  JudSys :: SysJudgement sys -> Judgement sys
+
+  ------------------------------
 
   JudSegment :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->

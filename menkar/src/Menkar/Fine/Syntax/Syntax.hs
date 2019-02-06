@@ -352,6 +352,7 @@ data TermNV (sys :: KSys) (v :: *) =
     String {-^ goal's name -}
     (Compose [] (Term sys) v) {-^ dependencies -}
     (Term sys v) {-^ result -} |-}
+  TermSys (SysTerm sys v) |
   TermProblem {-^ Wrapper of terms that make no sense. -}
     (Term sys v)
 deriving instance (SysTrav sys) => Functor (TermNV sys)
