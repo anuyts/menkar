@@ -88,10 +88,9 @@ data Judgement (sys :: KSys) where
   -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
   JudSmartElim :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
-    ModedModality sys v {-^ modality by which the eliminee is used -} ->
     Term sys v {-^ eliminee -} ->
     Type sys v ->
-    [SmartEliminator sys v] {-^ eliminators -} ->
+    [Pair2 ModedModality SmartEliminator sys v] {-^ eliminators -} ->
     Term sys v {-^ result -} ->
     Type sys v ->
     Judgement sys

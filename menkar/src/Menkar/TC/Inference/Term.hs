@@ -655,6 +655,7 @@ checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminat
   dmuElim <- newMetaModedModality (Just parent) (irrModedModality :\\ gamma) "Infer modality of smart elimination."
   tyEliminee <- newMetaType (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
+  -- CMODE
   addNewConstraint
     (JudTerm gamma eliminee tyEliminee)
     (Just parent)

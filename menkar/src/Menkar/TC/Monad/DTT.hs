@@ -35,6 +35,7 @@ import Control.Monad.List
 import Control.Monad.Except
 import Control.Monad.Fail
 import Control.Lens
+--import Data.Coerce
 import Unsafe.Coerce
 
 type TCResult = () --TCSuccess | TCWaiting

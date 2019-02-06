@@ -20,11 +20,11 @@ import Data.Kind hiding (Type)
 
 -------------------
 
-data Twice2 t (a :: ka) (b :: kb) = Twice2 {fst3 :: t a b, snd3 :: t a b}
+data Twice2 t (a :: ka) (b :: kb) = Twice2 (t a b) (t a b)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Twice2 t sys)
   
-data Box2 t (a :: ka) (b :: kb) = Box2 {unbox3 :: t a b}
+newtype Box2 t (a :: ka) (b :: kb) = Box2 {unbox3 :: t a b}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Box2 t sys)
 
@@ -44,6 +44,10 @@ deriving instance (
     CanSwallow (Term sys) (t sys)
   ) =>
   CanSwallow (Term sys) (Maybe2 t sys)
+
+data Pair2 s t (a :: ka) (b :: kb) = Pair2 {fst2 :: s a b, snd2 :: t a b}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term sys) (s sys), CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Pair2 s t sys)
 
 {-
 data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c}
@@ -294,7 +298,9 @@ data Algorithm sys v =
     (Compose [] (Term sys) v) {-^ dependencies -} |
   AlgSmartElim
     (Term sys v) {-^ eliminee -}
-    (Compose [] (SmartEliminator sys) v) {-^ eliminators -}
+    (Compose [] (Pair2 ModedModality SmartEliminator sys) v)
+      {-^ Eliminators. The moded modality inserted in front of a smart eliminator,
+          is the composite of the modalities of that eliminator and the implicit eliminators immediately before it. -}
 deriving instance (SysTrav sys) => Functor (Algorithm sys)
 deriving instance (SysTrav sys) => Foldable (Algorithm sys)
 deriving instance (SysTrav sys) => Traversable (Algorithm sys)
