@@ -2,9 +2,24 @@
 Please add changes in chronological order: newest first.
 
 ## Unreleased changes
-* Add an option to print modules partially or completely in context and on the right.
-* Add an option to **not** print left-divisions of contexts explicitly.
-* Add options to prettyprinting.
+
+#### v0.101.1: Printing options
+* Add options to prettyprinting (mostly available from command line):
+```
+set help                          Get this help.
+set explicit-division <BOOL>      Print left division explicitly.
+set factory                       Restore to factory settings.
+set print-algorithms <INT>        Print algorithm annotations (smart elimination/goal/resolution).
+                                    0: omit entirely; 1: replace with '_'; 2: print fully.
+set print-entries <INT>           How to print entries (declarations).
+                                    0: just their name; 1: also annotations; 2: entirely.
+set print-meta-algorithms <BOOL>  Instead of printing a meta's dependencies, print its algorithm.
+set print-modules <INT>           How to print modules. 0: omit contents; n+1: print entries as <n>.
+set print-modules-ctx <INT>       How to print modules in context. 0: not at all; n+1: modules as <n>.
+set print-solutions <BOOL>        Print solutions instead of metas.
+set print-types <BOOL>            Print pedantic type annotations.
+set width <INT>                   Set line width.
+```
 * Major refactoring: index syntax types with a system, rather than with a mode and a modality type.
 
 ### v0.101: File concatenation
