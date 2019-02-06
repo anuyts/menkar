@@ -121,11 +121,13 @@ whnormalizeNV parent gamma t@(TermMeta etaFlag meta (Compose depcies) alg) reaso
     Just solution -> whnormalize gamma solution-}
 whnormalizeNV parent gamma TermWildcard reason = unreachable
 whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) reason =
-    let telescopedVal = _leftDivided'content leftDividedTelescopedVal
-        ModApplied _ quantifiedVal = telescoped2modalQuantified telescopedVal
+    let moduleMode = _leftDivided'originalMode leftDividedTelescopedVal
+        telescopedVal = _leftDivided'content leftDividedTelescopedVal
+        ModApplied _ quantifiedVal = telescoped2modalQuantified moduleMode telescopedVal
         quantifiedTerm = _val'term quantifiedVal
     in  whnormalize parent gamma quantifiedTerm reason
 whnormalizeNV parent gamma (TermAlgorithm alg result) reason = whnormalize parent gamma result reason
+whnormalizeNV parent gamma (TermSys t) reason = _
 whnormalizeNV parent gamma t@(TermProblem _) reason = return $ Expr2 t
 
 {- | Either weak-head-normalizes the given term and writes nothing,

@@ -113,6 +113,8 @@ deriving instance (SysTrav sys) => Generic1 (ModedContramodality sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ModedContramodality sys)
 
+{-| Looking up something the module @modul@ in @dmu :\\ (gamma :<...> modul)@ yields
+    @LeftDivided (ctx'mode gamma) dmu _@.-}
 data LeftDivided content (sys :: KSys) v = LeftDivided {
     _leftDivided'originalMode :: (Mode sys) v,
     _leftDivided'modality :: ModedModality sys v,

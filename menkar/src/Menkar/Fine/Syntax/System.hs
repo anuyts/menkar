@@ -14,6 +14,7 @@ type KSys = *
 type family Mode (sys :: KSys) = (mode :: * -> *) | mode -> sys
 
 {-| Modalities (potentially nonsensical for some or all source & target modes).
+    The general idea is that if you know a modality and its source, then the target can be inferred.
 -}
 type family Modality (sys :: KSys) = (modality :: * -> *) | modality -> sys
 

@@ -37,11 +37,11 @@ telescoped2quantified telescopedVal = ValRHS
   (Type $ telescoped2pi $ telescopedVal)
 
 telescoped2modalQuantified :: (Multimode sys) =>
-  Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v
-telescoped2modalQuantified (dmu :** telescopedVal) =
-  let ModApplied dmu' val = telescoped2modalQuantified telescopedVal
-  in  ModApplied (compModedModality dmu dmu') val
-telescoped2modalQuantified telescopedVal = ModApplied (idModedModality wildMode) (telescoped2quantified telescopedVal)
+  Mode sys v -> Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v
+telescoped2modalQuantified d1 (d2mu@(ModedModality d2 mu) :** telescopedVal) =
+  let ModApplied d3mu' val = telescoped2modalQuantified d2 telescopedVal
+  in  ModApplied (compModedModality d2mu d3mu') val
+telescoped2modalQuantified d telescopedVal = ModApplied (idModedModality d) (telescoped2quantified telescopedVal)
 
 ----------------------------
 

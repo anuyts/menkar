@@ -14,13 +14,16 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
   approxLeftAdjointProj :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> (Modality sys) v
   -- | True if @mu . nu <= id@, where nu is the @approxLeftAdjointProj@.
   sigmaHasEta :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> Bool
+  term2mode :: Term sys v -> Mode sys v
+  term2modty :: Term sys v -> Modality sys v
 
 class (SysSyntax (Term sys) sys, Multimode sys) => Degrees sys where
   eqDeg :: (Degree sys) v
   topDeg :: (Degree sys) v
   divDeg :: ModedModality sys v -> (Degree sys) v -> (Degree sys) v
-  isTopDeg :: (Degree sys) v -> Bool
-  isEqDeg :: (Degree sys) v -> Bool
+  --These belong to type-checking and may get stuck on metas:
+  --isTopDeg :: (Degree sys) v -> Bool
+  --isEqDeg :: (Degree sys) v -> Bool
 
 --------------
 
