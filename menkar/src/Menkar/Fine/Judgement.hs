@@ -13,6 +13,8 @@ import Data.Functor.Identity
 import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 
+data ModRel = ModEq | ModLeq
+
 data Judgement (sys :: KSys) where
 
   {-
@@ -130,6 +132,7 @@ data Judgement (sys :: KSys) where
     Mode sys v ->
     Judgement sys
   JudModalityRel :: (DeBruijnLevel v) =>
+    ModRel ->
     Ctx (Twice2 Type) sys v Void ->
     Modality sys v ->
     Modality sys v ->

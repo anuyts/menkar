@@ -20,7 +20,7 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/menkar#readme>
 
 dependencies:
-- base >= 4.7 && < 5
+- base >= 4.9 && < 5
 - lens == 4.17
 - nat == 0.3
 - Unique == 0.4.7.1
