@@ -22,7 +22,7 @@ import Text.PrettyPrint.Tree
 import Text.Megaparsec.Error as MP
 
 import Data.IntMap.Strict hiding (filter, toList)
-import Data.Maybe
+import Data.Maybe hiding (mapMaybe)
 import Data.Proxy
 import Data.Functor.Identity
 import Data.Functor.Compose
@@ -95,7 +95,7 @@ printMetaInfo ref s meta info = do
       putStrLn "---------"
       mainState <- readIORef ref
       putStr   $ fine2string (ctx2scCtx $ _metaInfo'context info) tMeta
-                 $ mainState ^. main'fine2prettyOptions
+                 $ mainState ^. main'fine2prettyOptions & fine2pretty'printSolutions .~ Nothing
       putStr   $ " = "
       putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) (_solutionInfo'solution solutionInfo)
                  $ mainState ^. main'fine2prettyOptions
@@ -236,6 +236,50 @@ runCommandSet ref s ("help" : _) = giveHelpSet ref s
 runCommandSet ref s ("explicit-division" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
     modifyIORef ref $ main'fine2prettyOptions . fine2pretty'explicitLeftDivision .~ bool
 runCommandSet ref s ("factory" : _) = prepMainState >>= writeIORef ref
+runCommandSet ref s ("print-algorithms" : args) = forceLength 1 args $ \[str] -> readInt str $ \int -> do
+  let setVerbosity v = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printAlgorithm .~ v
+  case int of
+    0 -> setVerbosity DontPrintAlgorithm
+    1 -> setVerbosity PrintAlgorithmUnderscore
+    2 -> setVerbosity PrintAlgorithm
+    _ -> putStrLn $ "Integer argument should be in [0..2]."
+runCommandSet ref s ("print-entries" : args) = forceLength 1 args $ \[str] -> readInt str $ \int -> do
+  let setVerbosity v = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printEntry .~ v
+  case int of
+    0 -> setVerbosity PrintEntryName
+    1 -> setVerbosity PrintEntryNameAnnots
+    2 -> setVerbosity PrintEntryEntirely
+    _ -> putStrLn $ "Integer argument should be in [0..2]."
+runCommandSet ref s ("print-meta-algoriths" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
+    modifyIORef ref $ main'fine2prettyOptions . fine2pretty'humanReadableMetas .~ bool
+runCommandSet ref s ("print-modules" : args) = forceLength 1 args $ \[str] -> readInt str $ \int -> do
+  let setVerbosity v = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printModule .~ PrintModuleVerbosity v
+  case int of
+    0 -> setVerbosity $ Nothing
+    1 -> setVerbosity $ Just PrintEntryName
+    2 -> setVerbosity $ Just PrintEntryNameAnnots
+    3 -> setVerbosity $ Just PrintEntryEntirely
+    _ -> putStrLn $ "Integer argument should be in [0..3]."
+runCommandSet ref s ("print-modules-ctx" : args) = forceLength 1 args $ \[str] -> readInt str $ \int -> do
+  let setVerbosity v = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printModuleInContext .~ v
+  case int of
+    0 -> setVerbosity $ Nothing
+    1 -> setVerbosity $ Just $ PrintModuleVerbosity $ Nothing
+    2 -> setVerbosity $ Just $ PrintModuleVerbosity $ Just PrintEntryName
+    3 -> setVerbosity $ Just $ PrintModuleVerbosity $ Just PrintEntryNameAnnots
+    4 -> setVerbosity $ Just $ PrintModuleVerbosity $ Just PrintEntryEntirely
+    _ -> putStrLn $ "Integer argument should be in [0..4]."
+runCommandSet ref s ("print-solutions" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool -> do
+  let setSolutionMap maybeMap = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printSolutions .~ maybeMap
+  if bool
+    then setSolutionMap $ Just $ _tcState'metaMap s & (mapMaybe $
+        \ (ForSomeDeBruijnLevel metaInfo) -> case _metaInfo'maybeSolution metaInfo of
+          Left blocks -> Nothing
+          Right solutionInfo -> Just $ ForSomeDeBruijnLevel $ _solutionInfo'solution solutionInfo
+      )
+    else setSolutionMap $ Nothing
+runCommandSet ref s ("print-types" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
+    modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printTypeAnnotations .~ bool
 runCommandSet ref s ("width" : args) = forceLength 1 args $ \[str] -> readInt str $ \w ->
     modifyIORef ref $ main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ w
 runCommandSet ref s _ = giveHelpSet ref s
