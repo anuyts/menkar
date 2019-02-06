@@ -8,8 +8,6 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
   idMod :: Mode sys v -> Modality sys v
   compMod :: (Modality sys) v -> (Mode sys) v -> (Modality sys) v -> (Modality sys) v
   divMod :: ModedModality sys v -> ModedModality sys v -> Modality sys v
-  wildMode :: (Mode sys) v -- to be abolished!
-  wildModty :: (Modality sys) v -- to be abolished!
   flatMod :: (Modality sys) v
   dataMode :: (Mode sys) v
   -- | When applied to mu, this yields the greatest modality less than the left adjoint functor to mu.
@@ -39,9 +37,6 @@ divModedModality d'mu' dmu@(ModedModality d mu) = ModedModality d (divMod d'mu' 
 
 flatModedModality :: (Multimode sys) => ModedModality sys v
 flatModedModality = ModedModality dataMode flatMod
-
-wildModedModality :: (Multimode sys) => ModedModality sys v
-wildModedModality = ModedModality wildMode wildModty
 
 modedApproxLeftAdjointProj :: (Multimode sys) =>
   ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> ModedModality sys v
