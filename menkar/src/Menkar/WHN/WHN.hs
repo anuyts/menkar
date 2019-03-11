@@ -1,15 +1,17 @@
 module Menkar.WHN.WHN where
 
 import Menkar.System.Fine
+import Menkar.System.WHN
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Menkar.Monad.Monad
 
+import Control.Exception.AssertFalse
+
 import Data.Void
 import Data.Maybe
 import Control.Monad.Writer
-import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Control.Monad.Trans.Maybe
 import Data.Monoid
@@ -24,7 +26,7 @@ import Data.Monoid
 -}
 --TODOMOD normalize tmFst in different context
 --TODOMOD normalize unboxed term in different context
-whnormalizeElim :: MonadTC sys tc =>
+whnormalizeElim :: (SysWHN sys, MonadTC sys tc) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   ModedModality sys v {-^ how eliminee is used -} ->
@@ -101,7 +103,7 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
         (ConsRefl, _) -> return termProblem
     ([], Expr2 _) -> unreachable
 
-whnormalizeNV :: MonadTC sys tc =>
+whnormalizeNV :: (SysWHN sys, MonadTC sys tc) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   TermNV sys v ->
@@ -127,14 +129,14 @@ whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) reason =
         quantifiedTerm = _val'term quantifiedVal
     in  whnormalize parent gamma quantifiedTerm reason
 whnormalizeNV parent gamma (TermAlgorithm alg result) reason = whnormalize parent gamma result reason
-whnormalizeNV parent gamma (TermSys t) reason = _
+whnormalizeNV parent gamma (TermSys t) reason = whnormalizeSys parent gamma t reason
 whnormalizeNV parent gamma t@(TermProblem _) reason = return $ Expr2 t
 
 {- | Either weak-head-normalizes the given term and writes nothing,
      or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
      writes the indices of all metavariables that could (each in itself) unblock the situation.
 -}
-whnormalize :: MonadTC sys tc =>
+whnormalize :: (SysWHN sys, MonadTC sys tc) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->

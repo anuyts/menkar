@@ -1,12 +1,13 @@
 module Menkar.System.TC where
 
 import Menkar.System.Fine
+import Menkar.System.WHN
 import Menkar.Fine
 import Menkar.Monad.Monad
 
 import Data.Void
 
-class SysSyntax (Term sys) sys => SysTC sys where
+class SysWHN sys => SysTC sys where
   checkTermSys :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
