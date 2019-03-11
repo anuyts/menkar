@@ -1,6 +1,7 @@
 module Menkar.TC.Term where
 
 import Menkar.System.Fine
+import Menkar.System.TC
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
@@ -19,7 +20,7 @@ import Control.Monad
 -- CMODTY means you need to check a modality
 
 checkPiOrSigma :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     Binding Type Term sys v ->
@@ -66,7 +67,7 @@ checkPiOrSigma parent gamma binding ty = do
 -------
 
 checkUni :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     Type sys v ->
@@ -92,7 +93,7 @@ checkUni parent gamma ty = do
 -------
 
 checkUniHSConstructor :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     UniHSConstructor sys v ->
@@ -175,7 +176,7 @@ checkUniHSConstructor parent gamma (EqType tyAmbient tyL tyR) ty = do
 -- CMODE do we allow Empty, Unit and Nat in arbitrary mode? I guess not...
 
 checkConstructorTerm :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     ConstructorTerm sys v ->
@@ -331,7 +332,7 @@ checkConstructorTerm parent gamma ConsRefl ty = do
 -------
 
 checkDependentEliminator :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     ModedModality sys v ->
@@ -432,7 +433,7 @@ checkDependentEliminator parent gamma dmu eliminee
 
 {-| Checks whether the eliminator applies and has the correct output type. -}
 checkEliminator :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     ModedModality sys v ->
@@ -589,7 +590,7 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimEq motive crefl) ty = 
 -------
     
 checkTermNV :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     TermNV sys v ->
@@ -633,7 +634,8 @@ checkTermNV parent gamma t@(TermMeta etaFlag meta (Compose depcies) alg) ty = do
             "Look up meta."
   checkTerm childConstraint gamma t' ty
 checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
-  let ldivModAppliedVal = VarFromCtx <$> over leftDivided'content telescoped2modalQuantified lookupresult
+  let (LeftDivided d2 d1mu telescope) = lookupresult
+  let ldivModAppliedVal = VarFromCtx <$> (leftDivided'content .~ telescoped2modalQuantified d2 telescope) lookupresult
   varAccessible <- leqMod
         (modality'mod . _modApplied'modality . _leftDivided'content $ ldivModAppliedVal)
         (modality'mod . _leftDivided'modality $ ldivModAppliedVal)
@@ -652,7 +654,7 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
             "Checking whether actual type equals expected type."
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminators)) result) ty = do
-  dmuElim <- newMetaModedModality (Just parent) (irrModedModality :\\ gamma) "Infer modality of smart elimination."
+  dmuElim <- newMetaModedModality (Just parent) (flatModedModality :\\ gamma) "Infer modality of smart elimination."
   tyEliminee <- newMetaType (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
   -- CMODE
@@ -667,7 +669,7 @@ checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminat
     "Type-check the result."
   -----
   addNewConstraint
-    (JudSmartElim gamma dmuElim eliminee tyEliminee eliminators result ty)
+    (JudSmartElim gamma {-dmuElim-} eliminee tyEliminee eliminators result ty)
     (Just parent)
     "Smart elimination should reduce to its result."
 checkTermNV parent gamma (TermAlgorithm (AlgGoal goalname depcies) result) ty = do
@@ -682,13 +684,14 @@ checkTermNV parent gamma (TermAlgorithm (AlgGoal goalname depcies) result) ty = 
       (Just parent)
       "Goal should take some value."
   tcReport goalConstraint "This isn't my job; delegating to a human."
+checkTermNV parent gamma (TermSys t) ty = checkTermSys parent gamma t ty
 checkTermNV parent gamma (TermProblem t) (Type ty) = tcFail parent $ "Erroneous term."
 checkTermNV parent gamma TermWildcard ty = unreachable
 
 -------
 
 checkTerm :: forall sys tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     Term sys v ->

@@ -37,7 +37,7 @@ telescoped2quantified telescopedVal = ValRHS
   (Type $ telescoped2pi $ telescopedVal)
 
 telescoped2modalQuantified :: (Multimode sys) =>
-  Mode sys v -> Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v
+  Mode sys v {-^ Mode of the telescope -} -> Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v
 telescoped2modalQuantified d1 (d2mu@(ModedModality d2 mu) :** telescopedVal) =
   let ModApplied d3mu' val = telescoped2modalQuantified d2 telescopedVal
   in  ModApplied (compModedModality d2mu d3mu') val

@@ -22,7 +22,7 @@ type family Modality (sys :: KSys) = (modality :: * -> *) | modality -> sys
 -}
 type family Degree (sys :: KSys) = (degree :: * -> *) | degree -> sys
 
-type family SysTerm (sys :: KSys) = (sysTermNV :: * -> *) | sysTermNV -> sys
+type family SysTerm (sys :: KSys) = (sysTerm :: * -> *) | sysTerm -> sys
 
 type family SysJudgement (sys :: KSys) = (sysJudgement :: *) | sysJudgement -> sys
 
@@ -30,11 +30,12 @@ class (Traversable (Mode sys),
        Traversable (Modality sys),
        Traversable (Degree sys),
        Traversable (SysTerm sys))
-      => SysTrav sys
+      => SysTrav sys where
 
+-- Terms have not been defined at this point.
 class (SysTrav sys,
        CanSwallow t (Mode sys),
        CanSwallow t (Modality sys),
        CanSwallow t (Degree sys),
        CanSwallow t (SysTerm sys))
-      => SysSyntax t sys
+      => SysSyntax t sys where
