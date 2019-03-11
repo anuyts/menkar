@@ -2,8 +2,8 @@
 module Menkar.Fine.Context.Context where
 
 import Menkar.Fine.Syntax
+import Menkar.System.Fine
 import Menkar.Basic.Context
-import Menkar.Fine.Multimode
 import Control.Exception.AssertFalse
 import qualified Menkar.Raw.Syntax as Raw
 

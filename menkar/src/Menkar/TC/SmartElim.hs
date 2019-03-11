@@ -1,15 +1,15 @@
-module Menkar.TC.Inference.SmartElim where
+module Menkar.TC.SmartElim where
 
+import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
-import Menkar.Fine.Multimode
 import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
-import Menkar.Fine.WHNormalize
+import Menkar.WHN
 
 import Data.Void
 import Control.Lens

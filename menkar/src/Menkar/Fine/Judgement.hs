@@ -1,5 +1,6 @@
 module Menkar.Fine.Judgement where
 
+import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw

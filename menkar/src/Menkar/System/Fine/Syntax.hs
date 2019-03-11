@@ -1,4 +1,4 @@
-module Menkar.Fine.Syntax.System where
+module Menkar.System.Fine.Syntax where
 
 import Menkar.Fine.Syntax.Substitution
 import Data.Kind

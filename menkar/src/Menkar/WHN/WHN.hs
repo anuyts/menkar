@@ -1,10 +1,10 @@
-module Menkar.Fine.WHNormalize where
+module Menkar.WHN.WHN where
 
+import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
-import Menkar.Fine.Multimode
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 
 import Data.Void
 import Data.Maybe

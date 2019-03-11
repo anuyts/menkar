@@ -1,5 +1,6 @@
 module Menkar.PrettyPrint.Aux.Context.Context where
 
+import Menkar.System.Fine
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Syntax

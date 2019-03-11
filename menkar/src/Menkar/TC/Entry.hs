@@ -1,6 +1,6 @@
-module Menkar.TC.Inference.Entry where
+module Menkar.TC.Entry where
 
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement

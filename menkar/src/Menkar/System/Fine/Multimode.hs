@@ -1,8 +1,9 @@
-module Menkar.Fine.Multimode where
+module Menkar.System.Fine.Multimode where
 
 import Prelude hiding (divMod)
 
 import Menkar.Fine.Syntax
+import Menkar.System.Fine.Syntax
 
 class (SysSyntax (Term sys) sys) => Multimode sys where
   idMod :: Mode sys v -> Modality sys v

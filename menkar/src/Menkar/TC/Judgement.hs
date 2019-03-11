@@ -1,4 +1,4 @@
-module Menkar.TC.Inference where
+module Menkar.TC.Judgement where
 
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
@@ -9,10 +9,10 @@ import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Control.Exception.AssertFalse
-import Menkar.TC.Inference.Term
-import Menkar.TC.Inference.SmartElim
-import Menkar.TC.Inference.Rel
-import Menkar.TC.Inference.Entry
+import Menkar.TC.Term
+import Menkar.TC.SmartElim
+import Menkar.TC.Rel
+import Menkar.TC.Entry
 import Menkar.Fine.WHNormalize
 
 import Data.Void

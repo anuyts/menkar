@@ -1,11 +1,11 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Menkar.TC.Monad.Monad where
+module Menkar.Monad.Monad where
 
+import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import Menkar.Fine.Context
-import Menkar.Fine.Multimode
 import qualified Menkar.Raw.Syntax as Raw 
 --import Menkar.Scoper.Monad
 

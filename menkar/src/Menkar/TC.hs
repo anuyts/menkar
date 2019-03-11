@@ -1,7 +1,5 @@
 module Menkar.TC (
-  module Menkar.TC.Monad,
-  module Menkar.TC.Inference
+  module Menkar.TC.Judgement
   ) where
 
-import Menkar.TC.Monad
-import Menkar.TC.Inference
+import Menkar.TC.Judgement

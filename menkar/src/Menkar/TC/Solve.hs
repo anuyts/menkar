@@ -1,17 +1,17 @@
 {-# LANGUAGE IncoherentInstances #-}
 
-module Menkar.TC.Inference.Solve where
+module Menkar.TC.Solve where
 
+import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
-import Menkar.Fine.Multimode
 import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.TC.Monad
 import Control.Exception.AssertFalse
-import Menkar.Fine.WHNormalize
+import Menkar.WHN
 
 import Data.Void
 import Control.Lens

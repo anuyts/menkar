@@ -2,7 +2,7 @@ module Menkar.Fine.LookupQName where
 
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
-import Menkar.Fine.Multimode
+import Menkar.System.Fine
 import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Bifunctor
