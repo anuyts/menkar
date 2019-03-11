@@ -24,8 +24,6 @@ import Data.Monoid
    * For non-projectible pairs, there was no eta-rule anyway.
    In summary, we don't eta-expand.
 -}
---TODOMOD normalize tmFst in different context
---TODOMOD normalize unboxed term in different context
 whnormalizeElim :: (SysWHN sys, MonadTC sys tc) =>
   Constraint sys ->
   Ctx Type sys v Void ->
@@ -52,7 +50,7 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
       -- Eliminee is neutral: Return elimination as is
       (Expr2 (TermElim _ _ _ _)) -> return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
       -- Eliminee is system-specific: TODO
-      (Expr2 (TermSys t)) -> _
+      --(Expr2 (TermSys t)) -> _
       -- Eliminee is a constructor:
       (Expr2 (TermCons t)) ->
         -- Just in case: wrap the elimination in a problem box.

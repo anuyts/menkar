@@ -654,7 +654,7 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
             "Checking whether actual type equals expected type."
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminators)) result) ty = do
-  dmuElim <- newMetaModedModality (Just parent) (flatModedModality :\\ gamma) "Infer modality of smart elimination."
+  dmuElim <- newMetaModedModality (Just parent) (crispModedModality :\\ gamma) "Infer modality of smart elimination."
   tyEliminee <- newMetaType (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
   -- CMODE
