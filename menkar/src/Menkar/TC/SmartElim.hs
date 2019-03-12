@@ -266,6 +266,43 @@ insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators resu
            tyArg True "Inferring implicit argument."
   apply parent gamma eliminee piBinding arg dmuInfer eliminators result tyResult
 
+popModality :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Term sys v ->
+  Type sys v ->
+  [Pair2 ModedModality SmartEliminator sys v] ->
+  Term sys v ->
+  Type sys v ->
+  tc (ModedModality sys v, [Pair2 ModedModality SmartEliminator sys v])
+popModality parent gamma eliminee tyEliminee eliminators result tyResult =
+  case eliminators of
+    [] -> unreachable
+    (Pair2 dmu1 elim1 : eliminators') -> do
+      let ModedModality d1a mu1 = dmu1
+      d1b <- newMetaMode (Just parent) (crispModedModality :\\ gamma) "Inferring output mode of next implicit elimination."
+      mu1a <- newMetaModty (Just parent) (crispModedModality :\\ gamma) "Inferring modality of next implicit elimination."
+      mu1b <- newMetaModty (Just parent) (crispModedModality :\\ gamma) $
+        "Inferring composite of the modalities of all eliminations as of (not including) the next implicit one, " ++
+        "until (and including) the next explicit one."
+      let dmu1a = ModedModality d1a mu1a
+      let dmu1b = ModedModality d1b mu1b
+      let d2 = case eliminators' of
+            [] -> unVarFromCtx <$> ctx'mode gamma
+            (Pair2 dmu2 _ : _) -> modality'dom dmu2
+      addNewConstraint
+        (JudModalityRel ModEq
+          (crispModedModality :\\ duplicateCtx gamma)
+          (modality'mod $ compModedModality dmu1b dmu1a)
+          (mu1)
+          d1a
+          d2
+        )
+        (Just parent)
+        "Splitting modality."
+      return (dmu1a, Pair2 dmu1b elim1 : eliminators')
+
 {-| Tries to apply an implicit elimination to the eliminee.
     If successful, creates a new constraint with the once eliminated eliminee and the same eliminators.
     If unsuccesful, calls the alternative if present, or throws a @'tcFail'@.
