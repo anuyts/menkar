@@ -326,10 +326,13 @@ autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult maybe
     Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))) ->
       case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> alternative
-        Implicit -> insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResult
+        Implicit -> do
+          (dmuInfer, eliminators') <- popModality parent gamma eliminee tyEliminee eliminators result tyResult
+          insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators' result tyResult
         Resolves _ -> todo
-    Type (Expr2 (TermCons (ConsUniHS (BoxType boxSeg)))) ->
-      unbox parent gamma eliminee boxSeg eliminators result tyResult
+    Type (Expr2 (TermCons (ConsUniHS (BoxType boxSeg)))) -> do
+      (dmuInfer, eliminators') <- popModality parent gamma eliminee tyEliminee eliminators result tyResult
+      unbox parent gamma eliminee boxSeg dmuInfer eliminators' result tyResult
     _ -> alternative
 
 checkSmartElimForNormalType ::
