@@ -251,17 +251,20 @@ insertImplicitArgument :: forall sys tc v .
   Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Term sys v ->
-  [Pair2 ModedModality SmartEliminator sys v] ->
+  ModedModality sys v {-^ The modality by which the application depends on the function (likely to be inferred.) -} ->
+  [Pair2 ModedModality SmartEliminator sys v] {-^ The remaining eliminators (not including app). -} ->
   Term sys v ->
   Type sys v ->
   tc ()
-insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResult = do
+insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators result tyResult = do
+  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuArg = _segment'modty $ binding'segment $ piBinding
+  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   let tyArg = _segment'content $ binding'segment $ piBinding
   -- CMOD: degree should be multiplied by dmuArg here!
-  arg <- newMetaTerm (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuArg :\\ gamma)
+  arg <- newMetaTerm (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElim' :\\ gamma)
            tyArg True "Inferring implicit argument."
-  apply parent gamma eliminee piBinding arg eliminators result tyResult
+  apply parent gamma eliminee piBinding arg dmuInfer eliminators result tyResult
 
 {-| Tries to apply an implicit elimination to the eliminee.
     If successful, creates a new constraint with the once eliminated eliminee and the same eliminators.
