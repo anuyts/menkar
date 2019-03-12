@@ -141,6 +141,19 @@ data Judgement (sys :: KSys) where
     Mode sys v ->
     Judgement sys
 
+  JudModedModality :: (DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    ModedModality sys v ->
+    Mode sys v ->
+    Judgement sys
+  JudModedModalityRel :: (DeBruijnLevel v) =>
+    ModRel ->
+    Ctx (Twice2 Type) sys v Void ->
+    ModedModality sys v ->
+    ModedModality sys v ->
+    Mode sys v ->
+    Judgement sys
+
   JudSys :: SysJudgement sys -> Judgement sys
 
   ------------------------------
