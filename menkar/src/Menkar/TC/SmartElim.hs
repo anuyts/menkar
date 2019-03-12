@@ -190,22 +190,39 @@ projSnd parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
     (Just parent)
     "Second projection."
 
-apply ::
+apply :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Term sys v ->
   Term sys v ->
-  [Pair2 ModedModality SmartEliminator sys v] ->
+  ModedModality sys v {-^ The modality by which the application depends on the function (likely to be inferred.) -} ->
+  [Pair2 ModedModality SmartEliminator sys v] {-^ The remaining eliminators (not including app). -} ->
   Term sys v ->
   Type sys v ->
   tc ()
-apply parent gamma eliminee piBinding arg eliminators result tyResult = do
+apply parent gamma eliminee piBinding arg dmuInfer eliminators result tyResult = do
+  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuArg = _segment'modty $ binding'segment $ piBinding
+  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  -- dmuInfer should be the identity.
+  addNewConstraint
+    (JudModedModalityRel ModEq
+      (crispModedModality :\\ duplicateCtx gamma)
+      (idModedModality $ modality'dom dmuElim')
+      (dmuInfer)
+      (modality'dom dmuElim')
+    )
+    (Just parent)
+    "Checking whether actual modality equals expected modality."
+  {- The argument will be checked when checking the result of the smart elimination.
+     However, the argument determines the type of the application, which in turn determines the
+     elaboration of the smart elimination. Hence, to avoid deadlock, we need to check it now as well.
+  -}
   addNewConstraint
     (JudTerm
-      (wildModedModality :\\ gamma) -- CMODE
+      (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElim' :\\ gamma)
       arg
       (_decl'content $ binding'segment $ piBinding)
     )
@@ -214,7 +231,6 @@ apply parent gamma eliminee piBinding arg eliminators result tyResult = do
   addNewConstraint
     (JudSmartElim
       gamma
-      dmuElim
       (Expr2 $ TermElim
         (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
         eliminee

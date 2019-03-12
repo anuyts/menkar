@@ -56,7 +56,8 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) (w :: *) where
   (:<...>) :: Ctx t sys v w -> ModuleRHS sys (VarOpenCtx v w) -> Ctx t sys (VarInModule v) w
   {-| Context divided by a modality. -}
   (:\\) :: ModedModality sys (VarOpenCtx v w) -> Ctx t sys v w -> Ctx t sys v w
-infixl 3 :.., :^^, :<...>, :\\
+infixr 3 :\\
+infixl 3 :.., :^^, :<...>
 deriving instance (SysTrav sys, Functor (t sys)) => Functor (Ctx t sys v)
 deriving instance (SysTrav sys, Foldable (t sys)) => Foldable (Ctx t sys v)
 deriving instance (SysTrav sys, Traversable (t sys)) => Traversable (Ctx t sys v)
