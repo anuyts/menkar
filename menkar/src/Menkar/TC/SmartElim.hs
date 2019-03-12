@@ -266,6 +266,15 @@ insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators resu
            tyArg True "Inferring implicit argument."
   apply parent gamma eliminee piBinding arg dmuInfer eliminators result tyResult
 
+elimineeMode ::
+  (SysTC sys, Multimode sys, DeBruijnLevel v) =>
+  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  [Pair2 ModedModality SmartEliminator sys v] ->
+  Mode sys v
+elimineeMode gamma eliminators = case eliminators of
+            [] -> unVarFromCtx <$> ctx'mode gamma
+            (Pair2 dmu2 _ : _) -> modality'dom dmu2
+
 popModality :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -288,9 +297,7 @@ popModality parent gamma eliminee tyEliminee eliminators result tyResult =
         "until (and including) the next explicit one."
       let dmu1a = ModedModality d1a mu1a
       let dmu1b = ModedModality d1b mu1b
-      let d2 = case eliminators' of
-            [] -> unVarFromCtx <$> ctx'mode gamma
-            (Pair2 dmu2 _ : _) -> modality'dom dmu2
+      let d2 = elimineeMode gamma eliminators'
       addNewConstraint
         (JudModalityRel ModEq
           (crispModedModality :\\ duplicateCtx gamma)
@@ -352,55 +359,72 @@ checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result 
       --unreachable
       checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
     -- Silently eliminate further: `t ...` (Auto-eliminate, if not possible, assert that it's done.)
-    (_, SmartElimDots : []) ->
+    (_, Pair2 _ SmartElimDots : []) ->
       autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult $
       Just $ checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
     -- Bogus: `t ... e` (Throw error.)
-    (_, SmartElimDots : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
+    (_, Pair2 _ SmartElimDots : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     -- Explicit application of a function: `f arg` (Apply if explicit, auto-eliminate otherwise.)
-    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecExplicit arg : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
+     Pair2 dmuInfer (SmartElimArg Raw.ArgSpecExplicit arg) : eliminators') ->
       case (_segment'plicity $ binding'segment $ piBinding) of
-        Explicit -> apply parent gamma eliminee piBinding arg eliminators' result tyResult
+        Explicit -> apply parent gamma eliminee piBinding arg dmuInfer eliminators' result tyResult
         _ -> autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Immediate application of a function: `f .{arg}` (Apply.)
-    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg Raw.ArgSpecNext arg : eliminators') ->
-      apply parent gamma eliminee piBinding arg eliminators' result tyResult
+    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
+     Pair2 dmuInfer (SmartElimArg Raw.ArgSpecNext arg) : eliminators') ->
+      apply parent gamma eliminee piBinding arg dmuInfer eliminators' result tyResult
     -- Named application of a function: `f .{a = arg}` (Apply if the name matches, auto-eliminate otherwise.)
-    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))), SmartElimArg (Raw.ArgSpecNamed name) arg : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
+     Pair2 dmuInfer (SmartElimArg (Raw.ArgSpecNamed name) arg) : eliminators') ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
-      then apply parent gamma eliminee piBinding arg eliminators' result tyResult
+      then apply parent gamma eliminee piBinding arg dmuInfer eliminators' result tyResult
       else autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Application of a non-function: `t arg`, `t .{arg}`, `t .{a = arg}` (Auto-eliminate.)
-    (_, SmartElimArg _ _ : eliminators') ->
+    (_, Pair2 _ (SmartElimArg _ _) : eliminators') ->
       autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Named projection of a pair: `pair .componentName`
-    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNamed name) : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))),
+     Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecNamed name)) : eliminators') ->
       -- if the given name is the name of the first component
       if Just name == (_segment'name $ binding'segment $ sigmaBinding)
       -- then project out the first component and continue
-      then projFst parent gamma eliminee sigmaBinding eliminators' result tyResult
+      then projFst parent gamma eliminee sigmaBinding dmuInfer eliminators' result tyResult
       -- else project out the second component and try again
-      else projSnd parent gamma eliminee sigmaBinding eliminators result tyResult
+      else
+        let d = elimineeMode gamma eliminators
+        in  projSnd parent gamma eliminee sigmaBinding (idModedModality d) eliminators result tyResult
     -- Numbered projection of a pair: `pair .i`
-    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecNumbered i) : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))),
+     Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecNumbered i)) : eliminators') ->
       if i == 1
       -- then project out the first component and continue
-      then projFst parent gamma eliminee sigmaBinding eliminators' result tyResult
+      then projFst parent gamma eliminee sigmaBinding dmuInfer eliminators' result tyResult
       -- else project out the second component and decrement
-      else let decEliminators = SmartElimProj (Raw.ProjSpecNumbered $ i - 1) : eliminators'
-           in  projSnd parent gamma eliminee sigmaBinding decEliminators result tyResult
+      else let decEliminators = Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecNumbered $ i - 1)) : eliminators'
+               d = modality'dom dmuInfer
+           in  projSnd parent gamma eliminee sigmaBinding (idModedModality d) decEliminators result tyResult
     -- Numbered tail projection of a pair: `pair ..i`
-    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))), SmartElimProj (Raw.ProjSpecTail i) : eliminators') ->
+    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))),
+     Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecTail i)) : eliminators') ->
       if i == 1
       -- then do nothing
-      then addNewConstraint
-             (JudSmartElim gamma eliminee tyEliminee eliminators' result tyResult)
-             (Just parent)
-             "Doing nothing."
+      then do
+        let d = elimineeMode gamma eliminators'
+        addNewConstraint
+          (JudModedModalityRel ModEq (crispModedModality :\\ duplicateCtx gamma) (idModedModality d) (dmuInfer) d)
+          (Just parent)
+          "Checking that actual modality equals expected modality."
+        addNewConstraint
+          (JudSmartElim gamma eliminee tyEliminee eliminators' result tyResult)
+          (Just parent)
+          "Doing nothing."
       -- else project out the second component and decrement
-      else let decEliminators = SmartElimProj (Raw.ProjSpecTail $ i - 1) : eliminators'
-           in  projSnd parent gamma eliminee sigmaBinding decEliminators result tyResult
-    (_, SmartElimProj _ : _) ->
+      else let decEliminators = Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecTail $ i - 1)) : eliminators'
+               d = modality'dom dmuInfer
+           in  projSnd parent gamma eliminee sigmaBinding (idModedModality d) decEliminators result tyResult
+    -- Projection of a non-pair: auto-eliminate.
+    (_, (Pair2 _ (SmartElimProj _)) : _) ->
       autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
 
 checkSmartElim :: forall sys tc v .
