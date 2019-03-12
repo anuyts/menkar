@@ -70,8 +70,7 @@ unbox parent gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
   let dmuBox :: ModedModality sys v = _segment'modty boxSeg
   let dmuUnbox :: ModedModality sys v = modedApproxLeftAdjointProj dmuBox (modality'dom dmuInfer)
   let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
-  -- CMODE CMOD : = dmuElim' o dmuUnbox
-  -- CMODE : check if you can unbox
+  -- CMODE : check if you can unbox (You can always.)
   addNewConstraint
     (JudModalityRel ModEq
       (crispModedModality :\\ duplicateCtx gamma)
@@ -99,25 +98,35 @@ unbox parent gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
     (Just parent)
     "Unboxing."
 
-projFst ::
+projFst :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Term sys v ->
-  [Pair2 ModedModality SmartEliminator sys v] ->
+  ModedModality sys v {-^ The modality by which we need to project (likely to be inferred.) -} ->
+  [Pair2 ModedModality SmartEliminator sys v] {-^ The remaining eliminators (not including fst). -} ->
   Term sys v ->
   Type sys v ->
   tc ()
-projFst parent gamma eliminee sigmaBinding eliminators result tyResult = do
+projFst parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
+  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
-  let dmuProjFst = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuSigma (modality'dom dmuElim))
-  dmuElim' <- newMetaModedModality (Just parent) gamma "Mode/modality for remainder of elimination."
-  -- CMODE CMOD : = dmuElim' o dmuProjFst
+  let dmuProjFst = modedApproxLeftAdjointProj dmuSigma (modality'dom dmuInfer)
+  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  addNewConstraint
+    (JudModalityRel ModEq
+      (crispModedModality :\\ duplicateCtx gamma)
+      (modality'mod dmuProjFst)
+      (modality'mod dmuInfer)
+      (modality'dom dmuInfer)
+      (modality'dom dmuElim')
+    )
+    (Just parent)
+    "Checking whether actual modality equals expected modality."
   addNewConstraint
     (JudSmartElim
       gamma
-      dmuElim'
       (Expr2 $ TermElim
         (dmuProjFst)
         eliminee
