@@ -141,19 +141,22 @@ projFst parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
     (Just parent)
     "First projection."
 
-projSnd ::
+projSnd :: forall sys tc v . 
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Term sys v ->
-  [Pair2 ModedModality SmartEliminator sys v] ->
+  ModedModality sys v {-^ The modality by which we need to project (likely to be inferred.) -} ->
+  [Pair2 ModedModality SmartEliminator sys v] {-^ The remaining eliminators (not including snd). -} ->
   Term sys v ->
   Type sys v ->
   tc ()
-projSnd parent gamma eliminee sigmaBinding eliminators result tyResult = do
+projSnd parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
+  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
-  let dmuProjFst = ModedModality (modality'dom dmuElim) (approxLeftAdjointProj dmuSigma (modality'dom dmuElim))
+  let dmuProjFst = modedApproxLeftAdjointProj dmuSigma (modality'dom dmuInfer)
+  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   let tmFst = (Expr2 $ TermElim
                 (dmuProjFst)
                 eliminee
@@ -167,9 +170,17 @@ projSnd parent gamma eliminee sigmaBinding eliminators result tyResult = do
                 Snd
               )
   addNewConstraint
+    (JudModedModalityRel ModEq
+      (crispModedModality :\\ duplicateCtx gamma)
+      (idModedModality $ modality'dom dmuElim')
+      (dmuInfer)
+      (modality'dom dmuElim')
+    )
+    (Just parent)
+    "Checking whether actual modality equals expected modality."
+  addNewConstraint
     (JudSmartElim
       gamma
-      dmuElim
       tmSnd
       (Type $ substLast2 tmFst $ binding'body sigmaBinding)
       eliminators
