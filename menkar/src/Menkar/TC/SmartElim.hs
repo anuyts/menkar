@@ -1,6 +1,7 @@
 module Menkar.TC.SmartElim where
 
 import Menkar.System.Fine
+import Menkar.System.TC
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
@@ -26,7 +27,7 @@ import Control.Monad.Trans.Maybe
 {-| Handles a smartelim-judgement with 0 eliminations.
 -}
 checkSmartElimDone :: forall sys tc v .
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -54,7 +55,7 @@ checkSmartElimDone parent gamma eliminee tyEliminee result tyResult = do
         "End of elimination: checking if results match"
 
 unbox ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -88,7 +89,7 @@ unbox parent gamma eliminee boxSeg eliminators result tyResult = do
     "Unboxing."
 
 projFst ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -121,7 +122,7 @@ projFst parent gamma eliminee sigmaBinding eliminators result tyResult = do
     "First projection."
 
 projSnd ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -159,7 +160,7 @@ projSnd parent gamma eliminee sigmaBinding eliminators result tyResult = do
     "Second projection."
 
 apply ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -198,7 +199,7 @@ apply parent gamma eliminee piBinding arg eliminators result tyResult = do
     "Applying function: checking further elimination."
 
 insertImplicitArgument :: forall sys tc v .
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -216,7 +217,7 @@ insertImplicitArgument parent gamma eliminee piBinding eliminators result tyResu
   apply parent gamma eliminee piBinding arg eliminators result tyResult
 
 autoEliminate ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -241,7 +242,7 @@ autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult maybe
     _ -> alternative
 
 checkSmartElimForNormalType ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -319,8 +320,8 @@ checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result 
     (_, SmartElimProj _ : _) ->
       autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
 
-checkSmartElim ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+checkSmartElim :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -332,8 +333,10 @@ checkSmartElim ::
 checkSmartElim parent gamma eliminee tyEliminee [] result tyResult =
   checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
 checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResult = do
+  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
+  let dmuTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   (whnTyEliminee, metasTyEliminee) <-
-    runWriterT $ whnormalize parent gamma tyEliminee "Weak-head-normalizing type of eliminee."
+    runWriterT $ whnormalize parent (VarFromCtx <$> dmuTotal :\\ gamma) tyEliminee "Weak-head-normalizing type of eliminee."
   case metasTyEliminee of
     -- the type weak-head-normalizes
     [] -> do

@@ -302,7 +302,7 @@ data Algorithm sys v =
     (Term sys v) {-^ eliminee -}
     (Compose [] (Pair2 ModedModality SmartEliminator sys) v)
       {-^ Eliminators. The moded modality inserted in front of a smart eliminator,
-          is the composite of the modalities of that eliminator and the implicit eliminators immediately before it. -}
+          is the composite of the modalities of that eliminator and the IMPLICIT eliminators immediately before it. -}
 deriving instance (SysTrav sys) => Functor (Algorithm sys)
 deriving instance (SysTrav sys) => Foldable (Algorithm sys)
 deriving instance (SysTrav sys) => Traversable (Algorithm sys)

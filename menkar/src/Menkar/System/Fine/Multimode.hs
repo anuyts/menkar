@@ -35,6 +35,12 @@ compModedModality :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v -> ModedModality sys v
 compModedModality (ModedModality d' mu') (ModedModality d mu) = ModedModality d (compMod mu' d' mu)
 
+concatModedModalityDiagrammatically :: (Multimode sys) =>
+  [ModedModality sys v] -> Mode sys v {-^ Codomain of the result -} -> ModedModality sys v
+concatModedModalityDiagrammatically [] d = idModedModality d
+concatModedModalityDiagrammatically (dmu : dmus) d =
+  compModedModality (concatModedModalityDiagrammatically dmus d) dmu
+
 divModedModality :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v -> ModedModality sys v
 divModedModality d'mu' dmu@(ModedModality d mu) = ModedModality d (divMod d'mu' dmu)
