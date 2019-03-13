@@ -44,6 +44,28 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
     
 -}
 
+newRelatedMetaModedModality :: forall sys tc v vOrig .
+  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  Constraint sys ->
+  Ctx Type sys vOrig Void ->
+  Ctx (Twice2 Type) sys v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  ModedModality sys v ->
+  Mode sys v ->
+  String ->
+  tc (ModedModality sys vOrig)
+newRelatedMetaModedModality parent gammaOrig gamma subst partialInv dmu2 dcod reason = do
+  dmu1orig <- newMetaModedModality (Just parent) gammaOrig reason
+  let dmu1 = subst <$> dmu1orig
+  addNewConstraint
+    (JudModedModalityRel ModEq gamma (subst <$> dmu1orig) dmu2 dcod)
+    (Just parent)
+    reason
+  return dmu1orig
+
+--------------------------
+
 newRelatedMetaTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
@@ -595,8 +617,6 @@ solveMetaAgainstWHNF :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBru
   [Int] ->
   tc (Term sys vOrig)
 solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 =
-  -- CMOD if deg = eqDeg and t2 does not mention any additional variables, solve fully.
-  -- Otherwise, we do a weak-head solve.
   case t2 of
     Var2 v -> case partialInv v of
       Nothing -> tcBlock parent "Cannot instantiate metavariable with a variable that it does not depend on."
@@ -606,8 +626,15 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
         c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2 metasTy1 metasTy2
         return $ Expr2 $ TermCons $ c1orig
       TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
-        -- CSYS
-        let dmu1orig = wildModedModality {-Modality by which you eliminate-}
+        dmu1orig <- newRelatedMetaModedModality
+                      parent
+                      (crispModedModality :\\ gammaOrig)
+                      (crispModedModality :\\ gamma)
+                      subst
+                      partialInv
+                      dmu2
+                      (unVarFromCtx <$> ctx'mode gamma)
+                      "Inferring elimination mode and modality."
         let dmu1 = subst <$> dmu1orig
         tyEliminee1orig <- solveMetaAgainstUniHSConstructor
                              parent
@@ -663,10 +690,13 @@ solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBru
   [Int] ->
   tc (Term sys vOrig)
 solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 = do
+  -- Try to write t2 in gammaOrig
   let maybeT2orig = sequenceA $ partialInv <$> t2
   case maybeT2orig of
-    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
+    -- If it works, return that.
     Just t2orig -> return t2orig
+    -- If t2 contains variables not in gammaOrig: solve against WHNF
+    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
 
 ------------------------------------
 
