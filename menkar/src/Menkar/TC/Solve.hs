@@ -495,6 +495,7 @@ newRelatedEliminator :: forall sys tc v vOrig .
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   ModedModality sys vOrig {-^ Modality of elimination. -} ->
+  ModedModality sys v {-^ Modality of elimination. -} ->
   Term sys vOrig ->
   Term sys v ->
   UniHSConstructor sys vOrig ->
@@ -504,21 +505,26 @@ newRelatedEliminator :: forall sys tc v vOrig .
   Type sys v ->
   tc (Eliminator sys vOrig)
 newRelatedEliminator parent deg gammaOrig gamma subst partialInv
-  dmu1orig
+  dmu1orig dmu2
   eliminee1orig eliminee2
   tyEliminee1orig tyEliminee2
   eliminator2
   ty1 ty2 = do
   let dmu1 = subst <$> dmu1orig
+  let eliminee1 = subst <$> eliminee1orig
   let tyEliminee1 = subst <$> tyEliminee1orig
   case eliminator2 of
-    App arg2 -> case (tyEliminee1, tyEliminee2) of
-      (Pi piBinding1, Pi piBinding2) -> do
+    App arg2 -> case (tyEliminee1orig, tyEliminee2) of
+      (Pi piBinding1orig, Pi piBinding2) -> do
+        let piBinding1 = subst <$> piBinding1orig
+        let dmuPi1orig = _segment'modty $ binding'segment piBinding1orig
+        let dmuPi2     = _segment'modty $ binding'segment piBinding2
+        let dmuPi1 = subst <$> dmuPi1orig
         arg1orig <- newRelatedMetaTerm
                       parent
-                      (divDeg dmu1 deg)
-                      (VarFromCtx <$> dmu1orig :\\ gammaOrig)
-                      (VarFromCtx <$> dmu1 :\\ gamma)
+                      (divDeg dmuPi1 deg)
+                      (VarFromCtx <$> dmuPi1orig :\\ gammaOrig)
+                      (VarFromCtx <$> dmuPi1     :\\ gamma)
                       subst
                       partialInv
                       arg2
@@ -568,15 +574,12 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                           tyAmbient2
         let segEq1orig = Declaration (DeclNameSegment $ _namedBinding'name $ _namedBinding'body motive2)
                            (VarWkn <$> dmu1orig) Explicit
-                           (Type $ Expr2 $ TermCons $ ConsUniHS $
-                              EqType (VarWkn <$> tyAmbient1orig) (VarWkn <$> tL1orig) (Var2 VarLast))
+                           (hs2type $ EqType (VarWkn <$> tyAmbient1orig) (VarWkn <$> tL1orig) (Var2 VarLast))
         let segEq      = Declaration (DeclNameSegment $ _namedBinding'name $ _namedBinding'body motive2)
                            (VarWkn <$> dmu1    ) Explicit $
                          Twice2
-                           (Type $ Expr2 $ TermCons $ ConsUniHS $
-                              EqType (VarWkn <$> tyAmbient1) (VarWkn <$> tL1) (Var2 VarLast))
-                           (Type $ Expr2 $ TermCons $ ConsUniHS $
-                              EqType (VarWkn <$> tyAmbient2) (VarWkn <$> tL2) (Var2 VarLast))
+                           (hs2type $ EqType (VarWkn <$> tyAmbient1) (VarWkn <$> tL1) (Var2 VarLast))
+                           (hs2type $ EqType (VarWkn <$> tyAmbient2) (VarWkn <$> tL2) (Var2 VarLast))
         motive1orig <- flip (namedBinding'body . namedBinding'body) motive2 $ \ty2 ->
                          newRelatedMetaType
                            parent
@@ -662,7 +665,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                              "Inferring eliminee."
         let eliminee1 = subst <$> eliminee1orig
         eliminator1orig <- newRelatedEliminator parent deg gammaOrig gamma subst partialInv
-                             dmu1orig
+                             dmu1orig dmu2
                              eliminee1orig eliminee2
                              tyEliminee1orig tyEliminee2
                              eliminator2
