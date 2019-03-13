@@ -230,7 +230,8 @@ newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
           True "Inferring right equand."
       return $ EqType tyAmbient1orig tL1orig tR1orig
 
-solveMetaAgainstConstructorTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+newRelatedConstructorTerm :: forall sys tc v vOrig .
+  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -243,7 +244,7 @@ solveMetaAgainstConstructorTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLev
   [Int] ->
   [Int] ->
   tc (ConstructorTerm sys vOrig)
-solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 =
+newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 =
   case t2 of
     ConsUniHS c2 -> do
       c1orig <- newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv c2
@@ -257,38 +258,45 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
             binding1orig <- newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 cod1 cod2
             return $ Lam binding1orig
         ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
-        (_, _, _, _) -> tcBlock parent "Need to know codomains of function types."
-    Pair sigmaBinding2 tmFst2 tmSnd2 -> do
+        (_ , _, _ , _) -> tcBlock parent "Need to know codomains of function types."
+    Pair sigmaBindingPair2 tmFst2 tmSnd2 -> do
       case (metasTy1, ty1, metasTy2, ty2) of
         ([], Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1)))),
          [], Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding2))))) -> do
+            let uni :: Type sys v
+                uni = hs2type $ UniHS $ unVarFromCtx <$> ctx'mode gamma
+            ---------
+            sigmaBindingPair1orig <- newRelatedBinding
+                                       parent deg
+                                       gammaOrig gamma
+                                       subst partialInv
+                                       sigmaBindingPair2
+                                       (VarWkn <$> uni) (VarWkn <$> uni)
+            let sigmaBindingPair1 = subst <$> sigmaBindingPair1orig
+            ---------
+            let dmuPair1orig = _segment'modty $ binding'segment sigmaBindingPair1orig
+            let dmuPair1     = _segment'modty $ binding'segment sigmaBindingPair1
+            let dmuPair2     = _segment'modty $ binding'segment sigmaBindingPair2
+            ---------
             let tyFst1 = _segment'content $ binding'segment sigmaBinding1
             let tyFst2 = _segment'content $ binding'segment sigmaBinding2
-            let dmu1 = _segment'modty $ binding'segment sigmaBinding1
-            -- CMODE: figure out modality
-            let dmu1orig = wildModedModality
-            tmFst1orig <- newRelatedMetaTerm parent (divDeg dmu1orig deg) (VarFromCtx <$> dmu1orig :\\ gammaOrig)
-                            (VarFromCtx <$> dmu1 :\\ gamma) subst partialInv tmFst2 tyFst1 tyFst2
+            ---------
+            tmFst1orig <- newRelatedMetaTerm parent
+                            (divDeg dmuPair2 deg)
+                            (VarFromCtx <$> dmuPair1orig :\\ gammaOrig)
+                            (VarFromCtx <$> dmuPair2 :\\ gamma)
+                            subst partialInv tmFst2 tyFst1 tyFst2
                             True "Inferring first component."
             let tmFst1 = subst <$> tmFst1orig
+            ---------
             let tySnd1 = substLast2 tmFst1 $ Type $ binding'body sigmaBinding1
             let tySnd2 = substLast2 tmFst2 $ Type $ binding'body sigmaBinding2
-            -- CMODE: deg should probably live in vOrig
-            let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
-            tyFst1orig <-
-              newMetaTermNoCheck (Just parent) degOrig gammaOrig False Nothing "Inferring type of first component."
-            let sigmaSeg1orig = Declaration
-                                  (_decl'name $ binding'segment $ sigmaBinding1)
-                                  dmu1orig
-                                  Explicit -- CMODE
-                                  (Type tyFst1orig)
-            tySnd1orig <- newMetaTermNoCheck (Just parent) (VarWkn <$> degOrig)
-                                (gammaOrig :.. VarFromCtx <$> sigmaSeg1orig) False Nothing
-                                "Inferring type of second component."
-            let sigmaBinding1orig = Binding sigmaSeg1orig tySnd1orig
+            ---------
             tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
                             True "Inferring second component."
-            return $ Pair sigmaBinding1orig tmFst1orig tmSnd1orig
+            let tmSnd1 = subst <$> tmSnd1orig
+            ---------
+            return $ Pair sigmaBindingPair1orig tmFst1orig tmSnd1orig
         ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
         (_, _, _, _) -> tcBlock parent "Need to know domains and codomains of Sigma-types."
     ConsUnit -> return ConsUnit
@@ -629,7 +637,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
       Just u -> return $ Var2 u
     Expr2 t2 -> case t2 of
       TermCons c2 -> do
-        c1orig <- solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2 metasTy1 metasTy2
+        c1orig <- newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2 metasTy1 metasTy2
         return $ Expr2 $ TermCons $ c1orig
       TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
         dmu1orig <- newRelatedMetaModedModality
