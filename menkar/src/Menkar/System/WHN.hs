@@ -33,3 +33,8 @@ class SysSyntax (Term sys) sys => SysWHN sys where
     (MonadTC sys tc, DeBruijnLevel v) =>
     Mode sys v -> Degree sys v -> tc (Maybe Bool)
   isEqDeg d deg = leqDeg d deg eqDeg
+
+  isTopDeg :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Mode sys v -> Degree sys v -> tc (Maybe Bool)
+  isTopDeg d deg = leqDeg d topDeg deg

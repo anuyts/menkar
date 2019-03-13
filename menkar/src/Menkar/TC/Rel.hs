@@ -1,6 +1,8 @@
 module Menkar.TC.Rel where
 
 import Menkar.System.Fine
+import Menkar.System.WHN
+import Menkar.System.TC
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
@@ -9,7 +11,7 @@ import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
-import Menkar.Fine.WHNormalize
+import Menkar.WHN
 import Menkar.TC.Solve
 
 import Data.Void
@@ -19,7 +21,7 @@ import Control.Monad
 import Control.Monad.Writer.Lazy
 
 checkSegmentRel ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -44,7 +46,7 @@ checkSegmentRel parent deg gamma seg1 seg2 = do
     "Relating domains."      
 
 checkPiOrSigmaRel ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -75,7 +77,7 @@ checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
       "Relating codomains."
 
 checkUniHSConstructorRel ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -129,7 +131,7 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
 --------------------------------
 
 checkConstructorTermRel :: forall sys tc v .
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -205,7 +207,7 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
   --(_, _) -> _checkConstructorTermRel
 
 checkDependentEliminatorRel :: forall sys tc v .
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -362,7 +364,7 @@ checkDependentEliminatorRel parent deg gamma dmu
       --(_, _) -> _checkDependentEliminatorRel
       
 checkEliminatorRel :: forall sys tc v .
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -465,7 +467,7 @@ checkEliminatorRel parent deg gamma dmu
 
 {-| Relate a constructor-term with a whnormal non-constructor term.
 -}
-checkTermRelEta :: (MonadTC sys tc, DeBruijnLevel v) =>
+checkTermRelEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -565,7 +567,7 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
 
 {-| Relate 2 non-variable whnormal terms.
 -}
-checkTermRelWHNTerms :: (MonadTC sys tc, DeBruijnLevel v) =>
+checkTermRelWHNTerms :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -760,7 +762,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metas
     (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 -}
 
-checkTermRel :: (MonadTC sys tc, DeBruijnLevel v) =>
+checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -769,11 +771,12 @@ checkTermRel :: (MonadTC sys tc, DeBruijnLevel v) =>
   Type sys v ->
   Type sys v ->
   tc ()
-checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
+checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
   -- Top-relatedness is always ok.
-  if isTopDeg deg
-    then return ()
-    else do
+  isTopDeg dgamma deg >>= \ case
+    Just True -> return ()
+    _ -> do
       --purposefully shadowing (redefining)
       (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
       (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
@@ -831,7 +834,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) =
         (Expr2 _, Var2 _) -> tcFail parent "Cannot relate non-variable and variable."
       -}
 
-checkTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
+checkTypeRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
