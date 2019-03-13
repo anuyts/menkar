@@ -443,21 +443,18 @@ checkEliminator :: forall sys tc v .
     Type sys v ->
     tc ()
 checkEliminator parent gamma dmu eliminee (Pi binding) (App arg) ty = do
-  let dmu = _segment'modty $ binding'segment $ binding
+  let dmuPi = _segment'modty $ binding'segment $ binding
   let dom = _segment'content $ binding'segment binding
   addNewConstraint
-    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) arg dom)
+    (JudTerm ((VarFromCtx <$> dmuPi) :\\ gamma) arg dom)
     (Just parent)
     "Type-checking argument."
-  let subst :: VarExt _ -> Term _ _
-      subst VarLast = arg
-      subst (VarWkn v) = Var2 v
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
       (mapCtx (\ty -> Twice2 ty ty) gamma)
       (Twice2
-        (Type $ join $ subst <$> binding'body binding)
+        (Type $ substLast2 arg $ binding'body binding)
         ty
       )
     )
@@ -483,15 +480,13 @@ checkEliminator parent gamma dmu eliminee
       muSigma = modality'mod $ _segment'modty $ binding'segment $ binding
       dSnd = unVarFromCtx <$> ctx'mode gamma
       muProj = approxLeftAdjointProj (ModedModality dFst muSigma) dSnd
-      subst :: VarExt _ -> Term _ _
-      subst VarLast = Expr2 $ TermElim (ModedModality dSnd muProj) eliminee tyEliminee Fst
-      subst (VarWkn v) = Var2 v
+      tmFst = Expr2 $ TermElim (ModedModality dSnd muProj) eliminee tyEliminee Fst
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
       (mapCtx (\ty -> Twice2 ty ty) gamma)
       (Twice2
-        (Type $ join $ subst <$> binding'body binding)
+        (Type $ substLast2 tmFst $ binding'body binding)
         ty
       )
     )
@@ -543,15 +538,12 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
     )
     (Just parent)
     "Type-checking motive."
-  let subst :: VarExt _ -> Term _ _
-      subst VarLast = eliminee
-      subst (VarWkn v) = Var2 v
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
       (mapCtx (\ty -> Twice2 ty ty) gamma)
       (Twice2
-        (swallow $ subst <$> _namedBinding'body motive)
+        (substLast2 eliminee $ _namedBinding'body motive)
         ty
       )
     )
@@ -559,11 +551,12 @@ checkEliminator parent gamma dmu eliminee tyEliminee (ElimDep motive clauses) ty
     "Checking whether actual type equals expected type."
   checkDependentEliminator parent gamma dmu eliminee tyEliminee motive clauses ty
 checkEliminator parent gamma dmu eliminee (EqType tyAmbient tL tR) (ElimEq motive crefl) ty = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
   let bodyMotive = _namedBinding'body $ _namedBinding'body motive
   let segR = Declaration (DeclNameSegment $ _namedBinding'name motive) dmu Explicit tyAmbient
   let segEq = Declaration
                (DeclNameSegment $ _namedBinding'name $ _namedBinding'body $ motive)
-               (VarWkn <$> dmu)
+               (idModedModality $ VarWkn <$> dgamma)
                Explicit
                (hs2type $ EqType (VarWkn <$> tyAmbient) (VarWkn <$> tL) (Var2 VarLast))
   addNewConstraint
