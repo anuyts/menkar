@@ -396,11 +396,9 @@ checkDependentEliminator parent gamma dmu eliminee
     tyEliminee motive (ElimEmpty) ty = unreachable
 checkDependentEliminator parent gamma dmu eliminee
     NatType motive (ElimNat cz cs) ty = do
-  let substZ :: VarExt v -> Term sys v
-      substZ VarLast = Expr2 $ TermCons $ ConsZero
-      substZ (VarWkn v) = Var2 v
+  let zero :: Term sys _ = Expr2 $ TermCons $ ConsZero
   addNewConstraint
-    (JudTerm gamma cz (swallow $ substZ <$> _namedBinding'body motive))
+    (JudTerm gamma cz (substLast2 zero $ _namedBinding'body motive))
     (Just parent)
     "Type-checking zero clause."
   let segPred :: Segment Type _ _
