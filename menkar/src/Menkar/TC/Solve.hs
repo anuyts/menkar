@@ -300,28 +300,33 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
         ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
         (_, _, _, _) -> tcBlock parent "Need to know domains and codomains of Sigma-types."
     ConsUnit -> return ConsUnit
-    ConsBox boxSeg tmUnbox2 -> do
+    ConsBox boxSegTerm2 tmUnbox2 -> do
       case (metasTy1, ty1, metasTy2, ty2) of
         ([], Type (Expr2 (TermCons (ConsUniHS (BoxType boxSeg1)))),
          [], Type (Expr2 (TermCons (ConsUniHS (BoxType boxSeg2))))) -> do
+            boxSegTerm1orig <- newRelatedSegment
+                                       parent deg
+                                       gammaOrig gamma
+                                       subst partialInv
+                                       boxSegTerm2
+            let boxSegTerm1 = subst <$> boxSegTerm1orig
+            ---------
+            let dmuTerm1orig = _segment'modty boxSegTerm1orig
+            let dmuTerm1     = _segment'modty boxSegTerm1
+            let dmuTerm2     = _segment'modty boxSegTerm2
+            ---------
             let tyUnbox1 = _segment'content boxSeg1
             let tyUnbox2 = _segment'content boxSeg2
-            let dmu1 = _segment'modty boxSeg1
-            -- CMODE: figure out modality
-            let dmu1orig = wildModedModality
-            tmUnbox1orig <- newRelatedMetaTerm parent (divDeg dmu1orig deg) (VarFromCtx <$> dmu1orig :\\ gammaOrig)
-                            (VarFromCtx <$> dmu1 :\\ gamma) subst partialInv tmUnbox2 tyUnbox1 tyUnbox2
+            ---------
+            tmUnbox1orig <- newRelatedMetaTerm parent
+                            (divDeg dmuTerm2 deg)
+                            (VarFromCtx <$> dmuTerm1orig :\\ gammaOrig)
+                            (VarFromCtx <$> dmuTerm2 :\\ gamma)
+                            subst partialInv tmUnbox2 tyUnbox1 tyUnbox2
                             True "Inferring box content."
             let tmUnbox1 = subst <$> tmUnbox1orig
-            -- CMODE: deg should probably live in vOrig
-            let degOrig = fromMaybe unreachable $ sequenceA $ partialInv <$> deg
-            tyUnbox1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig False Nothing "Inferring type of box content."
-            let boxSeg1orig = Declaration
-                                  (_decl'name $ boxSeg1)
-                                  dmu1orig
-                                  Explicit -- CMODE
-                                  (Type tyUnbox1orig)
-            return $ ConsBox boxSeg1orig tmUnbox1orig
+            ---------
+            return $ ConsBox boxSegTerm1orig tmUnbox1orig
         ([], _, [], _) -> tcFail parent "Terms are presumed to be well-typed."
         (_, _, _, _) -> tcBlock parent "Need to know content types of box types."
     ConsZero -> return ConsZero
