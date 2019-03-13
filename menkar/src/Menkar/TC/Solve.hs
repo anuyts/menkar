@@ -3,13 +3,15 @@
 module Menkar.TC.Solve where
 
 import Menkar.System.Fine
+import Menkar.System.WHN
+import Menkar.System.TC
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
 import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
 import Menkar.WHN
 
@@ -43,7 +45,7 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
 -}
 
 newRelatedMetaTerm :: forall sys tc v vOrig .
-  (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -70,7 +72,7 @@ newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 etaFla
       return t1orig
 
 newRelatedMetaType :: forall sys tc v vOrig .
-  (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -95,7 +97,7 @@ newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
 
 --------------------------
 
-newRelatedSegment :: (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+newRelatedSegment :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -126,7 +128,7 @@ newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
     (fromMaybe Explicit $ sequenceA $ partialInv <$> _decl'plicity segment2)
     ty1orig
 
-newRelatedBinding :: (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+newRelatedBinding :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -161,7 +163,7 @@ newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 t
 
 ------------------------------------
 
-solveMetaAgainstUniHSConstructor :: (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+solveMetaAgainstUniHSConstructor :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -206,7 +208,7 @@ solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 
           True "Inferring right equand."
       return $ EqType tyAmbient1orig tL1orig tR1orig
 
-solveMetaAgainstConstructorTerm :: (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+solveMetaAgainstConstructorTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -302,7 +304,7 @@ solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 t
 ------------------------------------
 
 newRelatedDependentEliminator :: forall sys tc v vOrig .
-  (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -463,7 +465,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
       return $ ElimNat clauseZero1orig clauseSuc1orig
 
 newRelatedEliminator :: forall sys tc v vOrig .
-  (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -579,7 +581,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
 
 {-| Precondition: @partialInv . subst = Just@.
 -}
-solveMetaAgainstWHNF :: (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+solveMetaAgainstWHNF :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -648,7 +650,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
 
 {-| Precondition: @partialInv . subst = Just@.
 -}
-solveMetaImmediately :: (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
@@ -669,18 +671,20 @@ solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1
 ------------------------------------
 
 {-| A meta is pure if it has undergone a substitution that can be inverted in the following sense:
-    All variables have been substituted with variables - all different - and the inverse substitution is well-typed.
+    All variables have been substituted with variables - all different - and the inverse substitution is well-typed
+    for all variables for which it is defined.
 
-    This method returns @'Nothing'@ if the meta is pure, @'Just' (meta:metas)@ if it is presently unclear but may
-    become clear if one of the listed metas is resolved, and @'Just' []@ if it is certainly false.
+    This method returns @'Nothing'@ if this is presently unclear, @'Just' 'True'@ if the meta is pure, and
+    @'Just' 'False'@ if it is false.
 -}
-checkMetaPure :: (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+checkMetaPure :: forall sys tc v vOrig .
+  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Ctx Type sys vOrig Void ->
   Ctx Type sys v Void ->
   (vOrig -> v) ->
   Type sys v ->
-  tc (Maybe [Int])
+  tc (Maybe Bool)
 checkMetaPure parent gammaOrig gamma subst ty = do
   --let proxyOrig = ctx'sizeProxy gammaOrig
   --let proxy     = ctx'sizeProxy gamma
@@ -695,14 +699,17 @@ checkMetaPure parent gammaOrig gamma subst ty = do
                     (_leftDivided'modality $ ldivSegment v)
                     (_segment'modty $ _leftDivided'content $ ldivSegment v)
   -- CMODE require that forall u . dmuOrig u <= dmu (subst u)
-  -- If this is false, return Just []
-  -- If this is true, return Nothing
-  -- If this is unclear, return some metas
-  return Nothing
+  let condition :: vOrig -> tc (Maybe Bool)
+      condition u = leqMod
+        (subst <$> (modality'dom $ dmuOrig u))
+        (subst . unVarFromCtx <$> ctx'mode gammaOrig)
+        (subst <$> (modality'mod $ dmuOrig u))
+        (modality'mod $ dmu $ subst u)
+  fmap (fmap and . sequenceA) $ sequenceA $ condition <$> listAll Proxy
 
 ------------------------------------
 
-tryToSolveMeta :: (MonadTC sys tc, Eq v, DeBruijnLevel v) =>
+tryToSolveMeta :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -725,6 +732,8 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 metasTy1 metasTy2 = do
     Just depcyVars -> do
       let (_, repeatedVars, _) = complex depcyVars
       case repeatedVars of
+        -- Some variables occur twice
+        _:_ -> tcBlock parent "Cannot solve meta-variable: it has undergone contraction of dependencies."
         -- All variables are unique
         [] -> solveMeta parent meta ( \ gammaOrig -> do
             -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
@@ -733,18 +742,18 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 metasTy1 metasTy2 = do
             isPure <- checkMetaPure parent gammaOrig (fstCtx gamma) depcySubst ty1
             case isPure of
               -- If so, weak-head-solve it
-              Nothing -> do
+              Just True -> do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-                if isEqDeg deg
-                  then solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
-                  else solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
+                isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
+                  Just True ->
+                       solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
+                  _ -> solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
               -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
-              Just metas -> tcBlock parent "Cannot solve meta-variable: modalities in current context are strictly weaker than in original context."
+              _ -> tcBlock parent
+                "Cannot solve meta-variable: modalities in current context are not obviously as strong as in original context."
           )
-        -- Some variables occur twice
-        _ -> tcBlock parent "Cannot solve meta-variable: it has undergone contraction of dependencies."
 
-tryToSolveTerm :: (MonadTC sys tc, Eq v, DeBruijnLevel v) =>
+tryToSolveTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
