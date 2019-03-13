@@ -699,22 +699,25 @@ checkTerm :: forall sys tc v .
     Type sys v ->
     tc ()
 checkTerm parent gamma (Var2 v) (Type ty) = do
-  let ldivSeg = lookupVar gamma v
-  varAccessible <- leqMod
-    (modality'mod . _decl'modty . _leftDivided'content $ ldivSeg)
-    (modality'mod . _leftDivided'modality $ ldivSeg)
-  if varAccessible
-    then do
-      addNewConstraint
-        (JudTypeRel
-          (eqDeg :: Degree sys _)
-          (mapCtx (\ty -> Twice2 ty ty) gamma)
-          (Twice2
-            (unVarFromCtx <$> (_decl'content . _leftDivided'content $ ldivSeg))
-            (Type ty)
-          )
-        )
-        (Just parent)
-        "Checking whether actual type equals expected type."
-    else tcFail parent $ "Variable cannot be used here: modality restrictions are too strong."
+  let ldivSeg = unVarFromCtx <$> lookupVar gamma v
+  addNewConstraint
+    (JudModedModalityRel ModLeq
+      (duplicateCtx gamma)
+      (_decl'modty . _leftDivided'content $ ldivSeg)
+      (_leftDivided'modality $ ldivSeg)
+      _
+    )
+    (Just parent)
+    "Checking that variable is accessible."
+  addNewConstraint
+    (JudTypeRel
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
+        (_decl'content . _leftDivided'content $ ldivSeg)
+        (Type ty)
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
 checkTerm parent gamma (Expr2 t) ty = checkTermNV parent gamma t ty
