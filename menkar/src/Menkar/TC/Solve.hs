@@ -81,11 +81,7 @@ newRelatedMetaTerm :: forall sys tc v vOrig .
   String ->
   tc (Term sys vOrig)
 newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 etaFlag reason = do
-  let maybeDegOrig = sequenceA $ partialInv <$> deg
-  case maybeDegOrig of
-    Nothing -> tcBlock parent "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
-    Just degOrig -> do
-      t1orig <- newMetaTermNoCheck (Just parent) degOrig gammaOrig etaFlag Nothing reason
+      t1orig <- newMetaTermNoCheck (Just parent) gammaOrig etaFlag Nothing reason
       let t1 = subst <$> t1orig
       addNewConstraint
         (JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2))
@@ -105,11 +101,7 @@ newRelatedMetaType :: forall sys tc v vOrig .
   String ->
   tc (Type sys vOrig)
 newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
-  let maybeDegOrig = sequenceA $ partialInv <$> deg
-  case maybeDegOrig of
-    Nothing -> tcBlock parent "Cannot weak-head-solve this equation here: the degree of relatedness has dependencies that the meta-variable does not depend on."
-    Just degOrig -> do
-      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) degOrig gammaOrig False Nothing reason
+      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) gammaOrig False Nothing reason
       let ty1 = subst <$> ty1orig
       addNewConstraint
         (JudTypeRel deg gamma (Twice2 ty1 ty2))
@@ -699,6 +691,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
       TermAlgorithm _ _ -> unreachable
       TermProblem _ -> do
         tcFail parent "Nonsensical term."
+      TermSys t2 -> newRelatedSysTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
 
 {-| Precondition: @partialInv . subst = Just@.
 -}

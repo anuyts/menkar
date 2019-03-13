@@ -15,3 +15,18 @@ class SysWHN sys => SysTC sys where
     SysTerm sys v ->
     Type sys v ->
     tc ()
+  -- see Menkar.TC.Solve.solveMetaAgainstWHNF
+  newRelatedSysTerm :: forall tc v vOrig .
+    (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+    Constraint sys ->
+    Degree sys v ->
+    Ctx Type sys vOrig Void ->
+    Ctx (Twice2 Type) sys v Void ->
+    (vOrig -> v) ->
+    (v -> Maybe vOrig) ->
+    SysTerm sys v ->
+    Type sys v ->
+    Type sys v ->
+    [Int] ->
+    [Int] ->
+    tc (Term sys vOrig)

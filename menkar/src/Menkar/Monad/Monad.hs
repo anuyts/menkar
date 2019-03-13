@@ -40,7 +40,7 @@ class (
   -}
   newMetaTermNoCheck :: (DeBruijnLevel v) =>
     Maybe (Constraint sys)
-    -> Degree sys v {-^ Degree up to which it should be solved -}
+    -- -> Degree sys v {-^ Degree up to which it should be solved -}
     -> Ctx Type sys v Void
     -> Bool {-^ Whether it can be solved using eta-expansion. -}
     -> Maybe (Algorithm sys v)
@@ -54,8 +54,8 @@ class (
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
   annot4annot gamma qstring maybeArg = lift $ annot4annot gamma qstring maybeArg
-  newMetaTermNoCheck maybeParent deg gamma etaFlag maybeAlg reason =
-    lift $ newMetaTermNoCheck maybeParent deg gamma etaFlag maybeAlg reason
+  newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason =
+    lift $ newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
   newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
   scopeFail msg = lift $ scopeFail msg
@@ -138,14 +138,13 @@ addNewConstraint judgement parent reason = addConstraint =<< defConstraint judge
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
-  Degree sys v ->
   Ctx Type sys v Void ->
   Type sys v ->
   Bool ->
   String ->
   tc (Term sys v)
-newMetaTerm maybeParent deg gamma ty etaFlag reason = do
-  t <- newMetaTermNoCheck maybeParent deg gamma etaFlag Nothing reason
+newMetaTerm maybeParent gamma ty etaFlag reason = do
+  t <- newMetaTermNoCheck maybeParent gamma etaFlag Nothing reason
   addNewConstraint
     (JudTerm gamma t ty)
     maybeParent
@@ -163,12 +162,11 @@ newMetaTerm maybeParent deg gamma ty etaFlag reason = do
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaType :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
-  Degree sys v ->
   Ctx Type sys v Void ->
   String ->
   tc (Type sys v)
-newMetaType maybeParent deg gamma reason = do
-  t <- Type <$> newMetaTermNoCheck maybeParent deg gamma False Nothing reason
+newMetaType maybeParent gamma reason = do
+  t <- Type <$> newMetaTermNoCheck maybeParent gamma False Nothing reason
   addNewConstraint
     (JudType gamma t)
     maybeParent
@@ -186,7 +184,7 @@ newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
   String ->
   tc (Type sys v)
 newMetaTypeRel maybeParent deg gamma ty2 reason = do
-  ty1 <- Type <$> newMetaTermNoCheck maybeParent deg (fstCtx gamma) False Nothing reason
+  ty1 <- Type <$> newMetaTermNoCheck maybeParent (fstCtx gamma) False Nothing reason
   addNewConstraint
     (JudTypeRel deg gamma (Twice2 ty1 ty2))
     maybeParent
