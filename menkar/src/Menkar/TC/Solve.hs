@@ -334,6 +334,7 @@ newRelatedDependentEliminator :: forall sys tc v vOrig .
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   ModedModality sys vOrig {-^ Modality of elimination. -} ->
+  ModedModality sys v     {-^ Modality of elimination. -} ->
   Term sys vOrig ->
   Term sys v ->
   UniHSConstructor sys vOrig ->
@@ -345,7 +346,7 @@ newRelatedDependentEliminator :: forall sys tc v vOrig .
   Type sys v ->
   tc (DependentEliminator sys vOrig)
 newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
-  dmu1orig
+  dmu1orig dmu2
   eliminee1orig eliminee2
   tyEliminee1orig tyEliminee2
   motive1orig motive2
@@ -394,7 +395,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             substPair sigmaBinding = swallow . fmap (substPair' sigmaBinding)
         let ty1 = substPair sigmaBinding1 $ _namedBinding'body motive1
         let ty2 = substPair sigmaBinding2 $ _namedBinding'body motive2
-        clausePair1orig <- flip namedBinding'body clausePair2 $ namedBinding'body $ \ t2 ->
+        clausePair1orig <- clausePair2 & (namedBinding'body . namedBinding'body $ \ t2 ->
           newRelatedMetaTerm
             parent
             (VarWkn . VarWkn <$> deg)
@@ -405,6 +406,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             t2 ty1 ty2
             True
             "Inferring pair clause."
+          )
         return $ ElimSigma clausePair1orig
       (_, _) -> unreachable
     ElimBox boxClause2 -> case (tyEliminee1orig, tyEliminee2) of
@@ -429,7 +431,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             substBox boxSeg (VarWkn v) = Var2 $ VarWkn v
         let ty1 = swallow $ substBox boxSeg1 <$> _namedBinding'body motive1
         let ty2 = swallow $ substBox boxSeg1 <$> _namedBinding'body motive2
-        boxClause1orig <- flip namedBinding'body boxClause2 $ \ t2 ->
+        boxClause1orig <- boxClause2 & (namedBinding'body $ \ t2 ->
           newRelatedMetaTerm
             parent
             (VarWkn <$> deg)
@@ -440,6 +442,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             t2 ty1 ty2
             True
             "Inferring box clause."
+          )
         return $ ElimBox boxClause1orig
       (_, _) -> unreachable
     ElimEmpty -> return ElimEmpty
@@ -450,7 +453,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
         newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv clauseZero2 tyCZ1 tyCZ2
           False "Inferring zero clause."
       -----------------
-      let nat = (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
+      let nat = hs2type NatType
       let namePred = _namedBinding'name clauseSuc2
       let nameHyp  = _namedBinding'name $ _namedBinding'body clauseSuc2
       let segPred1orig = Declaration (DeclNameSegment namePred) dmu1orig Explicit nat
@@ -555,7 +558,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                          ty2
                          "Inferring motive."
       clauses1orig <- newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
-                        dmu1orig
+                        dmu1orig dmu2
                         eliminee1orig eliminee2
                         tyEliminee1orig tyEliminee2
                         motive1orig motive2
