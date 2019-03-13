@@ -262,7 +262,7 @@ insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators resu
   let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   let tyArg = _segment'content $ binding'segment $ piBinding
   -- CMOD: degree should be multiplied by dmuArg here!
-  arg <- newMetaTerm (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElim' :\\ gamma)
+  arg <- newMetaTerm (Just parent) {-(eqDeg :: Degree sys _)-} (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElim' :\\ gamma)
            tyArg True "Inferring implicit argument."
   apply parent gamma eliminee piBinding arg dmuInfer eliminators result tyResult
 
