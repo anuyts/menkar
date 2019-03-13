@@ -600,11 +600,11 @@ checkTermNV parent gamma (TermCons c) ty = checkConstructorTerm parent gamma c t
 checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
   -- CMODE CMODTY
   addNewConstraint
-    (JudType ((VarFromCtx <$> dmu) :\\ gamma) (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee))
+    (JudType ((VarFromCtx <$> dmu) :\\ gamma) (hs2type $ tyEliminee))
     (Just parent)
     "Checking type of eliminee."
   addNewConstraint
-    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) eliminee (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee))
+    (JudTerm ((VarFromCtx <$> dmu) :\\ gamma) eliminee (hs2type $ tyEliminee))
     (Just parent)
     "Type-checking eliminee."
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
@@ -635,26 +635,30 @@ checkTermNV parent gamma t@(TermMeta etaFlag meta (Compose depcies) alg) ty = do
   checkTerm childConstraint gamma t' ty
 checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
   let (LeftDivided d2 d1mu telescope) = lookupresult
-  let ldivModAppliedVal = VarFromCtx <$> (leftDivided'content .~ telescoped2modalQuantified d2 telescope) lookupresult
-  varAccessible <- leqMod
-        (modality'mod . _modApplied'modality . _leftDivided'content $ ldivModAppliedVal)
-        (modality'mod . _leftDivided'modality $ ldivModAppliedVal)
-  if varAccessible
-        then do
-          addNewConstraint
-            (JudTypeRel
-              (eqDeg :: Degree sys _)
-              (mapCtx (\ty -> Twice2 ty ty) gamma)
-              (Twice2
-                (unVarFromCtx <$> (_val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedVal))
-                (Type ty)
-              )
-            )
-            (Just parent)
-            "Checking whether actual type equals expected type."
-        else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
+  let ldivModAppliedVal = (leftDivided'content .~ telescoped2modalQuantified d2 telescope) lookupresult
+  addNewConstraint
+    (JudModedModalityRel ModLeq
+      (duplicateCtx gamma)
+      (_modApplied'modality . _leftDivided'content $ ldivModAppliedVal)
+      (_leftDivided'modality $ ldivModAppliedVal)
+      (_leftDivided'originalMode $ ldivModAppliedVal)
+    )
+    (Just parent)
+    "Checking that variable is accessible."
+  addNewConstraint
+    (JudTypeRel
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2
+        (_val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedVal)
+        (Type ty)
+      )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
 checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminators)) result) ty = do
-  dmuElim <- newMetaModedModality (Just parent) (crispModedModality :\\ gamma) "Infer modality of smart elimination."
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dmuElim = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   tyEliminee <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-}
                   (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
@@ -705,7 +709,7 @@ checkTerm parent gamma (Var2 v) (Type ty) = do
       (duplicateCtx gamma)
       (_decl'modty . _leftDivided'content $ ldivSeg)
       (_leftDivided'modality $ ldivSeg)
-      _
+      (_leftDivided'originalMode $ ldivSeg)
     )
     (Just parent)
     "Checking that variable is accessible."
