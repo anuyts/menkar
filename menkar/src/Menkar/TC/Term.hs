@@ -184,12 +184,16 @@ checkConstructorTerm :: forall sys tc v .
     tc ()
 checkConstructorTerm parent gamma (ConsUniHS t) ty = checkUniHSConstructor parent gamma t ty
 checkConstructorTerm parent gamma (Lam binding) ty = do
-  -- CMODE
-  -- CMODTY
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dmu = _segment'modty $ binding'segment $ binding
+  addNewConstraint
+    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (Just parent)
+    "Checking the modality."
   ----------
   addNewConstraint
     (JudType
-      ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
+      (VarFromCtx <$> dmu :\\ gamma)
       (_segment'content $ binding'segment $ binding)
     )
     (Just parent)
@@ -212,16 +216,17 @@ checkConstructorTerm parent gamma (Lam binding) ty = do
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
-      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (duplicateCtx gamma)
       (Twice2
-        (Type $ Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding (binding'segment binding) $ unType codomain)
+        (hs2type $ Pi $ Binding (binding'segment binding) $ unType codomain)
         ty
       )
     )
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
-  let sigmaType = Type $ Expr2 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
+  let dmuSigma = _segment'modty $ binding'segment $ sigmaBinding
+  let sigmaType = hs2type $ Sigma sigmaBinding
   ----------
   addNewConstraint
     (JudType gamma sigmaType)
@@ -230,18 +235,15 @@ checkConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
   ----------
   addNewConstraint
     (JudTerm
-      ((_segment'modty $ binding'segment $ VarFromCtx <$> sigmaBinding) :\\ gamma)
+      (VarFromCtx <$> dmuSigma :\\ gamma)
       t1
       (_segment'content $ binding'segment $ sigmaBinding)
     )
     (Just parent)
     "Type-checking first component."
   ----------
-  let subst :: VarExt _ -> Term _ _
-      subst VarLast = t1
-      subst (VarWkn v) = Var2 v
   addNewConstraint
-    (JudTerm gamma t2 (Type $ join $ subst <$> binding'body sigmaBinding))
+    (JudTerm gamma t2 (Type $ substLast2 t1 $ binding'body sigmaBinding))
     (Just parent)
     "Type-checking second component."
   ----------
@@ -254,8 +256,6 @@ checkConstructorTerm parent gamma (Pair sigmaBinding t1 t2) ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma ConsUnit ty = do
-  -- CMODE
-  ----------
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
@@ -264,8 +264,9 @@ checkConstructorTerm parent gamma ConsUnit ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
-checkConstructorTerm parent gamma (ConsBox typeSegment t) ty = do
-  let boxType = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType typeSegment
+checkConstructorTerm parent gamma (ConsBox boxSeg t) ty = do
+  let dmuBox = _segment'modty $ boxSeg
+  let boxType = hs2type $ BoxType boxSeg
   ----------
   addNewConstraint
     (JudType gamma boxType)
@@ -274,9 +275,9 @@ checkConstructorTerm parent gamma (ConsBox typeSegment t) ty = do
   ----------
   addNewConstraint
     (JudTerm
-      ((_segment'modty $ VarFromCtx <$> typeSegment) :\\ gamma)
+      (VarFromCtx <$> dmuBox :\\ gamma)
       t
-      (_segment'content $ typeSegment)
+      (_segment'content $ boxSeg)
     )
     (Just parent)
     "Type-checking box content."
@@ -290,8 +291,6 @@ checkConstructorTerm parent gamma (ConsBox typeSegment t) ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma ConsZero ty = do
-  -- CMODE
-  ----------
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
@@ -301,8 +300,6 @@ checkConstructorTerm parent gamma ConsZero ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma (ConsSuc t) ty = do
-  -- CMODE
-  ----------
   addNewConstraint
     (JudTerm gamma t (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType))
     (Just parent)
