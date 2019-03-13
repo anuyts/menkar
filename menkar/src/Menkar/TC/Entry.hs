@@ -4,27 +4,13 @@ import Menkar.Monad.Monad
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
+import Menkar.TC.Segment
 
 import Data.Void
 import Data.Foldable
 import Data.Functor.Compose
 import Data.List (inits)
 import Control.Monad.State.Lazy
-
-checkSegment :: (MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Ctx Type sys v Void ->
-  Segment Type sys v ->
-  tc ()
-checkSegment parent gamma seg = do
-  let dmu = _segment'modty seg
-  let ty = _segment'content seg
-  -- CMODE mode/modality
-  -- CMODE plicity (instance)
-  addNewConstraint
-    (JudType (VarFromCtx <$> dmu :\\ gamma) ty)
-    (Just parent)
-    "Checking segment's type."
 
 checkTelescoped :: (MonadTC sys tc, DeBruijnLevel v) =>
   ( forall w .

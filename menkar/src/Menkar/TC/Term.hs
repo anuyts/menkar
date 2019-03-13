@@ -7,6 +7,7 @@ import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
 import Menkar.Fine.LookupQName
+import Menkar.TC.Segment
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
@@ -36,24 +37,8 @@ checkPiOrSigma parent gamma binding ty = do
            (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
            "Infer level."-}
   let currentUni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
-  ---------
-  addNewConstraint
-    (JudTypeRel
-      (eqDeg :: Degree sys _)
-      (mapCtx (\ty -> Twice2 ty ty) gamma)
-      (Twice2 currentUni ty)
-    )
-    (Just parent)
-    "Checking whether actual type equals expected type."
   ----------
-  addNewConstraint
-    (JudTerm
-      ((_segment'modty $ binding'segment $ VarFromCtx <$> binding) :\\ gamma)
-      (unType $ _segment'content $ binding'segment $ binding)
-      currentUni
-    )
-    (Just parent)
-    "Checking the domain."
+  checkSegmentUni parent gamma $ binding'segment binding
   ----------
   addNewConstraint
     (JudTerm
@@ -63,6 +48,15 @@ checkPiOrSigma parent gamma binding ty = do
     )
     (Just parent)
     "Checking the codomain."
+  ---------
+  addNewConstraint
+    (JudTypeRel
+      (eqDeg :: Degree sys _)
+      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (Twice2 currentUni ty)
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
 
 -------
 
@@ -100,7 +94,11 @@ checkUniHSConstructor :: forall sys tc v .
     Type sys v ->
     tc ()
 checkUniHSConstructor parent gamma (UniHS d {-lvl-}) ty = do
-  -- CMODE d
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  addNewConstraint
+    (JudModeRel (crispModedModality :\\ duplicateCtx gamma) d dgamma)
+    (Just parent)
+    "Checking whether actual mode equals expected mode."
   -----
   {-addNewConstraint
     (JudTerm
@@ -139,6 +137,8 @@ checkUniHSConstructor parent gamma (BoxType seg) ty = do
            (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
            "Infer level."-}
   let currentUni = Type $ Expr2 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --lvl
+  ----------
+  checkSegmentUni parent gamma seg
   ---------
   addNewConstraint
     (JudTypeRel
@@ -148,15 +148,6 @@ checkUniHSConstructor parent gamma (BoxType seg) ty = do
     )
     (Just parent)
     "Checking whether actual type equals expected type."
-  ----------
-  addNewConstraint
-    (JudTerm
-      ((_segment'modty $ VarFromCtx <$> seg) :\\ gamma)
-      (unType $ _segment'content $ seg)
-      currentUni
-    )
-    (Just parent)
-    "Checking type of the inner type."
 checkUniHSConstructor parent gamma (NatType) ty = checkUni parent gamma ty
 checkUniHSConstructor parent gamma (EqType tyAmbient tyL tyR) ty = do
   checkUni parent gamma ty
@@ -184,20 +175,10 @@ checkConstructorTerm :: forall sys tc v .
     tc ()
 checkConstructorTerm parent gamma (ConsUniHS t) ty = checkUniHSConstructor parent gamma t ty
 checkConstructorTerm parent gamma (Lam binding) ty = do
+  checkSegment parent gamma $ binding'segment binding
+  ----------
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   let dmu = _segment'modty $ binding'segment $ binding
-  addNewConstraint
-    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
-    (Just parent)
-    "Checking the modality."
-  ----------
-  addNewConstraint
-    (JudType
-      (VarFromCtx <$> dmu :\\ gamma)
-      (_segment'content $ binding'segment $ binding)
-    )
-    (Just parent)
-    "Checking the domain."
   ----------
   codomain <- newMetaType
                 (Just parent)
