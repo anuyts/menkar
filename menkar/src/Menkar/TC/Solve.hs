@@ -185,7 +185,7 @@ newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 t
 
 ------------------------------------
 
-solveMetaAgainstUniHSConstructor :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+newRelatedUniHSConstructor :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
@@ -194,7 +194,7 @@ solveMetaAgainstUniHSConstructor :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLe
   (v -> Maybe vOrig) ->
   UniHSConstructor sys v ->
   tc (UniHSConstructor sys vOrig)
-solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
+newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
   let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
   case t2 of
     UniHS d2 {-lvl2-} -> do
@@ -246,7 +246,7 @@ solveMetaAgainstConstructorTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLev
 solveMetaAgainstConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 =
   case t2 of
     ConsUniHS c2 -> do
-      c1orig <- solveMetaAgainstUniHSConstructor parent deg gammaOrig gamma subst partialInv c2
+      c1orig <- newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv c2
       return $ ConsUniHS $ c1orig
     Lam binding2 -> do
       case (metasTy1, ty1, metasTy2, ty2) of
@@ -636,7 +636,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                       (unVarFromCtx <$> ctx'mode gamma)
                       "Inferring elimination mode and modality."
         let dmu1 = subst <$> dmu1orig
-        tyEliminee1orig <- solveMetaAgainstUniHSConstructor
+        tyEliminee1orig <- newRelatedUniHSConstructor
                              parent
                              (divDeg dmu1 deg)
                              (VarFromCtx <$> dmu1orig :\\ gammaOrig)
