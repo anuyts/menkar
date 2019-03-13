@@ -197,7 +197,7 @@ checkConstructorTerm parent gamma (Lam binding) ty = do
   ----------
   codomain <- newMetaType
                 (Just parent)
-                (eqDeg :: Degree sys _)
+                --(eqDeg :: Degree sys _)
                 (gamma :.. (VarFromCtx <$> binding'segment binding))
                 "Inferring codomain."
   addNewConstraint
@@ -317,8 +317,8 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
     (Just parent)
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma ConsRefl ty = do
-  tyAmbient <- newMetaType (Just parent) (eqDeg :: Degree sys _) gamma "Inferring ambient type."
-  t <- newMetaTerm (Just parent) (eqDeg :: Degree sys _) gamma tyAmbient True "Inferring self-equand."
+  tyAmbient <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-} gamma "Inferring ambient type."
+  t <- newMetaTerm (Just parent) {-(eqDeg :: Degree sys _)-} gamma tyAmbient True "Inferring self-equand."
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
@@ -655,7 +655,8 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
         else tcFail parent $ "Object cannot be used here: modality restrictions are too strong."
 checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminators)) result) ty = do
   dmuElim <- newMetaModedModality (Just parent) (crispModedModality :\\ gamma) "Infer modality of smart elimination."
-  tyEliminee <- newMetaType (Just parent) (eqDeg :: Degree sys _) (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
+  tyEliminee <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-}
+                  (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
   -- CMODE
   addNewConstraint
