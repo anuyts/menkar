@@ -331,7 +331,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
         (_, _, _, _) -> tcBlock parent "Need to know content types of box types."
     ConsZero -> return ConsZero
     ConsSuc t2 -> do
-      let nat = Type $ Expr2 $ TermCons $ ConsUniHS $ NatType
+      let nat = hs2type $ NatType
       t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat False "Inferring predecessor."
       return $ ConsSuc t1orig
     ConsRefl -> return ConsRefl
