@@ -195,6 +195,7 @@ newRelatedUniHSConstructor :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v,
   UniHSConstructor sys v ->
   tc (UniHSConstructor sys vOrig)
 newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
+  let d      = unVarFromCtx <$> ctx'mode gamma
   let d1orig = unVarFromCtx <$> ctx'mode gammaOrig
   case t2 of
     UniHS d2 {-lvl2-} -> do
@@ -203,12 +204,12 @@ newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
                 --newMetaTermNoCheck (Just parent) topDeg gammaOrig nat "Inferring level."
       return $ UniHS d1orig --lvl1orig
     Pi binding2 -> do
-      let uni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr2 $ TermWildcard)
+      let uni = hs2type $ UniHS d --(Expr2 $ TermWildcard)
       binding1orig <-
         newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Pi $ binding1orig
     Sigma binding2 -> do
-      let uni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr2 $ TermWildcard)
+      let uni = hs2type $ UniHS d --(Expr2 $ TermWildcard)
       binding1orig <-
         newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 (VarWkn <$> uni) (VarWkn <$> uni)
       return $ Sigma $ binding1orig
