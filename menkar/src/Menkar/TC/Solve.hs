@@ -130,8 +130,13 @@ newRelatedSegment :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijn
   tc (Segment Type sys vOrig)
 newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
   let dmu2 = _decl'modty segment2
-  -- CMODE: dmu1orig <- newRelatedModedModality dmu2 
-  let dmu1orig = wildModedModality
+  dmu1orig <- newRelatedMetaModedModality
+                parent
+                (crispModedModality :\\ gammaOrig)
+                (crispModedModality :\\ gamma)
+                subst partialInv dmu2
+                (unVarFromCtx <$> ctx'mode gamma)
+                "Inferring segment modality."
   let dmu1 = subst <$> dmu1orig
   let ty2 = _decl'content segment2
   ty1orig <- newRelatedMetaType
