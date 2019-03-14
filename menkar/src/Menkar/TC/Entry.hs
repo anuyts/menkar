@@ -81,9 +81,14 @@ checkVal :: (MonadTC sys tc, DeBruijnLevel v) =>
   Val sys v ->
   tc ()
 checkVal parent gamma val = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dmu = _decl'modty val
+  addNewConstraint
+    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (Just parent)
+    "Checking modality."
   -- CMODE plicity (instance)
-  -- CMODE mode/modality
-  checkTelescoped (checkValRHS parent) parent gamma (_decl'content val)
+  checkTelescoped (checkValRHS parent) parent (VarFromCtx <$> dmu :\\ gamma) (_decl'content val)
 
 checkModule :: (MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -91,9 +96,14 @@ checkModule :: (MonadTC sys tc, DeBruijnLevel v) =>
   Module sys v ->
   tc ()
 checkModule parent gamma modul = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dmu = _decl'modty modul
+  addNewConstraint
+    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (Just parent)
+    "Checking modality."
   -- CMODE plicity (instance)
-  -- CMODE mode modality
-  checkTelescoped (checkModuleRHS parent) parent gamma (_decl'content modul)
+  checkTelescoped (checkModuleRHS parent) parent (VarFromCtx <$> dmu :\\ gamma) (_decl'content modul)
 
 checkEntry :: (MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->

@@ -746,7 +746,7 @@ checkMetaPure parent gammaOrig gamma subst ty = do
   let dmu     v = divModedModality
                     (_leftDivided'modality $ ldivSegment v)
                     (_segment'modty $ _leftDivided'content $ ldivSegment v)
-  -- CMODE require that forall u . dmuOrig u <= dmu (subst u)
+  -- require that forall u . dmuOrig u <= dmu (subst u)
   let condition :: vOrig -> tc (Maybe Bool)
       condition u = leqMod
         (subst <$> (modality'dom $ dmuOrig u))

@@ -28,8 +28,6 @@ checkPiOrSigma :: forall sys tc v .
     Type sys v ->
     tc ()
 checkPiOrSigma parent gamma binding ty = do
-  -- CMODE
-  -- CMODTY
   {-lvl <- newMetaTerm
            (Just parent)
            topDeg
@@ -164,7 +162,6 @@ checkUniHSConstructor parent gamma (EqType tyAmbient tyL tyR) ty = do
     (Just parent)
     "Checking right equand."
 --checkUniHSConstructor parent gamma t ty = _checkUniHSConstructor
--- CMODE do we allow Empty, Unit and Nat in arbitrary mode? I guess not...
 
 checkConstructorTerm :: forall sys tc v .
     (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -567,7 +564,11 @@ checkTermNV :: forall sys tc v .
     tc ()
 checkTermNV parent gamma (TermCons c) ty = checkConstructorTerm parent gamma c ty
 checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
-  -- CMODE CMODTY
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  addNewConstraint
+    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (Just parent)
+    "Checking modality."
   addNewConstraint
     (JudType ((VarFromCtx <$> dmu) :\\ gamma) (hs2type $ tyEliminee))
     (Just parent)
@@ -631,9 +632,8 @@ checkTermNV parent gamma (TermAlgorithm (AlgSmartElim eliminee (Compose eliminat
   tyEliminee <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-}
                   (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
   -----
-  -- CMODE
   addNewConstraint
-    (JudTerm gamma eliminee tyEliminee)
+    (JudTerm (VarFromCtx <$> dmuElim :\\ gamma) eliminee tyEliminee)
     (Just parent)
     "Type-check the eliminee."
   -----
