@@ -37,7 +37,7 @@ checkEtaForNormalType :: forall sys tc v .
   tc ()
 checkEtaForNormalType parent gamma t (UniHS _) = return ()
 checkEtaForNormalType parent gamma t (Pi piBinding) = do
-  let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ Pi piBinding
+  let ty = hs2type $ Pi piBinding
   body <- newMetaTerm
             (Just parent)
             --(eqDeg :: Degree sys _)
@@ -145,7 +145,7 @@ checkEta parent gamma t (Type ty) = do
           TermWildcard -> unreachable
           TermQName _ _ -> unreachable
           TermAlgorithm _ _ -> unreachable
-          TermSys whnSysTy -> checkEtaWHNSysTy parent gamma t whnSysTy
+          TermSys whnSysTy -> checkEtaWHNSysTy parent' gamma t whnSysTy
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
     _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
 
