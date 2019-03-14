@@ -30,6 +30,7 @@ class SysWHN sys => SysTC sys where
     [Int] ->
     [Int] ->
     tc (Term sys vOrig)
+  -- see Menkar.TC.Rel
   checkTermRelSysTermWHNTerm :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
@@ -41,4 +42,51 @@ class SysWHN sys => SysTC sys where
     Type sys v ->
     [Int] ->
     [Int] ->
+    tc ()
+  -- | see Menkar.TC.Judgement.checkEta.
+  -- | This will generally be unreachable, unless a system introduces types via SysTerm.
+  checkEtaWHNSysTy :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Term sys v ->
+    SysTerm sys v {-^ The type -} ->
+    tc ()
+  -- | Check @'JudMode'@.
+  checkMode :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Mode sys v ->
+    tc ()
+  -- | Check @'JudModeRel'@.
+  checkModeRel :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx (Twice2 Type) sys v Void ->
+    Mode sys v ->
+    Mode sys v ->
+    tc ()
+  checkModality :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Modality sys v ->
+    Mode sys v ->
+    Mode sys v ->
+    tc ()
+  checkModalityRel :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    ModRel ->
+    Ctx (Twice2 Type) sys v Void ->
+    Modality sys v ->
+    Modality sys v ->
+    Mode sys v ->
+    Mode sys v ->
+    tc ()
+  checkSysJudgement :: forall tc .
+    (MonadTC sys tc) =>
+    Constraint sys ->
+    SysJudgement sys ->
     tc ()

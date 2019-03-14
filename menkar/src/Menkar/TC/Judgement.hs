@@ -145,6 +145,7 @@ checkEta parent gamma t (Type ty) = do
           TermWildcard -> unreachable
           TermQName _ _ -> unreachable
           TermAlgorithm _ _ -> unreachable
+          TermSys whnSysTy -> checkEtaWHNSysTy parent gamma t whnSysTy
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
     _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
 
@@ -204,6 +205,24 @@ checkConstraint parent = case constraint'judgement parent of
   JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
 
   JudResolve gamma t ty -> todo
+
+  JudMode gamma d -> checkMode parent gamma d
+  
+  JudModeRel gamma d1 d2 -> checkModeRel parent gamma d1 d2
+  
+  JudModality gamma mu ddom dcod -> checkModality parent gamma mu ddom dcod
+  
+  JudModalityRel modrel gamma mu1 mu2 ddom dcod -> checkModalityRel parent modrel gamma mu1 mu2 ddom dcod
+
+  JudModedModality gamma (ModedModality ddom mu) dcod -> do
+    addNewConstraint (JudMode gamma ddom) (Just parent) "Checking the mode."
+    addNewConstraint (JudModality gamma mu ddom dcod) (Just parent) "Checking the modality."
+
+  JudModedModalityRel modrel gamma (ModedModality ddom1 mu1) (ModedModality ddom2 mu2) dcod -> do
+    addNewConstraint (JudModeRel gamma ddom1 ddom2) (Just parent) "Relating modes."
+    addNewConstraint (JudModalityRel modrel gamma mu1 mu2 ddom1 dcod) (Just parent) "Relating modalities."
+
+  JudSys jud -> checkSysJudgement parent jud
 
   JudSegment gamma seg -> checkSegment parent gamma seg
 
