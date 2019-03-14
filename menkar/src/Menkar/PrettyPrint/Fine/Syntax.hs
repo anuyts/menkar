@@ -589,8 +589,10 @@ instance (SysPretty sys,
          Show (Entry sys Void) where
   show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry omit ++ "\n|]"
 
+twice2pretty gamma ty1 ty2 opts =
+    ribbonEmpty \\\ [fine2pretty gamma ty1 opts, ribbon " =[]= ", fine2pretty gamma ty2 opts]
+
 instance (SysPretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Fine2Pretty sys (Twice2 ty sys) where
-  fine2pretty gamma (Twice2 ty1 ty2) opts =
-    ribbonEmpty \\\ [fine2pretty gamma ty1 opts, ribbon " =[]= ", fine2pretty gamma ty2 opts]
+  fine2pretty gamma (Twice2 ty1 ty2) opts = twice2pretty gamma ty1 ty2 opts

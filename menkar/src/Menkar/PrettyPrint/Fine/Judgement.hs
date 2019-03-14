@@ -6,10 +6,12 @@ import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
-import Menkar.Fine.Multimode
+import Menkar.System.Fine
+import Menkar.System.PrettyPrint
 import Menkar.PrettyPrint.Aux.Context
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
+import Menkar.PrettyPrint.Fine.Class
 import Menkar.PrettyPrint.Fine.Syntax
 import Menkar.PrettyPrint.Fine.Context
 
@@ -31,7 +33,7 @@ _vdash_ = [' ', vdash, ' ']
 
 jud2pretty :: forall sys .
   (Multimode sys,
-   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+   SysPretty sys) =>
   Judgement sys -> Fine2PrettyOptions sys -> PrettyTree String
 jud2pretty (JudType gamma ty) opts =
   ctx2pretty gamma opts \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty opts]
@@ -51,14 +53,16 @@ jud2pretty (JudEta gamma t ty) opts =
   ctx2pretty gamma opts \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t opts |++ " = eta-expansion",
     " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
-jud2pretty (JudSmartElim gamma dnu eliminee tyEliminee eliminators result tyResult) opts =
+jud2pretty (JudSmartElim gamma eliminee tyEliminee eliminators result tyResult) opts =
   ctx2pretty gamma opts \\\ [
     ribbon _vdash_ \\\ [
       fine2pretty (ctx2scCtx gamma) eliminee opts,
       " : " ++| fine2pretty (ctx2scCtx gamma) tyEliminee opts
       ],
     ribbon " <eliminated-with>" \\\
-      ((" " ++|) . ($ opts) . fine2pretty (ctx2scCtx gamma) <$> eliminators),
+      (eliminators <&> \(Pair2 dmu elim) ->
+          " " ++| fine2pretty (ctx2scCtx gamma) dmu opts |++ " " |+| fine2pretty (ctx2scCtx gamma) elim opts
+      ),
     ribbon (" <yields> ") \\\ [
       fine2pretty (ctx2scCtx gamma) result opts,
       " : " ++| fine2pretty (ctx2scCtx gamma) tyResult opts
@@ -69,6 +73,32 @@ jud2pretty (JudGoal gamma goalName t ty) opts =
     _vdash_ ++ "?" ++ goalName ++ " <takes-value> " ++| fine2pretty (ctx2scCtx gamma) t opts,
     " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
 jud2pretty (JudResolve gamma t ty) opts = todo
+jud2pretty (JudMode gamma d) opts =
+  ctx2pretty gamma opts \\\ [_vdash ++ " <mode> " ++| fine2pretty (ctx2scCtx gamma) d opts]
+jud2pretty (JudModeRel gamma d1 d2) opts =
+  ctx2pretty gamma opts \\\ [_vdash ++ " <mode> " ++| twice2pretty (ctx2scCtx gamma) d1 d2 opts]
+jud2pretty (JudModality gamma mu ddom dcod) opts =
+  ctx2pretty gamma opts \\\ [
+    _vdash ++ " <modty> " ++| fine2pretty (ctx2scCtx gamma) mu opts,
+    " : " ++| (ribbonEmpty \\\ [
+                  fine2pretty (ctx2scCtx gamma) ddom opts,
+                  ribbon " => ",
+                  fine2pretty (ctx2scCtx gamma) dcod opts])
+    ]
+jud2pretty (JudModalityRel modrel gamma mu1 mu2 ddom dcod) opts =
+  ctx2pretty gamma opts \\\ [
+    _vdash ++ " <modty> " ++| (ribbonEmpty \\\ [
+                  fine2pretty (ctx2scCtx gamma) mu1 opts,
+                  ribbon modrelsign,
+                  fine2pretty (ctx2scCtx gamma) mu1 opts]),
+    " : " ++| (ribbonEmpty \\\ [
+                  fine2pretty (ctx2scCtx gamma) ddom opts,
+                  ribbon " => ",
+                  fine2pretty (ctx2scCtx gamma) dcod opts])
+    ]
+  where modrelsign = case modrel of
+          ModEq -> " = "
+          ModLeq -> " =< "
 jud2pretty (JudSegment gamma seg) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <segment> " ++| fine2pretty (ctx2scCtx gamma) seg opts]
 jud2pretty (JudVal gamma val) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <val> " ++| fine2pretty (ctx2scCtx gamma) val opts]
 jud2pretty (JudModule gamma modul) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <module> " ++| fine2pretty (ctx2scCtx gamma) modul opts]
@@ -77,11 +107,11 @@ jud2pretty (JudEntry gamma entry) opts = ctx2pretty gamma opts \\\ [_vdash ++ " 
 
 jud2string :: forall sys .
   (Multimode sys,
-   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+   SysPretty sys) =>
   Judgement sys -> Fine2PrettyOptions sys -> String
 jud2string jud opts = render (jud2pretty jud opts) (_fine2pretty'renderOptions opts)
 
 instance (Multimode sys,
-          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
+          SysPretty sys)
          => Show (Judgement sys) where
   show jud = render (jud2pretty jud $? id) $? id

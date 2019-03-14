@@ -1,5 +1,8 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Menkar.PrettyPrint.Fine.Class where
 
+import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.PrettyPrint.Aux.Context
@@ -58,3 +61,6 @@ class Fine2Pretty sys t | t -> sys where
   fine2pretty :: forall v . DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> PrettyTree String
   fine2string :: forall v . DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> String
   fine2string gamma x opts = render (fine2pretty gamma x opts) $ _fine2pretty'renderOptions opts
+
+instance Fine2Pretty sys t => Fine2Pretty sys (Box1 t) where
+  fine2pretty gamma (Box1 t) opts = fine2pretty gamma t opts

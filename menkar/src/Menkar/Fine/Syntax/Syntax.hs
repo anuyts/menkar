@@ -24,9 +24,12 @@ data Twice2 t (a :: ka) (b :: kb) = Twice2 (t a b) (t a b)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Twice2 t sys)
   
-newtype Box2 t (a :: ka) (b :: kb) = Box2 {unbox3 :: t a b}
+newtype Box2 t (a :: ka) (b :: kb) = Box2 {unbox2 :: t a b}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Box2 t sys)
+newtype Box1 t (a :: ka) = Box1 {unbox1 :: t a}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Box1 t)
 
 data Unit2 (a :: ka) (b :: kb) = Unit2
   deriving (Functor, Foldable, Traversable, Generic1, Show)
