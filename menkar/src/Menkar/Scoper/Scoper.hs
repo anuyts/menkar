@@ -4,7 +4,7 @@ module Menkar.Scoper.Scoper where
 
 import Prelude hiding (pi)
 
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.Fine.Syntax
@@ -14,7 +14,7 @@ import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Control.Exception.AssertFalse
-import Menkar.Fine.Multimode
+import Menkar.System.Fine
 import Menkar.PrettyPrint.Raw.Syntax
 import Menkar.PrettyPrint.Aux.Context
 
@@ -72,10 +72,10 @@ expr3 :: (MonadScoper sys sc, DeBruijnLevel v) =>
 expr3 gamma (Raw.ExprQName rawQName) = qname gamma rawQName
 expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 expr3 gamma (Raw.ExprNatLiteral n) = natLiteral n
-expr3 gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing eqDeg gamma True Nothing "Infer explicitly omitted value."
+expr3 gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing {-eqDeg-} gamma True Nothing "Infer explicitly omitted value."
 expr3 gamma (Raw.ExprGoal str) = do
   let algGoal = AlgGoal str $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
-  result <- newMetaTermNoCheck Nothing eqDeg gamma True (Just $ algGoal) "Infer goal's value."
+  result <- newMetaTermNoCheck Nothing {-eqDeg-} gamma True (Just $ algGoal) "Infer goal's value."
   return $ Expr2 $ TermAlgorithm algGoal result
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
@@ -91,8 +91,8 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   case fineElims of
     [] -> return fineEliminee
     _  -> do
-      let alg = AlgSmartElim fineEliminee (Compose fineElims)
-      fineResult <- newMetaTermNoCheck Nothing eqDeg gamma True (Just alg) "Infer result of smart elimination."
+      let alg = AlgSmartElim fineEliminee (Compose _fineElims)
+      fineResult <- newMetaTermNoCheck Nothing {-eqDeg-} gamma True (Just alg) "Infer result of smart elimination."
       return . Expr2 $ TermAlgorithm alg fineResult
   --theMode <- mode4newImplicit gamma
   {-pushConstraint $ Constraint {
@@ -121,8 +121,8 @@ simpleLambda ::
   sc (Term sys v)
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
-    dmu <- newMetaModedModality Nothing (irrModedModality :\\ gamma) "Infer domain mode/modality."
-    fineTy <- Type <$> newMetaTermNoCheck Nothing eqDeg (VarFromCtx <$> dmu :\\ gamma) False Nothing "Infer domain."
+    dmu <- newMetaModedModality Nothing (crispModedModality :\\ gamma) "Infer domain mode/modality."
+    fineTy <- Type <$> newMetaTermNoCheck Nothing {-eqDeg-} (VarFromCtx <$> dmu :\\ gamma) False Nothing "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
       Raw.ExprImplicit -> return $ Nothing
@@ -341,10 +341,10 @@ buildDeclaration gamma generateContent partDecl = do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
-          Compose Nothing -> newMetaMode Nothing (irrModedModality :\\ gamma) "Infer mode."
+          Compose Nothing -> newMetaMode Nothing (crispModedModality :\\ gamma) "Infer mode."
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
-          Compose Nothing -> newMetaModty Nothing (irrModedModality :\\ gamma) "Infer modality."
+          Compose Nothing -> newMetaModty Nothing (crispModedModality :\\ gamma) "Infer modality."
         let plic = case _pdecl'plicity partDecl of
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit
@@ -399,7 +399,7 @@ buildSegment ::
   PartialSegment Type sys v ->
   sc [Segment Type sys v]
 buildSegment gamma partSeg = runListT $ do
-  teleSeg <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False Nothing "Infer type."
+  teleSeg <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
              in  ListT $ buildDeclaration gamma gen partSeg
   return $ flip (over decl'content) teleSeg $ \ case
     Telescoped seg -> seg
@@ -527,7 +527,7 @@ val ::
   sc (Val sys v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  [fineLHS] <- let gen gamma = Type <$> newMetaTermNoCheck Nothing eqDeg gamma False Nothing "Infer type."
+  [fineLHS] <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
                in  buildDeclaration gamma gen partialLHS
   val <- flip decl'content fineLHS $ mapTelescopedDB (
       \wkn gammadelta fineTy -> do
