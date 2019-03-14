@@ -29,9 +29,17 @@ checkSegmentRel ::
   Segment Type sys v ->
   tc ()
 checkSegmentRel parent deg gamma seg1 seg2 = do
-  -- CMOD check equality of modalities
   let d' = unVarFromCtx <$> ctx'mode gamma
   let uni = hs2type $ UniHS d' -- $ Expr2 TermWildcard
+  addNewConstraint
+    (JudModedModalityRel ModEq
+      (crispModedModality :\\ gamma)
+      (_segment'modty seg1)
+      (_segment'modty seg2)
+      d'
+    )
+    (Just parent)
+    "Relating modalities."
   addNewConstraint
     (JudTermRel
       deg
@@ -311,17 +319,16 @@ checkDependentEliminatorRel parent deg gamma dmu
       (ElimEmpty, ElimEmpty) -> return ()
       (ElimEmpty, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
       (ElimNat clauseZero1 clauseSuc1, ElimNat clauseZero2 clauseSuc2) -> do
-        let substZ :: VarExt v -> Term sys v
-            substZ VarLast = Expr2 $ TermCons $ ConsZero
-            substZ (VarWkn v) = Var2 v
+        let zero :: Term sys v
+            zero = Expr2 $ TermCons $ ConsZero
         addNewConstraint
           (JudTermRel
             deg
             gamma
             (Twice2 clauseZero1 clauseZero2)
             (Twice2
-              (swallow $ substZ <$> _namedBinding'body motive1)
-              (swallow $ substZ <$> _namedBinding'body motive2)
+              (substLast2 zero $ _namedBinding'body motive1)
+              (substLast2 zero $ _namedBinding'body motive2)
             )
           )
           (Just parent)
@@ -504,7 +511,6 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
     ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
     (_, _, _, _) -> tcBlock parent "Need to analyze function types."  
   Pair sigmaBinding1' tFst1 tSnd1 -> do
-    -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1'
     let d' = unVarFromCtx <$> ctx'mode gamma
     when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This sigma-type has no eta-rule.)"
@@ -540,7 +546,6 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
       (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
   ConsUnit -> return ()
   ConsBox boxSeg1' tUnbox1 -> do
-    -- CMOD am I dividing by the correct modality here?
     let dmu = _segment'modty $ boxSeg1'
     let d' = unVarFromCtx <$> ctx'mode gamma
     when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This box-type has no eta-rule.)"
@@ -563,10 +568,8 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
       (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
   ConsZero -> tcFail parent "False."
   ConsSuc t -> tcFail parent "False."
-  ConsRefl -> tcFail parent "False."
+  ConsRefl -> tcFail parent "False." -- Definitional UIP is not compatible with beta for J or funext.
 
-{-| Relate 2 non-variable whnormal terms.
--}
 checkTermRelWHNTerms :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
@@ -582,14 +585,23 @@ checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1
   (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
   (Expr2 (TermCons c1), _) -> checkTermRelEta parent deg          gamma  c1 t2 ty1 ty2 metasTy1 metasTy2
   (_, Expr2 (TermCons c2)) -> checkTermRelEta parent deg (flipCtx gamma) c2 t1 ty2 ty1 metasTy2 metasTy1
+  (Expr2 (TermSys syst1), _) -> checkTermRelSysTermWHNTerm parent deg          gamma  syst1 t2 ty1 ty2 metasTy1 metasTy2
+  (_, Expr2 (TermSys syst2)) -> checkTermRelSysTermWHNTerm parent deg (flipCtx gamma) syst2 t1 ty2 ty1 metasTy2 metasTy1
   (Var2 v1, Var2 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
   (Var2 v, _) -> tcFail parent "False."
   (Expr2 (TermElim dmu1 eliminee1 tyEliminee1 eliminator1), Expr2 (TermElim dmu2 eliminee2 tyEliminee2 eliminator2)) -> do
-    let tyEliminee1' = Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee1
-    let tyEliminee2' = Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee2
-    -- CMOD dmu1 == dmu2
+    let tyEliminee1' = hs2type $ tyEliminee1
+    let tyEliminee2' = hs2type $ tyEliminee2
+    addNewConstraint
+      (JudModedModalityRel ModEq
+        (crispModedModality :\\ gamma)
+        dmu1 dmu2
+        (unVarFromCtx <$> ctx'mode gamma)
+      )
+      (Just parent)
+      "Relating modalities."
     addNewConstraint
       (JudTypeRel
         (divDeg dmu1 deg)
@@ -842,7 +854,7 @@ checkTypeRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Type sys v ->
   tc ()
 checkTypeRel parent deg gamma (Type ty1) (Type ty2) =
-  let uni = Type $ Expr2 $ TermCons $ ConsUniHS $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr2 $ TermWildcard)
+  let uni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr2 $ TermWildcard)
   in  addNewConstraint
         (JudTermRel
           deg

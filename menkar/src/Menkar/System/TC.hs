@@ -30,3 +30,15 @@ class SysWHN sys => SysTC sys where
     [Int] ->
     [Int] ->
     tc (Term sys vOrig)
+  checkTermRelSysTermWHNTerm :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Degree sys v ->
+    Ctx (Twice2 Type) sys v Void ->
+    SysTerm sys v ->
+    Term sys v ->
+    Type sys v ->
+    Type sys v ->
+    [Int] ->
+    [Int] ->
+    tc ()
