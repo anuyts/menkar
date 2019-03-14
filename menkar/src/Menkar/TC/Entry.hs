@@ -1,5 +1,6 @@
 module Menkar.TC.Entry where
 
+import Menkar.System.Fine
 import Menkar.Monad.Monad
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
@@ -31,7 +32,10 @@ checkTelescoped checkRHS parent gamma (seg :|- telescopedRHS) = do
     "Checking an assumption."
   checkTelescoped checkRHS parent (gamma :.. VarFromCtx <$> seg) telescopedRHS
 checkTelescoped checkRHS parent gamma (dmu :** telescopedRHS) = do
-  -- CMODE dmu
+  addNewConstraint
+    (JudModedModality (crispModedModality :\\ gamma) dmu (unVarFromCtx <$> ctx'mode gamma))
+    (Just parent)
+    "Checking a modality (though I'm a bit surprised that I have to do this, as there is no syntax for it...)."
   checkTelescoped checkRHS parent (VarFromCtx <$> dmu :\\ gamma) telescopedRHS
 
 -------------------------
@@ -62,6 +66,12 @@ checkModuleRHS parent gamma (ModuleRHS (Compose entries)) =
   where revEntries = reverse entries
         revEntries' = fmap (fmap (fmap VarFromCtx)) revEntries
         revEntriesWithPreds = zip revEntries (inits revEntries')
+          {- [(entry1, []),
+              (entry2, [entry1]),
+              (entry3, [entry1, entry2]),
+              ...
+             ]
+          -}
 
 -------------------------
 
