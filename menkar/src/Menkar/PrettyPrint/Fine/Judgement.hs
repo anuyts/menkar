@@ -90,7 +90,7 @@ jud2pretty (JudModalityRel modrel gamma mu1 mu2 ddom dcod) opts =
     _vdash ++ " <modty> " ++| (ribbonEmpty \\\ [
                   fine2pretty (ctx2scCtx gamma) mu1 opts,
                   ribbon modrelsign,
-                  fine2pretty (ctx2scCtx gamma) mu1 opts]),
+                  fine2pretty (ctx2scCtx gamma) mu2 opts]),
     " : " ++| (ribbonEmpty \\\ [
                   fine2pretty (ctx2scCtx gamma) ddom opts,
                   ribbon " => ",
@@ -99,6 +99,31 @@ jud2pretty (JudModalityRel modrel gamma mu1 mu2 ddom dcod) opts =
   where modrelsign = case modrel of
           ModEq -> " = "
           ModLeq -> " =< "
+jud2pretty (JudModedModality gamma (ModedModality ddom mu) dcod) opts =
+  ctx2pretty gamma opts \\\ [
+    _vdash ++ " <mode;modty> " ++| fine2pretty (ctx2scCtx gamma) mu opts,
+    " : " ++| (ribbonEmpty \\\ [
+                  fine2pretty (ctx2scCtx gamma) ddom opts,
+                  ribbon " => ",
+                  fine2pretty (ctx2scCtx gamma) dcod opts])
+    ]
+jud2pretty (JudModedModalityRel modrel gamma (ModedModality ddom1 mu1) (ModedModality ddom2 mu2) dcod) opts =
+  ctx2pretty gamma opts \\\ [
+    _vdash ++ " <mode;modty> " ++| (ribbonEmpty \\\ [
+                  fine2pretty (ctx2scCtx gamma) mu1 opts,
+                  ribbon modrelsign,
+                  fine2pretty (ctx2scCtx gamma) mu2 opts]),
+    " : " ++| (ribbonEmpty \\\ [
+                  "(" ++| fine2pretty (ctx2scCtx gamma) ddom1 opts,
+                  ribbon " = ",
+                  fine2pretty (ctx2scCtx gamma) ddom2 opts |++ ")",
+                  ribbon " => ",
+                  fine2pretty (ctx2scCtx gamma) dcod opts])
+    ]
+  where modrelsign = case modrel of
+          ModEq -> " = "
+          ModLeq -> " =< "
+jud2pretty (JudSys jud) opts = sysJud2pretty jud opts
 jud2pretty (JudSegment gamma seg) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <segment> " ++| fine2pretty (ctx2scCtx gamma) seg opts]
 jud2pretty (JudVal gamma val) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <val> " ++| fine2pretty (ctx2scCtx gamma) val opts]
 jud2pretty (JudModule gamma modul) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <module> " ++| fine2pretty (ctx2scCtx gamma) modul opts]
