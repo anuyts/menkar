@@ -5,11 +5,13 @@ module Menkar.PrettyPrint.Fine.Context where
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
-import Menkar.Fine.Multimode
+import Menkar.System.Fine
 import Menkar.PrettyPrint.Aux.Context
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
+import Menkar.PrettyPrint.Fine.Class
 import Menkar.PrettyPrint.Fine.Syntax
+import Menkar.System.PrettyPrint
 
 import Text.PrettyPrint.Tree
 import Data.Omissible
@@ -29,7 +31,7 @@ import Control.Lens
 dividedCtx2pretty :: forall v w sys ty .
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
+   SysPretty sys, Fine2Pretty sys (ty sys)) =>
   Maybe (ModedModality sys v) -> ScCtx sys v Void -> Ctx ty sys w v -> Fine2PrettyOptions sys -> PrettyTree String
 dividedCtx2pretty maybeDRho delta (CtxEmpty d) opts = "{context-mode : " ++| fine2pretty delta d opts |++ "}"
 dividedCtx2pretty maybeDRho delta (gamma :.. seg) opts = haveDB gamma $
@@ -70,7 +72,7 @@ dividedCtx2pretty (Just drho) delta (dmu :\\ gamma) opts =
 ctx2pretty :: forall v sys ty .
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
+   SysPretty sys, Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v Void -> Fine2PrettyOptions sys -> PrettyTree String
 ctx2pretty gamma opts = dividedCtx2pretty maybeDRho (ctx2scCtx gamma) (externalizeCtx gamma) opts
   where maybeDRho = if _fine2pretty'explicitLeftDivision opts
@@ -80,14 +82,14 @@ ctx2pretty gamma opts = dividedCtx2pretty maybeDRho (ctx2scCtx gamma) (externali
 ctx2string :: forall v sys ty .
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
+   SysPretty sys, Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v Void -> Fine2PrettyOptions sys -> String
 ctx2string gamma opts = render (ctx2pretty gamma opts) (_fine2pretty'renderOptions opts)
 
 instance
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
+   SysPretty sys, Fine2Pretty sys (ty sys)) =>
   Show (Ctx ty sys v Void) where
   show gamma = ctx2string gamma omit
 

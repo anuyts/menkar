@@ -36,7 +36,7 @@ charYielding = '\x2198'
 
 instance (SysPretty sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         Fine2Pretty sys (ModedModality sys) where
+          Fine2Pretty sys (ModedModality sys) where
   fine2pretty gamma (ModedModality d mu) opts = ribbonEmpty \\\ [
                 "d " ++| fine2pretty gamma d opts |++ " | ",
                 "m " ++| fine2pretty gamma mu opts |++ " | "
