@@ -1,19 +1,21 @@
 module Menkar.TC.Judgement where
 
+import Menkar.System.Fine
+import Menkar.System.TC
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
-import Menkar.Fine.Multimode
 import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
 import Menkar.TC.Term
 import Menkar.TC.SmartElim
 import Menkar.TC.Rel
 import Menkar.TC.Entry
-import Menkar.Fine.WHNormalize
+import Menkar.TC.Segment
+import Menkar.WHN
 
 import Data.Void
 import Control.Lens
@@ -27,7 +29,7 @@ import Control.Monad.Writer.Lazy
 -------
 
 checkEtaForNormalType :: forall sys tc v .
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -38,7 +40,7 @@ checkEtaForNormalType parent gamma t (Pi piBinding) = do
   let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ Pi piBinding
   body <- newMetaTerm
             (Just parent)
-            (eqDeg :: Degree sys _)
+            --(eqDeg :: Degree sys _)
             (gamma :.. (VarFromCtx <$> binding'segment piBinding))
             (Type $ binding'body piBinding)
             True
@@ -59,14 +61,14 @@ checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
         let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
         tmFst <- newMetaTerm
                    (Just parent)
-                   (eqDeg :: Degree sys _)
+                   --(eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content $ binding'segment $ sigmaBinding)
                    True
                    "Infer first projection."
         tmSnd <- newMetaTerm
                    (Just parent)
-                   (eqDeg :: Degree sys _)
+                   --(eqDeg :: Degree sys _)
                    gamma
                    (Type $ substLast2 tmFst $ binding'body sigmaBinding)
                    True
@@ -99,7 +101,7 @@ checkEtaForNormalType parent gamma t (BoxType segBox) =
     let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType segBox
     tmContent <- newMetaTerm
                    (Just parent)
-                   (eqDeg :: Degree sys _)
+                   --(eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content segBox)
                    True
@@ -119,7 +121,7 @@ checkEtaForNormalType parent gamma t NatType = return ()
 checkEtaForNormalType parent gamma t (EqType _ _ _) = return ()
 
 checkEta ::
-  (MonadTC sys tc, DeBruijnLevel v) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -151,7 +153,7 @@ checkEta parent gamma t (Type ty) = do
 -------
 
 checkConstraint ::
-  (MonadTC sys tc) =>
+  (SysTC sys, MonadTC sys tc) =>
   Constraint sys -> tc ()
 checkConstraint parent = case constraint'judgement parent of
   
@@ -195,8 +197,8 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudEta gamma t tyT -> checkEta parent gamma t tyT
 
-  JudSmartElim gamma dmuElim eliminee tyEliminee eliminators result tyResult ->
-    checkSmartElim parent gamma dmuElim eliminee tyEliminee eliminators result tyResult
+  JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
+    checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
 
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
