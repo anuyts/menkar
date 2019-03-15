@@ -102,13 +102,13 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
     }-}
   --return fineResult
 
-{-| @'expr2' gamma rawExpr@ scopes @rawExpr@ to a term. -}
-expr2 ::
+{-| @'exprB' gamma rawExpr@ scopes @rawExpr@ to a term. -}
+exprB ::
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.ExprB ->
   sc (Term sys v)
-expr2 gamma (Raw.ExprElimination rawElim) = elimination gamma rawElim
+exprB gamma (Raw.ExprElimination rawElim) = elimination gamma rawElim
 
 --------------------------------------------------
 
@@ -215,8 +215,8 @@ binder ::
   sc (Term sys v)
 binder build gamma [] rawBody = expr gamma rawBody
 binder build gamma (rawArg:rawArgs) rawBody = do
-  fineArgTelescoped <- segment gamma rawArg
-  binder2 build gamma fineArgTelescoped rawArgs rawBody
+  fineArgTelescope <- segment gamma rawArg
+  binder2 build gamma fineArgTelescope rawArgs rawBody
 
 {-| @'telescopeOperation' gamma rawTheta rawOp maybeRawExprR@ scopes the Menkar expression
     @<rawTheta> <rawOp> <maybeRawExprR>@ to a term. -}
@@ -282,7 +282,7 @@ expr :: forall sys sc v .
   Raw.Expr ->
   sc (Term sys v)
 -- Operator-free expression (e.g. @5@)
-expr gamma (Raw.ExprOps (Raw.OperandExpr rawExpr) Nothing) = expr2 gamma rawExpr
+expr gamma (Raw.ExprOps (Raw.OperandExpr rawExpr) Nothing) = exprB gamma rawExpr
 -- Simple lambda (e.g. @x > f x@)
 expr gamma fullRawExpr@
              (Raw.ExprOps
@@ -298,7 +298,7 @@ expr gamma (Raw.ExprOps (Raw.OperandExpr rawExprL) (Just (rawOp, Nothing))) = do
 -- Binary operator expression (e.g. @a == .{A} b@)
 expr gamma (Raw.ExprOps (Raw.OperandExpr rawExprL) (Just (rawOp, Just rawExprR))) = do
   elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecExplicit (Raw.expr2to1 rawExprL),
-                                              Raw.ElimArg Raw.ArgSpecExplicit rawExprR])
+                                               Raw.ElimArg Raw.ArgSpecExplicit rawExprR])
 -- Naked telescope
 expr gamma fullRawExpr@(Raw.ExprOps (Raw.OperandTelescope _) Nothing) =
   scopeFail $ "Naked telescope appears as expression: " ++ Raw.unparse fullRawExpr
