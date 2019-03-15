@@ -171,7 +171,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper Trivial (TCT m) where
              $? id
            )
 
-  newMetaTermNoCheck maybeParent deg gamma etaFlag maybeAlg reason = do
+  newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason = do
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = Compose $ Var2 <$> listAll Proxy
