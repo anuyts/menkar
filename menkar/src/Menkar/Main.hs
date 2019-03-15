@@ -1,8 +1,5 @@
 module Menkar.Main where
 
-import qualified System.Environment
-import Control.Monad
-import System.IO
 import qualified Menkar.Parser as P
 import qualified Menkar.Scoper as S
 import Menkar.Monads.DTT
@@ -11,6 +8,7 @@ import Menkar.Fine
 import Menkar.Systems.Trivial.Fine
 import Menkar.Systems.Trivial.MagicContext
 import Menkar.TC
+import Menkar.Monad.Monad
 
 import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
@@ -21,6 +19,9 @@ import Text.PrettyPrint.Tree
 
 import Text.Megaparsec.Error as MP
 
+import qualified System.Environment
+import Control.Monad
+import System.IO
 import Data.IntMap.Strict hiding (filter, toList)
 import Data.Maybe hiding (mapMaybe)
 import Data.Proxy

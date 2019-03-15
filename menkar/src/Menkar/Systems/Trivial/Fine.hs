@@ -4,6 +4,7 @@ import Menkar.Fine.Syntax
 import Menkar.System.Fine
 import Menkar.System.WHN
 import Menkar.System.TC
+import Menkar.System.PrettyPrint
 import Menkar.PrettyPrint.Fine
 
 import Text.PrettyPrint.Tree
@@ -66,3 +67,9 @@ instance SysTC Trivial where
   checkModality parent gamma U1 U1 U1 = return ()
   checkModalityRel parent modrel gamma U1 U1 U1 U1 = return ()
   checkSysJudgement parent jud = absurd jud
+
+instance Fine2Pretty Trivial V1 where
+  fine2pretty gamma t opts = absurd1 t
+
+instance SysPretty Trivial where
+  sysJud2pretty jud opts = absurd jud
