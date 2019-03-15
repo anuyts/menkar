@@ -196,16 +196,29 @@ apply :: forall sys tc v .
   Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Term sys v ->
+  Maybe (ModedModality sys v)
+    {-^ The modality by which the application depends on the function (likely to be inferred.) -} ->
   Term sys v ->
-  ModedModality sys v {-^ The modality by which the application depends on the function (likely to be inferred.) -} ->
+  ModedModality sys v ->
   [Pair2 ModedModality SmartEliminator sys v] {-^ The remaining eliminators (not including app). -} ->
   Term sys v ->
   Type sys v ->
   tc ()
-apply parent gamma eliminee piBinding arg dmuInfer eliminators result tyResult = do
+apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyResult = do
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
-  let dmuArg = _segment'modty $ binding'segment $ piBinding
   let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  dmuArg <- case maybeDmuArg of
+    Nothing -> return $ _segment'modty $ binding'segment $ piBinding
+    Just dmuArg -> dmuArg <$
+      addNewConstraint
+        (JudModedModalityRel ModEq
+          (crispModedModality :\\ duplicateCtx gamma)
+          dmuArg
+          (_segment'modty $ binding'segment $ piBinding)
+          (modality'dom dmuElim')
+        )
+        (Just parent)
+        "Checking whether modality annotation on argument matches the one from the type."
   -- dmuInfer should be the identity.
   addNewConstraint
     (JudModedModalityRel ModEq
@@ -263,7 +276,7 @@ insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators resu
   let tyArg = _segment'content $ binding'segment $ piBinding
   arg <- newMetaTerm (Just parent) (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElim' :\\ gamma)
            tyArg True "Inferring implicit argument."
-  apply parent gamma eliminee piBinding arg dmuInfer eliminators result tyResult
+  apply parent gamma eliminee piBinding Nothing arg dmuInfer eliminators result tyResult
 
 elimineeMode ::
   (SysTC sys, Multimode sys, DeBruijnLevel v) =>
@@ -365,22 +378,22 @@ checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result 
     (_, Pair2 _ SmartElimDots : _) -> tcFail parent $ "Bogus elimination: `...` is not the last eliminator."
     -- Explicit application of a function: `f arg` (Apply if explicit, auto-eliminate otherwise.)
     (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
-     Pair2 dmuInfer (SmartElimArg Raw.ArgSpecExplicit arg) : eliminators') ->
+     Pair2 dmuInfer (SmartElimArg Raw.ArgSpecExplicit dmuArg arg) : eliminators') ->
       case (_segment'plicity $ binding'segment $ piBinding) of
-        Explicit -> apply parent gamma eliminee piBinding arg dmuInfer eliminators' result tyResult
+        Explicit -> apply parent gamma eliminee piBinding (Just dmuArg) arg dmuInfer eliminators' result tyResult
         _ -> autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Immediate application of a function: `f .{arg}` (Apply.)
     (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
-     Pair2 dmuInfer (SmartElimArg Raw.ArgSpecNext arg) : eliminators') ->
-      apply parent gamma eliminee piBinding arg dmuInfer eliminators' result tyResult
+     Pair2 dmuInfer (SmartElimArg Raw.ArgSpecNext dmuArg arg) : eliminators') ->
+      apply parent gamma eliminee piBinding (Just dmuArg) arg dmuInfer eliminators' result tyResult
     -- Named application of a function: `f .{a = arg}` (Apply if the name matches, auto-eliminate otherwise.)
     (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
-     Pair2 dmuInfer (SmartElimArg (Raw.ArgSpecNamed name) arg) : eliminators') ->
+     Pair2 dmuInfer (SmartElimArg (Raw.ArgSpecNamed name) dmuArg arg) : eliminators') ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
-      then apply parent gamma eliminee piBinding arg dmuInfer eliminators' result tyResult
+      then apply parent gamma eliminee piBinding (Just dmuArg) arg dmuInfer eliminators' result tyResult
       else autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Application of a non-function: `t arg`, `t .{arg}`, `t .{a = arg}` (Auto-eliminate.)
-    (_, Pair2 _ (SmartElimArg _ _) : eliminators') ->
+    (_, Pair2 _ (SmartElimArg _ _ _) : eliminators') ->
       autoEliminate parent gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Named projection of a pair: `pair .componentName`
     (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))),
