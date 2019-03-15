@@ -27,13 +27,14 @@ import Data.Functor.Identity
 import Data.Coerce
 import Control.Lens
 import Data.Number.Nat
+import Data.List
 
 ---------------------------
 
 {- SEARCH FOR TODOS -}
 
 {-| @'eliminator' gamma rawElim@ scopes @rawElim@ to a fine smart eliminator. -}
-eliminator ::
+eliminator :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Eliminator ->
@@ -41,8 +42,9 @@ eliminator ::
 eliminator gamma (Raw.ElimDots) = return SmartElimDots
 --eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
-  fineExpr <- expr gamma rawExpr
-  return $ SmartElimArg argSpec fineExpr
+  dmu <- newMetaModedModality Nothing (crispModedModality :\\ gamma) "Inferring modality of argument."
+  fineExpr <- expr (VarFromCtx <$> dmu :\\ gamma) rawExpr
+  return $ SmartElimArg argSpec dmu fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
 natLiteral ::
@@ -79,19 +81,23 @@ expr3 gamma (Raw.ExprGoal str) = do
   return $ Expr2 $ TermAlgorithm algGoal result
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
-elimination ::
+elimination :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Elimination ->
   sc (Term sys v)
 elimination gamma (Raw.Elimination rawEliminee rawElims) = do
-  fineEliminee <- expr3 gamma rawEliminee -- CMOD: Fix context
+  dmus <- forM rawElims $ \_ -> newMetaModedModality Nothing (crispModedModality :\\ gamma) "Inferring elimination modality."
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dmuTotal : dmuTails = flip concatModedModalityDiagrammatically dgamma <$> tails dmus
+  fineEliminee <- expr3 (VarFromCtx <$> dmuTotal :\\ gamma) rawEliminee
   --fineTy <- type4newImplicit gamma
-  fineElims <- sequenceA (eliminator gamma <$> rawElims) -- CMOD: Fix modalities
+  fineElims <- forM (zip3 dmus dmuTails rawElims) $
+    \ (dmu, dmuTail, rawElim) -> Pair2 dmu <$> eliminator (VarFromCtx <$> dmuTail :\\ gamma) rawElim
   case fineElims of
     [] -> return fineEliminee
     _  -> do
-      let alg = AlgSmartElim fineEliminee (Compose _fineElims)
+      let alg = AlgSmartElim fineEliminee (Compose fineElims)
       fineResult <- newMetaTermNoCheck Nothing {-eqDeg-} gamma True (Just alg) "Infer result of smart elimination."
       return . Expr2 $ TermAlgorithm alg fineResult
   --theMode <- mode4newImplicit gamma

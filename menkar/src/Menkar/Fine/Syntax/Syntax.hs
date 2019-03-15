@@ -255,7 +255,7 @@ deriving instance (SysSyntax (Term sys) sys) =>
 data SmartEliminator (sys :: KSys) (v :: *) =
   SmartElimDots |
   --SmartElimEnd Raw.ArgSpec |
-  SmartElimArg Raw.ArgSpec (Term sys v) |
+  SmartElimArg Raw.ArgSpec (ModedModality sys v) (Term sys v) |
   SmartElimProj Raw.ProjSpec
 deriving instance (SysTrav sys) => Functor (SmartEliminator sys)
 deriving instance (SysTrav sys) => Foldable (SmartEliminator sys)
