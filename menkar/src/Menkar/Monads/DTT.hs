@@ -1,13 +1,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, NoDeriveAnyClass, UndecidableInstances #-}
 
-module Menkar.TC.Monad.DTT where
+module Menkar.Monads.DTT where
 
 import Menkar.Basic
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Systems.Trivial.Fine
-import Menkar.TC.Monad
-import Menkar.TC.Inference
+import Menkar.Monad.Monad
+import Menkar.TC.Judgement
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.PrettyPrint.Fine
@@ -307,7 +307,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC Trivial (TCT m) where
   
   tcFail parent reason = throwError $ TCErrorTCFail (TCReport parent reason)
 
-  leqMod U1 U1 = return True
+  --leqMod U1 U1 = return True
 
 {-
   selfcontained parent ma = addTask $ selfcontainedNoSched parent $ do

@@ -2,13 +2,13 @@
 
 module Menkar.Monads.ScoperOnly where
 
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
 import Menkar.Basic.Context
 import Menkar.PrettyPrint.Aux.Context
 import Menkar.Fine.Context
-import Menkar.Fine.Multimode
+import Menkar.System.Fine
 import Menkar.PrettyPrint.Fine
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw

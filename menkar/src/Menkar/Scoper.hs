@@ -1,7 +1,7 @@
 module Menkar.Scoper (
-  module Menkar.TC.Monad,
+  module Menkar.Monad.Monad,
   module Menkar.Scoper.Scoper
   ) where
 
-import Menkar.TC.Monad
+import Menkar.Monad.Monad
 import Menkar.Scoper.Scoper

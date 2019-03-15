@@ -5,7 +5,7 @@ import Control.Monad
 import System.IO
 import qualified Menkar.Parser as P
 import qualified Menkar.Scoper as S
-import Menkar.TC.Monad.DTT
+import Menkar.Monads.DTT
 import qualified Menkar.Raw as Raw
 import Menkar.Fine
 import Menkar.Systems.Trivial.Fine
