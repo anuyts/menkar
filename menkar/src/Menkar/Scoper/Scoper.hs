@@ -47,14 +47,14 @@ eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
   return $ SmartElimArg argSpec dmu fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
-natLiteral ::
+natLiteral :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Nat -> sc (Term sys v)
 natLiteral n
   | n == 0 = return $ Expr2 $ TermCons $ ConsZero
   | otherwise = Expr2 . TermCons . ConsSuc <$> natLiteral (n - 1)
 
-qname ::
+qname :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.QName ->
@@ -66,16 +66,17 @@ qname gamma rawQName =
        LookupResultVar v -> return $ Var2 (unVarFromCtx v)
        LookupResultVal ldivTelescopedVal -> return $ Expr2 $ TermQName rawQName $ unVarFromCtx <$> ldivTelescopedVal
   
-{-| @'expr3' gamma rawExpr@ scopes @rawExpr@ to a term. -}
-expr3 :: (MonadScoper sys sc, DeBruijnLevel v) =>
+{-| @'exprC' gamma rawExpr@ scopes @rawExpr@ to a term. -}
+exprC :: forall sys sc v .
+  (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.ExprC ->
   sc (Term sys v)
-expr3 gamma (Raw.ExprQName rawQName) = qname gamma rawQName
-expr3 gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
-expr3 gamma (Raw.ExprNatLiteral n) = natLiteral n
-expr3 gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing {-eqDeg-} gamma True Nothing "Infer explicitly omitted value."
-expr3 gamma (Raw.ExprGoal str) = do
+exprC gamma (Raw.ExprQName rawQName) = qname gamma rawQName
+exprC gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
+exprC gamma (Raw.ExprNatLiteral n) = natLiteral n
+exprC gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing {-eqDeg-} gamma True Nothing "Infer explicitly omitted value."
+exprC gamma (Raw.ExprGoal str) = do
   let algGoal = AlgGoal str $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
   result <- newMetaTermNoCheck Nothing {-eqDeg-} gamma True (Just $ algGoal) "Infer goal's value."
   return $ Expr2 $ TermAlgorithm algGoal result
@@ -90,7 +91,7 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   dmus <- forM rawElims $ \_ -> newMetaModedModality Nothing (crispModedModality :\\ gamma) "Inferring elimination modality."
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   let dmuTotal : dmuTails = flip concatModedModalityDiagrammatically dgamma <$> tails dmus
-  fineEliminee <- expr3 (VarFromCtx <$> dmuTotal :\\ gamma) rawEliminee
+  fineEliminee <- exprC (VarFromCtx <$> dmuTotal :\\ gamma) rawEliminee
   --fineTy <- type4newImplicit gamma
   fineElims <- forM (zip3 dmus dmuTails rawElims) $
     \ (dmu, dmuTail, rawElim) -> Pair2 dmu <$> eliminator (VarFromCtx <$> dmuTail :\\ gamma) rawElim
@@ -109,7 +110,7 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   --return fineResult
 
 {-| @'exprB' gamma rawExpr@ scopes @rawExpr@ to a term. -}
-exprB ::
+exprB :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.ExprB ->
