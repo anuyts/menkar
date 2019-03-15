@@ -69,7 +69,7 @@ unbox parent gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuBox :: ModedModality sys v = _segment'modty boxSeg
   let dmuUnbox :: ModedModality sys v = modedApproxLeftAdjointProj dmuBox (modality'dom dmuInfer)
-  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   -- CMODE : check if you can unbox (You can always.)
   addNewConstraint
     (JudModalityRel ModEq
@@ -77,7 +77,7 @@ unbox parent gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
       (modality'mod dmuUnbox)
       (modality'mod dmuInfer)
       (modality'dom dmuInfer)
-      (modality'dom dmuElim')
+      (modality'dom dmuElimTotal)
     )
     (Just parent)
     "Checking whether actual modality equals expected modality."
@@ -113,14 +113,14 @@ projFst parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma (modality'dom dmuInfer)
-  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   addNewConstraint
     (JudModalityRel ModEq
       (crispModedModality :\\ duplicateCtx gamma)
       (modality'mod dmuProjFst)
       (modality'mod dmuInfer)
       (modality'dom dmuInfer)
-      (modality'dom dmuElim')
+      (modality'dom dmuElimTotal)
     )
     (Just parent)
     "Checking whether actual modality equals expected modality."
@@ -156,7 +156,7 @@ projSnd parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma (modality'dom dmuInfer)
-  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   let tmFst = (Expr2 $ TermElim
                 (dmuProjFst)
                 eliminee
@@ -172,9 +172,9 @@ projSnd parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
   addNewConstraint
     (JudModedModalityRel ModEq
       (crispModedModality :\\ duplicateCtx gamma)
-      (idModedModality $ modality'dom dmuElim')
+      (idModedModality $ modality'dom dmuElimTotal)
       (dmuInfer)
-      (modality'dom dmuElim')
+      (modality'dom dmuElimTotal)
     )
     (Just parent)
     "Checking whether actual modality equals expected modality."
@@ -206,7 +206,7 @@ apply :: forall sys tc v .
   tc ()
 apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyResult = do
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
-  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   dmuArg <- case maybeDmuArg of
     Nothing -> return $ _segment'modty $ binding'segment $ piBinding
     Just dmuArg -> dmuArg <$
@@ -215,7 +215,7 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
           (crispModedModality :\\ duplicateCtx gamma)
           dmuArg
           (_segment'modty $ binding'segment $ piBinding)
-          (modality'dom dmuElim')
+          (modality'dom dmuElimTotal)
         )
         (Just parent)
         "Checking whether modality annotation on argument matches the one from the type."
@@ -223,9 +223,9 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
   addNewConstraint
     (JudModedModalityRel ModEq
       (crispModedModality :\\ duplicateCtx gamma)
-      (idModedModality $ modality'dom dmuElim')
+      (idModedModality $ modality'dom dmuElimTotal)
       (dmuInfer)
-      (modality'dom dmuElim')
+      (modality'dom dmuElimTotal)
     )
     (Just parent)
     "Checking whether actual modality equals expected modality."
@@ -235,7 +235,7 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
   -}
   addNewConstraint
     (JudTerm
-      (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElim' :\\ gamma)
+      (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElimTotal :\\ gamma)
       arg
       (_decl'content $ binding'segment $ piBinding)
     )
@@ -272,9 +272,9 @@ insertImplicitArgument :: forall sys tc v .
 insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators result tyResult = do
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuArg = _segment'modty $ binding'segment $ piBinding
-  let dmuElim' = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   let tyArg = _segment'content $ binding'segment $ piBinding
-  arg <- newMetaTerm (Just parent) (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElim' :\\ gamma)
+  arg <- newMetaTerm (Just parent) (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElimTotal :\\ gamma)
            tyArg True "Inferring implicit argument."
   apply parent gamma eliminee piBinding Nothing arg dmuInfer eliminators result tyResult
 
@@ -453,9 +453,12 @@ checkSmartElim parent gamma eliminee tyEliminee [] result tyResult =
   checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
 checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResult = do
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
-  let dmuTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  let dmuElimTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   (whnTyEliminee, metasTyEliminee) <-
-    runWriterT $ whnormalize parent (VarFromCtx <$> dmuTotal :\\ gamma) tyEliminee "Weak-head-normalizing type of eliminee."
+    runWriterT $ whnormalize parent
+      (VarFromCtx <$> dmuElimTotal :\\ gamma)
+      tyEliminee
+      "Weak-head-normalizing type of eliminee."
   case metasTyEliminee of
     -- the type weak-head-normalizes
     [] -> do
