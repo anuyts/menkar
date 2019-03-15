@@ -276,7 +276,7 @@ exprToTree gamma _ = _exprToTree
 {- YOU NEED TO RESOLVE FIXITY HERE -}
 {-| @'expr' gamma rawExpr@ scopes @rawExpr@ to a term.
     For now, every operator is right associative with equal precedence. -}
-expr ::
+expr :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Expr ->
@@ -309,7 +309,7 @@ expr gamma (Raw.ExprOps (Raw.OperandTelescope rawTheta) (Just (rawOp, maybeRawEx
 ------------------------------------------------
 
 {-| @'annotation' gamma rawAnnot@ scopes @rawAnnot@ to an annotation. -}
-annotation ::
+annotation :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Annotation ->
@@ -329,7 +329,7 @@ type instance ScopeDeclSort Raw.DeclSortSegment = DeclSortSegment
      For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
-buildDeclaration ::
+buildDeclaration :: forall sys sc v rawDeclSort fineDeclSort content .
   (MonadScoper sys sc, DeBruijnLevel v,
    ScopeDeclSort rawDeclSort ~ fineDeclSort, Functor (Type sys)) =>
   Ctx Type sys v Void ->
@@ -393,21 +393,23 @@ buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTeles
      For now, arguments written between the same accolads, are required to have the same type.
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
-buildSegment :: 
+buildSegment :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
-  PartialSegment Type sys v ->
+  PartialSegment Type sys v -> -- ~ TelescopedPartialDeclaration Raw.DeclSortSegment Type Type sys v
   sc [Segment Type sys v]
-buildSegment gamma partSeg = runListT $ do
-  teleSeg <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
-             in  ListT $ buildDeclaration gamma gen partSeg
-  return $ flip (over decl'content) teleSeg $ \ case
+buildSegment gamma partSeg = do
+  teleSegs :: [Segment (Telescoped Type Type) sys v]
+              -- ~ [Declaration DeclSortSegment (Telescoped Type Type) sys v]
+           <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
+              in  buildDeclaration gamma gen partSeg
+  return $ teleSegs <&> decl'content %~ \ case
     Telescoped seg -> seg
     (seg' :|- seg) -> unreachable
     (mu :** seg) -> unreachable
     
 {-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ to a partial telescoped declaration. -}
-partialTelescopedDeclaration ::
+partialTelescopedDeclaration :: forall sys sc v rawDeclSort .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration rawDeclSort ->
@@ -450,16 +452,19 @@ partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclarat
   return ()
 
 {-| @'partialSegment' gamma rawSeg@ scopes @rawSeg@ to a partial segment. -}
-partialSegment ::
+partialSegment :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration Raw.DeclSortSegment ->
   --sc [Segment Type sys v]
   sc (PartialSegment Type sys v)
 partialSegment gamma rawSeg = do
-  telescopedPartSeg <- partialTelescopedDeclaration gamma rawSeg
+  telescopedPartSeg :: PartialSegment Type sys v
+    <- partialTelescopedDeclaration gamma rawSeg
   case _pdecl'content telescopedPartSeg of
-    Telescoped (Maybe2 ty) -> flip pdecl'content telescopedPartSeg $ \_ -> return $ Telescoped $ Maybe2 ty
+    Telescoped (Maybe2 ty) -> return telescopedPartSeg
+      --old code, but it does nothing:
+      --flip pdecl'content telescopedPartSeg $ \_ -> return $ Telescoped $ Maybe2 ty
     _ -> unreachable -- nested segments encountered
 
 {-
@@ -469,7 +474,7 @@ partialSegment gamma rawSeg = do
 -}
 
 {-| Chain a list of fine segments to a fine telescope; while avoiding shadowing. -}
-segments2telescoped :: --MonadScoper sys sc =>
+segments2telescoped :: forall sys sc v .
   (MonadScoper sys sc, SysTrav sys) =>
   Ctx Type sys v Void ->
   [Segment Type sys v] ->
@@ -477,12 +482,14 @@ segments2telescoped :: --MonadScoper sys sc =>
 segments2telescoped gamma [] =
   return $ Telescoped Unit2
 segments2telescoped gamma (fineSeg:fineSegs) = do
+  -- Prevent shadowing:
   let DeclNameSegment maybeNewName = _decl'name fineSeg
   case maybeNewName of
     Nothing -> return ()
     Just newName -> case lookupQName gamma (Raw.Qualified [] newName) of
       LookupResultNothing -> return ()
       _ -> scopeFail $ "Shadowing is not allowed in variable names; already in scope: " ++ unparse newName
+  -- Actual action:
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
 segment ::
@@ -495,7 +502,7 @@ segment gamma (Raw.Segment rawDecl) = do
   segments2telescoped gamma =<< buildSegment gamma partialSeg
 
 {-| scope a partly fine, partly raw telescope to a fine telescope. -}
-telescope2 ::
+telescope2 :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Telescoped Type Unit2 sys v ->
@@ -506,7 +513,7 @@ telescope2 gamma (fineSeg :|- fineSegs) rawTele =
   (fineSeg :|-) <$> telescope2 (gamma :.. (VarFromCtx <$> fineSeg)) fineSegs rawTele
 telescope2 gamma (mu :** fineSegs) rawTele = unreachable
 
-telescope ::
+telescope :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Telescope ->
@@ -519,17 +526,20 @@ telescope gamma (Raw.Telescope (rawSeg : rawSegs)) = do
 ----------------------------------------------------------
 
 {-| Scope a raw LHS and a raw value RHS to a value, or fail. -}
-val ::
+val :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration Raw.DeclSortVal ->
   Raw.RHS Raw.DeclSortVal ->
   sc (Val sys v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
-  partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  [fineLHS] <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
+  partialLHS :: TelescopedPartialDeclaration Raw.DeclSortVal Type Type sys v
+    <- partialTelescopedDeclaration gamma rawLHS
+  [fineLHS] :: [Declaration DeclSortVal (Telescoped Type Type) sys v]
+            <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
                in  buildDeclaration gamma gen partialLHS
-  val <- flip decl'content fineLHS $ mapTelescopedDB (
+  val :: Val sys v -- ~ Declaration DeclSortVal (Telescoped Type ValRHS) sys v
+    <- flip decl'content fineLHS $ mapTelescopedDB (
       \wkn gammadelta fineTy -> do
         fineTm <- expr gammadelta rawExpr
         return $ ValRHS fineTm fineTy
@@ -539,7 +549,7 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
     _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ unparse (_val'name val)
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
-entryInModule ::
+entryInModule :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.AnyEntry ->
@@ -555,35 +565,46 @@ entryInModule gamma rawEntry fineModule = do
   return $ addToModule fineEntry fineModule
 
 {-| @'entriesInModule' gamma fineModule rawEntry@ scopes @rawEntries@ as part of the module @fineModule@ -}
-entriesInModule ::
+entriesInModule :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   [Raw.AnyEntry] ->
   ModuleRHS sys v ->
   sc (ModuleRHS sys v)
 entriesInModule gamma rawEntries fineModule = foldl (>>=) (return fineModule) (entryInModule gamma <$> rawEntries)
+{- entriesInModule gamma [rawEntry1, rawEntry2] fineModule
+   = fold (>>=) (return fineModule) [\fineModule' -> entryInModule gamma rawEntry1 fineModule',
+                                     \fineModule' -> entryInModule gamma rawEntry2 fineModule']
+   = do
+       fm1 <- return fineModule
+       fm2 <- entryInModule gamma rawEntry1 fm1
+       entryInModule gamma rawEntry2 fm2
+-}
 
 {-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
-modul ::
+modul :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration (Raw.DeclSortModule False) ->
   Raw.RHS (Raw.DeclSortModule False) ->
   sc (Module sys v)
 modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
-  partialLHS <- partialTelescopedDeclaration gamma rawLHS
-  partialLHSUntyped <- flip pdecl'content partialLHS $ mapTelescopedDB (
+  partialLHS :: TelescopedPartialDeclaration (Raw.DeclSortModule False) Type Type sys v
+    <- partialTelescopedDeclaration gamma rawLHS
+  partialLHSUntyped :: TelescopedPartialDeclaration (Raw.DeclSortModule False) Type Unit2 sys v
+    <- flip pdecl'content partialLHS $ mapTelescopedDB (
       \wkn gammadelta (Maybe2 maybeFineTy) -> case maybeFineTy of
         Compose Nothing -> return $ Maybe2 $ Compose Nothing
         Compose (Just fineTy) -> scopeFail $ "Modules do not have a type: " ++ Raw.unparse rawLHS
     ) gamma
-  [fineLHS] <- buildDeclaration gamma (\gammadelta -> return Unit2) partialLHSUntyped
+  [fineLHS] :: [Declaration DeclSortModule (Telescoped Type Unit2) sys v]
+    <- buildDeclaration gamma (\gammadelta -> return Unit2) partialLHSUntyped
   flip decl'content fineLHS $ mapTelescopedDB (
       \wkn gammadelta Unit2 -> entriesInModule gammadelta rawEntries newModule
     ) gamma
 --modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
-entry ::
+entry :: forall sys sc v rawDeclSort .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Entry rawDeclSort ->
@@ -592,21 +613,23 @@ entry gamma (Raw.EntryLR Raw.HeaderVal rawLHS rawRHS) = EntryVal <$> val gamma r
 entry gamma (Raw.EntryLR Raw.HeaderModule rawLHS rawRHS) = EntryModule <$> modul gamma rawLHS rawRHS
 entry gamma rawEntry = scopeFail $ "Nonsensical or unsupported entry: " ++ Raw.unparse rawEntry
 
-anyEntry ::
+anyEntry :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.AnyEntry ->
   sc (Entry sys v)
 anyEntry gamma (Raw.AnyEntry rawEntry) = entry gamma rawEntry
 
-file ::
+file :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.File ->
   sc (Entry sys v)
 file gamma rawFile = entry gamma (Raw.file2nestedModules rawFile)
 
-bulk ::
+{-| Takes a bunch of raw entries and scopes them in a new module called @"Root"@.
+-}
+bulk :: forall sys sc v .
   (MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   [Raw.AnyEntry] ->
@@ -616,7 +639,7 @@ bulk gamma rawEntries = do
           []
           (Raw.DeclNamesModule "Root")
           (Raw.Telescope [])
-          Raw.DeclContentEmpty
+          Raw.DeclContentEmpty -- modules have no type
     let rawModuleRHS = Raw.RHSModule $ rawEntries
     let rawModule = Raw.EntryLR Raw.HeaderModule rawModuleLHS rawModuleRHS
     entry gamma rawModule
