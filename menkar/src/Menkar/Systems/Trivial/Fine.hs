@@ -39,5 +39,5 @@ trivModedModality = ModedModality U1 U1
 
 instance Degrees Trivial where
   eqDeg = U1
-  topDeg = Nothing
+  maybeTopDeg = Nothing
   divDeg (ModedModality U1 U1) U1 = U1

@@ -37,4 +37,6 @@ class SysSyntax (Term sys) sys => SysWHN sys where
   isTopDeg :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Mode sys v -> Degree sys v -> tc (Maybe Bool)
-  isTopDeg d deg = leqDeg d topDeg deg
+  isTopDeg d deg = case maybeTopDeg of
+    Nothing -> return $ Just False
+    Just topDeg -> leqDeg d topDeg deg
