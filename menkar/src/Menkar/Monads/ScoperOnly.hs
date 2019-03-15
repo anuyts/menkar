@@ -1,6 +1,6 @@
 {-# LANGUAGE NoDeriveAnyClass, GeneralizedNewtypeDeriving #-}
 
-module Menkar.Scoper.Monad.Simple where
+module Menkar.Monads.ScoperOnly where
 
 import Menkar.TC.Monad
 import Menkar.Fine.Syntax
