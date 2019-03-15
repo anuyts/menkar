@@ -2,6 +2,29 @@
 Please add changes in chronological order: newest first.
 
 ## Unreleased changes
+*  Fixed pieces of code that are incorrect for non-trivial systems.
+
+*  Major refactoring. Project is now organised two-dimensionally.
+
+   One dimension is about processing programs:
+
+   * Basic: things common to raw and fine syntax,
+   * Parser: from strings to raw syntax,
+   * Raw: raw syntax,
+   * Scoper: from raw syntax to fine syntax,
+   * Fine: fine syntax,
+   * WHN: weak head normalization,
+   * TC: type-checking.
+
+   There will be increasingly complex monads for scoping, whnormalization, and type-checking.
+
+   The other dimension is about parametrizing the implementation of the above parts:
+   
+   * Menkar: the core implementation, parametrized by a system and a monad,
+   * Menkar.Monad: the specification of the monad typeclasses for scoping, whnormalizing and type-checking,
+   * Menkar.Monads: implementations of the monad typeclasses,
+   * Menkar.System: the specification of the system typeclasses,
+   * Menkar.Systems: implementations of the system typeclasses.
 
 #### v0.101.1: Printing options
 * Add options to prettyprinting (mostly available from command line):
