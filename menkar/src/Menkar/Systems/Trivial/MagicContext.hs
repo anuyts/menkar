@@ -7,7 +7,7 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.Judgement
 --import Menkar.Fine.Multimode
-import Menkar.Systems.Trivial.Fine
+import Menkar.Systems.Trivial.Trivial
 import Menkar.Basic.Context
 
 import Control.Exception.AssertFalse

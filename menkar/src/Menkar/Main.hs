@@ -5,7 +5,7 @@ import qualified Menkar.Scoper as S
 import Menkar.Monads.DTT
 import qualified Menkar.Raw as Raw
 import Menkar.Fine
-import Menkar.Systems.Trivial.Fine
+import Menkar.Systems.Trivial.Trivial
 import Menkar.Systems.Trivial.MagicContext
 import Menkar.TC
 import Menkar.Monad.Monad

@@ -5,7 +5,7 @@ module Menkar.Monads.DTT where
 import Menkar.Basic
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
-import Menkar.Systems.Trivial.Fine
+import Menkar.Systems.Trivial.Trivial
 import Menkar.Monad.Monad
 import Menkar.TC.Judgement
 import qualified Menkar.Raw as Raw

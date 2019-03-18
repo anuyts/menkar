@@ -1,4 +1,4 @@
-module Menkar.Systems.Trivial.Fine where
+module Menkar.Systems.Trivial.Trivial where
 
 import Menkar.Fine.Syntax
 import Menkar.System.Fine
