@@ -205,6 +205,32 @@ checkConstraintTC :: (Monad m) => Constraint Trivial -> TCT m ()
 checkConstraintTC c = catchBlocks $ do
   checkConstraint c
   commitTasks
+
+instance {-# OVERLAPPING #-} (Monad m) => MonadWHN Trivial (TCT m) where
+
+  awaitMeta parent reasonAwait meta depcies = do
+    maybeMetaInfo <- use $ tcState'metaMap . at meta
+    case maybeMetaInfo of
+      Nothing -> unreachable
+      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reasonMeta maybeSolution)) -> do
+        case maybeSolution of
+          Right (SolutionInfo parent solution) -> do
+            return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
+          Left blocks -> shiftDC $ \ k -> do
+            -- Try to continue with an unsolved meta
+            k Nothing `catchError` \case
+              TCErrorBlocked blockParent blockReason blocks -> do
+                -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
+                -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
+                let blocks' = Prelude.filter (\(blockMeta, blockInfo) -> blockMeta /= meta) blocks
+                let blockInfo = BlockInfo blockParent blockReason reasonAwait $
+                      k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
+                -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
+                throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks')
+                -- throwError $ TCErrorBlocked blockParent blockReason (blocks ++ [(meta, ForSomeDeBruijnLevel blockInfo)])
+                --tcState'metaMap . at meta .=
+                --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
+              e -> throwError e
   
 instance {-# OVERLAPPING #-} (Monad m) => MonadTC Trivial (TCT m) where
   
@@ -276,30 +302,6 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC Trivial (TCT m) where
             tcState'metaMap . at meta .=
               Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 -}
-
-  awaitMeta parent reasonAwait meta depcies = do
-    maybeMetaInfo <- use $ tcState'metaMap . at meta
-    case maybeMetaInfo of
-      Nothing -> unreachable
-      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reasonMeta maybeSolution)) -> do
-        case maybeSolution of
-          Right (SolutionInfo parent solution) -> do
-            return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
-          Left blocks -> shiftDC $ \ k -> do
-            -- Try to continue with an unsolved meta
-            k Nothing `catchError` \case
-              TCErrorBlocked blockParent blockReason blocks -> do
-                -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
-                -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
-                let blocks' = Prelude.filter (\(blockMeta, blockInfo) -> blockMeta /= meta) blocks
-                let blockInfo = BlockInfo blockParent blockReason reasonAwait $
-                      k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
-                -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
-                throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks')
-                -- throwError $ TCErrorBlocked blockParent blockReason (blocks ++ [(meta, ForSomeDeBruijnLevel blockInfo)])
-                --tcState'metaMap . at meta .=
-                --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
-              e -> throwError e
   
   tcBlock parent reason = throwError $ TCErrorBlocked parent reason []
 

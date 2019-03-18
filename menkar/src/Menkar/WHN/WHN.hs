@@ -24,7 +24,7 @@ import Data.Monoid
    * For non-projectible pairs, there was no eta-rule anyway.
    In summary, we don't eta-expand.
 -}
-whnormalizeElim :: (SysWHN sys, MonadTC sys tc) =>
+whnormalizeElim :: (SysWHN sys, MonadWHN sys whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   ModedModality sys v {-^ how eliminee is used -} ->
@@ -32,7 +32,7 @@ whnormalizeElim :: (SysWHN sys, MonadTC sys tc) =>
   UniHSConstructor sys v {-^ eliminee's type -} ->
   Eliminator sys v ->
   String ->
-  WriterT [Int] tc (Term sys v)
+  WriterT [Int] whn (Term sys v)
 -- careful with glue/weld!
 whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
   -- WHNormalize the eliminee
@@ -149,12 +149,12 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
           (ConsRefl, _) -> return termProblem
       (Expr2 _) -> unreachable
 
-whnormalizeNV :: (SysWHN sys, MonadTC sys tc) =>
+whnormalizeNV :: (SysWHN sys, MonadWHN sys whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   TermNV sys v ->
   String ->
-  WriterT [Int] tc (Term sys v)
+  WriterT [Int] whn (Term sys v)
 -- Constructor: return it
 whnormalizeNV parent gamma t@(TermCons _) reason = return $ Expr2 $ t   -- Mind glue and weld!
 -- Eliminator: call whnormalizeElim
@@ -190,12 +190,12 @@ whnormalizeNV parent gamma t@(TermProblem _) reason = return $ Expr2 t
      or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
      writes the indices of all metavariables that could (each in itself) unblock the situation.
 -}
-whnormalize :: (SysWHN sys, MonadTC sys tc) =>
+whnormalize :: (SysWHN sys, MonadWHN sys whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
   String ->
-  WriterT [Int] tc (Term sys v)
+  WriterT [Int] whn (Term sys v)
 -- Variable: return it
 whnormalize parent gamma (Var2 v) reason = return $ Var2 v
 -- Not a variable: call whnormalizeNV

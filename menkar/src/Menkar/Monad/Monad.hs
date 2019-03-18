@@ -62,7 +62,21 @@ instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper s
 
 class (
     Degrees sys,
-    MonadScoper sys tc
+    MonadScoper sys whn
+  ) => MonadWHN sys whn | whn -> sys where
+  {-| Returns the meta's solution if the meta has been solved.
+      Otherwise, returns @Nothing@. Then you have two options:
+      1) Deal with it.
+      2) Block. In this case, the continuation as of this point is saved as being blocked on this meta.
+         (If other earlier or future metas were also unsuccessfully queried, then the continuations from those points
+         are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
+         run with the soluiton.
+      It is an error to await the same meta twice. -}
+  awaitMeta :: Constraint sys -> String -> Int -> [Term sys v] -> whn (Maybe (Term sys v))
+
+class (
+    Degrees sys,
+    MonadWHN sys tc
   ) => MonadTC sys tc | tc -> sys where
   --term4newImplicit :: Ctx ty sys v Void -> tc (Term sys v)
   --mode4newImplicit :: Ctx ty sys v Void -> tc (mode v)
@@ -98,15 +112,6 @@ class (
   --getMeta :: Int -> [Term sys v] -> tc (Maybe (Term sys v))
   --{-| Shove a judgement aside; it will only be reconsidered when one of the given metas has been solved. -}
   --blockOnMetas :: [Int] -> Constraint sys -> tc ()
-  {-| Returns the meta's solution if the meta has been solved.
-      Otherwise, returns @Nothing@. Then you have two options:
-      1) Deal with it.
-      2) Block. In this case, the continuation as of this point is saved as being blocked on this meta.
-         (If other earlier or future metas were also unsuccessfully queried, then the continuations from those points
-         are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
-         run with the soluiton.
-      It is an error to await the same meta twice. -}
-  awaitMeta :: Constraint sys -> String -> Int -> [Term sys v] -> tc (Maybe (Term sys v))
   {-| Aborts (rather than cancels) computation.
       For every call to @'awaitMeta'@ that didn't yield a result, the continuation as of that point
       is saved. The first time one of the corresponding metas is resolved, the continuation from that point will be run. -}
@@ -117,8 +122,8 @@ class (
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
   --selfcontained :: Constraint sys -> tc () -> tc ()
 
-await :: (MonadTC sys tc) =>
-  Constraint sys -> String -> Term sys v -> tc (Maybe (Term sys v))
+await :: (MonadWHN sys whn) =>
+  Constraint sys -> String -> Term sys v -> whn (Maybe (Term sys v))
 await parent reason (Expr2 (TermMeta flagEta meta (Compose depcies) alg)) = runMaybeT $ do
   term <- MaybeT $ awaitMeta parent reason meta depcies
   MaybeT $ await parent reason term
