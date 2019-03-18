@@ -15,6 +15,7 @@ import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Control.Exception.AssertFalse
 import Menkar.System.Fine
+import Menkar.System.Scoper
 import Menkar.PrettyPrint.Raw.Syntax
 import Menkar.PrettyPrint.Aux.Context
 
@@ -35,7 +36,7 @@ import Data.List
 
 {-| @'eliminator' gamma rawElim@ scopes @rawElim@ to a fine smart eliminator. -}
 eliminator :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Eliminator ->
   sc (SmartEliminator sys v)
@@ -48,14 +49,14 @@ eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 
 natLiteral :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Nat -> sc (Term sys v)
 natLiteral n
   | n == 0 = return $ Expr2 $ TermCons $ ConsZero
   | otherwise = Expr2 . TermCons . ConsSuc <$> natLiteral (n - 1)
 
 qname :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.QName ->
   sc (Term sys v)
@@ -68,7 +69,7 @@ qname gamma rawQName =
   
 {-| @'exprC' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 exprC :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.ExprC ->
   sc (Term sys v)
@@ -83,7 +84,7 @@ exprC gamma (Raw.ExprGoal str) = do
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
 elimination :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Elimination ->
   sc (Term sys v)
@@ -111,7 +112,7 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
 
 {-| @'exprB' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 exprB :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.ExprB ->
   sc (Term sys v)
@@ -121,7 +122,7 @@ exprB gamma (Raw.ExprElimination rawElim) = elimination gamma rawElim
 
 {-| @'simpleLambda' gamma rawArg rawBody@ scopes the Menkar lambda-expression @<rawArg> > <rawBody>@ to a term. -}
 simpleLambda ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.ExprB ->
   Raw.Expr ->
@@ -149,7 +150,7 @@ simpleLambda gamma rawArg rawBody =
 
 {-| @'buildPi' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> -> <fineCod>@ to a term. -}
 buildPi ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Segment Type sys v ->
   Term sys (VarExt v) ->
@@ -161,7 +162,7 @@ buildPi gamma fineSeg fineCod = do
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Segment Type sys v ->
   Term sys (VarExt v) ->
@@ -173,7 +174,7 @@ buildSigma gamma fineSeg fineCod = do
   
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Segment Type sys v ->
   Term sys (VarExt v) ->
@@ -185,7 +186,7 @@ buildLambda gamma fineSeg fineCod =
     @<fineSegs> **> <rawArgs> **> rawBody@ to a term, where
     @build gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> **> <fineBody>@ to a term. -}
 binder2 ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   ( forall w .
     DeBruijnLevel w =>
     Ctx Type sys w Void ->
@@ -208,7 +209,7 @@ binder2 build gamma (mu :** fineSegs) rawArgs rawBody = unreachable
     @<rawArgs> **> rawBody@ to a term, where
     @build gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> **> <fineBody>@ to a term. -}
 binder ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   ( forall w .
     DeBruijnLevel w =>
     Ctx Type sys w Void ->
@@ -228,7 +229,7 @@ binder build gamma (rawArg:rawArgs) rawBody = do
 {-| @'telescopeOperation' gamma rawTheta rawOp maybeRawExprR@ scopes the Menkar expression
     @<rawTheta> <rawOp> <maybeRawExprR>@ to a term. -}
 telescopeOperation ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Telescope -> {-^ telescope on the left of the operator -}
   Raw.Elimination -> {-^ the operator -}
@@ -284,7 +285,7 @@ exprToTree gamma _ = _exprToTree
 {-| @'expr' gamma rawExpr@ scopes @rawExpr@ to a term.
     For now, every operator is right associative with equal precedence. -}
 expr :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Expr ->
   sc (Term sys v)
@@ -317,14 +318,14 @@ expr gamma (Raw.ExprOps (Raw.OperandTelescope rawTheta) (Just (rawOp, maybeRawEx
 
 {-| @'annotation' gamma rawAnnot@ scopes @rawAnnot@ to an annotation. -}
 annotation :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Annotation ->
   sc (Annotation sys v)
 annotation gamma (Raw.Annotation (Raw.Qualified [] "~") Nothing) = return AnnotImplicit
 annotation gamma (Raw.Annotation qstring maybeRawArg) = do
   maybeFineArg <- sequenceA $ expr gamma <$> maybeRawArg
-  annot4annot gamma qstring maybeFineArg
+  scopeAnnotation gamma qstring maybeFineArg
 
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
@@ -337,7 +338,7 @@ type instance ScopeDeclSort Raw.DeclSortSegment = DeclSortSegment
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
 buildDeclaration :: forall sys sc v rawDeclSort fineDeclSort content .
-  (MonadScoper sys sc, DeBruijnLevel v,
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v,
    ScopeDeclSort rawDeclSort ~ fineDeclSort, Functor (Type sys)) =>
   Ctx Type sys v Void ->
   {-| How to generate content if absent in the partial telescoped declaration. -}
@@ -401,7 +402,7 @@ buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTeles
      The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
 -}
 buildSegment :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   PartialSegment Type sys v -> -- ~ TelescopedPartialDeclaration Raw.DeclSortSegment Type Type sys v
   sc [Segment Type sys v]
@@ -417,7 +418,7 @@ buildSegment gamma partSeg = do
     
 {-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ to a partial telescoped declaration. -}
 partialTelescopedDeclaration :: forall sys sc v rawDeclSort .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration rawDeclSort ->
   sc (TelescopedPartialDeclaration rawDeclSort Type Type sys v)
@@ -460,7 +461,7 @@ partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclarat
 
 {-| @'partialSegment' gamma rawSeg@ scopes @rawSeg@ to a partial segment. -}
 partialSegment :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration Raw.DeclSortSegment ->
   --sc [Segment Type sys v]
@@ -482,7 +483,7 @@ partialSegment gamma rawSeg = do
 
 {-| Chain a list of fine segments to a fine telescope; while avoiding shadowing. -}
 segments2telescoped :: forall sys sc v .
-  (MonadScoper sys sc, SysTrav sys) =>
+  (SysScoper sys, MonadScoper sys sc, SysTrav sys) =>
   Ctx Type sys v Void ->
   [Segment Type sys v] ->
   sc (Telescoped Type Unit2 sys v)
@@ -500,7 +501,7 @@ segments2telescoped gamma (fineSeg:fineSegs) = do
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
 segment ::
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Segment ->
   sc (Telescoped Type Unit2 sys v)
@@ -510,7 +511,7 @@ segment gamma (Raw.Segment rawDecl) = do
 
 {-| scope a partly fine, partly raw telescope to a fine telescope. -}
 telescope2 :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Telescoped Type Unit2 sys v ->
   Raw.Telescope ->
@@ -521,7 +522,7 @@ telescope2 gamma (fineSeg :|- fineSegs) rawTele =
 telescope2 gamma (mu :** fineSegs) rawTele = unreachable
 
 telescope :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Telescope ->
   sc (Telescoped Type Unit2 sys v)
@@ -534,7 +535,7 @@ telescope gamma (Raw.Telescope (rawSeg : rawSegs)) = do
 
 {-| Scope a raw LHS and a raw value RHS to a value, or fail. -}
 val :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration Raw.DeclSortVal ->
   Raw.RHS Raw.DeclSortVal ->
@@ -557,7 +558,7 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.AnyEntry ->
   ModuleRHS sys v ->
@@ -573,7 +574,7 @@ entryInModule gamma rawEntry fineModule = do
 
 {-| @'entriesInModule' gamma fineModule rawEntry@ scopes @rawEntries@ as part of the module @fineModule@ -}
 entriesInModule :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   [Raw.AnyEntry] ->
   ModuleRHS sys v ->
@@ -590,7 +591,7 @@ entriesInModule gamma rawEntries fineModule = foldl (>>=) (return fineModule) (e
 
 {-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
 modul :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Declaration (Raw.DeclSortModule False) ->
   Raw.RHS (Raw.DeclSortModule False) ->
@@ -612,7 +613,7 @@ modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
 --modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
 entry :: forall sys sc v rawDeclSort .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.Entry rawDeclSort ->
   sc (Entry sys v)
@@ -621,14 +622,14 @@ entry gamma (Raw.EntryLR Raw.HeaderModule rawLHS rawRHS) = EntryModule <$> modul
 entry gamma rawEntry = scopeFail $ "Nonsensical or unsupported entry: " ++ Raw.unparse rawEntry
 
 anyEntry :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.AnyEntry ->
   sc (Entry sys v)
 anyEntry gamma (Raw.AnyEntry rawEntry) = entry gamma rawEntry
 
 file :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.File ->
   sc (Entry sys v)
@@ -637,7 +638,7 @@ file gamma rawFile = entry gamma (Raw.file2nestedModules rawFile)
 {-| Takes a bunch of raw entries and scopes them in a new module called @"Root"@.
 -}
 bulk :: forall sys sc v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   [Raw.AnyEntry] ->
   sc (Entry sys v)

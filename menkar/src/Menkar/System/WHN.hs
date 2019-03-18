@@ -1,13 +1,14 @@
 module Menkar.System.WHN where
 
 import Menkar.System.Fine
+import Menkar.System.Scoper
 import Menkar.Fine
 import Menkar.Monad.Monad
 
 import Data.Void
 import Control.Monad.Writer
 
-class SysSyntax (Term sys) sys => SysWHN sys where
+class SysScoper sys => SysWHN sys where
   whnormalizeSys :: MonadWHN sys whn =>
     Constraint sys ->
     Ctx Type sys v Void ->

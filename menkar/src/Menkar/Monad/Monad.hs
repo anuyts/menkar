@@ -30,8 +30,6 @@ class (
     (sys :: KSys)
     (sc :: * -> *)
     | sc -> sys where
-  annot4annot :: (DeBruijnLevel v) => Ctx Type sys v Void -> 
-    Raw.Qualified String -> Maybe (Term sys v) -> sc (Annotation sys v)
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
@@ -53,7 +51,6 @@ class (
   scopeFail :: String -> sc a
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
-  annot4annot gamma qstring maybeArg = lift $ annot4annot gamma qstring maybeArg
   newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason =
     lift $ newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason
   newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason

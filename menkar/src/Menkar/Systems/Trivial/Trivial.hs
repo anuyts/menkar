@@ -1,16 +1,23 @@
 module Menkar.Systems.Trivial.Trivial where
 
 import Menkar.Fine.Syntax
+import Menkar.System.Scoper
 import Menkar.System.Fine
 import Menkar.System.WHN
 import Menkar.System.TC
 import Menkar.System.PrettyPrint
 import Menkar.PrettyPrint.Fine
+import Menkar.Monad
+import Menkar.PrettyPrint.Aux.Context
+import qualified Menkar.Raw as Raw
+import qualified Menkar.PrettyPrint.Raw as Raw
 
 import Text.PrettyPrint.Tree
+import Data.Omissible
 
 import GHC.Generics (U1 (..), V1 (..))
 import Data.Void
+import Data.Maybe
 
 data Trivial :: KSys where
 
@@ -49,6 +56,12 @@ instance Degrees Trivial where
   eqDeg = U1
   maybeTopDeg = Nothing
   divDeg (ModedModality U1 U1) U1 = U1
+
+instance SysScoper Trivial where
+  scopeAnnotation gamma qstring maybeArg = scopeFail $ "Illegal annotation: " ++ (render
+             (Raw.unparse' qstring \\\ (maybeToList $ ($? id) . fine2pretty (ctx2scCtx gamma) <$> maybeArg))
+             $? id
+           )
 
 instance SysWHN Trivial where
   whnormalizeSys parent gamma t reason = absurd1 t

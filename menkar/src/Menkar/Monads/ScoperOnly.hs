@@ -47,12 +47,6 @@ instance MonadFail SimpleScoper where
   fail s = unreachable
 
 instance MonadScoper Trivial SimpleScoper where
-  annot4annot gamma qstring maybeArg = case (qstring, maybeArg) of
-    (Raw.Qualified [] "~", Nothing) -> return AnnotImplicit
-    _ -> scopeFail $ "Illegal annotation: " ++ (render
-             (Raw.unparse' qstring \\\ (maybeToList $ ($? id) . fine2pretty (ctx2scCtx gamma) <$> maybeArg))
-             $? id
-           )
   newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason = do
     i <- fresh
     return $ Expr2 $ TermMeta etaFlag i (Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)) (Compose maybeAlg)
