@@ -73,7 +73,7 @@ printTrace ref c = do
       putStrLn ""
       printTrace ref parent
 
-printBlockInfo :: DeBruijnLevel v => IORef MainState -> TCState m -> ([Int], BlockInfo m v) -> IO ()
+printBlockInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> ([Int], BlockInfo Trivial m v) -> IO ()
 printBlockInfo ref s (blockingMetas, blockInfo) = do
   putStrLn $ ""
   putStrLn $ "Reason for blocking: " ++ _blockInfo'reasonBlock blockInfo
@@ -81,7 +81,7 @@ printBlockInfo ref s (blockingMetas, blockInfo) = do
   putStrLn $ "Blocked on:" ++ (fold $ (" ?" ++) . show <$> blockingMetas)
   printConstraint ref $ _blockInfo'parent blockInfo
 
-printMetaInfo :: DeBruijnLevel v => IORef MainState -> TCState m -> Int -> MetaInfo m v -> IO ()
+printMetaInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m v -> IO ()
 printMetaInfo ref s meta info = do
   mainState <- readIORef ref
   putStrLn $ "Context:"
@@ -114,13 +114,13 @@ printMetaInfo ref s meta info = do
     Nothing -> putStrLn "(Created at scope-checking time.)"
     Just parent -> printConstraint ref parent
 
-printConstraintByIndex :: IORef MainState -> TCState m -> Int -> IO ()
+printConstraintByIndex :: IORef MainState -> TCState Trivial m -> Int -> IO ()
 printConstraintByIndex ref s i =
   if (i < 0 || i >= _tcState'constraintCounter s)
   then putStrLn $ "Constraint index out of bounds."
   else printTrace ref $ fromMaybe unreachable $ view (tcState'constraintMap . at i) s
 
-printMeta :: IORef MainState -> TCState m -> Int -> IO ()
+printMeta :: IORef MainState -> TCState Trivial m -> Int -> IO ()
 printMeta ref s meta =
   if (meta < 0 || meta >= _tcState'metaCounter s)
   then putStrLn $ "Meta index out of bounds."
@@ -128,17 +128,17 @@ printMeta ref s meta =
     let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
     forThisDeBruijnLevel (printMetaInfo ref s meta) metaInfo
 
-summarizeUnsolvedMeta :: IORef MainState -> TCState m -> Int -> MetaInfo m v -> IO ()
+summarizeUnsolvedMeta :: IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m v -> IO ()
 summarizeUnsolvedMeta ref s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
   Right solutionInfo -> return ()
   Left blocks -> putStrLn $
     "?" ++ show meta ++ "    (" ++ show (length blocks) ++ " constraints)    Creation: " ++ _metaInfo'reason metaInfo
 
-printUnsolvedMetas :: IORef MainState -> TCState m -> IO ()
+printUnsolvedMetas :: IORef MainState -> TCState Trivial m -> IO ()
 printUnsolvedMetas ref s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
   summarizeUnsolvedMeta ref s meta `forThisDeBruijnLevel` metaInfo
 
-printReport :: IORef MainState -> TCState m -> TCReport -> IO ()
+printReport :: IORef MainState -> TCState Trivial m -> TCReport Trivial -> IO ()
 printReport ref s report = do
   putStrLn $ "Report"
   putStrLn $ "------"
@@ -146,7 +146,7 @@ printReport ref s report = do
   printConstraint ref $ _tcReport'parent report
   putStrLn $ ""
 
-printOverview :: IORef MainState -> TCState m -> IO ()
+printOverview :: IORef MainState -> TCState Trivial m -> IO ()
 printOverview ref s = do
   let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
   putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
@@ -182,19 +182,19 @@ giveHelp ref = do
   putStrLn $ "s help  set help      Get help on the set command."
   --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
-runCommandMeta :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommandMeta :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
 runCommandMeta ref s args = case args of
   [arg] -> case quickRead arg :: Maybe Int of
     Just meta -> printMeta ref s meta
     Nothing -> putStrLn $ "Argument to 'meta' should be an integer."
   _ -> putStrLn $ "Command 'meta' expects one integer argument, e.g. 'meta 5'."
-runCommandConstraint :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommandConstraint :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
 runCommandConstraint ref s args = case args of
   [arg] -> case quickRead arg :: Maybe Int of
     Just i -> printConstraintByIndex ref s i
     Nothing -> putStrLn $ "Argument to 'constraint' should be an integer."
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
-runCommandReports :: IORef MainState -> TCState m -> IO ()
+runCommandReports :: IORef MainState -> TCState Trivial m -> IO ()
 runCommandReports ref s = sequenceA_ $ _tcState'reports s <&> printReport ref s
 
 ------------------------
@@ -215,7 +215,7 @@ readInt str k = case quickRead str of
   Just int -> k int
   Nothing -> putStrLn $ "Not an integer: " ++ str
 
-giveHelpSet :: IORef MainState -> TCState m -> IO ()
+giveHelpSet :: IORef MainState -> TCState Trivial m -> IO ()
 giveHelpSet ref s = do
   putStrLn $ "set help                          Get this help."
   putStrLn $ "set explicit-division <BOOL>      Print left division explicitly."
@@ -231,7 +231,7 @@ giveHelpSet ref s = do
   putStrLn $ "set print-types <BOOL>            Print pedantic type annotations."
   putStrLn $ "set width <INT>                   Set line width."
 
-runCommandSet :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommandSet :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
 runCommandSet ref s [] = giveHelpSet ref s
 runCommandSet ref s ("help" : _) = giveHelpSet ref s
 runCommandSet ref s ("explicit-division" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
@@ -287,7 +287,7 @@ runCommandSet ref s _ = giveHelpSet ref s
 
 ------------------------
 
-runCommand :: IORef MainState -> TCState m -> [String] -> IO ()
+runCommand :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
 runCommand ref s [] = return ()
 runCommand ref s ("constraint" : args) = runCommandConstraint ref s args
 runCommand ref s ("c" : args) = runCommandConstraint ref s args
@@ -307,7 +307,7 @@ runCommand ref s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
   putStrLn $ "Type 'help' for help."
 
-consumeCommand :: IORef MainState -> TCState m -> IO Bool
+consumeCommand :: IORef MainState -> TCState Trivial m -> IO Bool
 consumeCommand ref s = do
   command <- prompt "> "
   let splitCommand = words command
@@ -318,7 +318,7 @@ consumeCommand ref s = do
       runCommand ref s splitCommand
       return True
 
-interactiveMode :: IORef MainState -> TCState m -> IO ()
+interactiveMode :: IORef MainState -> TCState Trivial m -> IO ()
 interactiveMode ref s = do
   putStrLn "-------------------------"
   putStrLn "START OF INTERACTIVE MODE"
@@ -329,7 +329,7 @@ interactiveMode ref s = do
   doUntilFail (consumeCommand ref s)
   return ()
 
-interactAfterTask :: TC () -> IO ()
+interactAfterTask :: TC Trivial () -> IO ()
 interactAfterTask task = do
           ref <- initMainState
           let (tcResult, s) = flip getTC initTCState $ task

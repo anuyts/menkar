@@ -50,8 +50,6 @@ instance MonadScoper Trivial SimpleScoper where
   newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason = do
     i <- fresh
     return $ Expr2 $ TermMeta etaFlag i (Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)) (Compose maybeAlg)
-  newMetaMode maybeParent gamma reason = return U1
-  newMetaModty maybeParent gamma reason = return U1
   scopeFail msg = SimpleScoper $ lift $ Left msg
 
 ---------------------------

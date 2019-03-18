@@ -2,9 +2,7 @@
 
 module Menkar.TC.Solve where
 
-import Menkar.System.Fine
-import Menkar.System.WHN
-import Menkar.System.TC
+import Menkar.System
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context

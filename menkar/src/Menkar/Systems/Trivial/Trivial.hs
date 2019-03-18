@@ -63,6 +63,10 @@ instance SysScoper Trivial where
              $? id
            )
 
+  newMetaMode maybeParent gamma reason = return U1
+
+  newMetaModty maybeParent gamma reason = return U1
+
 instance SysWHN Trivial where
   whnormalizeSys parent gamma t reason = absurd1 t
   leqMod U1 U1 U1 U1 = return $ Just True

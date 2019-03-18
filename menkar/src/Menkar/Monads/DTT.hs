@@ -5,13 +5,14 @@ module Menkar.Monads.DTT where
 import Menkar.Basic
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
-import Menkar.Systems.Trivial.Trivial
+--import Menkar.Systems.Trivial.Trivial
 import Menkar.Monad.Monad
 import Menkar.TC.Judgement
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
+import Menkar.System
 
 import Text.PrettyPrint.Tree
 import Control.Exception.AssertFalse
@@ -37,57 +38,58 @@ import Control.Monad.Fail
 import Control.Lens
 --import Data.Coerce
 import Unsafe.Coerce
+import Data.Kind hiding (Constraint, Type)
 
-type TCResult = () --TCSuccess | TCWaiting
+type TCResult (sys :: KSys) = () --TCSuccess | TCWaiting
 
-data SolutionInfo m v = SolutionInfo {
-  _solutionInfo'parent :: Constraint Trivial,
-  _solutionInfo'solution :: Term Trivial v
+data SolutionInfo (sys :: KSys) (m :: * -> *) (v :: *) = SolutionInfo {
+  _solutionInfo'parent :: Constraint sys,
+  _solutionInfo'solution :: Term sys v
   }
 
-data BlockInfo m v = BlockInfo {
-  _blockInfo'parent :: Constraint Trivial,
+data BlockInfo (sys :: KSys) (m :: * -> *) (v :: *) = BlockInfo {
+  _blockInfo'parent :: Constraint sys,
   _blockInfo'reasonBlock :: String,
   _blockInfo'reasonAwait :: String,
-  _blockInfo'cont :: (Maybe (Term Trivial v) -> TCT m TCResult)
+  _blockInfo'cont :: (Maybe (Term sys v) -> TCT sys m (TCResult sys))
   }
 
-data MetaInfo m v = MetaInfo {
-  _metaInfo'maybeParent :: Maybe (Constraint Trivial),
-  _metaInfo'context :: Ctx Type Trivial v Void,
+data MetaInfo (sys :: KSys) m v = MetaInfo {
+  _metaInfo'maybeParent :: Maybe (Constraint sys),
+  _metaInfo'context :: Ctx Type sys v Void,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
   {-| If solved, info about the solution.
       If unsolved, a list of blocked problems, from new to old, from outermost to innermost.
   -}
-  _metaInfo'maybeSolution :: Either [([Int {- all metas blocking this thing -}], BlockInfo m v)] (SolutionInfo m v)
+  _metaInfo'maybeSolution :: Either [([Int {- all metas blocking this thing -}], BlockInfo sys m v)] (SolutionInfo sys m v)
   }
-isDormant :: MetaInfo m v -> Bool
+isDormant :: MetaInfo sys m v -> Bool
 isDormant metaInfo = case _metaInfo'maybeSolution metaInfo of
   Left [] -> True
   _ -> False
-isBlockingStuff :: MetaInfo m v -> Bool
+isBlockingStuff :: MetaInfo sys m v -> Bool
 isBlockingStuff metaInfo = case _metaInfo'maybeSolution metaInfo of
   Left [] -> False
   Left _ -> True
   Right _ -> False
 isSolved (MetaInfo maybeParent gamma reason maybeSolution) = isRight maybeSolution
 
-data TCReport = TCReport {
-  _tcReport'parent :: Constraint Trivial,
+data TCReport sys = TCReport {
+  _tcReport'parent :: Constraint sys,
   _tcReport'reason :: String
   }
 
-data TCState m = TCState {
+data TCState sys m = TCState {
   _tcState'metaCounter :: Int,
-  _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo m)),
+  _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo sys m)),
   _tcState'constraintCounter :: Int,
-  _tcState'constraintMap :: IntMap (Constraint Trivial),
-  _tcState'reports :: [TCReport],
-  _tcState'newTasks :: [TCT m ()], -- always empty unless during constraint check; to be run from back to front
-  _tcState'tasks :: [TCT m ()] -- to be run from front to back
+  _tcState'constraintMap :: IntMap (Constraint sys),
+  _tcState'reports :: [(TCReport sys)],
+  _tcState'newTasks :: [TCT sys m ()], -- always empty unless during constraint check; to be run from back to front
+  _tcState'tasks :: [TCT sys m ()] -- to be run from front to back
   }
-initTCState :: TCState m
+initTCState :: TCState sys m
 initTCState = TCState 0 empty 0 empty [] [] []
 
 {-
@@ -105,28 +107,29 @@ instance (MonadError e m) => MonadError e (ContT r m) where
   -- CAREFUL: this also catches errors thrown in the future, i.e. by the continuation!!!
   catchError cma handle = ContT $ \k -> catchError (runContT cma k) (\e -> runContT (handle e) k)
 
-data TCError m =
+data TCError sys m =
   TCErrorConstraintBound |
   {-| The outermost blocked @awaitMeta@ is first in the list. -}
-  TCErrorBlocked (Constraint Trivial) String [(Int, ForSomeDeBruijnLevel (BlockInfo m))] |
-  TCErrorTCFail TCReport |
+  TCErrorBlocked (Constraint sys) String [(Int, ForSomeDeBruijnLevel (BlockInfo sys m))] |
+  TCErrorTCFail (TCReport sys) |
   TCErrorScopeFail String |
-  TCErrorInternal (Maybe (Constraint Trivial)) String
+  TCErrorInternal (Maybe (Constraint sys)) String
 
-newtype TCT m a = TCT {unTCT :: MContT TCResult (ExceptT (TCError m) (StateT (TCState m) ({-ListT-}  m))) a}
-  deriving (Functor, Applicative, Monad, MonadState (TCState m), MonadError (TCError m), MonadDC TCResult)
+newtype TCT (sys :: KSys) (m :: * -> *)  (a :: *) =
+  TCT {unTCT :: MContT (TCResult sys) (ExceptT (TCError sys m) (StateT (TCState sys m) ({-ListT-}  m))) a}
+  deriving (Functor, Applicative, Monad, MonadState (TCState sys m), MonadError (TCError sys m), MonadDC (TCResult sys))
 
-instance (Monad m) => MonadFail (TCT m) where
+instance (Monad m) => MonadFail (TCT sys m) where
   fail s = unreachable
 
-getTCT :: (Monad m) => TCT m () -> TCState m -> m (Either (TCError m) TCResult, TCState m)
+getTCT :: (Monad m) => TCT sys m () -> TCState sys m -> m (Either (TCError sys m) (TCResult sys), TCState sys m)
 getTCT program initState = flip runStateT initState $ runExceptT $ evalMContT $ unTCT program
 --getTCT program initState = flip runStateT initState $ evalMContT $ unTCT program
 
-type TC = TCT Identity
+type TC sys = TCT sys Identity
 
 --getTC :: TC () -> TCState Identity -> Except (TCError Identity) (TCResult, TCState Identity)
-getTC :: TC () -> TCState Identity -> (Either (TCError Identity) TCResult, TCState Identity)
+getTC :: TC sys () -> TCState sys Identity -> (Either (TCError sys Identity) (TCResult sys), TCState sys Identity)
 getTC program initState = runIdentity $ getTCT program initState
 
 ----------------------------------------------------------------------------
@@ -136,16 +139,16 @@ makeLenses ''TCState
 makeLenses ''TCReport
 ----------------------------------------------------------------------------
 
-addTask :: Monad m => TCT m () -> TCT m ()
+addTask :: Monad m => TCT sys m () -> TCT sys m ()
 addTask task = do
   tcState'newTasks %= (task :)
 
-commitTasks :: Monad m => TCT m ()
+commitTasks :: Monad m => TCT sys m ()
 commitTasks = do
   newTasks <- tcState'newTasks <<.= []
   tcState'tasks %= (reverse newTasks ++)
 
-typeCheck :: Monad m => TCT m ()
+typeCheck :: Monad m => TCT sys m ()
 typeCheck = do
   commitTasks -- just to be sure
   tasks <- use tcState'tasks
@@ -162,7 +165,7 @@ typeCheck = do
       task
       typeCheck
 
-instance {-# OVERLAPPING #-} (Monad m) => MonadScoper Trivial (TCT m) where
+instance {-# OVERLAPPING #-} (Monad m, SysScoper sys, Degrees sys) => MonadScoper sys (TCT sys m) where
 
   newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason = do
     meta <- tcState'metaCounter <<%= (+1)
@@ -170,14 +173,10 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadScoper Trivial (TCT m) where
     let depcies = Compose $ Var2 <$> listAll Proxy
     return $ Expr2 $ TermMeta etaFlag meta depcies (Compose maybeAlg)
 
-  newMetaMode maybeParent gamma reason = return U1
-
-  newMetaModty maybeParent gamma reason = return U1
-
   --scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
   scopeFail reason = throwError $ TCErrorScopeFail reason
 
-catchBlocks :: (Monad m) => TCT m TCResult -> TCT m TCResult
+catchBlocks :: (Monad m) => TCT sys m (TCResult sys) -> TCT sys m (TCResult sys)
 catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blocks -> do
     let blockingMetas = fst <$> blocks
@@ -194,12 +193,12 @@ catchBlocks action = resetDC $ action `catchError` \case
       -}
   e -> throwError e
 
-checkConstraintTC :: (Monad m) => Constraint Trivial -> TCT m ()
+checkConstraintTC :: (SysTC sys, Degrees sys, Monad m) => Constraint sys -> TCT sys m ()
 checkConstraintTC c = catchBlocks $ do
   checkConstraint c
   commitTasks
 
-instance {-# OVERLAPPING #-} (Monad m) => MonadWHN Trivial (TCT m) where
+instance {-# OVERLAPPING #-} (SysWHN sys, Degrees sys, Monad m) => MonadWHN sys (TCT sys m) where
 
   awaitMeta parent reasonAwait meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
@@ -225,7 +224,7 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadWHN Trivial (TCT m) where
                 --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e
   
-instance {-# OVERLAPPING #-} (Monad m) => MonadTC Trivial (TCT m) where
+instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (TCT sys m) where
   
   --newConstraintID = tcState'constraintCounter <<%= (+1)
   defConstraint jud maybeParent reason = do
@@ -310,13 +309,13 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadTC Trivial (TCT m) where
     typeCheck
 
 selfcontainedNoSched :: (Monad m) =>
-  Constraint Trivial -> TCT m a -> TCT m a
+  Constraint sys -> TCT sys m a -> TCT sys m a
 selfcontainedNoSched parent (TCT ma) = TCT $ mapMContT (selfcontainedNoContNoSched parent) ma
 
 selfcontainedNoContNoSched :: (Monad m) =>
-  Constraint Trivial ->
-  ExceptT (TCError m) (StateT (TCState m) m) a ->
-  ExceptT (TCError m) (StateT (TCState m) m) a
+  Constraint sys ->
+  ExceptT (TCError m) (StateT (TCState sys m) m) a ->
+  ExceptT (TCError m) (StateT (TCState sys m) m) a
 selfcontainedNoContNoSched parent ma = do
   -- Metas on which nothing is blocked (=: dormant meta), may be future metas already introduced by the scopechecker
   -- Thus, we need to check that

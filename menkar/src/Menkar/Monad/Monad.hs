@@ -44,17 +44,11 @@ class (
     -> Maybe (Algorithm sys v)
     -> String
     -> sc (Term sys v)
-  newMetaMode ::
-    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Mode sys v)
-  newMetaModty ::
-    Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Modality sys v)
   scopeFail :: String -> sc a
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
   newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason =
     lift $ newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason
-  newMetaMode maybeParent gamma reason = lift $ newMetaMode maybeParent gamma reason
-  newMetaModty maybeParent gamma reason = lift $ newMetaModty maybeParent gamma reason
   scopeFail msg = lift $ scopeFail msg
 
 class (
@@ -192,16 +186,6 @@ newMetaTypeRel maybeParent deg gamma ty2 reason = do
     maybeParent
     reason
   return ty1
-
-newMetaModedModality :: MonadScoper sys tc =>
-  Maybe (Constraint sys) ->
-  Ctx Type sys v Void ->
-  String ->
-  tc (ModedModality sys v)
-newMetaModedModality parent gamma reason = do
-  d <- newMetaMode parent gamma reason
-  mu <- newMetaModty parent gamma reason
-  return $ ModedModality d mu
 
 {-
 instance (MonadTC sys tc, MonadTrans mT, Monad (mT tc)) =>

@@ -1,6 +1,6 @@
 module Menkar.TC.SmartElim where
 
-import Menkar.System.Fine
+import Menkar.System
 import Menkar.System.TC
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
