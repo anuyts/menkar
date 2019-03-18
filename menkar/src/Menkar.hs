@@ -1,4 +1,5 @@
 module Menkar (
+  module Menkar.Parser,
   module Menkar.Basic,
   module Raw,
   module Sc,
@@ -9,9 +10,11 @@ module Menkar (
   module Menkar.Monad,
   module Menkar.Monads,
   module Menkar.System,
-  module Menkar.Systems
+  module Menkar.Systems,
+  module Menkar.Main
   ) where
 
+import Menkar.Parser
 import Menkar.Basic
 import qualified Menkar.Raw as Raw
 import qualified Menkar.Scoper as Sc
@@ -25,3 +28,5 @@ import Menkar.Monad
 import Menkar.Monads
 import Menkar.System
 import Menkar.Systems
+
+import Menkar.Main
