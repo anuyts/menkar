@@ -2,6 +2,8 @@
 Please add changes in chronological order: newest first.
 
 ## Unreleased changes
+
+#### v0.101.2: Parametrize everything with the system
 *  Fixed pieces of code that are incorrect for non-trivial systems.
 
 *  Major refactoring. Project is now organised two-dimensionally.
@@ -25,6 +27,8 @@ Please add changes in chronological order: newest first.
    * Menkar.Monads: implementations of the monad typeclasses,
    * Menkar.System: the specification of the system typeclasses,
    * Menkar.Systems: implementations of the system typeclasses.
+
+*  Generalized Menkar.Monad from Trivial to arbitrary systems.
 
 #### v0.101.1: Printing options
 * Add options to prettyprinting (mostly available from command line):
