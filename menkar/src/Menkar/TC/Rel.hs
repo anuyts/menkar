@@ -147,7 +147,7 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
 -- NO ETA --
 --------------------------------------------------------
 
-checkConstructorTermRel :: forall sys tc v .
+checkConstructorTermRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
@@ -157,7 +157,7 @@ checkConstructorTermRel :: forall sys tc v .
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+checkConstructorTermRelNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
   (ConsUniHS _, _) -> tcFail parent "False."
   --(Lam _, Lam _) -> checkTermRelEta parent deg gamma t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
@@ -223,9 +223,9 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsSuc _, _) -> tcFail parent "False."
   (ConsRefl, ConsRefl) -> return ()
   (ConsRefl, _) -> tcFail parent "False."
-  --(_, _) -> _checkConstructorTermRel
+  --(_, _) -> _checkConstructorTermRelNoEta
 
-checkDependentEliminatorRel :: forall sys tc v .
+checkDependentEliminatorRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
@@ -242,7 +242,7 @@ checkDependentEliminatorRel :: forall sys tc v .
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-checkDependentEliminatorRel parent deg gamma dmu
+checkDependentEliminatorRelNoEta parent deg gamma dmu
   eliminee1 eliminee2
   tyEliminee1 tyEliminee2
   motive1 motive2
@@ -383,9 +383,9 @@ checkDependentEliminatorRel parent deg gamma dmu
           (Just parent)
           "Relating successor clauses."
       (ElimNat _ _, _) -> tcFail parent "Terms are presumed to be well-typed in related types."
-      --(_, _) -> _checkDependentEliminatorRel
+      --(_, _) -> _checkDependentEliminatorRelNoEta
       
-checkEliminatorRel :: forall sys tc v .
+checkEliminatorRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
@@ -400,7 +400,7 @@ checkEliminatorRel :: forall sys tc v .
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-checkEliminatorRel parent deg gamma dmu
+checkEliminatorRelNoEta parent deg gamma dmu
   eliminee1 eliminee2
   tyEliminee1 tyEliminee2
   eliminator1 eliminator2
@@ -444,7 +444,7 @@ checkEliminatorRel parent deg gamma dmu
       )
       (Just parent)
       "Relating the motives."
-    checkDependentEliminatorRel parent deg gamma dmu
+    checkDependentEliminatorRelNoEta parent deg gamma dmu
       eliminee1 eliminee2
       tyEliminee1 tyEliminee2
       motive1 motive2
@@ -486,7 +486,7 @@ checkEliminatorRel parent deg gamma dmu
         "Relating elimination clauses for the refl constructor."
     (_, _) -> unreachable
   (ElimEq _ _, _) -> tcFail parent "False."
-  --(_, _) -> _checkEliminatorRel
+  --(_, _) -> _checkEliminatorRelNoEta
 
 checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -498,7 +498,7 @@ checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   tc ()
 checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
-  (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2
+  (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRelNoEta parent deg gamma c1 c2 ty1 ty2
   (Expr2 (TermSys syst1), _) -> checkTermRelSysTermWHNTermNoEta parent deg          gamma  syst1 t2 ty1 ty2
   (_, Expr2 (TermSys syst2)) -> checkTermRelSysTermWHNTermNoEta parent deg (flipCtx gamma) syst2 t1 ty2 ty1
   (Var2 v1, Var2 v2) -> if v1 == v2
@@ -534,7 +534,7 @@ checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       )
       (Just parent)
       "Relating eliminees."
-    checkEliminatorRel parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
+    checkEliminatorRelNoEta parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
   (Expr2 (TermElim _ _ _ _), _) -> tcFail parent "False."
   (Expr2 (TermMeta _ _ _ _), _) -> unreachable -- TODO consider neutrality
   (Expr2 (TermWildcard), _) -> unreachable
@@ -543,7 +543,7 @@ checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (Expr2 (TermProblem t), _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
-tryToSolveTerm :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+tryToSolveTermNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -553,7 +553,7 @@ tryToSolveTerm :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-tryToSolveTerm parent deg gamma t1 t2 metasT1 ty1 ty2 = _
+tryToSolveTermNoEta parent deg gamma t1 t2 metasT1 ty1 ty2 = _
 
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -571,8 +571,8 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
     -- Both are whnormal
     (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2
     -- Only one is whnormal: whsolve or block
-    (True , False) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 ty1 ty2
-    (False, True ) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 ty1 ty2
+    (True , False) -> tryToSolveTermNoEta parent deg          gamma  t1 t2 metasT1 ty1 ty2
+    (False, True ) -> tryToSolveTermNoEta parent deg (flipCtx gamma) t2 t1 metasT2 ty1 ty2
     -- Neither is whnormal: block
     (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
