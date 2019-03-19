@@ -16,8 +16,6 @@ import Data.Functor.Compose
 import Control.Monad.Trans.Maybe
 import Data.Monoid
 
---TODOMOD means todo for modalities
-
 tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
