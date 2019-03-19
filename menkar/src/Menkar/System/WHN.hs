@@ -41,3 +41,12 @@ class SysScoper sys => SysWHN sys where
   isTopDeg d deg = case maybeTopDeg of
     Nothing -> return $ Just False
     Just topDeg -> leqDeg d topDeg deg
+
+  -- | True if @mu . nu <= id@, where nu is the @approxLeftAdjointProj@.
+  allowsEta :: forall whn v .
+    (MonadWHN sys whn, DeBruijnLevel v) =>
+    ModedModality sys v -> Mode sys v {-^ the codomain -} -> whn (Maybe Bool)
+  allowsEta dmu@(ModedModality ddom mu) dcod = do
+    let nu = approxLeftAdjointProj dmu dcod
+    let dnu = ModedModality dcod nu
+    leqMod dcod dcod (modality'mod $ compModedModality dmu dnu) (idMod dcod)

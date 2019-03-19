@@ -14,8 +14,6 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
   dataMode :: (Mode sys) v
   -- | When applied to mu, this yields the greatest modality less than the left adjoint functor to mu.
   approxLeftAdjointProj :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> (Modality sys) v
-  -- | True if @mu . nu <= id@, where nu is the @approxLeftAdjointProj@.
-  sigmaHasEta :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> Bool
   term2mode :: Term sys v -> Mode sys v
   term2modty :: Term sys v -> Modality sys v
 
