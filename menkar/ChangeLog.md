@@ -7,6 +7,7 @@ When releasing, change the changelog and `package.yaml`.
 *  Turned eta-flag on metas into neutrality flag.
 *  If eta holds, expand inductive pair and box elimination during whnormalization.
 *  Put eta-flag on term relatedness judgement.
+*  Fix eta-bug by reimplementing TC.Rel and TC.Solve.
 
 #### v0.101.2: Parametrize everything with the system
 *  Fixed pieces of code that are incorrect for non-trivial systems.
