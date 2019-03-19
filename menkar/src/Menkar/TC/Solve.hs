@@ -801,6 +801,7 @@ tryToSolveMeta parent deg gamma neutrality meta depcies t2 ty1 ty2 metasTy1 meta
                   "Cannot instantiate neutral meta with a constructor. " ++
                   "(If the expected solution is an eta-expanded normal expression, then we've found a bug.)"
                   -- In the future (e.g. when you do neutral-implicit annotations), you may want to try and eta-contract c.
+                  -- Note that `x > (f x .1 , f x ..2)` is not easy to eta-contract to `f`.
                 _ -> return solution
           )
 

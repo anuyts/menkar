@@ -18,13 +18,57 @@ import Data.Monoid
 
 --TODOMOD means todo for modalities
 
+tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  ModedModality sys v {-^ how eliminee is used -} ->
+  Term sys v {-^ eliminee, whnormal -} ->
+  UniHSConstructor sys v {-^ eliminee's type -} ->
+  Eliminator sys v ->
+  String ->
+  WriterT [Int] whn (Term sys v)
+tryDependentEta parent gamma dmu whnEliminee tyEliminee e reason = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let returnElim = return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
+  case e of
+    ElimDep motive clauses -> case clauses of
+      ElimSigma pairClause -> case tyEliminee of
+        Sigma sigmaBinding -> do
+          let dmuSigma = _segment'modty $ binding'segment sigmaBinding
+          allowsEta dmuSigma dgamma >>= \ case
+            Just True -> do
+              let tmFst = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuSigma dgamma) whnEliminee tyEliminee Fst
+              let tmSnd = Expr2 $ TermElim (idModedModality                     dgamma) whnEliminee tyEliminee Snd
+              let subst v = case v of
+                    VarWkn (VarWkn w) -> Var2 w
+                    VarWkn VarLast -> tmFst
+                    VarLast -> tmSnd
+              whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body pairClause)) reason
+            _ -> returnElim
+        _ -> unreachable
+      ElimBox boxClause -> case tyEliminee of
+        BoxType boxSeg -> do
+          let dmuBox = _segment'modty boxSeg
+          allowsEta dmuBox dgamma >>= \ case
+            Just True -> do
+              let tmUnbox = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuBox dgamma) whnEliminee tyEliminee Unbox
+              let subst v = case v of
+                    VarWkn w -> Var2 w
+                    VarLast -> tmUnbox
+              whnormalize parent gamma (join $ subst <$> _namedBinding'body boxClause) reason
+            _ -> returnElim
+        _ -> unreachable
+      ElimEmpty -> returnElim
+      ElimNat _ _ -> returnElim
+    _ -> returnElim
+
 {- Note about eta-rules:
    * For unit, there is no eliminator, so we need not normalize elements of Unit to unit.
    * For pairs, applying a projection to a non-constructor term yields the desired term anyway.
    * For non-projectible pairs, there was no eta-rule anyway.
    In summary, we don't eta-expand.
 -}
-whnormalizeElim :: (SysWHN sys, MonadWHN sys whn) =>
+whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   ModedModality sys v {-^ how eliminee is used -} ->
@@ -37,18 +81,20 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn) =>
 whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
   -- WHNormalize the eliminee
   (whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
+  let useDependentEta = tryDependentEta parent gamma dmu whnEliminee tyEliminee e reason
   case metas of
-    -- The eliminee is blocked
-    _:_ -> return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
+    -- The eliminee is blocked: Try to rely on eta instead
+    _:_ -> useDependentEta
+      --return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
     -- The eliminee is whnormal
     [] -> case whnEliminee of
-      -- Eliminee is a variable: Elimination is neutral and hence normal.
-      (Var2 v) -> return $ Expr2 $ TermElim dmu (Var2 v) tyEliminee e
-      --Expr2 (TermMeta _ _) -> return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
-      -- Eliminee is bogus: Return elimination as is
-      (Expr2 (TermProblem _)) -> return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
-      -- Eliminee is neutral: Return elimination as is
-      (Expr2 (TermElim _ _ _ _)) -> return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
+      -- Eliminee is a variable: Try to rely on eta instead.
+      (Var2 v) -> useDependentEta
+      -- Eliminee is bogus: Try to rely on eta instead
+      (Expr2 (TermProblem _)) -> useDependentEta
+      -- Eliminee is neutral: Try to rely on eta instead
+      (Expr2 (TermElim _ _ _ _)) -> useDependentEta
+      (Expr2 (TermMeta MetaNeutral meta depcies alg)) -> useDependentEta
       -- Eliminee is system-specific: TODO
       --(Expr2 (TermSys t)) -> _
       -- Eliminee is a constructor:
@@ -149,7 +195,7 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
           (ConsRefl, _) -> return termProblem
       (Expr2 _) -> unreachable
 
-whnormalizeNV :: (SysWHN sys, MonadWHN sys whn) =>
+whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   TermNV sys v ->
@@ -193,7 +239,7 @@ whnormalizeNV parent gamma t@(TermProblem _) reason = return $ Expr2 t
      or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
      writes the indices of all metavariables that could (each in itself) unblock the situation.
 -}
-whnormalize :: (SysWHN sys, MonadWHN sys whn) =>
+whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->

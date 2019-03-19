@@ -65,6 +65,9 @@ class (
       It is an error to await the same meta twice. -}
   awaitMeta :: Constraint sys -> String -> Int -> [Term sys v] -> whn (Maybe (Term sys v))
 
+instance (MonadWHN sys whn, MonadTrans mT, MonadFail (mT whn)) => MonadWHN sys (mT whn) where
+  awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
+
 class (
     Degrees sys,
     MonadWHN sys tc
