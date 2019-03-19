@@ -44,9 +44,9 @@ jud2pretty (JudTerm gamma t ty) opts =
   ctx2pretty gamma opts \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t opts,
     " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
-jud2pretty (JudTermRel deg gamma (Twice2 t1 t2) ty) opts =
+jud2pretty (JudTermRel eta deg gamma (Twice2 t1 t2) ty) opts =
   ctx2pretty gamma opts \\\ [
-    _vdash_ ++| fine2pretty (ctx2scCtx gamma) (Twice2 t1 t2) opts,
+    _vdash_ ++ (if unEta eta then "<no-eta> " else "") ++| fine2pretty (ctx2scCtx gamma) (Twice2 t1 t2) opts,
     " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
   -- CMODE print the degree
 jud2pretty (JudEta gamma t ty) opts =

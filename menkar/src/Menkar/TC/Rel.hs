@@ -42,6 +42,7 @@ checkSegmentRel parent deg gamma seg1 seg2 = do
     "Relating modalities."
   addNewConstraint
     (JudTermRel
+      (Eta True)
       deg
       gamma
       (Twice2
@@ -73,6 +74,7 @@ checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
     checkSegmentRel parent deg gamma seg1 seg2
     addNewConstraint
       (JudTermRel
+        (Eta True)
         (VarWkn <$> deg)
         (gamma :.. VarFromCtx <$> seg)
         (Twice2
@@ -126,11 +128,11 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       (Just parent)
       "Relating ambient types."
     addNewConstraint
-      (JudTermRel deg gamma (Twice2 tL1 tL2) (Twice2 tyAmbient1 tyAmbient2))
+      (JudTermRel (Eta True) deg gamma (Twice2 tL1 tL2) (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating left equands."
     addNewConstraint
-      (JudTermRel deg gamma (Twice2 tR1 tR2) (Twice2 tyAmbient1 tyAmbient2))
+      (JudTermRel (Eta True) deg gamma (Twice2 tR1 tR2) (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating right equands."
   (EqType _ _ _, _) -> tcFail parent "False."
@@ -163,6 +165,7 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
         cod2 = binding'body sigmaBinding2
     addNewConstraint
       (JudTermRel
+        (Eta True)
         (divDeg dmu deg)
         (VarFromCtx <$> dmu :\\ gamma)
         (Twice2 fst1 fst2)
@@ -172,6 +175,7 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       "Relating first components."
     addNewConstraint
       (JudTermRel
+        (Eta True)
         deg
         gamma
         (Twice2 snd1 snd2)
@@ -192,6 +196,7 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
         dom2 = _segment'content $ boxSeg2
     addNewConstraint
       (JudTermRel
+        (Eta True)
         (divDeg dmu deg)
         (VarFromCtx <$> dmu :\\ gamma)
         (Twice2 unbox1 unbox2)
@@ -206,7 +211,7 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
   (ConsSuc n1, ConsSuc n2) -> do
     let nat = Type $ Expr2 $ TermCons $ ConsUniHS $ NatType
     addNewConstraint
-      (JudTermRel deg gamma (Twice2 n1 n2) (Twice2 nat nat))
+      (JudTermRel (Eta True) deg gamma (Twice2 n1 n2) (Twice2 nat nat))
       (Just parent)
       "Relating predecessors."
   (ConsSuc _, _) -> tcFail parent "False."
@@ -266,6 +271,7 @@ checkDependentEliminatorRel parent deg gamma dmu
               subst sigmaBinding = swallow . fmap (subst' sigmaBinding)
           addNewConstraint
             (JudTermRel
+              (Eta True)
               (VarWkn . VarWkn <$> deg)
               (gamma :.. VarFromCtx <$> segFst :.. VarFromCtx <$> segSnd)
               (Twice2
@@ -299,6 +305,7 @@ checkDependentEliminatorRel parent deg gamma dmu
                subst boxSeg (VarWkn v) = Var2 $ VarWkn v
            addNewConstraint
              (JudTermRel
+               (Eta True)
                (VarWkn <$> deg)
                (gamma :.. VarFromCtx <$> segContent)
                (Twice2
@@ -323,6 +330,7 @@ checkDependentEliminatorRel parent deg gamma dmu
             zero = Expr2 $ TermCons $ ConsZero
         addNewConstraint
           (JudTermRel
+            (Eta True)
             deg
             gamma
             (Twice2 clauseZero1 clauseZero2)
@@ -354,6 +362,7 @@ checkDependentEliminatorRel parent deg gamma dmu
             substS (VarWkn v) = Var2 $ VarWkn $ VarWkn v
         addNewConstraint
           (JudTermRel
+            (Eta True)
             (VarWkn . VarWkn <$> deg)
             (gamma :.. VarFromCtx <$> segPred :.. VarFromCtx <$> segHyp)
             (Twice2
@@ -397,6 +406,7 @@ checkEliminatorRel parent deg gamma dmu
       let dom2 = _segment'content $ binding'segment binding2
       addNewConstraint
         (JudTermRel
+          (Eta True)
           (divDeg dmu deg)
           (VarFromCtx <$> dmu :\\ gamma)
           (Twice2 arg1 arg2)
@@ -462,7 +472,7 @@ checkEliminatorRel parent deg gamma dmu
         (Just parent)
         "Relating the motives"
       addNewConstraint
-        (JudTermRel deg gamma (Twice2 crefl1 crefl2) $ Twice2
+        (JudTermRel (Eta True) deg gamma (Twice2 crefl1 crefl2) $ Twice2
           (substLast2 tL1 $ substLast2 (Expr2 $ TermCons $ ConsRefl :: Term sys _) $ bodyMotive1)
           (substLast2 tL2 $ substLast2 (Expr2 $ TermCons $ ConsRefl :: Term sys _) $ bodyMotive2)
         )
@@ -498,6 +508,7 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
             (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
       addNewConstraint
         (JudTermRel
+          (Eta True)
           (VarWkn <$> deg)
           (gamma :.. VarFromCtx <$> seg)
           (Twice2 app1 app2)
@@ -523,6 +534,7 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
         let tSnd2 = Expr2 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
         addNewConstraint
           (JudTermRel
+            (Eta True)
             (divDeg dmu deg)
             (VarFromCtx <$> dmu :\\ gamma)
             (Twice2 tFst1 tFst2)
@@ -535,6 +547,7 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
           "Eta: Relating first projections."
         addNewConstraint
           (JudTermRel
+            (Eta True)
             deg
             gamma
             (Twice2 tSnd1 tSnd2)
@@ -560,6 +573,7 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
         let tUnbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
         addNewConstraint
           (JudTermRel
+            (Eta True)
             (divDeg dmu deg)
             (VarFromCtx <$> dmu :\\ gamma)
             (Twice2 tUnbox1 tUnbox2)
@@ -618,6 +632,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1
       "Relating eliminees' types."
     addNewConstraint
       (JudTermRel
+        (Eta False) -- lest you loop on `p = q : Nat >< Nat`
         (divDeg dmu1 deg)
         (VarFromCtx <$> dmu1 :\\ gamma)
         (Twice2 eliminee1 eliminee2)
@@ -782,6 +797,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metas
 
 checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
+  Eta ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
@@ -789,7 +805,7 @@ checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Type sys v ->
   Type sys v ->
   tc ()
-checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) = do
+checkTermRel parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   -- Top-relatedness is always ok.
   isTopDeg dgamma deg >>= \ case
@@ -802,6 +818,7 @@ checkTermRel parent deg gamma t1 t2 (Type ty1) (Type ty2) = do
       (ty2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
       parent <- defConstraint
             (JudTermRel
+              eta
               deg
               gamma
               (Twice2 t1 t2)
@@ -863,6 +880,7 @@ checkTypeRel parent deg gamma (Type ty1) (Type ty2) =
   let uni = hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) --(Expr2 $ TermWildcard)
   in  addNewConstraint
         (JudTermRel
+          (Eta True)
           deg
           gamma
           (Twice2 ty1 ty2)

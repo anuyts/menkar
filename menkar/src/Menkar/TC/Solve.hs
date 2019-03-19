@@ -67,6 +67,7 @@ newRelatedMetaModedModality parent gammaOrig gamma subst partialInv dmu2 dcod re
 newRelatedMetaTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
+  Eta ->
   Degree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
@@ -78,11 +79,11 @@ newRelatedMetaTerm :: forall sys tc v vOrig .
   MetaNeutrality ->
   String ->
   tc (Term sys vOrig)
-newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 neutrality reason = do
+newRelatedMetaTerm parent eta deg gammaOrig gamma subst partialInv t2 ty1 ty2 neutrality reason = do
       t1orig <- newMetaTermNoCheck (Just parent) gammaOrig neutrality Nothing reason
       let t1 = subst <$> t1orig
       addNewConstraint
-        (JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2))
+        (JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2))
         (Just parent)
         reason
       return t1orig
@@ -166,6 +167,7 @@ newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 t
       fmapPartialInv (VarWkn v) = VarWkn <$> partialInv v
   body1orig <- newRelatedMetaTerm
                  parent
+                 (Eta True)
                  (VarWkn <$> deg)
                  (gammaOrig :.. VarFromCtx <$> segment1orig)
                  (gamma :.. VarFromCtx <$> over decl'content (\dom2 -> Twice2 dom1 dom2) segment2)
@@ -219,10 +221,10 @@ newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
       tyAmbient1orig <- newRelatedMetaType parent deg gammaOrig gamma subst partialInv tyAmbient2 "Inferring ambient type."
       let tyAmbient1 = subst <$> tyAmbient1orig
       tL1orig <-
-        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tL2 tyAmbient1 tyAmbient2
+        newRelatedMetaTerm parent (Eta True) deg gammaOrig gamma subst partialInv tL2 tyAmbient1 tyAmbient2
           MetaBlocked "Inferring left equand."
       tR1orig <-
-        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tR2 tyAmbient1 tyAmbient2
+        newRelatedMetaTerm parent (Eta True) deg gammaOrig gamma subst partialInv tR2 tyAmbient1 tyAmbient2
           MetaBlocked "Inferring right equand."
       return $ EqType tyAmbient1orig tL1orig tR1orig
 
@@ -277,7 +279,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
             let tyFst1 = _segment'content $ binding'segment sigmaBinding1
             let tyFst2 = _segment'content $ binding'segment sigmaBinding2
             ---------
-            tmFst1orig <- newRelatedMetaTerm parent
+            tmFst1orig <- newRelatedMetaTerm parent (Eta True)
                             (divDeg dmuPair2 deg)
                             (VarFromCtx <$> dmuPair1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmuPair2 :\\ gamma)
@@ -288,7 +290,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
             let tySnd1 = substLast2 tmFst1 $ Type $ binding'body sigmaBinding1
             let tySnd2 = substLast2 tmFst2 $ Type $ binding'body sigmaBinding2
             ---------
-            tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
+            tmSnd1orig <- newRelatedMetaTerm parent (Eta True) deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
                             MetaBlocked "Inferring second component."
             let tmSnd1 = subst <$> tmSnd1orig
             ---------
@@ -314,7 +316,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
             let tyUnbox1 = _segment'content boxSeg1
             let tyUnbox2 = _segment'content boxSeg2
             ---------
-            tmUnbox1orig <- newRelatedMetaTerm parent
+            tmUnbox1orig <- newRelatedMetaTerm parent (Eta True)
                             (divDeg dmuTerm2 deg)
                             (VarFromCtx <$> dmuTerm1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmuTerm2 :\\ gamma)
@@ -328,7 +330,8 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
     ConsZero -> return ConsZero
     ConsSuc t2 -> do
       let nat = hs2type $ NatType
-      t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat MetaBlocked "Inferring predecessor."
+      t1orig <- newRelatedMetaTerm parent (Eta True) deg
+                  gammaOrig gamma subst partialInv t2 nat nat MetaBlocked "Inferring predecessor."
       return $ ConsSuc t1orig
     ConsRefl -> return ConsRefl
 
@@ -406,7 +409,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
         let ty2 = substPair sigmaBinding2 $ _namedBinding'body motive2
         clausePair1orig <- clausePair2 & (namedBinding'body . namedBinding'body $ \ t2 ->
           newRelatedMetaTerm
-            parent
+            parent (Eta True)
             (VarWkn . VarWkn <$> deg)
             (gammaOrig :.. VarFromCtx <$> segFst1orig :.. VarFromCtx <$> segSnd1orig)
             (gamma     :.. VarFromCtx <$> segFst      :.. VarFromCtx <$> segSnd)
@@ -442,7 +445,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
         let ty2 = swallow $ substBox boxSeg1 <$> _namedBinding'body motive2
         boxClause1orig <- boxClause2 & (namedBinding'body $ \ t2 ->
           newRelatedMetaTerm
-            parent
+            parent (Eta True)
             (VarWkn <$> deg)
             (gammaOrig :.. VarFromCtx <$> segUnbox1orig)
             (gamma     :.. VarFromCtx <$> segUnbox)
@@ -459,7 +462,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
       let tyCZ1 = substLast2 (Expr2 $ TermCons $ ConsZero :: Term sys _) $ _namedBinding'body motive1
       let tyCZ2 = substLast2 (Expr2 $ TermCons $ ConsZero :: Term sys _) $ _namedBinding'body motive2
       clauseZero1orig <-
-        newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv clauseZero2 tyCZ1 tyCZ2
+        newRelatedMetaTerm parent (Eta True) deg gammaOrig gamma subst partialInv clauseZero2 tyCZ1 tyCZ2
           MetaBlocked "Inferring zero clause."
       -----------------
       let nat = hs2type NatType
@@ -487,7 +490,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
       let tyCS2 = swallow $ substS <$> _namedBinding'body motive2
       clauseSuc1orig <- flip namedBinding'body clauseSuc2 $ namedBinding'body $ \ t2 ->
         newRelatedMetaTerm
-          parent
+          parent (Eta True)
           (VarWkn . VarWkn <$> deg)
           (gammaOrig :.. VarFromCtx <$> segPred1orig :.. VarFromCtx <$> segHyp1orig)
           (gamma     :.. VarFromCtx <$> segPred      :.. VarFromCtx <$> segHyp)
@@ -533,7 +536,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
         let dmuPi2     = _segment'modty $ binding'segment piBinding2
         let dmuPi1 = subst <$> dmuPi1orig
         arg1orig <- newRelatedMetaTerm
-                      parent
+                      parent (Eta True)
                       (divDeg dmuPi1 deg)
                       (VarFromCtx <$> dmuPi1orig :\\ gammaOrig)
                       (VarFromCtx <$> dmuPi1     :\\ gamma)
@@ -605,7 +608,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
         let motive1 = subst <$> motive1orig
         let refl :: forall w . Term sys w
             refl = Expr2 $ TermCons $ ConsRefl
-        crefl1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv
+        crefl1orig <- newRelatedMetaTerm parent (Eta True) deg gammaOrig gamma subst partialInv
                         crefl2
                         (substLast2 tL1 $ substLast2 refl $ _namedBinding'body $ _namedBinding'body motive1)
                         (substLast2 tL2 $ substLast2 refl $ _namedBinding'body $ _namedBinding'body motive2)
@@ -661,7 +664,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                              tyEliminee2
         let tyEliminee1 = subst <$> tyEliminee1orig
         eliminee1orig <- newRelatedMetaTerm
-                             parent
+                             parent (Eta False)
                              (divDeg dmu1 deg)
                              (VarFromCtx <$> dmu1orig :\\ gammaOrig)
                              (VarFromCtx <$> dmu1 :\\ gamma)

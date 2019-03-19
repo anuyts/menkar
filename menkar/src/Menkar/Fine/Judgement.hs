@@ -16,6 +16,8 @@ import Data.Kind hiding (Type)
 
 data ModRel = ModEq | ModLeq
 
+data Eta = Eta {unEta :: Bool}
+
 data Judgement (sys :: KSys) where
 
   {-
@@ -25,31 +27,6 @@ data Judgement (sys :: KSys) where
     Judgement sys
   JudCtxRel ::
     Ctx (Twice2 Type) sys v Void ->
-    Judgement sys
-  -}
-
-  {-
-  -- | @'JudMode' gamma d@ means that @d@ is a valid mode in context @gamma@.
-  -- | Premises: @'JudCtx'@
-  JudMode ::
-    Ctx Type sys v Void ->
-    Mode sys v ->
-    Judgement sys
-  JudModeRel ::
-    Ctx (Twice2 Type) sys v Void ->
-    Twice2 Mode sys v ->
-    Judgement sys
-  -}
-
-  {-
-  JudSegment ::
-    Ctx Type sys v Void ->
-    Segment sys v ->
-    Judgement sys
-  JudSegmentRel ::
-    rel v ->
-    Ctx (Twice2 Type) sys v Void ->
-    Twice2 (Segment Type) sys v ->
     Judgement sys
   -}
 
@@ -73,6 +50,7 @@ data Judgement (sys :: KSys) where
     Type sys v ->
     Judgement sys
   JudTermRel :: (DeBruijnLevel v) =>
+    Eta ->
     Degree sys v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice2 Term sys v ->
@@ -115,23 +93,27 @@ data Judgement (sys :: KSys) where
     Term sys v ->
     Type sys v ->
     Judgement sys
-    
+
+  -- | Checking is immediately delegated to the system.
   JudMode :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Mode sys v ->
     Judgement sys
+  -- | Checking is immediately delegated to the system.
   JudModeRel :: (DeBruijnLevel v) =>
     Ctx (Twice2 Type) sys v Void ->
     Mode sys v ->
     Mode sys v ->
     Judgement sys
 
+  -- | Checking is immediately delegated to the system.
   JudModality :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Modality sys v ->
     Mode sys v ->
     Mode sys v ->
     Judgement sys
+  -- | Checking is immediately delegated to the system.
   JudModalityRel :: (DeBruijnLevel v) =>
     ModRel ->
     Ctx (Twice2 Type) sys v Void ->
@@ -154,6 +136,7 @@ data Judgement (sys :: KSys) where
     Mode sys v ->
     Judgement sys
 
+  -- | Checking is immediately delegated to the system.
   JudSys :: SysJudgement sys -> Judgement sys
 
   ------------------------------

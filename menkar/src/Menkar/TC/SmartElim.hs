@@ -46,6 +46,7 @@ checkSmartElimDone parent gamma eliminee tyEliminee result tyResult = do
         "End of elimination: checking if types match."
       addNewConstraint
         (JudTermRel
+          (Eta True)
           (eqDeg :: Degree sys _)
           (duplicateCtx gamma)
           (Twice2 eliminee result)

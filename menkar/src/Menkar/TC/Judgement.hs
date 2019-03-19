@@ -46,6 +46,7 @@ checkEtaForNormalType parent gamma t (Pi piBinding) = do
             "Infer function body."
   addNewConstraint
     (JudTermRel
+      (Eta True)
       (eqDeg :: Degree sys _)
       (duplicateCtx gamma)
       (Twice2 t (Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) body))
@@ -74,6 +75,7 @@ checkEtaForNormalType parent gamma t (Sigma sigmaBinding) = do
                    "Infer second projection."
         addNewConstraint
           (JudTermRel
+            (Eta True)
             (eqDeg :: Degree sys _)
             (duplicateCtx gamma)
             (Twice2 t (Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd))
@@ -88,6 +90,7 @@ checkEtaForNormalType parent gamma t UnitType =
   let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ UnitType
   in  addNewConstraint
         (JudTermRel
+          (Eta True)
           (eqDeg :: Degree sys _)
           (duplicateCtx gamma)
           (Twice2 t (Expr2 $ TermCons $ ConsUnit))
@@ -109,6 +112,7 @@ checkEtaForNormalType parent gamma t (BoxType segBox) = do
                    "Infer box content."
       addNewConstraint
         (JudTermRel
+          (Eta True)
           (eqDeg :: Degree sys _)
           (duplicateCtx gamma)
           (Twice2 t (Expr2 $ TermCons $ ConsBox segBox tmContent))
@@ -196,7 +200,7 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudTerm gamma t ty -> checkTerm parent gamma t ty
 
-  JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> checkTermRel parent deg gamma t1 t2 ty1 ty2
+  JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> checkTermRel parent eta deg gamma t1 t2 ty1 ty2
 
   JudEta gamma t tyT -> checkEta parent gamma t tyT
 
