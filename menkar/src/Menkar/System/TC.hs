@@ -31,17 +31,15 @@ class SysWHN sys => SysTC sys where
     [Int] ->
     tc (Term sys vOrig)
   -- see Menkar.TC.Rel
-  checkTermRelSysTermWHNTerm :: forall tc v .
+  checkTermRelSysTermWHNTermNoEta :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Degree sys v ->
     Ctx (Twice2 Type) sys v Void ->
     SysTerm sys v ->
     Term sys v ->
-    Type sys v ->
-    Type sys v ->
-    [Int] ->
-    [Int] ->
+    UniHSConstructor sys v ->
+    UniHSConstructor sys v ->
     tc ()
   -- | see Menkar.TC.Judgement.checkEta.
   -- | This will generally be unreachable, unless a system introduces types via SysTerm.

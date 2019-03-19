@@ -12,13 +12,18 @@ import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
 import Menkar.WHN
-import Menkar.TC.Solve
+--import Menkar.TC.Solve
 
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
+
+isBlockedOrMeta :: Term sys v -> [Int] -> Bool
+isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
+isBlockedOrMeta _ (_:_) = True
+isBlockedOrMeta _ [] = False
 
 checkSegmentRel ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -61,8 +66,8 @@ checkPiOrSigmaRel ::
   Ctx (Twice2 Type) sys v Void ->
   Binding Type Term sys v ->
   Binding Type Term sys v ->
-  Type sys v ->
-  Type sys v ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
   tc ()
 checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
     let seg1 = (binding'segment binding1)
@@ -93,8 +98,8 @@ checkUniHSConstructorRel ::
   Ctx (Twice2 Type) sys v Void ->
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
-  Type sys v {-^ May not be normal -} ->
-  Type sys v {-^ May not be normal -} ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
   tc ()
 checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (UniHS d1 {-lvl1-}, UniHS d2 {-lvl2-}) -> return ()
@@ -138,7 +143,9 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (EqType _ _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkUniHSConstructorRel
 
---------------------------------
+--------------------------------------------------------
+-- NO ETA --
+--------------------------------------------------------
 
 checkConstructorTermRel :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -147,16 +154,14 @@ checkConstructorTermRel :: forall sys tc v .
   Ctx (Twice2 Type) sys v Void ->
   ConstructorTerm sys v ->
   ConstructorTerm sys v ->
-  Type sys v ->
-  Type sys v ->
-  [Int] ->
-  [Int] ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
   tc ()
-checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
+checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
   (ConsUniHS _, _) -> tcFail parent "False."
-  (Lam binding, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, Lam binding) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  --(Lam _, Lam _) -> checkTermRelEta parent deg gamma t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  (Lam _, _) -> unreachable --tcFail parent "False."
   (Pair sigmaBinding1 fst1 snd1, Pair sigmaBinding2 fst2 snd2) -> do
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1
         dom1 = _segment'content $ binding'segment $ sigmaBinding1
@@ -186,10 +191,11 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       )
       (Just parent)
       "Relating second components."
-  (Pair _ _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, Pair _ _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
-  (ConsUnit, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, ConsUnit) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (Pair _ _ _, _) -> tcFail parent "False."
+  --(Pair _ _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
+  --(_, Pair _ _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  --(ConsUnit, ConsUnit) -> return ()
+  (ConsUnit, _) -> unreachable --tcFail parent "False."
   (ConsBox boxSeg1 unbox1, ConsBox boxSeg2 unbox2) -> do
     let dmu = _segment'modty $ boxSeg1
         dom1 = _segment'content $ boxSeg1
@@ -204,8 +210,8 @@ checkConstructorTermRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case 
       )
       (Just parent)
       "Relating box contents."
-  (ConsBox _ _, _) -> checkTermRelEta parent deg          gamma  t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
-  (_, ConsBox _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
+  (ConsBox _ _, _) -> tcFail parent "False."
+  --(_, ConsBox _ _) -> checkTermRelEta parent deg (flipCtx gamma) t2 (Expr2 $ TermCons t1) ty2 ty1 metasTy2 metasTy1
   (ConsZero, ConsZero) -> return ()
   (ConsZero, _) -> tcFail parent "False."
   (ConsSuc n1, ConsSuc n2) -> do
@@ -233,8 +239,8 @@ checkDependentEliminatorRel :: forall sys tc v .
   NamedBinding Type sys v ->
   DependentEliminator sys v ->
   DependentEliminator sys v ->
-  Type sys v {-^ May not be whnormal. -} ->
-  Type sys v {-^ May not be whnormal. -} ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
   tc ()
 checkDependentEliminatorRel parent deg gamma dmu
   eliminee1 eliminee2
@@ -391,8 +397,8 @@ checkEliminatorRel :: forall sys tc v .
   UniHSConstructor sys v ->
   Eliminator sys v ->
   Eliminator sys v ->
-  Type sys v {-^ May not be whnormal. -} ->
-  Type sys v {-^ May not be whnormal. -} ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
   tc ()
 checkEliminatorRel parent deg gamma dmu
   eliminee1 eliminee2
@@ -482,131 +488,19 @@ checkEliminatorRel parent deg gamma dmu
   (ElimEq _ _, _) -> tcFail parent "False."
   --(_, _) -> _checkEliminatorRel
 
-{-| Relate a constructor-term with a whnormal non-constructor term.
--}
-checkTermRelEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Degree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
-  ConstructorTerm sys v ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
-  [Int] ->
-  [Int] ->
-  tc ()
-checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = case c1 of
-  ConsUniHS _ -> tcFail parent "False."
-  Lam lambdaBinding1 -> case (metasTy1, metasTy2, ty1, ty2) of
-    ([], [], Expr2 (TermCons (ConsUniHS (Pi piBinding1))), Expr2 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
-      let seg1 = binding'segment lambdaBinding1
-      let dom2 = _segment'content $ binding'segment piBinding2
-      let seg = over decl'content (\ dom1 -> Twice2 dom1 dom2) seg1
-      let app1 = binding'body lambdaBinding1
-      let app2 = Expr2 $ TermElim
-            (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-            (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
-      addNewConstraint
-        (JudTermRel
-          (Eta True)
-          (VarWkn <$> deg)
-          (gamma :.. VarFromCtx <$> seg)
-          (Twice2 app1 app2)
-          (Twice2
-            (Type $ binding'body piBinding1)
-            (Type $ binding'body piBinding2)
-          )
-        )
-        (Just parent)
-        "Eta: Relating function bodies."
-    ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
-    (_, _, _, _) -> tcBlock parent "Need to analyze function types."  
-  Pair sigmaBinding1' tFst1 tSnd1 -> do
-    let dmu = _segment'modty $ binding'segment $ sigmaBinding1'
-    let d' = unVarFromCtx <$> ctx'mode gamma
-    allowsEta dmu d' >>= \ case
-      Just False -> tcFail parent "False. (This sigma-type has no eta-rule.)"
-      Just True -> return Nothing
-      Nothing -> tcBlock parent "Not sure if this sigma-type has eta."
-    case (metasTy1, metasTy2, ty1, ty2) of
-      ([], [], Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
-        let tFst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
-        let tSnd2 = Expr2 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
-        addNewConstraint
-          (JudTermRel
-            (Eta True)
-            (divDeg dmu deg)
-            (VarFromCtx <$> dmu :\\ gamma)
-            (Twice2 tFst1 tFst2)
-            (Twice2
-              (_segment'content $ binding'segment sigmaBinding1)
-              (_segment'content $ binding'segment sigmaBinding2)
-            )
-          )
-          (Just parent)
-          "Eta: Relating first projections."
-        addNewConstraint
-          (JudTermRel
-            (Eta True)
-            deg
-            gamma
-            (Twice2 tSnd1 tSnd2)
-            (Twice2
-              (Type $ substLast2 tFst1 $ binding'body sigmaBinding1)
-              (Type $ substLast2 tFst2 $ binding'body sigmaBinding2)
-            )
-          )
-          (Just parent)
-          "Eta: relating second projections"
-      ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
-      (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
-  ConsUnit -> return ()
-  ConsBox boxSeg1' tUnbox1 -> do
-    let dmu = _segment'modty $ boxSeg1'
-    let d' = unVarFromCtx <$> ctx'mode gamma
-    allowsEta dmu d' >>= \ case
-      Just False -> tcFail parent "False. (This box-type has no eta-rule.)"
-      Just True -> return Nothing
-      Nothing -> tcBlock parent "Not sure if this box-type has eta."
-    case (metasTy1, metasTy2, ty1, ty2) of
-      ([], [], Expr2 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr2 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
-        let tUnbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
-        addNewConstraint
-          (JudTermRel
-            (Eta True)
-            (divDeg dmu deg)
-            (VarFromCtx <$> dmu :\\ gamma)
-            (Twice2 tUnbox1 tUnbox2)
-            (Twice2
-              (_segment'content $ boxSeg1)
-              (_segment'content $ boxSeg2)
-            )
-          )
-          (Just parent)
-          "Eta: Relating box contents."
-      ([], [], _, _) -> tcFail parent "Both hands are presumed to be well-typed."
-      (_, _, _, _) -> tcBlock parent "Need to analyze sigma types."
-  ConsZero -> tcFail parent "False."
-  ConsSuc t -> tcFail parent "False."
-  ConsRefl -> tcFail parent "False." -- Definitional UIP is not compatible with beta for J or funext.
-
-checkTermRelWHNTerms :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
-  Type sys v ->
-  Type sys v ->
-  [Int] ->
-  [Int] ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
   tc ()
-checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
-  (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
-  (Expr2 (TermCons c1), _) -> checkTermRelEta parent deg          gamma  c1 t2 ty1 ty2 metasTy1 metasTy2
-  (_, Expr2 (TermCons c2)) -> checkTermRelEta parent deg (flipCtx gamma) c2 t1 ty2 ty1 metasTy2 metasTy1
-  (Expr2 (TermSys syst1), _) -> checkTermRelSysTermWHNTerm parent deg          gamma  syst1 t2 ty1 ty2 metasTy1 metasTy2
-  (_, Expr2 (TermSys syst2)) -> checkTermRelSysTermWHNTerm parent deg (flipCtx gamma) syst2 t1 ty2 ty1 metasTy2 metasTy1
+checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+  (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRel parent deg gamma c1 c2 ty1 ty2
+  (Expr2 (TermSys syst1), _) -> checkTermRelSysTermWHNTermNoEta parent deg          gamma  syst1 t2 ty1 ty2
+  (_, Expr2 (TermSys syst2)) -> checkTermRelSysTermWHNTermNoEta parent deg (flipCtx gamma) syst2 t1 ty2 ty1
   (Var2 v1, Var2 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
@@ -649,238 +543,17 @@ checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1
   (Expr2 (TermProblem t), _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
-{-
-{-| Relate 2 whnormal terms.
--}
-checkTermRelWHNTerms :: (MonadTC sys tc, DeBruijnLevel v) =>
+tryToSolveTerm :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
-  Type sys v ->
-  Type sys v ->
   [Int] ->
-  [Int] ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
   tc ()
-checkTermRelWHNTerms parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
-        (Var2 v1, Var2 v2) -> if v1 == v2
-          then return ()
-          else tcFail parent "Cannot relate different variables."
-        (Expr2 tnv1, Expr2 tnv2) -> checkTermNVRelWHNTerms parent deg gamma tnv1 tnv2 ty1 ty2 metasTy1 metasTy2
-        (Var2 _, Expr2 _) -> tcFail parent "Cannot relate variable and non-variable."
-        (Expr2 _, Var2 _) -> tcFail parent "Cannot relate non-variable and variable."
--}
-
-{-
-checkTermRelWHN :: (MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Degree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
-  Term sys v ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
-  tc ()
-checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2) = case (ty1, ty2) of
-  -- Pi types: eta-expand
-  (Expr2 (TermCons (ConsUniHS (Pi piBinding1))), Expr2 (TermCons (ConsUniHS (Pi piBinding2)))) -> do
-    let seg1 = binding'segment piBinding1
-    let dom2 = _segment'content $ binding'segment piBinding2
-    let seg = over decl'content (\ dom1 -> Twice2 dom1 dom2) seg1
-    let app1 = Expr2 $ TermElim
-          (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-          (VarWkn <$> t1) (VarWkn <$> Pi piBinding1) (App $ Var2 VarLast)
-    let app2 = Expr2 $ TermElim
-          (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-          (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
-    addNewConstraint
-      (JudTermRel
-        (VarWkn <$> deg)
-        (gamma :.. VarFromCtx <$> seg)
-        (Twice2 app1 app2)
-        (Twice2
-          (Type $ binding'body piBinding1)
-          (Type $ binding'body piBinding2)
-        )
-      )
-      (Just parent)
-      "Eta: Relating function bodies."
-  (Expr2 (TermCons (ConsUniHS (Pi piBinding1))), _) ->
-    tcFail parent "Types are presumed to be related."
-  -- Sigma types: eta expand if allowed
-  (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
-    -- CMOD am I dividing by the correct modality here?
-    let dmu = _segment'modty $ binding'segment $ sigmaBinding1
-    let d' = unVarFromCtx <$> ctx'mode gamma
-    let fst1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (Sigma sigmaBinding1) Fst
-    let fst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
-    let snd1 = Expr2 $ TermElim (idModedModality d') t1 (Sigma sigmaBinding1) Snd
-    let snd2 = Expr2 $ TermElim (idModedModality d') t2 (Sigma sigmaBinding2) Snd
-    if not (sigmaHasEta dmu d')
-      then checkTermRelNoEta  parent deg gamma t1 t2 (Type ty1) (Type ty2)
-      else do
-        addNewConstraint
-          (JudTermRel
-            (divDeg dmu deg)
-            (VarFromCtx <$> dmu :\\ gamma)
-            (Twice2 fst1 fst2)
-            (Twice2
-              (_segment'content $ binding'segment sigmaBinding1)
-              (_segment'content $ binding'segment sigmaBinding2)
-            )
-          )
-          (Just parent)
-          "Eta: Relating first projections."
-        addNewConstraint
-          (JudTermRel
-            deg
-            gamma
-            (Twice2 snd1 snd2)
-            (Twice2
-              (Type $ substLast2 fst1 $ binding'body sigmaBinding1)
-              (Type $ substLast2 fst2 $ binding'body sigmaBinding2)
-            )
-          )
-          (Just parent)
-          "Eta: relating second projections"
-  (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1))), _) ->
-    tcFail parent "Types are presumed to be related."
-  -- Unit type: eta-expand
-  (Expr2 (TermCons (ConsUniHS UnitType)), Expr2 (TermCons (ConsUniHS UnitType))) -> return ()
-  (Expr2 (TermCons (ConsUniHS UnitType)), _) ->
-    tcFail parent "Types are presumed to be related."
-  -- Box type: eta-expand
-  (Expr2 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr2 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
-    -- CMOD am I dividing by the correct modality here?
-    let dmu = _segment'modty $ boxSeg1
-    let d' = unVarFromCtx <$> ctx'mode gamma
-    let unbox1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t1 (BoxType boxSeg1) Unbox
-    let unbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
-    if not (sigmaHasEta dmu d')
-      then checkTermRelNoEta  parent deg gamma t1 t2 (Type ty1) (Type ty2)
-      else do
-        addNewConstraint
-          (JudTermRel
-            (divDeg dmu deg)
-            (VarFromCtx <$> dmu :\\ gamma)
-            (Twice2 unbox1 unbox2)
-            (Twice2
-              (_segment'content boxSeg1)
-              (_segment'content boxSeg2)
-            )
-          )
-          (Just parent)
-          "Eta: Relating box contents."
-  (Expr2 (TermCons (ConsUniHS (BoxType boxSeg1))), _) ->
-    tcFail parent "Types are presumed to be related."
-  (_, _) -> checkTermRelNoEta parent deg gamma t1 t2 (Type ty1) (Type ty2)
-
-checkTermRelWHNTerms :: (MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Degree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
-  Term sys v ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
-  [Int] ->
-  [Int] ->
-  tc ()
-checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 = do
-  case (metasTy1, metasTy2) of
-    -- Both types are whnormal
-    ([], []) -> checkTermRelWHN parent deg gamma t1 t2 (Type ty1) (Type ty2)
-    -- Either type is not normal
-    (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
--}
-
-checkTermRel' :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Eta ->
-  Degree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
-  Term sys v ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
-  tc ()
-checkTermRel' parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
-  -- Top-relatedness is always ok.
-  isTopDeg dgamma deg >>= \ case
-    Just True -> return ()
-    _ -> do
-      --purposefully shadowing (redefining)
-      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
-      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
-      (ty1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
-      (ty2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
-      parent <- defConstraint
-            (JudTermRel
-              eta
-              deg
-              gamma
-              (Twice2 t1 t2)
-              (Twice2 (Type ty1) (Type ty2))
-            )
-            (Just parent)
-            "Weak-head-normalize everything"
-
-      case (metasT1, metasT2) of
-        -- Both are whnormal
-        ([], []) -> checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2
-        -- Only one is whnormal: whsolve or block
-        (_, []) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 (Type ty1) (Type ty2) metasTy1 metasTy2
-        ([], _) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 (Type ty2) (Type ty1) metasTy1 metasTy2
-        -- Neither is whnormal: block
-        (_, _) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
-
-      {-
-      case (whnT1, whnT2) of
-        -- If both sides are constructors: compare them
-        (Expr2 (TermCons c1), Expr2 (TermCons c2)) ->
-          checkConstructorTermRel whnparent deg gamma c1 c2 (Type whnTy1) (Type whnTy2)
-        -- Otherwise, we want to eta-expand, so one of the types needs to be weak-head-normal
-        (_, _) -> case (metasTy1, metasTy2) of
-          -- Both types are whnormal
-          ([], []) -> checkTermRelWHNTypes whnparent deg gamma whnT1 whnT2 metasT1 metasT2 (Type whnTy1) (Type whnTy2)
-          -- Either type is not normal
-          (_, _) -> blockOnMetas (metasT1 ++ metasT2 ++ metasTy1 ++ metasTy2) whnparent
-          {-
-          -- whnTy1 is whnormal
-          ([], _) -> checkTermRelKnownType whnparent deg gamma whnT1 whnT2 metasT1 metasT2
-                       (Type whnTy1) (Type whnTy2) (Type whnTy1)
-          -- whnTy1 is blocked, but whnTy2 is normal
-          (_, []) -> checkTermRelKnownType whnparent deg gamma whnT1 whnT2 metasT1 metasT2
-                      (Type whnTy1) (Type whnTy2) (Type whnTy2)
-          -- Both types are blocked. We may need to eta-expand but cannot. Hence, we cannot proceed.
-          (_, _) -> blockOnMetas (metasT1 ++ metasT2 ++ metasTy1 ++ metasTy2) whnparent
-          -}
-      -}
-
-      {- CANNOT COMPARE VARIABLES YET: what if we're in the unit type?
-      case (whnT1, whnT2) of
-        (Var2 v1, Var2 v2) -> if v1 == v2
-          then return ()
-          else tcFail parent "Cannot relate different variables."
-        (Expr2 tnv1, Expr2 tnv2) -> _compareExprs
-        (Var2 _, Expr2 _) -> tcFail parent "Cannot relate variable and non-variable."
-        (Expr2 _, Var2 _) -> tcFail parent "Cannot relate non-variable and variable."
-      -}
-
---------------------------------------------------------
--- REIMPLEMENTATION --
---------------------------------------------------------
-
-isBlockedOrMeta :: Term sys v -> [Int] -> Bool
-isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
-isBlockedOrMeta _ (_:_) = True
-isBlockedOrMeta _ [] = False
-
---------------------------------------------------------
--- NO ETA --
---------------------------------------------------------
+tryToSolveTerm parent deg gamma t1 t2 metasT1 ty1 ty2 = _
 
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -893,7 +566,15 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = _
+checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
+  case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
+    -- Both are whnormal
+    (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2
+    -- Only one is whnormal: whsolve or block
+    (True , False) -> tryToSolveTerm parent deg          gamma  t1 t2 metasT1 ty1 ty2
+    (False, True ) -> tryToSolveTerm parent deg (flipCtx gamma) t2 t1 metasT2 ty1 ty2
+    -- Neither is whnormal: block
+    (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
 --------------------------------------------------------
 -- MAYBE ETA --
@@ -1040,11 +721,11 @@ checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
     (True , True ) -> useEtaExpandIfApplicable
     (True , False) -> case t1 of
       Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
-        tryToSolveMetaMaybeEta parent deg gamma neutrality meta depcies t2 ty1 ty2
+        tryToSolveMetaMaybeEta parent deg          gamma  neutrality meta depcies t2 ty1 ty2
       _ -> useEtaExpandIfApplicable
     (False, True ) -> case t2 of
       Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
-        tryToSolveMetaMaybeEta parent deg gamma neutrality meta depcies t1 ty2 ty1
+        tryToSolveMetaMaybeEta parent deg (flipCtx gamma) neutrality meta depcies t1 ty2 ty1
       _ -> useEtaExpandIfApplicable
   
 --------------------------------------------------------
