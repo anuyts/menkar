@@ -717,6 +717,7 @@ solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1
 
 ------------------------------------
 
+{-
 {-| A meta is pure if it has undergone a substitution that can be inverted in the following sense:
     All variables have been substituted with variables - all different - and the inverse substitution is well-typed
     for all variables for which it is defined.
@@ -753,6 +754,7 @@ checkMetaPure parent gammaOrig gamma subst ty = do
         (subst <$> (modality'mod $ dmuOrig u))
         (modality'mod $ dmu $ subst u)
   fmap (fmap and . sequenceA) $ sequenceA $ condition <$> listAll Proxy
+-}
 
 ------------------------------------
 
@@ -785,19 +787,12 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 metasTy1 metasTy2 = do
         [] -> solveMeta parent meta ( \ gammaOrig -> do
             -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
             let depcySubst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
-            -- Check if the meta is pure
-            isPure <- checkMetaPure parent gammaOrig (fstCtx gamma) depcySubst ty1
-            case isPure of
-              -- If so, weak-head-solve it
-              Just True -> do
+            do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
                 isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
                   Just True ->
                        solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
                   _ -> solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
-              -- otherwise, block and fail to solve it (we need to give a return value to solveMeta).
-              _ -> tcBlock parent
-                "Cannot solve meta-variable: modalities in current context are not obviously as strong as in original context."
           )
 
 tryToSolveTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
