@@ -86,7 +86,7 @@ printMetaInfo ref s meta info = do
   mainState <- readIORef ref
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  let tMeta = Expr2 $ TermMeta True meta (Compose $ Var2 <$> listAll Proxy) (Compose Nothing)
+  let tMeta = Expr2 $ TermMeta MetaBlocked meta (Compose $ Var2 <$> listAll Proxy) (Compose Nothing)
   putStr $ jud2string (JudTerm (_metaInfo'context info) tMeta (Type $ Expr2 $ TermWildcard))
            $ _main'fine2prettyOptions mainState
   putStrLn $ ""

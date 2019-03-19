@@ -328,6 +328,8 @@ deriving instance (SysSyntax (Term sys) sys) =>
 
 ------------------------------------
 
+data MetaNeutrality = MetaNeutral | MetaBlocked
+
 data TermNV (sys :: KSys) (v :: *) =
   TermCons (ConstructorTerm sys v) |
   {-| It is an error to construct a @'TermNV'@ using @'TermElim'@ with an eliminator that
@@ -339,8 +341,7 @@ data TermNV (sys :: KSys) (v :: *) =
     (Eliminator sys v) {-^ eliminator -} |
   {-| Boolean:  -}
   TermMeta
-    Bool {-^ Whether the meta may be solved using eta-expansion.
-             Always true except when inferring an eliminee or something that doesn't have eta. -}
+    MetaNeutrality
     Int {-^ Meta's index -}
     (Compose [] (Term sys) v) {-^ Dependencies -}
     (Compose Maybe (Algorithm sys) v) {-^ Human readable representation -} |

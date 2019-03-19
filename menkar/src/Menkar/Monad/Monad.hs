@@ -40,7 +40,7 @@ class (
     Maybe (Constraint sys)
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
     -> Ctx Type sys v Void
-    -> Bool {-^ Whether it can be solved using eta-expansion. -}
+    -> MetaNeutrality
     -> Maybe (Algorithm sys v)
     -> String
     -> sc (Term sys v)
@@ -136,11 +136,11 @@ newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   Type sys v ->
-  Bool ->
+  MetaNeutrality ->
   String ->
   tc (Term sys v)
-newMetaTerm maybeParent gamma ty etaFlag reason = do
-  t <- newMetaTermNoCheck maybeParent gamma etaFlag Nothing reason
+newMetaTerm maybeParent gamma ty neutrality reason = do
+  t <- newMetaTermNoCheck maybeParent gamma neutrality Nothing reason
   addNewConstraint
     (JudTerm gamma t ty)
     maybeParent
@@ -162,7 +162,7 @@ newMetaType :: (MonadTC sys tc, DeBruijnLevel v) =>
   String ->
   tc (Type sys v)
 newMetaType maybeParent gamma reason = do
-  t <- Type <$> newMetaTermNoCheck maybeParent gamma False Nothing reason
+  t <- Type <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
   addNewConstraint
     (JudType gamma t)
     maybeParent
@@ -180,7 +180,7 @@ newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
   String ->
   tc (Type sys v)
 newMetaTypeRel maybeParent deg gamma ty2 reason = do
-  ty1 <- Type <$> newMetaTermNoCheck maybeParent (fstCtx gamma) False Nothing reason
+  ty1 <- Type <$> newMetaTermNoCheck maybeParent (fstCtx gamma) MetaBlocked Nothing reason
   addNewConstraint
     (JudTypeRel deg gamma (Twice2 ty1 ty2))
     maybeParent

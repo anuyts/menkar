@@ -76,10 +76,11 @@ exprC :: forall sys sc v .
 exprC gamma (Raw.ExprQName rawQName) = qname gamma rawQName
 exprC gamma (Raw.ExprParens rawExpr) = expr gamma rawExpr
 exprC gamma (Raw.ExprNatLiteral n) = natLiteral n
-exprC gamma (Raw.ExprImplicit) = newMetaTermNoCheck Nothing {-eqDeg-} gamma True Nothing "Infer explicitly omitted value."
+exprC gamma (Raw.ExprImplicit) =
+  newMetaTermNoCheck Nothing {-eqDeg-} gamma MetaBlocked Nothing "Infer explicitly omitted value."
 exprC gamma (Raw.ExprGoal str) = do
   let algGoal = AlgGoal str $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
-  result <- newMetaTermNoCheck Nothing {-eqDeg-} gamma True (Just $ algGoal) "Infer goal's value."
+  result <- newMetaTermNoCheck Nothing {-eqDeg-} gamma MetaBlocked (Just $ algGoal) "Infer goal's value."
   return $ Expr2 $ TermAlgorithm algGoal result
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
@@ -100,7 +101,7 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
     [] -> return fineEliminee
     _  -> do
       let alg = AlgSmartElim fineEliminee (Compose fineElims)
-      fineResult <- newMetaTermNoCheck Nothing {-eqDeg-} gamma True (Just alg) "Infer result of smart elimination."
+      fineResult <- newMetaTermNoCheck Nothing {-eqDeg-} gamma MetaBlocked (Just alg) "Infer result of smart elimination."
       return . Expr2 $ TermAlgorithm alg fineResult
   --theMode <- mode4newImplicit gamma
   {-pushConstraint $ Constraint {
@@ -130,7 +131,7 @@ simpleLambda ::
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
     dmu <- newMetaModedModality Nothing (crispModedModality :\\ gamma) "Infer domain mode/modality."
-    fineTy <- Type <$> newMetaTermNoCheck Nothing {-eqDeg-} (VarFromCtx <$> dmu :\\ gamma) False Nothing "Infer domain."
+    fineTy <- Type <$> newMetaTermNoCheck Nothing {-eqDeg-} (VarFromCtx <$> dmu :\\ gamma) MetaBlocked Nothing "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
       Raw.ExprImplicit -> return $ Nothing
@@ -409,7 +410,7 @@ buildSegment :: forall sys sc v .
 buildSegment gamma partSeg = do
   teleSegs :: [Segment (Telescoped Type Type) sys v]
               -- ~ [Declaration DeclSortSegment (Telescoped Type Type) sys v]
-           <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
+           <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma MetaBlocked Nothing "Infer type."
               in  buildDeclaration gamma gen partSeg
   return $ teleSegs <&> decl'content %~ \ case
     Telescoped seg -> seg
@@ -544,7 +545,7 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS :: TelescopedPartialDeclaration Raw.DeclSortVal Type Type sys v
     <- partialTelescopedDeclaration gamma rawLHS
   [fineLHS] :: [Declaration DeclSortVal (Telescoped Type Type) sys v]
-            <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma False Nothing "Infer type."
+            <- let gen gamma = Type <$> newMetaTermNoCheck Nothing {-eqDeg-} gamma MetaBlocked Nothing "Infer type."
                in  buildDeclaration gamma gen partialLHS
   val :: Val sys v -- ~ Declaration DeclSortVal (Telescoped Type ValRHS) sys v
     <- flip decl'content fineLHS $ mapTelescopedDB (

@@ -75,11 +75,11 @@ newRelatedMetaTerm :: forall sys tc v vOrig .
   Term sys v ->
   Type sys v ->
   Type sys v ->
-  Bool ->
+  MetaNeutrality ->
   String ->
   tc (Term sys vOrig)
-newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 etaFlag reason = do
-      t1orig <- newMetaTermNoCheck (Just parent) gammaOrig etaFlag Nothing reason
+newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 neutrality reason = do
+      t1orig <- newMetaTermNoCheck (Just parent) gammaOrig neutrality Nothing reason
       let t1 = subst <$> t1orig
       addNewConstraint
         (JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2))
@@ -99,7 +99,7 @@ newRelatedMetaType :: forall sys tc v vOrig .
   String ->
   tc (Type sys vOrig)
 newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
-      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) gammaOrig False Nothing reason
+      ty1orig <- Type <$> newMetaTermNoCheck (Just parent) gammaOrig MetaBlocked Nothing reason
       let ty1 = subst <$> ty1orig
       addNewConstraint
         (JudTypeRel deg gamma (Twice2 ty1 ty2))
@@ -174,7 +174,7 @@ newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 t
                  (binding'body binding2)
                  tyBody1
                  tyBody2
-                 True
+                 MetaBlocked
                  "Inferring body."
   return $ Binding segment1orig body1orig
 
@@ -220,10 +220,10 @@ newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
       let tyAmbient1 = subst <$> tyAmbient1orig
       tL1orig <-
         newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tL2 tyAmbient1 tyAmbient2
-          True "Inferring left equand."
+          MetaBlocked "Inferring left equand."
       tR1orig <-
         newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tR2 tyAmbient1 tyAmbient2
-          True "Inferring right equand."
+          MetaBlocked "Inferring right equand."
       return $ EqType tyAmbient1orig tL1orig tR1orig
 
 newRelatedConstructorTerm :: forall sys tc v vOrig .
@@ -282,14 +282,14 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
                             (VarFromCtx <$> dmuPair1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmuPair2 :\\ gamma)
                             subst partialInv tmFst2 tyFst1 tyFst2
-                            True "Inferring first component."
+                            MetaBlocked "Inferring first component."
             let tmFst1 = subst <$> tmFst1orig
             ---------
             let tySnd1 = substLast2 tmFst1 $ Type $ binding'body sigmaBinding1
             let tySnd2 = substLast2 tmFst2 $ Type $ binding'body sigmaBinding2
             ---------
             tmSnd1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv tmSnd2 tySnd1 tySnd2
-                            True "Inferring second component."
+                            MetaBlocked "Inferring second component."
             let tmSnd1 = subst <$> tmSnd1orig
             ---------
             return $ Pair sigmaBindingPair1orig tmFst1orig tmSnd1orig
@@ -319,7 +319,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
                             (VarFromCtx <$> dmuTerm1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmuTerm2 :\\ gamma)
                             subst partialInv tmUnbox2 tyUnbox1 tyUnbox2
-                            True "Inferring box content."
+                            MetaBlocked "Inferring box content."
             let tmUnbox1 = subst <$> tmUnbox1orig
             ---------
             return $ ConsBox boxSegTerm1orig tmUnbox1orig
@@ -328,7 +328,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
     ConsZero -> return ConsZero
     ConsSuc t2 -> do
       let nat = hs2type $ NatType
-      t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat False "Inferring predecessor."
+      t1orig <- newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv t2 nat nat MetaBlocked "Inferring predecessor."
       return $ ConsSuc t1orig
     ConsRefl -> return ConsRefl
 
@@ -413,7 +413,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             (fmap $ fmap subst)
             (sequenceA . fmap sequenceA . (fmap $ fmap partialInv))
             t2 ty1 ty2
-            True
+            MetaBlocked
             "Inferring pair clause."
           )
         return $ ElimSigma clausePair1orig
@@ -449,7 +449,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
             (fmap subst)
             (sequenceA . fmap partialInv)
             t2 ty1 ty2
-            True
+            MetaBlocked
             "Inferring box clause."
           )
         return $ ElimBox boxClause1orig
@@ -460,7 +460,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
       let tyCZ2 = substLast2 (Expr2 $ TermCons $ ConsZero :: Term sys _) $ _namedBinding'body motive2
       clauseZero1orig <-
         newRelatedMetaTerm parent deg gammaOrig gamma subst partialInv clauseZero2 tyCZ1 tyCZ2
-          False "Inferring zero clause."
+          MetaBlocked "Inferring zero clause."
       -----------------
       let nat = hs2type NatType
       let namePred = _namedBinding'name clauseSuc2
@@ -494,8 +494,8 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
           (fmap $ fmap subst)
           (sequenceA . fmap sequenceA . (fmap $ fmap partialInv))
           t2 tyCS1 tyCS2
-          True
-          "Inferring pair clause."
+          MetaBlocked
+          "Inferring successor clause."
       return $ ElimNat clauseZero1orig clauseSuc1orig
 
 newRelatedEliminator :: forall sys tc v vOrig .
@@ -542,7 +542,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                       arg2
                       (_segment'content $ binding'segment piBinding1)
                       (_segment'content $ binding'segment piBinding2)
-                      True
+                      MetaBlocked
                       "Inferring argument."
         return $ App arg1orig
       (_, _) -> unreachable
@@ -609,7 +609,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
                         crefl2
                         (substLast2 tL1 $ substLast2 refl $ _namedBinding'body $ _namedBinding'body motive1)
                         (substLast2 tL2 $ substLast2 refl $ _namedBinding'body $ _namedBinding'body motive2)
-                        True
+                        MetaBlocked
                         "Inferring refl clause."
         return $ ElimEq motive1orig crefl1orig
       (_, _) -> unreachable
@@ -670,8 +670,8 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                              eliminee2
                              (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee1)
                              (Type $ Expr2 $ TermCons $ ConsUniHS $ tyEliminee2)
-                             False
-                               {- This is the reason this flag exists:
+                             MetaNeutral
+                               {- This is one reason this flag exists:
                                   eliminees should not be solved by eta-expansion!
                                   Doing so could create loops. -}
                              "Inferring eliminee."

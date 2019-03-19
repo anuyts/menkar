@@ -319,8 +319,8 @@ meta2pretty :: (DeBruijnLevel v,
                        SysPretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
   ScCtx sys v Void -> TermNV sys v -> Fine2PrettyOptions sys -> PrettyTree String
-meta2pretty gamma tMeta@(TermMeta etaFlag meta (Compose depcies) (Compose maybeAlg)) opts =
-  ribbon ("?" ++ show meta ++ (if etaFlag then "" else "-no-eta"))
+meta2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)) opts =
+  ribbon ("?" ++ show meta ++ neutSuffix)
   \\\ case _fine2pretty'printSolutions opts of
         Nothing -> metaNoSolution
         Just solutions -> case lookup meta solutions of
@@ -335,6 +335,9 @@ meta2pretty gamma tMeta@(TermMeta etaFlag meta (Compose depcies) (Compose maybeA
           Just alg -> if _fine2pretty'humanReadableMetas opts
                       then ["\x27ea" ++| fine2pretty gamma alg opts |++ "\x27eb"]
                       else uglySubMeta
+        neutSuffix = case neutrality of
+          MetaBlocked -> ""
+          MetaNeutral -> "-neutral"
 meta2pretty gamma t opts = unreachable
 
 instance (SysPretty sys,
@@ -343,7 +346,7 @@ instance (SysPretty sys,
   fine2pretty gamma (TermCons consTerm) opts = fine2pretty gamma consTerm opts
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) opts =
     elimination2pretty gamma mod eliminee tyEliminee eliminator opts
-  fine2pretty gamma tMeta@(TermMeta etaFlag meta (Compose depcies) (Compose maybeAlg)) opts =
+  fine2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)) opts =
     meta2pretty gamma tMeta opts
   fine2pretty gamma TermWildcard opts = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) opts = Raw.unparse' qname

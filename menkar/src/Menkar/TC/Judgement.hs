@@ -43,7 +43,7 @@ checkEtaForNormalType parent gamma t (Pi piBinding) = do
             --(eqDeg :: Degree sys _)
             (gamma :.. (VarFromCtx <$> binding'segment piBinding))
             (Type $ binding'body piBinding)
-            True
+            MetaBlocked
             "Infer function body."
   addNewConstraint
     (JudTermRel
@@ -64,14 +64,14 @@ checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
                    --(eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content $ binding'segment $ sigmaBinding)
-                   True
+                   MetaBlocked
                    "Infer first projection."
         tmSnd <- newMetaTerm
                    (Just parent)
                    --(eqDeg :: Degree sys _)
                    gamma
                    (Type $ substLast2 tmFst $ binding'body sigmaBinding)
-                   True
+                   MetaBlocked
                    "Infer second projection."
         addNewConstraint
           (JudTermRel
@@ -104,7 +104,7 @@ checkEtaForNormalType parent gamma t (BoxType segBox) =
                    --(eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content segBox)
-                   True
+                   MetaBlocked
                    "Infer box content."
     addNewConstraint
       (JudTermRel

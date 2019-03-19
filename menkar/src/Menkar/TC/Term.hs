@@ -293,7 +293,7 @@ checkConstructorTerm parent gamma (ConsSuc t) ty = do
     "Checking whether actual type equals expected type."
 checkConstructorTerm parent gamma ConsRefl ty = do
   tyAmbient <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-} gamma "Inferring ambient type."
-  t <- newMetaTerm (Just parent) {-(eqDeg :: Degree sys _)-} gamma tyAmbient True "Inferring self-equand."
+  t <- newMetaTerm (Just parent) {-(eqDeg :: Degree sys _)-} gamma tyAmbient MetaBlocked "Inferring self-equand."
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
@@ -578,16 +578,18 @@ checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
     (Just parent)
     "Type-checking eliminee."
   checkEliminator parent gamma dmu eliminee tyEliminee eliminator ty
-checkTermNV parent gamma t@(TermMeta etaFlag meta (Compose depcies) alg) ty = do
+checkTermNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty = do
   maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
   t' <- case maybeT of
     Nothing -> do
       -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
       -- place to request eta-expansion.
-      when etaFlag $ addNewConstraint
-        (JudEta gamma (Expr2 t) ty)
-        (Just parent)
-        "Eta-expand meta if possible."
+      case neutrality of
+        MetaBlocked -> addNewConstraint
+          (JudEta gamma (Expr2 t) ty)
+          (Just parent)
+          "Eta-expand meta if possible."
+        MetaNeutral -> return ()
       tcBlock parent "I want to know what I'm supposed to type-check."
       {-
       -- The meta may now have a solution.
