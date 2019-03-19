@@ -43,7 +43,6 @@ instance Multimode Trivial where
   crispMod = U1
   dataMode = U1
   approxLeftAdjointProj (ModedModality U1 U1) U1 = U1
-  sigmaHasEta (ModedModality U1 U1) U1 = True
   term2mode t = U1
   term2modty t = U1
 

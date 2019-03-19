@@ -1,7 +1,6 @@
 module Menkar.TC.Judgement where
 
-import Menkar.System.Fine
-import Menkar.System.TC
+import Menkar.System
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
@@ -54,10 +53,10 @@ checkEtaForNormalType parent gamma t (Pi piBinding) = do
     )
     (Just parent)
     "Eta-expand"
-checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
+checkEtaForNormalType parent gamma t (Sigma sigmaBinding) = do
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
-  in  if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
-      then do
+  allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
+    Just True -> do
         let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ Sigma sigmaBinding
         tmFst <- newMetaTerm
                    (Just parent)
@@ -82,7 +81,8 @@ checkEtaForNormalType parent gamma t (Sigma sigmaBinding) =
           )
           (Just parent)
           "Eta-expand."
-      else return ()
+    Just False -> return ()
+    Nothing -> tcBlock parent "Not sure if this sigma-type has eta."
 checkEtaForNormalType parent gamma t EmptyType = return ()
 checkEtaForNormalType parent gamma t UnitType =
   let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ UnitType
@@ -95,28 +95,29 @@ checkEtaForNormalType parent gamma t UnitType =
         )
         (Just parent)
         "Eta-expand"
-checkEtaForNormalType parent gamma t (BoxType segBox) =
-  if sigmaHasEta dmu (unVarFromCtx <$> ctx'mode gamma)
-  then do
-    let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType segBox
-    tmContent <- newMetaTerm
+checkEtaForNormalType parent gamma t (BoxType segBox) = do
+  let dmu = _segment'modty $ segBox
+  allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
+    Just True -> do
+      let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType segBox
+      tmContent <- newMetaTerm
                    (Just parent)
                    --(eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content segBox)
                    MetaBlocked
                    "Infer box content."
-    addNewConstraint
-      (JudTermRel
-        (eqDeg :: Degree sys _)
-        (duplicateCtx gamma)
-        (Twice2 t (Expr2 $ TermCons $ ConsBox segBox tmContent))
-        (Twice2 ty ty)
-      )
-      (Just parent)
-      "Eta-expand"
-  else return ()
-  where dmu = _segment'modty $ segBox
+      addNewConstraint
+        (JudTermRel
+          (eqDeg :: Degree sys _)
+          (duplicateCtx gamma)
+          (Twice2 t (Expr2 $ TermCons $ ConsBox segBox tmContent))
+          (Twice2 ty ty)
+        )
+        (Just parent)
+        "Eta-expand"
+    Just False -> return ()
+    Nothing -> tcBlock parent "Not sure if this box-type has eta."
 checkEtaForNormalType parent gamma t NatType = return ()
 checkEtaForNormalType parent gamma t (EqType _ _ _) = return ()
 

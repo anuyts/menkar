@@ -513,7 +513,10 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
   Pair sigmaBinding1' tFst1 tSnd1 -> do
     let dmu = _segment'modty $ binding'segment $ sigmaBinding1'
     let d' = unVarFromCtx <$> ctx'mode gamma
-    when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This sigma-type has no eta-rule.)"
+    allowsEta dmu d' >>= \ case
+      Just False -> tcFail parent "False. (This sigma-type has no eta-rule.)"
+      Just True -> return Nothing
+      Nothing -> tcBlock parent "Not sure if this sigma-type has eta."
     case (metasTy1, metasTy2, ty1, ty2) of
       ([], [], Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding1))), Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding2)))) -> do
         let tFst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (Sigma sigmaBinding2) Fst
@@ -548,7 +551,10 @@ checkTermRelEta parent deg gamma c1 t2 (Type ty1) (Type ty2) metasTy1 metasTy2 =
   ConsBox boxSeg1' tUnbox1 -> do
     let dmu = _segment'modty $ boxSeg1'
     let d' = unVarFromCtx <$> ctx'mode gamma
-    when (not (sigmaHasEta dmu d')) $ tcFail parent "False. (This box-type has no eta-rule.)"
+    allowsEta dmu d' >>= \ case
+      Just False -> tcFail parent "False. (This box-type has no eta-rule.)"
+      Just True -> return Nothing
+      Nothing -> tcBlock parent "Not sure if this box-type has eta."
     case (metasTy1, metasTy2, ty1, ty2) of
       ([], [], Expr2 (TermCons (ConsUniHS (BoxType boxSeg1))), Expr2 (TermCons (ConsUniHS (BoxType boxSeg2)))) -> do
         let tUnbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu d') t2 (BoxType boxSeg2) Unbox
