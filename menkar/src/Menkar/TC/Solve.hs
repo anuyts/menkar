@@ -762,6 +762,7 @@ tryToSolveMeta :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
+  MetaNeutrality ->
   Int ->
   [Term sys v] ->
   Term sys v ->
@@ -770,7 +771,7 @@ tryToSolveMeta :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
   [Int] ->
   [Int] ->
   tc ()
-tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 metasTy1 metasTy2 = do
+tryToSolveMeta parent deg gamma neutrality meta depcies t2 ty1 ty2 metasTy1 metasTy2 = do
   let getVar2 :: Term sys v -> Maybe v
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
@@ -787,12 +788,20 @@ tryToSolveMeta parent deg gamma meta depcies t2 ty1 ty2 metasTy1 metasTy2 = do
         [] -> solveMeta parent meta ( \ gammaOrig -> do
             -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
             let depcySubst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
-            do
+            solution <- do
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
                 isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
                   Just True ->
                        solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
                   _ -> solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
+            case neutrality of
+              MetaBlocked -> return solution
+              MetaNeutral -> case solution of
+                Expr2 (TermCons c) -> tcFail parent $
+                  "Cannot instantiate neutral meta with a constructor. " ++
+                  "(If the expected solution is an eta-expanded normal expression, then we've found a bug.)"
+                  -- In the future (e.g. when you do neutral-implicit annotations), you may want to try and eta-contract c.
+                _ -> return solution
           )
 
 tryToSolveTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
@@ -810,7 +819,6 @@ tryToSolveTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
 tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 metasTyBlocked metasTy2 = case tBlocked of
   -- tBlocked should be a meta
   (Expr2 (TermMeta neutrality meta depcies alg)) ->
-    -- neutrality is discarded, it will be checked when solving.
-    tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2 metasTyBlocked metasTy2
+    tryToSolveMeta parent deg gamma neutrality meta (getCompose depcies) t2 tyBlocked ty2 metasTyBlocked metasTy2
   -- if tBlocked is not a meta, then we should just block on its submetas
   _ -> tcBlock parent "Cannot solve relation: one side is blocked on a meta-variable."
