@@ -160,11 +160,14 @@ whnormalizeNV parent gamma t@(TermCons _) reason = return $ Expr2 $ t   -- Mind 
 -- Eliminator: call whnormalizeElim
 whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
 -- Meta: return if unsolved, otherwise whnormalize solution.
-whnormalizeNV parent gamma t@(TermMeta etaFlag meta (Compose depcies) alg) reason = do
+whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) reason = do
   --solution <- fromMaybe (Expr2 t) <$> awaitMeta parent reason meta depcies
   maybeSolution <- lift $ awaitMeta parent reason meta depcies
   case maybeSolution of
-    Nothing -> Expr2 t <$ tell [meta]
+    Nothing -> case neutrality of
+      MetaBlocked -> Expr2 t <$ tell [meta]
+      MetaNeutral -> return $ Expr2 t
+        -- neutral metas are considered whnormal, as solving them cannot trigger any computation.
     Just solution -> whnormalize parent gamma solution reason
 {-maybeSolution <- getMeta meta depcies
   case maybeSolution of

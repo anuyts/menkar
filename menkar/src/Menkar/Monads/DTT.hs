@@ -167,11 +167,11 @@ typeCheck = do
 
 instance {-# OVERLAPPING #-} (Monad m, SysScoper sys, Degrees sys) => MonadScoper sys (TCT sys m) where
 
-  newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason = do
+  newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = Compose $ Var2 <$> listAll Proxy
-    return $ Expr2 $ TermMeta etaFlag meta depcies (Compose maybeAlg)
+    return $ Expr2 $ TermMeta neutrality meta depcies (Compose maybeAlg)
 
   --scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
   scopeFail reason = throwError $ TCErrorScopeFail reason

@@ -813,7 +813,8 @@ tryToSolveTerm :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v) =>
   tc ()
 tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 metasTyBlocked metasTy2 = case tBlocked of
   -- tBlocked should be a meta
-  (Expr2 (TermMeta etaFlag meta depcies alg)) ->
+  (Expr2 (TermMeta neutrality meta depcies alg)) ->
+    -- neutrality is discarded, it will be checked when solving.
     tryToSolveMeta parent deg gamma meta (getCompose depcies) t2 tyBlocked ty2 metasTyBlocked metasTy2
   -- if tBlocked is not a meta, then we should just block on its submetas
   _ -> tcBlock parent "Cannot solve relation: one side is blocked on a meta-variable."

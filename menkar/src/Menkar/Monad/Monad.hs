@@ -47,8 +47,8 @@ class (
   scopeFail :: String -> sc a
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
-  newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason =
-    lift $ newMetaTermNoCheck maybeParent gamma etaFlag maybeAlg reason
+  newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason =
+    lift $ newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason
   scopeFail msg = lift $ scopeFail msg
 
 class (
