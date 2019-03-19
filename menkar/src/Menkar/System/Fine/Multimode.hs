@@ -8,6 +8,7 @@ import Menkar.System.Fine.Syntax
 class (SysSyntax (Term sys) sys) => Multimode sys where
   idMod :: Mode sys v -> Modality sys v
   compMod :: (Modality sys) v -> (Mode sys) v -> (Modality sys) v -> (Modality sys) v
+  -- | Only for use by the prettyprinter. Good behaviour w.r.t. inequality checking is not required.
   divMod :: ModedModality sys v -> ModedModality sys v -> Modality sys v
   crispMod :: (Modality sys) v
   dataMode :: (Mode sys) v
