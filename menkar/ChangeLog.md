@@ -4,6 +4,10 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  Turned eta-flag on metas into neutrality flag.
+*  If eta holds, expand inductive pair and box elimination during whnormalization.
+*  Put eta-flag on term relatedness judgement.
+
 #### v0.101.2: Parametrize everything with the system
 *  Fixed pieces of code that are incorrect for non-trivial systems.
 

@@ -795,7 +795,7 @@ checkTermRelWHNTerms parent deg gamma t1 t2 (Type ty1) (Type ty2) metasTy1 metas
     (_, _) -> tcBlock parent "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 -}
 
-checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+checkTermRel' :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Eta ->
   Degree sys v ->
@@ -805,7 +805,7 @@ checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Type sys v ->
   Type sys v ->
   tc ()
-checkTermRel parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
+checkTermRel' parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   -- Top-relatedness is always ok.
   isTopDeg dgamma deg >>= \ case
@@ -868,6 +868,130 @@ checkTermRel parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
         (Var2 _, Expr2 _) -> tcFail parent "Cannot relate variable and non-variable."
         (Expr2 _, Var2 _) -> tcFail parent "Cannot relate non-variable and variable."
       -}
+
+--------------------------------------------------------
+-- REIMPLEMENTATION --
+--------------------------------------------------------
+
+isBlockedOrMeta :: Term sys v -> [Int] -> Bool
+isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
+isBlockedOrMeta _ (_:_) = True
+isBlockedOrMeta _ [] = False
+
+--------------------------------------------------------
+-- NO ETA --
+--------------------------------------------------------
+
+checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  [Int] ->
+  [Int] ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  tc ()
+checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = _
+
+--------------------------------------------------------
+-- MAYBE ETA --
+--------------------------------------------------------
+
+tryToSolveMetaMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  MetaNeutrality ->
+  Int ->
+  [Term sys v] ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  tc ()
+tryToSolveMetaMaybeEta parent deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 = _
+
+etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  [Int] ->
+  [Int] ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  tc ()
+etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = _
+
+checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  [Int] ->
+  [Int] ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  tc ()
+checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
+  let useEtaExpandIfApplicable = etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+  case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
+    (False, False) -> useEtaExpandIfApplicable
+    (True , True ) -> useEtaExpandIfApplicable
+    (True , False) -> case t1 of
+      Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
+        tryToSolveMetaMaybeEta parent deg gamma neutrality meta depcies t2 ty1 ty2
+      _ -> useEtaExpandIfApplicable
+    (False, True ) -> case t2 of
+      Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
+        tryToSolveMetaMaybeEta parent deg gamma neutrality meta depcies t1 ty2 ty1
+      _ -> useEtaExpandIfApplicable
+  
+--------------------------------------------------------
+
+checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Eta ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
+  tc ()
+checkTermRel parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  -- Top-relatedness is always ok.
+  isTopDeg dgamma deg >>= \ case
+    -- It's certainly about top-relatedness
+    Just True -> return ()
+    -- It's perhaps not about top-relatedness
+    _ -> do
+      -- purposefully shadowing (redefining)
+      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
+      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
+      (ty1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
+      (ty2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
+      parent <- defConstraint
+            (JudTermRel
+              eta
+              deg
+              gamma
+              (Twice2 t1 t2)
+              (Twice2 (Type ty1) (Type ty2))
+            )
+            (Just parent)
+            "Weak-head-normalize everything"
+
+      case (ty1, ty2) of
+        (Expr2 (TermCons (ConsUniHS tycode1)), Expr2 (TermCons (ConsUniHS tycode2))) ->
+          if unEta eta
+          then checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 tycode1 tycode2
+          else checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 tycode1 tycode2
+        (_, _) -> tcBlock parent $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 
 checkTypeRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
