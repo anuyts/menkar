@@ -124,7 +124,7 @@ instance (SysPretty sys,
   fine2pretty gamma (SmartElimDots) opts = ribbon "..."
   --fine2pretty gamma (SmartElimEnd argSpec) = Raw.unparse' (Raw.ElimEnd argSpec)
   fine2pretty gamma (SmartElimArg Raw.ArgSpecNext dmu term) opts =
-    ".{" ++| fine2pretty gamma dmu opts |++ " | " |+| fine2pretty gamma term opts |++ "}"
+    ".{" ++| fine2pretty gamma dmu opts |+| fine2pretty gamma term opts |++ "}"
   fine2pretty gamma (SmartElimArg Raw.ArgSpecExplicit dmu term) opts =
     "(" ++| fine2pretty gamma dmu opts |++ " | " |+| fine2pretty gamma term opts |++ ")"
   fine2pretty gamma (SmartElimArg (Raw.ArgSpecNamed name) dmu term) opts =
@@ -313,8 +313,7 @@ nameWithIndex maybeName index = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybe
 var2pretty :: DeBruijnLevel v => ScCtx sys v Void -> v -> Fine2PrettyOptions sys -> PrettyTree String
 var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel Proxy v)
 
-{-| Never prints a solution instead.
-    Term is required to be a meta.
+{-| Term is required to be a meta.
 -}
 meta2pretty :: (DeBruijnLevel v,
                        SysPretty sys,
@@ -322,12 +321,20 @@ meta2pretty :: (DeBruijnLevel v,
   ScCtx sys v Void -> TermNV sys v -> Fine2PrettyOptions sys -> PrettyTree String
 meta2pretty gamma tMeta@(TermMeta etaFlag meta (Compose depcies) (Compose maybeAlg)) opts =
   ribbon ("?" ++ show meta ++ (if etaFlag then "" else "-no-eta"))
-  \\\ case maybeAlg of
-        Nothing -> uglySubMeta
-        Just alg -> if _fine2pretty'humanReadableMetas opts
-                    then ["\x27ea" ++| fine2pretty gamma alg opts |++ "\x27eb"]
-                    else uglySubMeta
+  \\\ case _fine2pretty'printSolutions opts of
+        Nothing -> metaNoSolution
+        Just solutions -> case lookup meta solutions of
+          Nothing -> metaNoSolution
+          Just (ForSomeDeBruijnLevel t) ->
+            ["\x27ea" ++|
+              fine2pretty gamma (join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
+            |++ "\x27eb"]
   where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies
+        metaNoSolution = case maybeAlg of
+          Nothing -> uglySubMeta
+          Just alg -> if _fine2pretty'humanReadableMetas opts
+                      then ["\x27ea" ++| fine2pretty gamma alg opts |++ "\x27eb"]
+                      else uglySubMeta
 meta2pretty gamma t opts = unreachable
 
 instance (SysPretty sys,
@@ -337,12 +344,7 @@ instance (SysPretty sys,
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) opts =
     elimination2pretty gamma mod eliminee tyEliminee eliminator opts
   fine2pretty gamma tMeta@(TermMeta etaFlag meta (Compose depcies) (Compose maybeAlg)) opts =
-    case _fine2pretty'printSolutions opts of
-      Nothing -> meta2pretty gamma tMeta opts
-      Just solutions -> case lookup meta solutions of
-        Nothing -> meta2pretty gamma tMeta opts
-        Just (ForSomeDeBruijnLevel t) ->
-          fine2pretty gamma (join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
+    meta2pretty gamma tMeta opts
   fine2pretty gamma TermWildcard opts = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) opts = Raw.unparse' qname
     {-

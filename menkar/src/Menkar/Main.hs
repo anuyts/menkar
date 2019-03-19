@@ -231,6 +231,15 @@ giveHelpSet ref s = do
   putStrLn $ "set print-types <BOOL>            Print pedantic type annotations."
   putStrLn $ "set width <INT>                   Set line width."
 
+printMetaSolutionsOn :: IORef MainState -> TCState Trivial m -> IO ()
+printMetaSolutionsOn ref s = do
+  let setSolutionMap maybeMap = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printSolutions .~ maybeMap
+  setSolutionMap $ Just $ _tcState'metaMap s & (mapMaybe $
+        \ (ForSomeDeBruijnLevel metaInfo) -> case _metaInfo'maybeSolution metaInfo of
+          Left blocks -> Nothing
+          Right solutionInfo -> Just $ ForSomeDeBruijnLevel $ _solutionInfo'solution solutionInfo
+      )
+
 runCommandSet :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
 runCommandSet ref s [] = giveHelpSet ref s
 runCommandSet ref s ("help" : _) = giveHelpSet ref s
@@ -273,11 +282,7 @@ runCommandSet ref s ("print-modules-ctx" : args) = forceLength 1 args $ \[str] -
 runCommandSet ref s ("print-solutions" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool -> do
   let setSolutionMap maybeMap = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printSolutions .~ maybeMap
   if bool
-    then setSolutionMap $ Just $ _tcState'metaMap s & (mapMaybe $
-        \ (ForSomeDeBruijnLevel metaInfo) -> case _metaInfo'maybeSolution metaInfo of
-          Left blocks -> Nothing
-          Right solutionInfo -> Just $ ForSomeDeBruijnLevel $ _solutionInfo'solution solutionInfo
-      )
+    then printMetaSolutionsOn ref s
     else setSolutionMap $ Nothing
 runCommandSet ref s ("print-types" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
     modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printTypeAnnotations .~ bool
@@ -303,6 +308,7 @@ runCommand ref s ("reports" : _) = runCommandReports ref s
 runCommand ref s ("r" : _) = runCommandReports ref s
 runCommand ref s ("set" : args) = runCommandSet ref s args
 runCommand ref s ("s" : args) = runCommandSet ref s args
+runCommand ref s ("git" : _) = putStrLn $ "I do not take git commands, for my name is Menkar."
 runCommand ref s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
   putStrLn $ "Type 'help' for help."
@@ -320,6 +326,7 @@ consumeCommand ref s = do
 
 interactiveMode :: IORef MainState -> TCState Trivial m -> IO ()
 interactiveMode ref s = do
+  printMetaSolutionsOn ref s
   putStrLn "-------------------------"
   putStrLn "START OF INTERACTIVE MODE"
   putStrLn "-------------------------"
