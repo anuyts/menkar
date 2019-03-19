@@ -683,7 +683,8 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
                              eliminator2
                              ty1 ty2
         return $ Expr2 $ TermElim dmu1orig eliminee1orig tyEliminee1orig eliminator1orig
-      TermMeta _ _ _ _ -> unreachable
+      TermMeta MetaBlocked _ _ _ -> unreachable
+      TermMeta MetaNeutral _ _ _ -> unreachable
       TermWildcard -> unreachable
       TermQName _ _ -> unreachable
       TermAlgorithm _ _ -> unreachable
