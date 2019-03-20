@@ -66,7 +66,7 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> checkTermRel parent eta deg gamma t1 t2 ty1 ty2
 
-  JudEta gamma t tyT -> checkEta parent gamma t tyT
+  JudEta gamma t tyT -> void $ checkEta parent gamma t tyT
 
   JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
     checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
