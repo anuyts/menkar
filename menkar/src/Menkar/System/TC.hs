@@ -50,7 +50,7 @@ class SysWHN sys => SysTC sys where
     Ctx Type sys v Void ->
     Term sys v ->
     SysTerm sys v {-^ The type -} ->
-    tc ()
+    tc Bool
   -- | Check @'JudMode'@.
   checkMode :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>

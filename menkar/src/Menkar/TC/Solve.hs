@@ -778,7 +778,7 @@ solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1
 -- ALWAYS ETA --
 --------------------------------------------------------
 
-{-| Returns an eta-expansion if eta is certainly allowed.
+{-| Returns an eta-expansion if eta is certainly allowed, @Just Nothing@ if it's not allowed, and @Nothing@ if unclear.
 -}
 etaExpand ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -786,7 +786,7 @@ etaExpand ::
   Ctx Type sys v Void ->
   Term sys v ->
   UniHSConstructor sys v ->
-  tc (Maybe (Term sys v))
+  tc (Maybe (Maybe (Term sys v)))
 etaExpand parent gamma t (Pi piBinding) = do
   body <- newMetaTerm
             (Just parent)
@@ -795,7 +795,7 @@ etaExpand parent gamma t (Pi piBinding) = do
             (Type $ binding'body piBinding)
             MetaBlocked
             "Infer function body."
-  return $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) body
+  return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) body
 etaExpand parent gamma t (Sigma sigmaBinding) = do
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
   allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
@@ -814,9 +814,9 @@ etaExpand parent gamma t (Sigma sigmaBinding) = do
                    (Type $ substLast2 tmFst $ binding'body sigmaBinding)
                    MetaBlocked
                    "Infer second projection."
-        return $ Just $ Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd
-    Just False -> return Nothing
-    Nothing -> return Nothing
+        return $ Just $ Just $ Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd
+    Just False -> return $ Just Nothing
+    Nothing -> return $ Nothing
 etaExpand parent gamma t (BoxType boxSeg) = do
   let dmu = _segment'modty $ boxSeg
   allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
@@ -829,14 +829,70 @@ etaExpand parent gamma t (BoxType boxSeg) = do
                    (_segment'content boxSeg)
                    MetaBlocked
                    "Infer box content."
-      return $ Just $ Expr2 $ TermCons $ ConsBox boxSeg tmUnbox
-    Just False -> return Nothing
-    Nothing -> return Nothing
-etaExpand parent gamma t UnitType = return $ Just $ Expr2 $ TermCons $ ConsUnit
-etaExpand parent gamma t (UniHS _) = return $ Nothing
-etaExpand parent gamma t EmptyType = return $ Nothing
-etaExpand parent gamma t NatType = return $ Nothing
-etaExpand parent gamma t (EqType _ _ _) = return $ Nothing
+      return $ Just $ Just $ Expr2 $ TermCons $ ConsBox boxSeg tmUnbox
+    Just False -> return $ Just Nothing
+    Nothing -> return $ Nothing
+etaExpand parent gamma t UnitType = return $ Just $ Just $ Expr2 $ TermCons $ ConsUnit
+etaExpand parent gamma t (UniHS _) = return $ Just $ Nothing
+etaExpand parent gamma t EmptyType = return $ Just $ Nothing
+etaExpand parent gamma t NatType = return $ Just $ Nothing
+etaExpand parent gamma t (EqType _ _ _) = return $ Just $ Nothing
+
+checkEtaForNormalType :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  tc Bool
+checkEtaForNormalType parent gamma t ty = do
+  maybeMaybeTExpanded <- etaExpand parent gamma t ty
+  let ty' = hs2type ty
+  case maybeMaybeTExpanded of
+    Nothing -> tcBlock parent $ "Need to know if this type has eta."
+    Just Nothing -> return False
+    Just (Just tExpanded) -> do
+      addNewConstraint
+        (JudTermRel
+          (Eta True)
+          (eqDeg :: Degree sys _)
+          (duplicateCtx gamma)
+          (Twice2 t tExpanded)
+          (Twice2 ty' ty')
+        )
+        (Just parent)
+        "Eta-expand"
+      return True
+
+checkEta ::
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Term sys v ->
+  Type sys v ->
+  tc Bool
+checkEta parent gamma t (Type ty) = do
+  (whnTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
+  case metas of
+    [] -> do
+      parent' <- defConstraint
+                   (JudEta gamma t (Type whnTy))
+                   (Just parent)
+                   "Weak-head-normalized type."
+      case whnTy of
+        Var2 v -> return False
+        Expr2 whnTyNV -> case whnTyNV of
+          TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons
+          TermCons _ -> tcFail parent' $ "Type is not a type."
+          TermElim _ _ _ _ -> return False
+          TermMeta MetaBlocked _ _ _ -> unreachable
+          TermMeta MetaNeutral _ _ _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
+          TermWildcard -> unreachable
+          TermQName _ _ -> unreachable
+          TermAlgorithm _ _ -> unreachable
+          TermSys whnSysTy -> checkEtaWHNSysTy parent' gamma t whnSysTy
+          TermProblem _ -> tcFail parent' $ "Nonsensical type."
+    _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
 
 --------------------------------------------------------
 -- MAYBE ETA IF SPECIFIED --
@@ -848,7 +904,7 @@ tryToSolveMeta :: forall sys tc v .
   Eta ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
-  MetaNeutrality -> Int -> [Term sys v] ->
+  MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
   Term sys v ->
   Type sys v ->
   Type sys v ->
@@ -856,7 +912,7 @@ tryToSolveMeta :: forall sys tc v .
   [Int] ->
   (String -> tc ()) {-^ Either block or resort to eta-equality. -} ->
   tc ()
-tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 metasTy1 metasTy2 alternative = do
+tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 metasTy1 metasTy2 alternative = do
   let getVar2 :: Term sys v -> Maybe v
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
@@ -879,9 +935,15 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 metasT
                    solveMetaImmediately parent
                      gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
               _ -> if unEta eta
-                   then Nothing <$ alternative "Let's try eta-expansion."
+                   then do --Nothing <$ alternative "Let's try eta-expansion."
+                     let t1 = Expr2 $ TermMeta neutrality1 meta1 (Compose depcies1) (Compose maybeAlg1)
+                     etaHolds <- checkEta parent (fstCtx gamma) t1 ty1
+                     if etaHolds
+                       then Nothing <$ addConstraint parent
+                       else solveMetaAgainstWHNF parent deg
+                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 $ tcBlock parent
                    else solveMetaAgainstWHNF parent deg
-                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
+                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 $ alternative
             case neutrality1 of
               MetaBlocked -> return solution
               MetaNeutral -> case solution of
@@ -909,7 +971,7 @@ tryToSolveTerm :: forall sys tc v .
   (String -> tc ()) ->
   tc ()
 tryToSolveTerm parent eta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 alternative = case t1 of
-  (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) alg1)) ->
-    tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 metasTy1 metasTy2 alternative
+  (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) (Compose maybeAlg1))) ->
+    tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 metasTy1 metasTy2 alternative
   _ -> alternative "Cannot solve relation: one side is blocked on a meta-variable."
 

@@ -14,6 +14,7 @@ import Menkar.TC.SmartElim
 import Menkar.TC.Rel
 import Menkar.TC.Entry
 import Menkar.TC.Segment
+import Menkar.TC.Solve
 import Menkar.WHN
 
 import Data.Void
@@ -21,68 +22,6 @@ import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
-
--- CMODE means you need to check a mode
--- CMODTY means you need to check a modality
-
--------
-
-checkEtaForNormalType :: forall sys tc v .
-  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Ctx Type sys v Void ->
-  Term sys v ->
-  UniHSConstructor sys v ->
-  tc ()
-checkEtaForNormalType parent gamma t ty = do
-  maybeTExpanded <- etaExpand parent gamma t ty
-  let ty' = hs2type ty
-  case maybeTExpanded of
-    Nothing -> return ()
-    Just tExpanded -> addNewConstraint
-    (JudTermRel
-      (Eta True)
-      (eqDeg :: Degree sys _)
-      (duplicateCtx gamma)
-      (Twice2 t tExpanded)
-      (Twice2 ty' ty')
-    )
-    (Just parent)
-    "Eta-expand"
-
-checkEta ::
-  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Ctx Type sys v Void ->
-  Term sys v ->
-  Type sys v ->
-  tc ()
-checkEta parent gamma t (Type ty) = do
-  (whnTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
-  case metas of
-    [] -> do
-      parent' <- defConstraint
-                   (JudEta gamma t (Type whnTy))
-                   (Just parent)
-                   "Weak-head-normalized type."
-      case whnTy of
-        Var2 v -> return ()
-        Expr2 whnTyNV -> case whnTyNV of
-          TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons
-          TermCons _ -> tcFail parent' $ "Type is not a type."
-          TermElim _ _ _ _ -> return ()
-          TermMeta MetaBlocked _ _ _ -> unreachable
-          TermMeta MetaNeutral _ _ _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
-          TermWildcard -> unreachable
-          TermQName _ _ -> unreachable
-          TermAlgorithm _ _ -> unreachable
-          TermSys whnSysTy -> checkEtaWHNSysTy parent' gamma t whnSysTy
-          TermProblem _ -> tcFail parent' $ "Nonsensical type."
-    _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
-
--------
--- ================================================================================================
--------
 
 checkConstraint ::
   (SysTC sys, MonadTC sys tc) =>

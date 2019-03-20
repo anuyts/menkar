@@ -707,13 +707,13 @@ checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
   let callEtaExpandIfApplicable = etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     (False, False) -> callEtaExpandIfApplicable
-    (True , True ) -> callEtaExpandIfApplicable
     (True , False) ->
       tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 (hs2type ty1) (hs2type ty2) [] []
       $ const callEtaExpandIfApplicable
     (False, True ) ->
       tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 (hs2type ty2) (hs2type ty1) [] []
       $ const callEtaExpandIfApplicable
+    (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
     {-
     (True , False) -> case t1 of
       Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
