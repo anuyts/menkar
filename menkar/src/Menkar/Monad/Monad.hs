@@ -92,14 +92,15 @@ class (
     tc()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint sys -> tc ()
-  {-| Provide a solution for the meta. All continuations thus unblocked are added to the task stack. -}
+  {-| Provide a solution for the meta. All continuations thus unblocked are added to the task stack.
+      Return @'Nothing'@ if you don't want to solve the meta. -}
   solveMeta ::
     Constraint sys ->
     Int ->
-    (forall tc' v .
-      (MonadTC sys tc', Eq v, DeBruijnLevel v) =>
+    (forall v .
+      (Eq v, DeBruijnLevel v) =>
       Ctx Type sys v Void ->
-      tc' (Term sys v)
+      tc (Maybe (Term sys v))
     ) -> tc ()
   --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
   ---}

@@ -552,8 +552,9 @@ tryToSolveTermNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
+  (String -> tc ()) ->
   tc ()
-tryToSolveTermNoEta parent deg gamma t1 t2 metasT1 ty1 ty2 = _
+tryToSolveTermNoEta parent deg gamma t1 t2 metasT1 ty1 ty2 alternative = _
 
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -571,8 +572,8 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
     -- Both are whnormal
     (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2
     -- Only one is whnormal: whsolve or block
-    (True , False) -> tryToSolveTermNoEta parent deg          gamma  t1 t2 metasT1 ty1 ty2
-    (False, True ) -> tryToSolveTermNoEta parent deg (flipCtx gamma) t2 t1 metasT2 ty1 ty2
+    (True , False) -> tryToSolveTermNoEta parent deg          gamma  t1 t2 metasT1 ty1 ty2 $ tcBlock parent
+    (False, True ) -> tryToSolveTermNoEta parent deg (flipCtx gamma) t2 t1 metasT2 ty1 ty2 $ tcBlock parent
     -- Neither is whnormal: block
     (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
@@ -580,18 +581,17 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
 -- MAYBE ETA --
 --------------------------------------------------------
 
-tryToSolveMetaMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+tryToSolveTermMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
-  MetaNeutrality ->
-  Int ->
-  [Term sys v] ->
+  Term sys v {-^ Blocked. -} ->
   Term sys v ->
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
+  (String -> tc ()) ->
   tc ()
-tryToSolveMetaMaybeEta parent deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 = _
+tryToSolveTermMaybeEta parent deg gamma t1 t2 ty1 ty2 callEtaExpandIfApplicable = _
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -715,19 +715,23 @@ checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   tc ()
 checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
-  let useEtaExpandIfApplicable = etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+  let callEtaExpandIfApplicable = etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
-    (False, False) -> useEtaExpandIfApplicable
-    (True , True ) -> useEtaExpandIfApplicable
+    (False, False) -> callEtaExpandIfApplicable
+    (True , True ) -> callEtaExpandIfApplicable
+    (True , False) -> tryToSolveTermMaybeEta parent deg          gamma  t1 t2 ty1 ty2 $ const callEtaExpandIfApplicable
+    (False, True ) -> tryToSolveTermMaybeEta parent deg (flipCtx gamma) t2 t1 ty2 ty1 $ const callEtaExpandIfApplicable
+    {-
     (True , False) -> case t1 of
       Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
         tryToSolveMetaMaybeEta parent deg          gamma  neutrality meta depcies t2 ty1 ty2
-      _ -> useEtaExpandIfApplicable
+      _ -> callEtaExpandIfApplicable
     (False, True ) -> case t2 of
       Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
         tryToSolveMetaMaybeEta parent deg (flipCtx gamma) neutrality meta depcies t1 ty2 ty1
-      _ -> useEtaExpandIfApplicable
-  
+      _ -> callEtaExpandIfApplicable
+    -}
+
 --------------------------------------------------------
 
 checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>

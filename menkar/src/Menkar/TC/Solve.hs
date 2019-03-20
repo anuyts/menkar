@@ -697,7 +697,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
 
 {-| Precondition: @partialInv . subst = Just@.
 -}
-solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+solveMetaImmediately' :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
@@ -709,7 +709,7 @@ solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBru
   [Int] ->
   [Int] ->
   tc (Term sys vOrig)
-solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 = do
+solveMetaImmediately' parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 = do
   -- Try to write t2 in gammaOrig
   let maybeT2orig = sequenceA $ partialInv <$> t2
   case maybeT2orig of
@@ -795,9 +795,9 @@ tryToSolveMeta parent deg gamma neutrality meta depcies t2 ty1 ty2 metasTy1 meta
                 let depcySubstInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
                 isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
                   Just True ->
-                       solveMetaImmediately parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
+                       solveMetaImmediately' parent     gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
                   _ -> solveMetaAgainstWHNF parent deg gammaOrig gamma depcySubst depcySubstInv t2 ty1 ty2 metasTy1 metasTy2
-            case neutrality of
+            Just <$> case neutrality of
               MetaBlocked -> return solution
               MetaNeutral -> case solution of
                 Expr2 (TermCons c) -> tcFail parent $
@@ -826,3 +826,90 @@ tryToSolveTerm parent deg gamma tBlocked t2 metasBlocked tyBlocked ty2 metasTyBl
     tryToSolveMeta parent deg gamma neutrality meta (getCompose depcies) t2 tyBlocked ty2 metasTyBlocked metasTy2
   -- if tBlocked is not a meta, then we should just block on its submetas
   _ -> tcBlock parent "Cannot solve relation: one side is blocked on a meta-variable."
+
+--------------------------------------------------------
+-- REIMPLEMENTATION --
+--------------------------------------------------------
+
+{-| Precondition: @partialInv . subst = Just@.
+-}
+solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  Constraint sys ->
+  Ctx Type sys vOrig Void ->
+  Ctx (Twice2 Type) sys v Void ->
+  (vOrig -> v) ->
+  (v -> Maybe vOrig) ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  (String -> tc ()) ->
+  tc (Maybe (Term sys vOrig))
+solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 alternative = _
+
+--------------------------------------------------------
+-- NO ETA --
+--------------------------------------------------------
+
+--------------------------------------------------------
+-- MAYBE ETA --
+--------------------------------------------------------
+
+tryToSolveMetaMaybeEta :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  MetaNeutrality -> Int -> [Term sys v] ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  (String -> tc ()) ->
+  tc ()
+tryToSolveMetaMaybeEta parent deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 callEtaExpandIfApplicable = do
+  let getVar2 :: Term sys v -> Maybe v
+      getVar2 (Var2 v) = Just v
+      getVar2 _ = Nothing
+  case sequenceA $ getVar2 <$> depcies1 of
+    -- Some dependency is not a variable
+    Nothing -> callEtaExpandIfApplicable "Cannot solve meta-variable: it has non-variable dependencies."
+    -- All dependencies are variables
+    Just depcyVars -> do
+      let (_, repeatedVars, _) = complex depcyVars
+      case repeatedVars of
+        -- Some variables occur twice
+        _:_ -> callEtaExpandIfApplicable "Cannot solve meta-variable: it has undergone contraction of dependencies."
+        -- All variables are unique
+        [] -> solveMeta parent meta1 ( \ gammaOrig -> do
+            -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
+            let subst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
+            let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
+            solution <- isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
+                  Just True ->
+                       solveMetaImmediately parent     gammaOrig gamma subst partialInv t2 ty1 ty2 callEtaExpandIfApplicable
+                  _ -> Nothing <$ callEtaExpandIfApplicable "Let's try eta-expansion."
+            case neutrality1 of
+              MetaBlocked -> return solution
+              MetaNeutral -> case solution of
+                Just (Expr2 (TermCons c)) -> tcFail parent $
+                  "Cannot instantiate neutral meta with a constructor. " ++
+                  "(If the expected solution is an eta-expanded normal expression, then we've found a bug.)"
+                  -- In the future (e.g. when you do neutral-implicit annotations), you may want to try and eta-contract c.
+                  -- Note that `x > (f x .1 , f x ..2)` is not easy to eta-contract to `f`.
+                _ -> return solution
+          )
+  
+tryToSolveTermMaybeEta :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v {-^ Blocked. -} ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  (String -> tc ()) ->
+  tc ()
+tryToSolveTermMaybeEta parent deg gamma t1 t2 ty1 ty2 callEtaExpandIfApplicable = case t1 of
+  (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) alg1)) ->
+    tryToSolveMetaMaybeEta parent deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 callEtaExpandIfApplicable
+
