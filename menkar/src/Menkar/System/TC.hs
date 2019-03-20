@@ -25,11 +25,10 @@ class SysWHN sys => SysTC sys where
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     SysTerm sys v ->
-    Type sys v ->
-    Type sys v ->
-    [Int] ->
-    [Int] ->
-    tc (Term sys vOrig)
+    UniHSConstructor sys v ->
+    UniHSConstructor sys v ->
+    (String -> tc ()) ->
+    tc (Maybe (Term sys vOrig))
   -- see Menkar.TC.Rel
   checkTermRelSysTermWHNTermNoEta :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
