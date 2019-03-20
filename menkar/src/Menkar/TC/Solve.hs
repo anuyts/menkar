@@ -775,6 +775,70 @@ solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1
     Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
 
 --------------------------------------------------------
+-- ALWAYS ETA --
+--------------------------------------------------------
+
+{-| Returns an eta-expansion if eta is certainly allowed.
+-}
+etaExpand ::
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Term sys v ->
+  UniHSConstructor sys v ->
+  tc (Maybe (Term sys v))
+etaExpand parent gamma t (Pi piBinding) = do
+  body <- newMetaTerm
+            (Just parent)
+            --(eqDeg :: Degree sys _)
+            (gamma :.. (VarFromCtx <$> binding'segment piBinding))
+            (Type $ binding'body piBinding)
+            MetaBlocked
+            "Infer function body."
+  return $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) body
+etaExpand parent gamma t (Sigma sigmaBinding) = do
+  let dmu = _segment'modty $ binding'segment $ sigmaBinding
+  allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
+    Just True -> do
+        tmFst <- newMetaTerm
+                   (Just parent)
+                   --(eqDeg :: Degree sys _)
+                   (VarFromCtx <$> dmu :\\ gamma)
+                   (_segment'content $ binding'segment $ sigmaBinding)
+                   MetaBlocked
+                   "Infer first projection."
+        tmSnd <- newMetaTerm
+                   (Just parent)
+                   --(eqDeg :: Degree sys _)
+                   gamma
+                   (Type $ substLast2 tmFst $ binding'body sigmaBinding)
+                   MetaBlocked
+                   "Infer second projection."
+        return $ Just $ Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd
+    Just False -> return Nothing
+    Nothing -> return Nothing
+etaExpand parent gamma t (BoxType boxSeg) = do
+  let dmu = _segment'modty $ boxSeg
+  allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
+    Just True -> do
+      let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType boxSeg
+      tmUnbox <- newMetaTerm
+                   (Just parent)
+                   --(eqDeg :: Degree sys _)
+                   (VarFromCtx <$> dmu :\\ gamma)
+                   (_segment'content boxSeg)
+                   MetaBlocked
+                   "Infer box content."
+      return $ Just $ Expr2 $ TermCons $ ConsBox boxSeg tmUnbox
+    Just False -> return Nothing
+    Nothing -> return Nothing
+etaExpand parent gamma t UnitType = return $ Just $ Expr2 $ TermCons $ ConsUnit
+etaExpand parent gamma t (UniHS _) = return $ Nothing
+etaExpand parent gamma t EmptyType = return $ Nothing
+etaExpand parent gamma t NatType = return $ Nothing
+etaExpand parent gamma t (EqType _ _ _) = return $ Nothing
+
+--------------------------------------------------------
 -- MAYBE ETA IF SPECIFIED --
 --------------------------------------------------------
 
