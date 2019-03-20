@@ -4,6 +4,7 @@ module Test where {
     val cong {~| A B : UniHS} {f : A -> B} {~| a1 a2 : A} {e : a1 == a2}
         : f a1 == f a2
         = ind== (x2 > _ > f a1 == f x2) (refl ...) e
+/*
     val (+) {a b : Nat} : Nat = indNat (_ > {_ : Nat} -> Nat) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
     val lunit+ {~ | n : Nat}
         : (0 + n) == n
@@ -18,4 +19,5 @@ module Test where {
             (refl ...)
             (x > e > cong suc e)
             m
+*/
 }

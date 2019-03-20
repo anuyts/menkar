@@ -1,4 +1,4 @@
-module Test.A where {
+module Test where {
 
 module B where {
 

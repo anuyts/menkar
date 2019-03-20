@@ -378,7 +378,7 @@ checkMagic = interactAfterTask $ do
   typeCheck
 
 getWidth :: IO (Maybe Int)
-getWidth = fmap System.width <$> System.size
+getWidth = fmap ((\x -> x - 4) . System.width) <$> System.size
 
 prepMainState :: IO MainState
 prepMainState = do
