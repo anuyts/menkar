@@ -1,1 +1,7 @@
-val test {x y : Unit} : x == y = refl .{Unit} .{x}
+// Test: x n = y n : Unit >< Unit
+// Test: _ = x n : Unit >< Unit
+val test1 {x y : {n : Nat} -> {_ : Unit} >< Unit} : _ == y = refl .{_} .{x}
+// Test: _ = x n : Nat >< Nat
+val test2a {x : {n : Nat} -> {_ : Nat} >< Nat} : _ == _ = refl .{_} .{x}
+// Test: x n = y n : Nat >< Nat
+val test2b {x y : {n : Nat} -> {_ : Nat} >< Nat} : x == y = refl .{_} .{x}
