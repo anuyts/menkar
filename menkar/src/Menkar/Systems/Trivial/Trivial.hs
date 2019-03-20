@@ -75,8 +75,8 @@ instance SysWHN Trivial where
 
 instance SysTC Trivial where
   checkTermSys parent gamma t ty = absurd1 t
-  newRelatedSysTerm parent deg gammaOrig gamma subst partialInv t ty1 ty2 metasTy1 metasTy2 = absurd1 t
-  checkTermRelSysTermWHNTerm parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = absurd1 t1
+  newRelatedSysTerm parent deg gammaOrig gamma subst partialInv t ty1 ty2 alternative = absurd1 t
+  checkTermRelSysTermWHNTermNoEta parent deg gamma t1 t2 ty1 ty2 = absurd1 t1
   checkEtaWHNSysTy parent gamma t1 t2 = absurd1 t2
   checkMode parent gamma U1 = return ()
   checkModeRel parent gamma U1 U1 = return ()

@@ -12,7 +12,7 @@ import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
 import Menkar.WHN
---import Menkar.TC.Solve
+import Menkar.TC.Solve
 
 import Data.Void
 import Control.Lens
@@ -501,6 +501,7 @@ checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRelNoEta parent deg gamma c1 c2 ty1 ty2
   (Expr2 (TermSys syst1), _) -> checkTermRelSysTermWHNTermNoEta parent deg          gamma  syst1 t2 ty1 ty2
   (_, Expr2 (TermSys syst2)) -> checkTermRelSysTermWHNTermNoEta parent deg (flipCtx gamma) syst2 t1 ty2 ty1
+  (Expr2 (TermCons _), _) -> tcFail parent "False."
   (Var2 v1, Var2 v2) -> if v1 == v2
           then return ()
           else tcFail parent "Cannot relate different variables."
@@ -543,19 +544,6 @@ checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
   (Expr2 (TermProblem t), _) -> tcFail parent "Nonsensical term."
   --(_, _) -> _checkTermNVRelNormal
 
-tryToSolveTermNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Degree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
-  Term sys v ->
-  Term sys v ->
-  [Int] ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
-  (String -> tc ()) ->
-  tc ()
-tryToSolveTermNoEta parent deg gamma t1 t2 metasT1 ty1 ty2 alternative = _
-
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Degree sys v ->
@@ -572,26 +560,14 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
     -- Both are whnormal
     (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2
     -- Only one is whnormal: whsolve or block
-    (True , False) -> tryToSolveTermNoEta parent deg          gamma  t1 t2 metasT1 ty1 ty2 $ tcBlock parent
-    (False, True ) -> tryToSolveTermNoEta parent deg (flipCtx gamma) t2 t1 metasT2 ty1 ty2 $ tcBlock parent
+    (True , False) -> tryToSolveTerm parent (Eta False) deg          gamma  t1 t2 ty1 ty2 $ tcBlock parent
+    (False, True ) -> tryToSolveTerm parent (Eta False) deg (flipCtx gamma) t2 t1 ty1 ty2 $ tcBlock parent
     -- Neither is whnormal: block
     (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
 --------------------------------------------------------
 -- MAYBE ETA --
 --------------------------------------------------------
-
-tryToSolveTermMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Degree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
-  Term sys v {-^ Blocked. -} ->
-  Term sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
-  (String -> tc ()) ->
-  tc ()
-tryToSolveTermMaybeEta parent deg gamma t1 t2 ty1 ty2 callEtaExpandIfApplicable = _
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -719,8 +695,8 @@ checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     (False, False) -> callEtaExpandIfApplicable
     (True , True ) -> callEtaExpandIfApplicable
-    (True , False) -> tryToSolveTermMaybeEta parent deg          gamma  t1 t2 ty1 ty2 $ const callEtaExpandIfApplicable
-    (False, True ) -> tryToSolveTermMaybeEta parent deg (flipCtx gamma) t2 t1 ty2 ty1 $ const callEtaExpandIfApplicable
+    (True , False) -> tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 ty1 ty2 $ const callEtaExpandIfApplicable
+    (False, True ) -> tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 ty2 ty1 $ const callEtaExpandIfApplicable
     {-
     (True , False) -> case t1 of
       Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
