@@ -582,7 +582,6 @@ checkTermNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty =
   maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
   t' <- case maybeT of
     Nothing -> do
-      {-
       -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
       -- place to request eta-expansion.
       case neutrality of
@@ -591,7 +590,6 @@ checkTermNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty =
           (Just parent)
           "Eta-expand meta if possible."
         MetaNeutral -> return ()
-      -}
       tcBlock parent "I want to know what I'm supposed to type-check."
       {-
       -- The meta may now have a solution.
