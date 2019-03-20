@@ -25,8 +25,8 @@ class SysWHN sys => SysTC sys where
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     SysTerm sys v ->
-    UniHSConstructor sys v ->
-    UniHSConstructor sys v ->
+    Type sys v ->
+    Type sys v ->
     (String -> tc ()) ->
     tc (Maybe (Term sys vOrig))
   -- see Menkar.TC.Rel

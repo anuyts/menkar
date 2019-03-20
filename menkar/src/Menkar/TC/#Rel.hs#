@@ -20,11 +20,6 @@ import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
 
-isBlockedOrMeta :: Term sys v -> [Int] -> Bool
-isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
-isBlockedOrMeta _ (_:_) = True
-isBlockedOrMeta _ [] = False
-
 checkSegmentRel ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->

@@ -42,6 +42,13 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
     
 -}
 
+isBlockedOrMeta :: Term sys v -> [Int] -> Bool
+isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
+isBlockedOrMeta _ (_:_) = True
+isBlockedOrMeta _ [] = False
+
+--------------------------
+
 newRelatedMetaModedModality :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
@@ -237,26 +244,33 @@ newRelatedConstructorTerm :: forall sys tc v vOrig .
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   ConstructorTerm sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   (String -> tc ()) ->
-  tc (ConstructorTerm sys vOrig)
-newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 alternative =
+  tc (Maybe (ConstructorTerm sys vOrig))
+newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative =
   case t2 of
     ConsUniHS c2 -> do
       c1orig <- newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv c2
-      return $ ConsUniHS $ c1orig
+      return $ Just $ ConsUniHS $ c1orig
     Lam binding2 -> do
-      case (ty1, ty2) of
-        (Pi piBinding1, Pi piBinding2) -> do
+      case (isBlockedOrMeta (unType ty1) metasTy1, ty1,
+            isBlockedOrMeta (unType ty2) metasTy2, ty2) of
+        (False, TypeHS (Pi piBinding1),
+         False, TypeHS (Pi piBinding2)) -> do
             let cod1 = Type $ binding'body piBinding1
             let cod2 = Type $ binding'body piBinding2
             binding1orig <- newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 cod1 cod2
-            return $ Lam binding1orig
-        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
+            return $ Just $ Lam binding1orig
+        (False, _, False, _) -> tcFail parent "Terms are presumed to be well-typed."
+        (_    , _, _    , _) -> Nothing <$ alternative "Need to know codomains of pi-types."
     Pair sigmaBindingPair2 tmFst2 tmSnd2 -> do
-      case (ty1, ty2) of
-        (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
+      case (isBlockedOrMeta (unType ty1) metasTy1, ty1,
+            isBlockedOrMeta (unType ty2) metasTy2, ty2) of
+        (False, TypeHS (Sigma sigmaBinding1),
+         False, TypeHS (Sigma sigmaBinding2)) -> do
             let uni :: Type sys v
                 uni = hs2type $ UniHS $ unVarFromCtx <$> ctx'mode gamma
             ---------
@@ -290,12 +304,15 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
                             MetaBlocked "Inferring second component."
             let tmSnd1 = subst <$> tmSnd1orig
             ---------
-            return $ Pair sigmaBindingPair1orig tmFst1orig tmSnd1orig
-        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
-    ConsUnit -> return ConsUnit
+            return $ Just $ Pair sigmaBindingPair1orig tmFst1orig tmSnd1orig
+        (False, _, False, _) -> tcFail parent "Terms are presumed to be well-typed."
+        (_    , _, _    , _) -> Nothing <$ alternative "Need to know component types of sigma-types."
+    ConsUnit -> return $ Just ConsUnit
     ConsBox boxSegTerm2 tmUnbox2 -> do
-      case (ty1, ty2) of
-        (BoxType boxSeg1, BoxType boxSeg2) -> do
+      case (isBlockedOrMeta (unType ty1) metasTy1, ty1,
+            isBlockedOrMeta (unType ty2) metasTy2, ty2) of
+        (False, TypeHS (BoxType boxSeg1),
+         False, TypeHS (BoxType boxSeg2)) -> do
             boxSegTerm1orig <- newRelatedSegment
                                        parent deg
                                        gammaOrig gamma
@@ -318,15 +335,16 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
                             MetaBlocked "Inferring box content."
             let tmUnbox1 = subst <$> tmUnbox1orig
             ---------
-            return $ ConsBox boxSegTerm1orig tmUnbox1orig
-        (_, _) -> tcFail parent "Terms are presumed to be well-typed."
-    ConsZero -> return ConsZero
+            return $ Just $ ConsBox boxSegTerm1orig tmUnbox1orig
+        (False, _, False, _) -> tcFail parent "Terms are presumed to be well-typed."
+        (_    , _, _    , _) -> Nothing <$ alternative "Need to know content types of box types."
+    ConsZero -> return $ Just ConsZero
     ConsSuc t2 -> do
       let nat = hs2type $ NatType
       t1orig <- newRelatedMetaTerm parent (Eta True) deg
                   gammaOrig gamma subst partialInv t2 nat nat MetaBlocked "Inferring predecessor."
-      return $ ConsSuc t1orig
-    ConsRefl -> return ConsRefl
+      return $ Just $ ConsSuc t1orig
+    ConsRefl -> return $ Just ConsRefl
 
 ------------------------------------
 
@@ -347,8 +365,8 @@ newRelatedDependentEliminator :: forall sys tc v vOrig .
   NamedBinding Type sys vOrig ->
   NamedBinding Type sys v ->
   DependentEliminator sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
   tc (DependentEliminator sys vOrig)
 newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
   dmu1orig dmu2
@@ -509,8 +527,8 @@ newRelatedEliminator :: forall sys tc v vOrig .
   UniHSConstructor sys vOrig ->
   UniHSConstructor sys v ->
   Eliminator sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
   tc (Eliminator sys vOrig)
 newRelatedEliminator parent deg gammaOrig gamma subst partialInv
   dmu1orig dmu2
@@ -664,19 +682,22 @@ solveMetaAgainstWHNF :: forall sys tc v vOrig .
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   Term sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   (String -> tc ()) ->
   tc (Maybe (Term sys vOrig))
-solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 alternative = 
+solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative = 
   case t2 of
     Var2 v -> case partialInv v of
       Nothing -> Nothing <$ alternative "Cannot instantiate metavariable with a variable that it does not depend on."
       Just u -> return $ Just $ Var2 u
     Expr2 t2 -> case t2 of
       TermCons c2 -> do
-        c1orig <- newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv c2 ty1 ty2 alternative
-        return $ Just $ Expr2 $ TermCons $ c1orig
+        maybeC1orig <- newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv c2
+                    ty1 ty2 metasTy1 metasTy2 alternative
+        return $ Expr2 . TermCons <$> maybeC1orig
       TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
         dmu1orig <- newRelatedMetaModedModality
                       parent
@@ -738,18 +759,20 @@ solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBru
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   Term sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   (String -> tc ()) ->
   tc (Maybe (Term sys vOrig))
-solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 alternative = do
+solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative = do
   -- Try to write t2 in gammaOrig
   let maybeT2orig = sequenceA $ partialInv <$> t2
   case maybeT2orig of
     -- If it works, return that.
     Just t2orig -> return $ Just t2orig
     -- If t2 contains variables not in gammaOrig: solve against WHNF
-    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2 alternative
+    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
 
 --------------------------------------------------------
 -- MAYBE ETA IF SPECIFIED --
@@ -763,11 +786,13 @@ tryToSolveMeta :: forall sys tc v .
   Ctx (Twice2 Type) sys v Void ->
   MetaNeutrality -> Int -> [Term sys v] ->
   Term sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   (String -> tc ()) {-^ Either block or resort to eta-equality. -} ->
   tc ()
-tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 alternative = do
+tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 metasTy1 metasTy2 alternative = do
   let getVar2 :: Term sys v -> Maybe v
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
@@ -787,10 +812,12 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 altern
             let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
             solution <- isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
               Just True ->
-                   solveMetaImmediately parent     gammaOrig gamma subst partialInv t2 ty1 ty2 alternative
+                   solveMetaImmediately parent
+                     gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
               _ -> if unEta eta
                    then Nothing <$ alternative "Let's try eta-expansion."
-                   else solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 alternative
+                   else solveMetaAgainstWHNF parent deg
+                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
             case neutrality1 of
               MetaBlocked -> return solution
               MetaNeutral -> case solution of
@@ -811,12 +838,14 @@ tryToSolveTerm :: forall sys tc v .
   Ctx (Twice2 Type) sys v Void ->
   Term sys v {-^ Blocked. -} ->
   Term sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   (String -> tc ()) ->
   tc ()
-tryToSolveTerm parent eta deg gamma t1 t2 ty1 ty2 alternative = case t1 of
+tryToSolveTerm parent eta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 alternative = case t1 of
   (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) alg1)) ->
-    tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 alternative
+    tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 metasTy1 metasTy2 alternative
   _ -> alternative "Cannot solve relation: one side is blocked on a meta-variable."
 

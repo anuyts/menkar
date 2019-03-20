@@ -226,6 +226,7 @@ hs2term :: UniHSConstructor sys v -> Term sys v
 hs2term ty = Expr2 $ TermCons $ ConsUniHS $ ty
 hs2type :: UniHSConstructor sys v -> Type sys v
 hs2type ty = Type $ Expr2 $ TermCons $ ConsUniHS $ ty
+pattern TypeHS ty = Type (Expr2 (TermCons (ConsUniHS ty)))
 
 data ConstructorTerm (sys :: KSys) (v :: *) =
   {-| element of the Hofmann-Streicher universe -}
