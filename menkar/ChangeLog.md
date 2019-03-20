@@ -4,6 +4,7 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+#### v0.101.3: Correct eta-equality
 *  Turned eta-flag on metas into neutrality flag.
 *  If eta holds, expand inductive pair and box elimination during whnormalization.
 *  Put eta-flag on term relatedness judgement.
