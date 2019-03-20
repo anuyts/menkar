@@ -850,6 +850,8 @@ solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 alternat
 -- NO ETA --
 --------------------------------------------------------
 
+
+
 --------------------------------------------------------
 -- MAYBE ETA --
 --------------------------------------------------------
@@ -884,9 +886,9 @@ tryToSolveMetaMaybeEta parent deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 ca
             let subst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
             let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
             solution <- isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
-                  Just True ->
-                       solveMetaImmediately parent     gammaOrig gamma subst partialInv t2 ty1 ty2 callEtaExpandIfApplicable
-                  _ -> Nothing <$ callEtaExpandIfApplicable "Let's try eta-expansion."
+              Just True ->
+                   solveMetaImmediately parent     gammaOrig gamma subst partialInv t2 ty1 ty2 callEtaExpandIfApplicable
+              _ -> Nothing <$ callEtaExpandIfApplicable "Let's try eta-expansion."
             case neutrality1 of
               MetaBlocked -> return solution
               MetaNeutral -> case solution of
@@ -895,6 +897,7 @@ tryToSolveMetaMaybeEta parent deg gamma neutrality1 meta1 depcies1 t2 ty1 ty2 ca
                   "(If the expected solution is an eta-expanded normal expression, then we've found a bug.)"
                   -- In the future (e.g. when you do neutral-implicit annotations), you may want to try and eta-contract c.
                   -- Note that `x > (f x .1 , f x ..2)` is not easy to eta-contract to `f`.
+                  -- Best done using an eta-contraction judgement analogous to smart-elim judgement.
                 _ -> return solution
           )
   
