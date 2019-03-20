@@ -61,10 +61,12 @@ checkPiOrSigmaRel ::
   Ctx (Twice2 Type) sys v Void ->
   Binding Type Term sys v ->
   Binding Type Term sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 = do
+checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 metasTy1 metasTy2 = do
     let seg1 = (binding'segment binding1)
     let seg2 = (binding'segment binding2)
     let dom2 = _segment'content $ binding'segment binding2
@@ -93,10 +95,12 @@ checkUniHSConstructorRel ::
   Ctx (Twice2 Type) sys v Void ->
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
+checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
   (UniHS d1 {-lvl1-}, UniHS d2 {-lvl2-}) -> return ()
     {-do
     let nat = hs2type $ NatType
@@ -110,9 +114,9 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       (Just parent)
       "Relating levels."-}
   (UniHS _, _) -> tcFail parent "False."
-  (Pi binding1, Pi binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
+  (Pi binding1, Pi binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 metasTy1 metasTy2
   (Pi _, _) -> tcFail parent "False."
-  (Sigma binding1, Sigma binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2
+  (Sigma binding1, Sigma binding2) -> checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 metasTy1 metasTy2
   (Sigma _, _) -> tcFail parent "False."
   (EmptyType, EmptyType) -> return ()
   (EmptyType, _) -> tcFail parent "False."
@@ -149,11 +153,13 @@ checkConstructorTermRelNoEta :: forall sys tc v .
   Ctx (Twice2 Type) sys v Void ->
   ConstructorTerm sys v ->
   ConstructorTerm sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkConstructorTermRelNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
-  (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2
+checkConstructorTermRelNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
+  (ConsUniHS c1, ConsUniHS c2) -> checkUniHSConstructorRel parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
   (ConsUniHS _, _) -> tcFail parent "False."
   --(Lam _, Lam _) -> checkTermRelEta parent deg gamma t1 (Expr2 $ TermCons t2) ty1 ty2 metasTy1 metasTy2
   (Lam _, _) -> unreachable --tcFail parent "False."
@@ -234,15 +240,18 @@ checkDependentEliminatorRelNoEta :: forall sys tc v .
   NamedBinding Type sys v ->
   DependentEliminator sys v ->
   DependentEliminator sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   tc ()
 checkDependentEliminatorRelNoEta parent deg gamma dmu
   eliminee1 eliminee2
   tyEliminee1 tyEliminee2
   motive1 motive2
   clauses1 clauses2
-  ty1 ty2 =
+  ty1 ty2
+  metasTy1 metasTy2 =
     case (clauses1, clauses2) of
       (ElimSigma pairClause1, ElimSigma pairClause2) -> case (tyEliminee1, tyEliminee2) of
         (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
@@ -392,14 +401,17 @@ checkEliminatorRelNoEta :: forall sys tc v .
   UniHSConstructor sys v ->
   Eliminator sys v ->
   Eliminator sys v ->
-  UniHSConstructor sys v ->
-  UniHSConstructor sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
   tc ()
 checkEliminatorRelNoEta parent deg gamma dmu
   eliminee1 eliminee2
   tyEliminee1 tyEliminee2
   eliminator1 eliminator2
-  ty1 ty2 = case (eliminator1, eliminator2) of
+  ty1 ty2
+  metasTy1 metasTy2 = case (eliminator1, eliminator2) of
   (App arg1, App arg2) -> case (tyEliminee1, tyEliminee2) of
     (Pi binding1, Pi binding2) -> do
       let dmu = _segment'modty $ binding'segment $ binding1
@@ -445,6 +457,7 @@ checkEliminatorRelNoEta parent deg gamma dmu
       motive1 motive2
       clauses1 clauses2
       ty1 ty2
+      metasTy1 metasTy2
   (ElimDep _ _, _) -> tcFail parent "False."
   (ElimEq motive1 crefl1, ElimEq motive2 crefl2) -> case (tyEliminee1, tyEliminee2) of
     (EqType tyAmbient1 tL1 tR1, EqType tyAmbient2 tL2 tR2) -> do
@@ -491,11 +504,13 @@ checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Term sys v ->
   Type sys v ->
   Type sys v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
-  (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRelNoEta parent deg gamma c1 c2 ty1 ty2
-  (Expr2 (TermSys syst1), _) -> checkTermRelSysTermWHNTermNoEta parent deg          gamma  syst1 t2 ty1 ty2
-  (_, Expr2 (TermSys syst2)) -> checkTermRelSysTermWHNTermNoEta parent deg (flipCtx gamma) syst2 t1 ty2 ty1
+checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case (t1, t2) of
+  (Expr2 (TermCons c1), Expr2 (TermCons c2)) -> checkConstructorTermRelNoEta parent deg gamma c1 c2 ty1 ty2 metasTy1 metasTy2
+  (Expr2 (TermSys syst1), _) -> checkTermRelSysTermWHNTermNoEta parent deg          gamma  syst1 t2 ty1 ty2 metasTy1 metasTy2
+  (_, Expr2 (TermSys syst2)) -> checkTermRelSysTermWHNTermNoEta parent deg (flipCtx gamma) syst2 t1 ty2 ty1 metasTy2 metasTy1
   (Expr2 (TermCons _), _) -> tcFail parent "False."
   (Var2 v1, Var2 v2) -> if v1 == v2
           then return ()
@@ -530,7 +545,8 @@ checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 = case (t1, t2) of
       )
       (Just parent)
       "Relating eliminees."
-    checkEliminatorRelNoEta parent deg gamma dmu1 eliminee1 eliminee2 tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2
+    checkEliminatorRelNoEta parent deg gamma dmu1 eliminee1 eliminee2
+      tyEliminee1 tyEliminee2 eliminator1 eliminator2 ty1 ty2 metasTy1 metasTy2
   (Expr2 (TermElim _ _ _ _), _) -> tcFail parent "False."
   (Expr2 (TermMeta _ _ _ _), _) -> unreachable -- TODO consider neutrality
   (Expr2 (TermWildcard), _) -> unreachable
@@ -549,14 +565,16 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   Type sys v ->
   Type sys v ->
+  [Int] ->
+  [Int] ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
+checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     -- Both are whnormal
-    (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2
+    (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2
     -- Only one is whnormal: whsolve or block
-    (True , False) -> tryToSolveTerm parent (Eta False) deg          gamma  t1 t2 ty1 ty2 $ tcBlock parent
-    (False, True ) -> tryToSolveTerm parent (Eta False) deg (flipCtx gamma) t2 t1 ty1 ty2 $ tcBlock parent
+    (True , False) -> tryToSolveTerm parent (Eta False) deg          gamma  t1 t2 ty1 ty2 metasTy1 metasTy2 $ tcBlock parent
+    (False, True ) -> tryToSolveTerm parent (Eta False) deg (flipCtx gamma) t2 t1 ty2 ty1 metasTy2 metasTy1 $ tcBlock parent
     -- Neither is whnormal: block
     (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
@@ -577,7 +595,7 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   tc ()
 etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
-  let giveUp = checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (hs2type ty1) (hs2type ty2)
+  let giveUp = checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
   case (ty1, ty2) of
     -- Pi-types: eta-expand
     (Pi piBinding1, Pi piBinding2) ->  do
@@ -690,8 +708,12 @@ checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     (False, False) -> callEtaExpandIfApplicable
     (True , True ) -> callEtaExpandIfApplicable
-    (True , False) -> tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 ty1 ty2 $ const callEtaExpandIfApplicable
-    (False, True ) -> tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 ty2 ty1 $ const callEtaExpandIfApplicable
+    (True , False) ->
+      tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 (hs2type ty1) (hs2type ty2) [] []
+      $ const callEtaExpandIfApplicable
+    (False, True ) ->
+      tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 (hs2type ty2) (hs2type ty1) [] []
+      $ const callEtaExpandIfApplicable
     {-
     (True , False) -> case t1 of
       Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
@@ -745,9 +767,9 @@ checkTermRel parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
         (Expr2 (TermCons (ConsUniHS tycode1)), Expr2 (TermCons (ConsUniHS tycode2))) ->
           if unEta eta
           then checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 tycode1 tycode2
-          else checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
+          else checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) [] []
         (_, _) -> case (isBlockedOrMeta ty1 metasTy1, isBlockedOrMeta ty2 metasTy2) of
-          (False, False) -> checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2)
+          (False, False) -> checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) [] []
           (_    , _    ) -> tcBlock parent $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 
 checkTypeRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>

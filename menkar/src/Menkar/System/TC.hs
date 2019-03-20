@@ -37,8 +37,10 @@ class SysWHN sys => SysTC sys where
     Ctx (Twice2 Type) sys v Void ->
     SysTerm sys v ->
     Term sys v ->
-    UniHSConstructor sys v ->
-    UniHSConstructor sys v ->
+    Type sys v ->
+    Type sys v ->
+    [Int] ->
+    [Int] ->
     tc ()
   -- | see Menkar.TC.Judgement.checkEta.
   -- | This will generally be unreachable, unless a system introduces types via SysTerm.
