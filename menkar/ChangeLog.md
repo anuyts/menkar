@@ -4,6 +4,7 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+#### v0.101.4: Performance tweaks
 *  Smart arguments are now checked only once, causing enormous performance gain.
 *  The eta-expansion judgement is now only allowed for metas, not checked for solved metas, and lowest priority.
 
