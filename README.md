@@ -18,18 +18,29 @@ Currently supported features include:
 Partly implemented (but presently unusable) features include:
 
 * support for multimode modality systems,
+* internal crisp mode and modality polymorphism,
 * support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a fibrant universe to a possibly non-fibrant (Hofmann-Streicher)-universe whose codes can be promoted to the type level continuously,
-* a [definitional relatedness][reldtt] checker (a concept coined by Andrea Vezzosi), which may allow for the non-consideration of irrelevant subterms during conversion-checking.
+* a [definitional relatedness][reldtt] checker (coined by A. Vezzosi), which may allow for the non-consideration of irrelevant subterms during conversion-checking.
 
 Planned features include:
 
 * instance arguments - a feature analogous to Agda's [instance arguments][bright-side-of-typeclasses] and Haskell's typeclasses.
-A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved.
+A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved,
 * the resolution-features necessary to implement a relatedness-checker *within* Menkar,
-* internal crisp mode and modality polymorphism,
+* non-recursive HITs via a type former for pushouts along `ΣBφ -> B` (a codependent coproduct),
+* non-recursive QITs via a type former for pushouts along `B + B -> B`,
+* recursive HITs and QITs via a type former for taking the least fixpoint of a polynomial quotient of a pointed indexed polynomial functor (a very fancy W-type),
 * support for context exponentiation (for working with dependably [atomic][nlab-tiny] objects),
-* internal presheaf operators, to wit: **fresh weakening** (the left adjoint to the Π-type over substructural shape variables), [amazing][nlab-amazing] dependent right adjoints (which we prefer to call **transpension types**; these are right adjoint to the Π-type over substructural shape variables), the **initial type extension** (also called Weld) and the **final type extension** (also called Glue). From these, one can implement Moulin's [**Ψ-type**][psi].
-* perhaps a (somewhat unsound) framework to build inductive and co-inductive types from scratch,
+* internal presheaf operators, to wit:
+   * definitional extension types,
+   * dependent right adjoints (which we prefer to call **transpension types**; these are right adjoint to the Π-type over substructural shape variables),
+   * Orton and Pitts's [**strictness**][strictness] axiom,
+  From these, one can implement the initial and final type extension operations Glue and Weld, and Moulin's [**Ψ-type**][psi],
+* smart constructors, perhaps including
+   * implicit first components,
+   * named first components,
+   * implicit boxing,
+   * named and numbered injections for nested codependent coproduct types.
 * subtyping (very long term).
 
 ## Type systems
@@ -56,4 +67,5 @@ Don't hesitate to contact me if this project sparks your interest.
 [nlab-amazing]: https://ncatlab.org/nlab/show/amazing+right+adjoint
 [psi]: https://research.chalmers.se/publication/235758
 [paramdtt]: https://doi.org/10.1145/3110276
+[strictness]: https://doi.org/10.23638/LMCS-14(4:23)2018
 [time-warps]: https://arxiv.org/abs/1805.11021v1
