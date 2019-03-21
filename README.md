@@ -32,9 +32,11 @@ A **resolution** is essentially a user-defined open ad-hoc function which takes 
 * recursive HITs and QITs via a type former for taking the least fixpoint of a polynomial quotient of a pointed indexed polynomial functor (a very fancy W-type),
 * support for context exponentiation (for working with dependably [atomic][nlab-tiny] objects),
 *  internal presheaf operators, to wit:
+
    * definitional extension types,
    * dependent right adjoints (which we prefer to call **transpension types**; these are right adjoint to the Π-type over substructural shape variables),
    * Orton and Pitts's [**strictness**][strictness] axiom.
+
    From these, one can implement the initial and final type extension operations Glue and Weld, and Moulin's [**Ψ-type**][psi],
 * smart constructors, perhaps including
    * implicit first components,
