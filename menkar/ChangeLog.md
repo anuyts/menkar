@@ -4,6 +4,8 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  Smart arguments are now checked only once, causing enormous performance gain.
+
 #### v0.101.3: Correct eta-equality
 *  Turned eta-flag on metas into neutrality flag.
 *  If eta holds, expand inductive pair and box elimination during whnormalization.
