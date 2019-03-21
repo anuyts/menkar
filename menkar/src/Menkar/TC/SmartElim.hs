@@ -234,6 +234,8 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
      However, the argument determines the type of the application, which in turn determines the
      elaboration of the smart elimination. Hence, to avoid deadlock, we need to check it now as well.
   -}
+  let tyArg = _decl'content $ binding'segment $ piBinding
+  let argChecked = Expr2 $ TermAlreadyChecked arg tyArg
   addNewConstraint
     (JudTerm
       (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElimTotal :\\ gamma)
@@ -249,7 +251,7 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
         (idModedModality $ unVarFromCtx <$> ctx'mode gamma)
         eliminee
         (Pi piBinding)
-        (App arg)
+        (App argChecked)
       )
       (Type $ substLast2 arg $ binding'body piBinding)
       eliminators
