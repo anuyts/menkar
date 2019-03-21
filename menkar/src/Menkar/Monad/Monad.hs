@@ -23,6 +23,13 @@ data Constraint sys = Constraint {
     constraint'id :: Int
   }
 
+data PriorityConstraint = PriorityDefault | PriorityFork | PriorityEta deriving (Eq, Ord)
+getJudgementPriority :: Judgement sys -> PriorityConstraint
+getJudgementPriority (JudEta gamma t ty) = PriorityEta
+getJudgementPriority _ = PriorityDefault
+getConstraintPriority :: Constraint sys -> PriorityConstraint
+getConstraintPriority = getJudgementPriority . constraint'judgement
+
 class (
     MonadFail sc,
     Degrees sys

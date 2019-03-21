@@ -39,6 +39,9 @@ import Control.Lens
 --import Data.Coerce
 import Unsafe.Coerce
 import Data.Kind hiding (Constraint, Type)
+import Data.List hiding (insert)
+import Data.List.Utils (mergeBy)
+import Data.Ord
 
 type TCResult (sys :: KSys) = () --TCSuccess | TCWaiting
 
@@ -86,8 +89,10 @@ data TCState sys m = TCState {
   _tcState'constraintCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint sys),
   _tcState'reports :: [(TCReport sys)],
-  _tcState'newTasks :: [TCT sys m ()], -- always empty unless during constraint check; to be run from back to front
-  _tcState'tasks :: [TCT sys m ()] -- to be run from front to back
+  _tcState'newTasks :: [(PriorityConstraint, TCT sys m ())],
+    -- ^ always empty unless during constraint check; to be run from back to front
+  _tcState'tasks :: [(PriorityConstraint, TCT sys m ())]
+    -- ^ to be run from front to back
   }
 initTCState :: TCState sys m
 initTCState = TCState 0 empty 0 empty [] [] []
@@ -139,14 +144,15 @@ makeLenses ''TCState
 makeLenses ''TCReport
 ----------------------------------------------------------------------------
 
-addTask :: Monad m => TCT sys m () -> TCT sys m ()
-addTask task = do
-  tcState'newTasks %= (task :)
+addTask :: Monad m => PriorityConstraint -> TCT sys m () -> TCT sys m ()
+addTask priority task = do
+  tcState'newTasks %= ((priority, task) :)
 
 commitTasks :: Monad m => TCT sys m ()
 commitTasks = do
+  -- get the new tasks, reverse them, put the low priority ones last, and then insert them into the tasks by priority.
   newTasks <- tcState'newTasks <<.= []
-  tcState'tasks %= (reverse newTasks ++)
+  tcState'tasks %= mergeBy (comparing fst) (sortBy (comparing fst) $ reverse newTasks)
 
 typeCheck :: Monad m => TCT sys m ()
 typeCheck = do
@@ -160,7 +166,7 @@ typeCheck = do
   --unreachable
   case tasks of
     [] -> return ()
-    (task : moreTasks) -> do
+    ((_, task) : moreTasks) -> do
       tcState'tasks .= moreTasks
       task
       typeCheck
@@ -236,9 +242,9 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
 
   -- Constraints are saved upon creation, not now.
   -- In fact, addConstraint is not even called on all created constraints.
-  addConstraint constraint = addTask $ checkConstraintTC constraint
+  addConstraint constraint = addTask (getConstraintPriority constraint) $ checkConstraintTC constraint
 
-  addNewConstraint jud maybeParent reason = addTask $ do
+  addNewConstraint jud maybeParent reason = addTask (getJudgementPriority jud) $ do
     constraint <- defConstraint jud maybeParent reason
     checkConstraintTC constraint
 
@@ -266,7 +272,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
                   tcState'metaMap . at blockingMeta . _JustUnsafe
               if allAreUnsolved
               -- If so, then unblock with the solution just provided
-              then addTask $ catchBlocks $ k $ Just $ solution
+              then addTask PriorityDefault $ catchBlocks $ k $ Just $ solution
               -- Else forget about this blocked constraint, it has been unblocked already.
               else return ()
             -- Save the solution

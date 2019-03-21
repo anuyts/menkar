@@ -5,6 +5,7 @@ Please add changes in chronological order: newest first.
 When releasing, change the changelog and `package.yaml`.
 
 *  Smart arguments are now checked only once, causing enormous performance gain.
+*  The eta-expansion judgement is now only allowed for metas, not checked for solved metas, and lowest priority.
 
 #### v0.101.3: Correct eta-equality
 *  Turned eta-flag on metas into neutrality flag.

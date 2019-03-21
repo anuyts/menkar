@@ -66,7 +66,13 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> checkTermRel parent eta deg gamma t1 t2 ty1 ty2
 
-  JudEta gamma t tyT -> void $ checkEta parent gamma t tyT
+  JudEta gamma t tyT -> case t of
+    Expr2 (TermMeta MetaBlocked meta (Compose depcies) maybeAlg) -> do
+      maybeT <- awaitMeta parent "If it's solved, then I needn't bother." meta depcies
+      case maybeT of
+        Nothing -> void $ checkEta parent gamma t tyT
+        Just _ -> return () -- every known term is obviously equal to its eta-expansion.
+    _ -> unreachable
 
   JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
     checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult

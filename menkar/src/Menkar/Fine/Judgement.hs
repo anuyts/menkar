@@ -59,6 +59,7 @@ data Judgement (sys :: KSys) where
     
   -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.
   -- | Premises: @'JudCtx', 'JudType', 'JudTerm'@
+  -- | Only allowed for meta terms.
   JudEta :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Term sys v ->
