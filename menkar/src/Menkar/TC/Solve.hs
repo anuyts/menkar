@@ -745,6 +745,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
       TermMeta MetaNeutral _ _ _ -> unreachable
       TermWildcard -> unreachable
       TermQName _ _ -> unreachable
+      TermAlreadyChecked _ _ -> unreachable
       TermAlgorithm _ _ -> unreachable
       TermProblem _ -> do
         tcFail parent "Nonsensical term."
@@ -889,6 +890,7 @@ checkEta parent gamma t (Type ty) = do
           TermMeta MetaNeutral _ _ _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
           TermWildcard -> unreachable
           TermQName _ _ -> unreachable
+          TermAlreadyChecked _ _ -> unreachable
           TermAlgorithm _ _ -> unreachable
           TermSys whnSysTy -> checkEtaWHNSysTy parent' gamma t whnSysTy
           TermProblem _ -> tcFail parent' $ "Nonsensical type."

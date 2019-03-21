@@ -226,6 +226,7 @@ whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) reason =
         ModApplied _ quantifiedVal = telescoped2modalQuantified moduleMode telescopedVal
         quantifiedTerm = _val'term quantifiedVal
     in  whnormalize parent gamma quantifiedTerm reason
+whnormalizeNV parent gamma (TermAlreadyChecked t ty) reason = whnormalize parent gamma t reason
 -- Results annotated with an algorithm for solving them: whnormalize the result.
 whnormalizeNV parent gamma (TermAlgorithm alg result) reason = whnormalize parent gamma result reason
 -- System specific terms: call whnormalizeSys, a method of SysWHN.

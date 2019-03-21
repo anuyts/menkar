@@ -620,11 +620,20 @@ checkTermNV parent gamma (TermQName qname lookupresult) (Type ty) = do
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
-      (mapCtx (\ty -> Twice2 ty ty) gamma)
+      (duplicateCtx gamma)
       (Twice2
         (_val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedVal)
         (Type ty)
       )
+    )
+    (Just parent)
+    "Checking whether actual type equals expected type."
+checkTermNV parent gamma (TermAlreadyChecked t tyActual) ty =
+  addNewConstraint
+    (JudTypeRel
+      (eqDeg :: Degree sys v)
+      (duplicateCtx gamma)
+      (Twice2 tyActual ty)
     )
     (Just parent)
     "Checking whether actual type equals expected type."

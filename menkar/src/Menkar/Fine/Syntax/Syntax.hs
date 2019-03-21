@@ -348,6 +348,7 @@ data TermNV (sys :: KSys) (v :: *) =
     (Compose Maybe (Algorithm sys) v) {-^ Human readable representation -} |
   TermWildcard {-^ A meta that need not be solved. -} |
   TermQName Raw.QName (LeftDivided (Telescoped Type ValRHS) sys v) |
+  TermAlreadyChecked (Term sys v) (Type sys v) {-^ Term that has already been checked and need not be checked again. -} |
   TermAlgorithm
     (Algorithm sys v)
     (Term sys v) {-^ result -} |

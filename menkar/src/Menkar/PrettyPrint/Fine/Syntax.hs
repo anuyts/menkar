@@ -135,6 +135,20 @@ instance (SysPretty sys,
          Show (SmartEliminator sys Void) where
   show smartElim = "[SmartEliminator|\n" ++ fine2string ScCtxEmpty smartElim omit ++ "\n|]"
 
+typed2pretty' ::
+  PrettyTree String ->
+  PrettyTree String ->
+  Fine2PrettyOptions sys ->
+  PrettyTree String
+typed2pretty' tPretty tyPretty opts
+  | _fine2pretty'printTypeAnnotations opts =
+    ribbon "(ofType" \\\ [
+          " (" ++| tyPretty |++ ")",
+          " (" ++| tPretty |++ ")"
+        ] ///
+      ribbon ")"
+  | otherwise = tPretty
+  
 typed2pretty :: (DeBruijnLevel v,
                        SysPretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -143,14 +157,7 @@ typed2pretty :: (DeBruijnLevel v,
   Type sys v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
-typed2pretty gamma t ty opts
-  | _fine2pretty'printTypeAnnotations opts =
-      ribbon "(ofType" \\\ [
-          " (" ++| fine2pretty gamma ty opts |++ ")",
-          " (" ++| fine2pretty gamma t opts |++ ")"
-        ] ///
-      ribbon ")"
-  | otherwise = fine2pretty gamma t opts
+typed2pretty gamma t ty opts = typed2pretty' (fine2pretty gamma t opts) (fine2pretty gamma ty opts) opts
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
@@ -362,6 +369,7 @@ instance (SysPretty sys,
     --case _leftDivided'content lookupresult of
     --Telescoped (ValRHS (Var2 v) _) -> var2pretty gamma v
     --_ -> Raw.unparse' qname
+  fine2pretty gamma (TermAlreadyChecked t ty) opts = typed2pretty gamma t ty opts
   fine2pretty gamma (TermAlgorithm alg result) opts = case _fine2pretty'printAlgorithm opts of
     PrintAlgorithm -> fine2pretty gamma alg opts |++ " \x2198 " |+| fine2pretty gamma result opts
     PrintAlgorithmUnderscore -> "_ \x2198 " ++| fine2pretty gamma result opts
