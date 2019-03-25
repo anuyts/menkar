@@ -57,8 +57,8 @@ instance Degrees Trivial where
   divDeg (ModedModality U1 U1) U1 = U1
 
 instance SysScoper Trivial where
-  scopeAnnotation gamma qstring maybeArg = scopeFail $ "Illegal annotation: " ++ (render
-             (Raw.unparse' qstring \\\ (maybeToList $ ($? id) . fine2pretty (ctx2scCtx gamma) <$> maybeArg))
+  scopeAnnotation gamma qstring maybeRawArg = scopeFail $ "Illegal annotation: " ++ (render
+             (Raw.unparse' qstring \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
              $? id
            )
 

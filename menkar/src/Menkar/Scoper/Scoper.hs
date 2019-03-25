@@ -329,8 +329,7 @@ annotation :: forall sys sc v .
   sc (Annotation sys v)
 annotation gamma (Raw.Annotation (Raw.Qualified [] "~") Nothing) = return AnnotImplicit
 annotation gamma (Raw.Annotation qstring maybeRawArg) = do
-  maybeFineArg <- sequenceA $ expr gamma <$> maybeRawArg
-  scopeAnnotation gamma qstring maybeFineArg
+  scopeAnnotation gamma qstring maybeRawArg
 
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
