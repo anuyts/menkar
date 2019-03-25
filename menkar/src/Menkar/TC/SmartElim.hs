@@ -67,14 +67,15 @@ unbox :: forall sys tc v .
   Type sys v ->
   tc ()
 unbox parent gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
-  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmuBox :: ModedModality sys v = _segment'modty boxSeg
   let dmuUnbox :: ModedModality sys v = modedApproxLeftAdjointProj dmuBox (modality'dom dmuInfer)
   let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   -- CMODE : check if you can unbox (You can always.)
   addNewConstraint
     (JudModalityRel ModEq
-      (crispModedModality :\\ duplicateCtx gamma)
+      (crispModedModality dgamma' :\\ duplicateCtx gamma)
       (modality'mod dmuUnbox)
       (modality'mod dmuInfer)
       (modality'dom dmuInfer)
@@ -111,13 +112,14 @@ projFst :: forall sys tc v .
   Type sys v ->
   tc ()
 projFst parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
-  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma (modality'dom dmuInfer)
   let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   addNewConstraint
     (JudModalityRel ModEq
-      (crispModedModality :\\ duplicateCtx gamma)
+      (crispModedModality dgamma' :\\ duplicateCtx gamma)
       (modality'mod dmuProjFst)
       (modality'mod dmuInfer)
       (modality'dom dmuInfer)
@@ -154,7 +156,8 @@ projSnd :: forall sys tc v .
   Type sys v ->
   tc ()
 projSnd parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
-  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmuSigma = _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma (modality'dom dmuInfer)
   let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
@@ -172,7 +175,7 @@ projSnd parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
               )
   addNewConstraint
     (JudModedModalityRel ModEq
-      (crispModedModality :\\ duplicateCtx gamma)
+      (crispModedModality dgamma' :\\ duplicateCtx gamma)
       (idModedModality $ modality'dom dmuElimTotal)
       (dmuInfer)
       (modality'dom dmuElimTotal)
@@ -206,14 +209,15 @@ apply :: forall sys tc v .
   Type sys v ->
   tc ()
 apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyResult = do
-  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   dmuArg <- case maybeDmuArg of
     Nothing -> return $ _segment'modty $ binding'segment $ piBinding
     Just dmuArg -> dmuArg <$
       addNewConstraint
         (JudModedModalityRel ModEq
-          (crispModedModality :\\ duplicateCtx gamma)
+          (crispModedModality dgamma' :\\ duplicateCtx gamma)
           dmuArg
           (_segment'modty $ binding'segment $ piBinding)
           (modality'dom dmuElimTotal)
@@ -223,7 +227,7 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
   -- dmuInfer should be the identity.
   addNewConstraint
     (JudModedModalityRel ModEq
-      (crispModedModality :\\ duplicateCtx gamma)
+      (crispModedModality dgamma' :\\ duplicateCtx gamma)
       (idModedModality $ modality'dom dmuElimTotal)
       (dmuInfer)
       (modality'dom dmuElimTotal)
@@ -304,10 +308,13 @@ popModality parent gamma eliminee tyEliminee eliminators result tyResult =
   case eliminators of
     [] -> unreachable
     (Pair2 dmu1 elim1 : eliminators') -> do
+      let dgamma' = ctx'mode gamma
       let ModedModality d1a mu1 = dmu1
-      d1b <- newMetaMode (Just parent) (crispModedModality :\\ gamma) "Inferring output mode of next implicit elimination."
-      mu1a <- newMetaModty (Just parent) (crispModedModality :\\ gamma) "Inferring modality of next implicit elimination."
-      mu1b <- newMetaModty (Just parent) (crispModedModality :\\ gamma) $
+      d1b <- newMetaMode (Just parent) (crispModedModality dgamma' :\\ gamma)
+               "Inferring output mode of next implicit elimination."
+      mu1a <- newMetaModty (Just parent) (crispModedModality dgamma' :\\ gamma)
+                "Inferring modality of next implicit elimination."
+      mu1b <- newMetaModty (Just parent) (crispModedModality dgamma' :\\ gamma) $
         "Inferring composite of the modalities of all eliminations as of (not including) the next implicit one, " ++
         "until (and including) the next explicit one."
       let dmu1a = ModedModality d1a mu1a
@@ -315,7 +322,7 @@ popModality parent gamma eliminee tyEliminee eliminators result tyResult =
       let d2 = elimineeMode gamma eliminators'
       addNewConstraint
         (JudModalityRel ModEq
-          (crispModedModality :\\ duplicateCtx gamma)
+          (crispModedModality dgamma' :\\ duplicateCtx gamma)
           (modality'mod $ compModedModality dmu1b dmu1a)
           (mu1)
           d1a
@@ -367,7 +374,9 @@ checkSmartElimForNormalType ::
   Term sys v ->
   Type sys v ->
   tc ()
-checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result tyResult =
+checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result tyResult = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   case (tyEliminee, eliminators) of
     -- No eliminators: Check that it's done. (Previously claimed to be unreachable, but I don't see why.)
     (_, []) ->
@@ -427,7 +436,7 @@ checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result 
       then do
         let d = elimineeMode gamma eliminators'
         addNewConstraint
-          (JudModedModalityRel ModEq (crispModedModality :\\ duplicateCtx gamma) (idModedModality d) (dmuInfer) d)
+          (JudModedModalityRel ModEq (crispModedModality dgamma' :\\ duplicateCtx gamma) (idModedModality d) (dmuInfer) d)
           (Just parent)
           "Checking that actual modality equals expected modality."
         addNewConstraint

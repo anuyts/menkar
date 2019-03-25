@@ -32,8 +32,10 @@ checkTelescoped checkRHS parent gamma (seg :|- telescopedRHS) = do
     "Checking an assumption."
   checkTelescoped checkRHS parent (gamma :.. VarFromCtx <$> seg) telescopedRHS
 checkTelescoped checkRHS parent gamma (dmu :** telescopedRHS) = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   addNewConstraint
-    (JudModedModality (crispModedModality :\\ gamma) dmu (unVarFromCtx <$> ctx'mode gamma))
+    (JudModedModality (crispModedModality dgamma' :\\ gamma) dmu dgamma)
     (Just parent)
     "Checking a modality (though I'm a bit surprised that I have to do this, as there is no syntax for it...)."
   checkTelescoped checkRHS parent (VarFromCtx <$> dmu :\\ gamma) telescopedRHS
@@ -81,10 +83,11 @@ checkVal :: (MonadTC sys tc, DeBruijnLevel v) =>
   Val sys v ->
   tc ()
 checkVal parent gamma val = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _decl'modty val
   addNewConstraint
-    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (JudModedModality (crispModedModality dgamma' :\\ gamma) dmu dgamma)
     (Just parent)
     "Checking modality."
   -- CMODE plicity (instance)
@@ -96,10 +99,11 @@ checkModule :: (MonadTC sys tc, DeBruijnLevel v) =>
   Module sys v ->
   tc ()
 checkModule parent gamma modul = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _decl'modty modul
   addNewConstraint
-    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (JudModedModality (crispModedModality dgamma' :\\ gamma) dmu dgamma)
     (Just parent)
     "Checking modality."
   -- CMODE plicity (instance)

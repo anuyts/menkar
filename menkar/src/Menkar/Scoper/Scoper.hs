@@ -43,7 +43,8 @@ eliminator :: forall sys sc v .
 eliminator gamma (Raw.ElimDots) = return SmartElimDots
 --eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
-  dmu <- newMetaModedModality Nothing (crispModedModality :\\ gamma) "Inferring modality of argument."
+  let dgamma' = ctx'mode gamma
+  dmu <- newMetaModedModality Nothing (crispModedModality dgamma' :\\ gamma) "Inferring modality of argument."
   fineExpr <- expr (VarFromCtx <$> dmu :\\ gamma) rawExpr
   return $ SmartElimArg argSpec dmu fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
@@ -90,8 +91,10 @@ elimination :: forall sys sc v .
   Raw.Elimination ->
   sc (Term sys v)
 elimination gamma (Raw.Elimination rawEliminee rawElims) = do
-  dmus <- forM rawElims $ \_ -> newMetaModedModality Nothing (crispModedModality :\\ gamma) "Inferring elimination modality."
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  dmus <- forM rawElims $ \_ -> newMetaModedModality Nothing (crispModedModality dgamma' :\\ gamma)
+                                  "Inferring elimination modality."
   let dmuTotal : dmuTails = flip concatModedModalityDiagrammatically dgamma <$> tails dmus
   fineEliminee <- exprC (VarFromCtx <$> dmuTotal :\\ gamma) rawEliminee
   --fineTy <- type4newImplicit gamma
@@ -130,7 +133,8 @@ simpleLambda ::
   sc (Term sys v)
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
-    dmu <- newMetaModedModality Nothing (crispModedModality :\\ gamma) "Infer domain mode/modality."
+    let dgamma' = ctx'mode gamma
+    dmu <- newMetaModedModality Nothing (crispModedModality dgamma' :\\ gamma) "Infer domain mode/modality."
     fineTy <- Type <$> newMetaTermNoCheck Nothing {-eqDeg-} (VarFromCtx <$> dmu :\\ gamma) MetaBlocked Nothing "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
@@ -347,13 +351,14 @@ buildDeclaration :: forall sys sc v rawDeclSort fineDeclSort content .
   TelescopedPartialDeclaration rawDeclSort Type content sys v ->
   sc [Declaration fineDeclSort (Telescoped Type content) sys v]
 buildDeclaration gamma generateContent partDecl = do
+        let dgamma' = ctx'mode gamma
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
-          Compose Nothing -> newMetaMode Nothing (crispModedModality :\\ gamma) "Infer mode."
+          Compose Nothing -> newMetaMode Nothing (crispModedModality dgamma' :\\ gamma) "Infer mode."
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
-          Compose Nothing -> newMetaModty Nothing (crispModedModality :\\ gamma) "Infer modality."
+          Compose Nothing -> newMetaModty Nothing (crispModedModality dgamma' :\\ gamma) "Infer modality."
         let plic = case _pdecl'plicity partDecl of
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit

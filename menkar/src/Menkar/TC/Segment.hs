@@ -14,12 +14,13 @@ checkSegment :: (MonadTC sys tc, DeBruijnLevel v) =>
   Segment Type sys v ->
   tc ()
 checkSegment parent gamma seg = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty seg
   let ty = _segment'content seg
   ----------
   addNewConstraint
-    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (JudModedModality (crispModedModality dgamma' :\\ gamma) dmu dgamma)
     (Just parent)
     "Checking the modality."
   ----------
@@ -36,12 +37,13 @@ checkSegmentUni :: (MonadTC sys tc, DeBruijnLevel v) =>
   Segment Type sys v ->
   tc ()
 checkSegmentUni parent gamma seg = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty seg
   let ty = _segment'content seg
   ----------
   addNewConstraint
-    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (JudModedModality (crispModedModality dgamma' :\\ gamma) dmu dgamma)
     (Just parent)
     "Checking the modality."
   ----------

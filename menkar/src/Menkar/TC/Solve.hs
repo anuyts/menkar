@@ -127,11 +127,13 @@ newRelatedSegment :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijn
   Segment Type sys v ->
   tc (Segment Type sys vOrig)
 newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
+  let dgammaOrig' = ctx'mode gammaOrig
+  let dgamma'     = ctx'mode gamma
   let dmu2 = _decl'modty segment2
   dmu1orig <- newRelatedMetaModedModality
                 parent
-                (crispModedModality :\\ gammaOrig)
-                (crispModedModality :\\ gamma)
+                (crispModedModality dgammaOrig' :\\ gammaOrig)
+                (crispModedModality dgamma'     :\\ gamma)
                 subst partialInv dmu2
                 (unVarFromCtx <$> ctx'mode gamma)
                 "Inferring segment modality."
@@ -688,7 +690,9 @@ solveMetaAgainstWHNF :: forall sys tc v vOrig .
   [Int] ->
   (String -> tc ()) ->
   tc (Maybe (Term sys vOrig))
-solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative = 
+solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative = do
+  let dgammaOrig' = ctx'mode gammaOrig
+  let dgamma'     = ctx'mode gamma
   case t2 of
     Var2 v -> case partialInv v of
       Nothing -> Nothing <$ alternative "Cannot instantiate metavariable with a variable that it does not depend on."
@@ -701,8 +705,8 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
       TermElim dmu2 eliminee2 tyEliminee2 eliminator2 -> do
         dmu1orig <- newRelatedMetaModedModality
                       parent
-                      (crispModedModality :\\ gammaOrig)
-                      (crispModedModality :\\ gamma)
+                      (crispModedModality dgammaOrig' :\\ gammaOrig)
+                      (crispModedModality dgamma'     :\\ gamma)
                       subst
                       partialInv
                       dmu2

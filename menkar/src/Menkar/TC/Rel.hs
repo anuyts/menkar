@@ -29,14 +29,15 @@ checkSegmentRel ::
   Segment Type sys v ->
   tc ()
 checkSegmentRel parent deg gamma seg1 seg2 = do
-  let d' = unVarFromCtx <$> ctx'mode gamma
-  let uni = hs2type $ UniHS d' -- $ Expr2 TermWildcard
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  let uni = hs2type $ UniHS dgamma -- $ Expr2 TermWildcard
   addNewConstraint
     (JudModedModalityRel ModEq
-      (crispModedModality :\\ gamma)
+      (crispModedModality dgamma' :\\ gamma)
       (_segment'modty seg1)
       (_segment'modty seg2)
-      d'
+      dgamma
     )
     (Just parent)
     "Relating modalities."
@@ -517,13 +518,15 @@ checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = cas
           else tcFail parent "Cannot relate different variables."
   (Var2 v, _) -> tcFail parent "False."
   (Expr2 (TermElim dmu1 eliminee1 tyEliminee1 eliminator1), Expr2 (TermElim dmu2 eliminee2 tyEliminee2 eliminator2)) -> do
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
     let tyEliminee1' = hs2type $ tyEliminee1
     let tyEliminee2' = hs2type $ tyEliminee2
     addNewConstraint
       (JudModedModalityRel ModEq
-        (crispModedModality :\\ gamma)
+        (crispModedModality dgamma' :\\ gamma)
         dmu1 dmu2
-        (unVarFromCtx <$> ctx'mode gamma)
+        dgamma
       )
       (Just parent)
       "Relating modalities."

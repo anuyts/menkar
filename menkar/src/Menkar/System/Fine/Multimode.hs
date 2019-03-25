@@ -10,7 +10,7 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
   compMod :: (Modality sys) v -> (Mode sys) v -> (Modality sys) v -> (Modality sys) v
   -- | Only for use by the prettyprinter. Good behaviour w.r.t. inequality checking is not required.
   divMod :: ModedModality sys v -> ModedModality sys v -> Modality sys v
-  crispMod :: (Modality sys) v
+  crispMod :: Mode sys v {-^ Codomain. -} -> (Modality sys) v
   dataMode :: (Mode sys) v
   -- | When applied to mu, this yields the greatest modality less than the left adjoint functor to mu.
   approxLeftAdjointProj :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> (Modality sys) v
@@ -44,8 +44,8 @@ divModedModality :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v -> ModedModality sys v
 divModedModality d'mu' dmu@(ModedModality d mu) = ModedModality d (divMod d'mu' dmu)
 
-crispModedModality :: (Multimode sys) => ModedModality sys v
-crispModedModality = ModedModality dataMode crispMod
+crispModedModality :: (Multimode sys) => Mode sys v -> ModedModality sys v
+crispModedModality d = ModedModality dataMode (crispMod d)
 
 modedApproxLeftAdjointProj :: (Multimode sys) =>
   ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> ModedModality sys v

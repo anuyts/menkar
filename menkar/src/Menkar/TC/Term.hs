@@ -92,9 +92,10 @@ checkUniHSConstructor :: forall sys tc v .
     Type sys v ->
     tc ()
 checkUniHSConstructor parent gamma (UniHS d {-lvl-}) ty = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   addNewConstraint
-    (JudModeRel (crispModedModality :\\ duplicateCtx gamma) d dgamma)
+    (JudModeRel (crispModedModality dgamma' :\\ duplicateCtx gamma) d dgamma)
     (Just parent)
     "Checking whether actual mode equals expected mode."
   -----
@@ -564,9 +565,10 @@ checkTermNV :: forall sys tc v .
     tc ()
 checkTermNV parent gamma (TermCons c) ty = checkConstructorTerm parent gamma c ty
 checkTermNV parent gamma (TermElim dmu eliminee tyEliminee eliminator) ty = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   addNewConstraint
-    (JudModedModality (crispModedModality :\\ gamma) dmu dgamma)
+    (JudModedModality (crispModedModality dgamma' :\\ gamma) dmu dgamma)
     (Just parent)
     "Checking modality."
   addNewConstraint

@@ -40,7 +40,7 @@ instance Multimode Trivial where
   idMod U1 = U1
   compMod U1 U1 U1 = U1
   divMod (ModedModality U1 U1) (ModedModality U1 U1) = U1
-  crispMod = U1
+  crispMod U1 = U1
   dataMode = U1
   approxLeftAdjointProj (ModedModality U1 U1) U1 = U1
   --term2mode t = U1

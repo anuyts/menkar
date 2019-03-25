@@ -64,7 +64,7 @@ instance Multimode Reldtt where
   idMod d = BareModty $ ModtyTermId d
   compMod mu2 dmid mu1 = BareModty $ ModtyTermComp mu2 mu1
   divMod (ModedModality d' mu') (ModedModality d mu) = BareModty $ ModtyTermDiv mu' mu
-  crispMod = BareModty $ ModtyAbs dataMode _ $ NamedBinding Nothing $ unDegree $ BareDeg $ DegEq
+  crispMod d = BareModty $ ModtyAbs dataMode d $ NamedBinding Nothing $ unDegree $ BareDeg $ DegEq
   dataMode = ReldttMode $ Expr2 $ TermCons $ ConsZero
   approxLeftAdjointProj (ModedModality d mu) dcod = BareModty $ ModtyApproxLeftAdjointProj mu
   
