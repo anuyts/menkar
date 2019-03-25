@@ -9,9 +9,9 @@ import Data.Void
 class SysSyntax (Term sys) sys => SysScoper sys where
   scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void -> 
     Raw.Qualified String -> Maybe (Term sys v) -> sc (Annotation sys v)
-  newMetaMode :: (MonadScoper sys sc) =>
+  newMetaMode :: (MonadScoper sys sc, DeBruijnLevel v) =>
     Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Mode sys v)
-  newMetaModty :: (MonadScoper sys sc) =>
+  newMetaModty :: (MonadScoper sys sc, DeBruijnLevel v) =>
     Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Modality sys v)
 
 newMetaModedModality :: (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
