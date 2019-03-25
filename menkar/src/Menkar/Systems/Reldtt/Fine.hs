@@ -20,9 +20,11 @@ newtype ReldttDegree v = ReldttDegree {unDegree :: Term Reldtt v}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ModtyTerm v =
-  ModtyTermIdSet {-^ The modality @<> : 0 -> 0@, i.e. the identity functor on the category of sets. -} |
+  {-| The modality @<> : d -> 0@ mapping presheaves to their set of points. -}
+  ModtyTermFinal (ReldttMode v) {-^ The domain -} |
   ModtyTermId (ReldttMode v) {-^ The mode -} |
-  ModtyTermComp (ReldttModality v) (ReldttModality v) {-^ Mathematical order -} |
+  {-| If @mu : d1 -> d2@ and @nu : d2 -> d3@, then the composite is @'ModtyTermComp' d3 nu d2 mu d1@ -}
+  ModtyTermComp (ReldttMode v) (ReldttModality v) (ReldttMode v) (ReldttModality v) (ReldttMode v) |
   {-| Only for prettyprinting. -} 
   ModtyTermDiv (ReldttModality v) (ReldttModality v) |
   --ModtyTermPar (ReldttMode v) {-^ The codomain -} |
@@ -38,8 +40,30 @@ data ModtyTerm v =
   ModtyAbs (ReldttMode v) {-^ The domain -} (ReldttMode v) {-^ The codomain. -} (NamedBinding Term Reldtt v)
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
---pattern BareMode d = ReldttMode (Expr2 (TermSys (TermMode d)))
+{-
+_modtyTerm'dom :: ModtyTerm v -> ReldttMode v
+_modtyTerm'dom (ModtyTermFinal ddom) = ddom
+_modtyTerm'dom (ModtyTermId d) = d
+_modtyTerm'dom (ModtyTermComp nu mu) = _modtyTerm'dom mu
+_modtyTerm'dom (ModtyTermDiv rho mu) = _modtyTerm'dom mu
+_modtyTerm'dom (ModtyUnavailable ddom dcod) = ddom
+_modtyTerm'dom (ModtyApproxLeftAdjointProj mu) = _modtyTerm'cod mu
+_modtyTerm'dom (ModtyPrep deg mu) = _modtyTerm'dom mu
+_modtyTerm'dom (ModtyAbs ddom dcod namedBinding) = ddom
+
+_modtyTerm'cod :: ModtyTerm v -> ReldttMode v
+_modtyTerm'cod (ModtyTermFinal ddom) = BareMode d
+_modtyTerm'cod (ModtyTermId d) = d
+_modtyTerm'cod (ModtyTermComp nu mu) = _modtyTerm'cod nu
+_modtyTerm'cod (ModtyTermDiv rho mu) = _modtyTerm'dom rho
+_modtyTerm'cod (ModtyUnavailable ddom dcod) = dcod
+_modtyTerm'cod (ModtyApproxLeftAdjointProj mu) = _modtyTerm'dom mu
+_modtyTerm'cod (ModtyPrep deg mu) = BareMode $ ConsSuc $ unMode $ _modtyTerm'cod mu
+_modtyTerm'cod (ModtyAbs ddom dcod namedBinding) = dcod
+-}
+
 pattern BareDeg i = ReldttDegree (Expr2 (TermSys (TermDeg i)))
+pattern BareMode d = ReldttMode (Expr2 (TermCons d))
 pattern BareModty mu = ReldttModality (Expr2 (TermSys (TermModty mu)))
 
 data DegTerm v =
@@ -56,13 +80,15 @@ data ReldttTerm v =
   TermDeg (DegTerm v)
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
+------------------------------
+
 instance SysTrav Reldtt where
   
 instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
   idMod d = BareModty $ ModtyTermId d
-  compMod mu2 dmid mu1 = BareModty $ ModtyTermComp mu2 mu1
+  compMod mu2 dmid mu1 = BareModty $ ModtyTermComp _ mu2 dmid mu1 _
   divMod (ModedModality d' mu') (ModedModality d mu) = BareModty $ ModtyTermDiv mu' mu
   crispMod d = BareModty $ ModtyAbs dataMode d $ NamedBinding Nothing $ unDegree $ BareDeg $ DegEq
   dataMode = ReldttMode $ Expr2 $ TermCons $ ConsZero
