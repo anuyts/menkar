@@ -741,7 +741,7 @@ checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Type sys v ->
   Type sys v ->
   tc ()
-checkTermRel parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
+checkTermRel parent eta deg gamma t1 t2 ty1 ty2 = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   -- Top-relatedness is always ok.
   isTopDeg dgamma deg >>= \ case
@@ -752,28 +752,28 @@ checkTermRel parent eta deg gamma t1 t2 (Type ty1) (Type ty2) = do
     -- It's certainly not about top-relatedness
     Just False -> do
       -- purposefully shadowing (redefining)
-      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 "Weak-head-normalizing first term."
-      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 "Weak-head-normalizing second term."
-      (ty1, metasTy1) <- runWriterT $ whnormalize parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
-      (ty2, metasTy2) <- runWriterT $ whnormalize parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
+      (ty1, metasTy1) <- runWriterT $ whnormalizeType parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
+      (ty2, metasTy2) <- runWriterT $ whnormalizeType parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
+      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 ty1 "Weak-head-normalizing first term."
+      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 ty2 "Weak-head-normalizing second term."
       parent <- defConstraint
             (JudTermRel
               eta
               deg
               gamma
               (Twice2 t1 t2)
-              (Twice2 (Type ty1) (Type ty2))
+              (Twice2 ty1 ty2)
             )
             (Just parent)
             "Weak-head-normalize everything"
 
-      case (ty1, ty2) of
+      case (unType ty1, unType ty2) of
         (Expr2 (TermCons (ConsUniHS tycode1)), Expr2 (TermCons (ConsUniHS tycode2))) ->
           if unEta eta
           then checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 tycode1 tycode2
-          else checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) [] []
-        (_, _) -> case (isBlockedOrMeta ty1 metasTy1, isBlockedOrMeta ty2 metasTy2) of
-          (False, False) -> checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (Type ty1) (Type ty2) [] []
+          else checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 [] []
+        (_, _) -> case (isBlockedOrMeta (unType ty1) metasTy1, isBlockedOrMeta (unType ty2) metasTy2) of
+          (False, False) -> checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 [] []
           (_    , _    ) -> tcBlock parent $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
 
 checkTypeRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>

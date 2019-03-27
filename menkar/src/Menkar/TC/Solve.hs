@@ -876,15 +876,15 @@ checkEta ::
   Term sys v ->
   Type sys v ->
   tc Bool
-checkEta parent gamma t (Type ty) = do
-  (whnTy, metas) <- runWriterT $ whnormalize parent gamma ty "Normalizing type."
+checkEta parent gamma t ty = do
+  (whnTy, metas) <- runWriterT $ whnormalizeType parent gamma ty "Normalizing type."
   case metas of
     [] -> do
       parent' <- defConstraint
-                   (JudEta gamma t (Type whnTy))
+                   (JudEta gamma t whnTy)
                    (Just parent)
                    "Weak-head-normalized type."
-      case whnTy of
+      case unType whnTy of
         Var2 v -> return False
         Expr2 whnTyNV -> case whnTyNV of
           TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons

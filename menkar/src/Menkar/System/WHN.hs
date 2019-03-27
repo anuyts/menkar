@@ -13,6 +13,7 @@ class SysScoper sys => SysWHN sys where
     Constraint sys ->
     Ctx Type sys v Void ->
     SysTerm sys v ->
+    Type sys v ->
     String ->
     WriterT [Int] whn (Term sys v)
   {-| @'leqMod' ddom dcod mu1 mu2@ returns whether @mu1 <= mu2@, or

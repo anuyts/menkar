@@ -23,9 +23,10 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Term sys v {-^ eliminee, whnormal -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
   Eliminator sys v ->
+  Type sys v {-^ type of the result -} ->
   String ->
   WriterT [Int] whn (Term sys v)
-tryDependentEta parent gamma dmu whnEliminee tyEliminee e reason = do
+tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   let returnElim = return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
   case e of
@@ -41,7 +42,7 @@ tryDependentEta parent gamma dmu whnEliminee tyEliminee e reason = do
                     VarWkn (VarWkn w) -> Var2 w
                     VarWkn VarLast -> tmFst
                     VarLast -> tmSnd
-              whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body pairClause)) reason
+              whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body pairClause)) tyResult reason
             _ -> returnElim
         _ -> unreachable
       ElimBox boxClause -> case tyEliminee of
@@ -53,7 +54,7 @@ tryDependentEta parent gamma dmu whnEliminee tyEliminee e reason = do
               let subst v = case v of
                     VarWkn w -> Var2 w
                     VarLast -> tmUnbox
-              whnormalize parent gamma (join $ subst <$> _namedBinding'body boxClause) reason
+              whnormalize parent gamma (join $ subst <$> _namedBinding'body boxClause) tyResult reason
             _ -> returnElim
         _ -> unreachable
       ElimEmpty -> returnElim
@@ -73,13 +74,15 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Term sys v {-^ eliminee -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
   Eliminator sys v ->
+  Type sys v {-^ type of the result -} ->
   String ->
   WriterT [Int] whn (Term sys v)
 -- careful with glue/weld!
-whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
+whnormalizeElim parent gamma dmu eliminee tyEliminee e tyResult reason = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
   -- WHNormalize the eliminee
-  (whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee reason
-  let useDependentEta = tryDependentEta parent gamma dmu whnEliminee tyEliminee e reason
+  (whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee (hs2type tyEliminee) reason
+  let useDependentEta = tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason
   case metas of
     -- The eliminee is blocked: Try to rely on eta instead
     _:_ -> useDependentEta
@@ -119,31 +122,32 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
             let subst v = case v of
                   VarWkn w -> Var2 w
                   VarLast -> arg
-            in whnormalize parent gamma (join $ subst <$> binding'body binding) reason
+            in whnormalize parent gamma (join $ subst <$> binding'body binding) tyResult reason
           -- Function extensionality over a lambda: WHNormalize the body.
           (Lam (Binding seg body), Funext) -> do
-            (whnBody, metasBody) <- listen $ whnormalize parent (gamma :.. VarFromCtx <$> seg) body reason
-            case (metasBody, whnBody) of
+            let Pi piBinding = tyEliminee
+            whnBody <- whnormalize parent (gamma :.. VarFromCtx <$> seg) body (Type $ binding'body piBinding) reason
+            case whnBody of
               -- Body is refl: Elimination reduces to refl.
-              ([], Expr2 (TermCons (ConsRefl))) -> return $ Expr2 $ TermCons $ ConsRefl
+              Expr2 (TermCons (ConsRefl)) -> return $ Expr2 $ TermCons $ ConsRefl
               -- Body is blocked or neutral: Return elimination with whnormalized body.
-              (_, _) -> return $ Expr2 $ TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg whnBody) tyEliminee Funext
+              _ -> return $ Expr2 $ TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg whnBody) tyEliminee Funext
           -- Other eliminations of lambda: Bogus.
           (Lam _, _) -> return termProblem
           ---------------              
           -- SIGMA-TYPE
           ---------------
           -- Fst of pair.
-          (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize parent gamma tmFst reason
+          (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize parent gamma tmFst tyResult reason
           -- Snd of pair.
-          (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize parent gamma tmSnd reason
+          (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize parent gamma tmSnd tyResult reason
           -- Correct dependent elimination of pair: Substitute and whnormalize.
           (Pair sigmaBinding tmFst tmSnd, ElimDep motive (ElimSigma clause)) ->
             let subst v = case v of
                   VarWkn (VarWkn w) -> Var2 w
                   VarWkn VarLast -> tmFst
                   VarLast -> tmSnd
-            in whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause)) reason
+            in whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause)) tyResult reason
           -- Other elimination of pair: Bogus.
           (Pair _ _ _, _) -> return termProblem
           ---------------              
@@ -159,20 +163,20 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
           -- BOX TYPE
           ---------------
           -- Unbox box.
-          (ConsBox seg tm, Unbox) -> whnormalize parent gamma tm reason
+          (ConsBox seg tm, Unbox) -> whnormalize parent gamma tm tyResult reason
           -- Correct dependent elimination of box: Substitute and whnormalize.
           (ConsBox seg tm, ElimDep motive (ElimBox clause)) ->
             let subst :: VarExt _ -> Term _ _
                 subst VarLast = tm
                 subst (VarWkn v) = Var2 v
-            in  whnormalize parent gamma (join $ subst <$> _namedBinding'body clause) reason
+            in  whnormalize parent gamma (join $ subst <$> _namedBinding'body clause) tyResult reason
           -- Other dependent elimination of box: Bogus.
           (ConsBox _ _, _) -> return termProblem
           ---------------              
           -- NATURALS
           ---------------
           -- Correct dependent elimination of zero.
-          (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize parent gamma cz reason
+          (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize parent gamma cz tyResult reason
           -- Other elimination of zero: Bogus.
           (ConsZero, _) -> return termProblem
           -- Correct dependent elimination of successor: Substitute and whnormalize.
@@ -181,14 +185,14 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e reason = do
                 subst VarLast = Expr2 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
                 subst (VarWkn VarLast) = t
                 subst (VarWkn (VarWkn v)) = Var2 v
-            in  whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) reason
+            in  whnormalize parent gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) tyResult reason
           -- Other elimination of zero: Bogus.
           (ConsSuc _, _) -> return termProblem
           ---------------              
           -- IDENTITY TYPE
           ---------------
           -- Correct dependent elimination of refl.
-          (ConsRefl, ElimEq motive crefl) -> whnormalize parent gamma crefl reason
+          (ConsRefl, ElimEq motive crefl) -> whnormalize parent gamma crefl tyResult reason
           -- Other elimination of refl: Bogus.
           (ConsRefl, _) -> return termProblem
       (Expr2 _) -> unreachable
@@ -197,42 +201,43 @@ whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   TermNV sys v ->
+  Type sys v ->
   String ->
   WriterT [Int] whn (Term sys v)
 -- Constructor: return it
-whnormalizeNV parent gamma t@(TermCons _) reason = return $ Expr2 $ t   -- Mind glue and weld!
+whnormalizeNV parent gamma t@(TermCons _) ty reason = return $ Expr2 $ t   -- Mind glue and weld!
 -- Eliminator: call whnormalizeElim
-whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) reason = whnormalizeElim parent gamma dmu t tyEliminee e reason
+whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) ty reason = whnormalizeElim parent gamma dmu t tyEliminee e ty reason
 -- Meta: return if unsolved, otherwise whnormalize solution.
-whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) reason = do
-  --solution <- fromMaybe (Expr2 t) <$> awaitMeta parent reason meta depcies
+whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty reason = do
+  --solution <- fromMaybe (Expr2 t) <$> awaitMeta parent ty reason meta depcies
   maybeSolution <- lift $ awaitMeta parent reason meta depcies
   case maybeSolution of
     Nothing -> case neutrality of
       MetaBlocked -> Expr2 t <$ tell [meta]
       MetaNeutral -> return $ Expr2 t
         -- neutral metas are considered whnormal, as solving them cannot trigger any computation.
-    Just solution -> whnormalize parent gamma solution reason
+    Just solution -> whnormalize parent gamma solution ty reason
 {-maybeSolution <- getMeta meta depcies
   case maybeSolution of
     Nothing -> Expr2 t <$ tell [meta]
     Just solution -> whnormalize gamma solution-}
 -- Wildcard: unreachable
-whnormalizeNV parent gamma TermWildcard reason = unreachable
+whnormalizeNV parent gamma TermWildcard ty reason = unreachable
 -- QName: Extract the enclosed value, turn the telescope into box-constructors and lambdas, and return.
-whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) reason =
+whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) ty reason =
     let moduleMode = _leftDivided'originalMode leftDividedTelescopedVal
         telescopedVal = _leftDivided'content leftDividedTelescopedVal
         ModApplied _ quantifiedVal = telescoped2modalQuantified moduleMode telescopedVal
         quantifiedTerm = _val'term quantifiedVal
-    in  whnormalize parent gamma quantifiedTerm reason
-whnormalizeNV parent gamma (TermAlreadyChecked t ty) reason = whnormalize parent gamma t reason
+    in  whnormalize parent gamma quantifiedTerm ty reason
+whnormalizeNV parent gamma (TermAlreadyChecked t ty) ty' reason = whnormalize parent gamma t ty' reason
 -- Results annotated with an algorithm for solving them: whnormalize the result.
-whnormalizeNV parent gamma (TermAlgorithm alg result) reason = whnormalize parent gamma result reason
+whnormalizeNV parent gamma (TermAlgorithm alg result) ty reason = whnormalize parent gamma result ty reason
 -- System specific terms: call whnormalizeSys, a method of SysWHN.
-whnormalizeNV parent gamma (TermSys t) reason = whnormalizeSys parent gamma t reason
+whnormalizeNV parent gamma (TermSys t) ty reason = whnormalizeSys parent gamma t ty reason
 -- Bogus terms: return them.
-whnormalizeNV parent gamma t@(TermProblem _) reason = return $ Expr2 t
+whnormalizeNV parent gamma t@(TermProblem _) ty reason = return $ Expr2 t
 
 {- | Either weak-head-normalizes the given term and writes nothing,
      or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
@@ -242,9 +247,20 @@ whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
+  Type sys v ->
   String ->
   WriterT [Int] whn (Term sys v)
 -- Variable: return it
-whnormalize parent gamma (Var2 v) reason = return $ Var2 v
+whnormalize parent gamma (Var2 v) ty reason = return $ Var2 v
 -- Not a variable: call whnormalizeNV
-whnormalize parent gamma (Expr2 t) reason = whnormalizeNV parent gamma t reason
+whnormalize parent gamma (Expr2 t) ty reason = whnormalizeNV parent gamma t ty reason
+
+whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Type sys v ->
+  String ->
+  WriterT [Int] whn (Type sys v)
+whnormalizeType parent gamma (Type ty) reason = do
+  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  Type <$> whnormalize parent gamma ty (hs2type $ UniHS dgamma) reason

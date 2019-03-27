@@ -463,11 +463,12 @@ checkSmartElim :: forall sys tc v .
   tc ()
 checkSmartElim parent gamma eliminee tyEliminee [] result tyResult =
   checkSmartElimDone parent gamma eliminee tyEliminee result tyResult
-checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResult = do
+checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult = do
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuElimTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+  let dEliminee = modality'dom dmuElimTotal
   (whnTyEliminee, metasTyEliminee) <-
-    runWriterT $ whnormalize parent
+    runWriterT $ whnormalizeType parent
       (VarFromCtx <$> dmuElimTotal :\\ gamma)
       tyEliminee
       "Weak-head-normalizing type of eliminee."
@@ -475,10 +476,10 @@ checkSmartElim parent gamma eliminee (Type tyEliminee) eliminators result tyResu
     -- the type weak-head-normalizes
     [] -> do
       parent' <- defConstraint
-                   (JudSmartElim gamma eliminee (Type whnTyEliminee) eliminators result tyResult)
+                   (JudSmartElim gamma eliminee whnTyEliminee eliminators result tyResult)
                    (Just parent)
                    "Weak-head-normalized type."
-      checkSmartElimForNormalType parent' gamma eliminee (Type whnTyEliminee) eliminators result tyResult
+      checkSmartElimForNormalType parent' gamma eliminee whnTyEliminee eliminators result tyResult
     -- the type does not weak-head-normalize
     _ -> tcBlock parent "Need to know type in order to make sense of smart-elimination."
 
