@@ -24,15 +24,16 @@ whnormalizeModty parent gamma mu reason = do
     ModtyTermId d -> do
       let mu' = ModtyAbs d d $ NamedBinding (Just $ Name NonOp "i") $ Var2 VarLast
       whnormalizeModty parent gamma mu' reason
-    ModtyTermComp dcod nu dmid mu ddom -> do
-      let mu' = ModtyAbs ddom dcod $ NamedBinding (Just $ Name NonOp "i") $
-                  BareDeg $ DegGet (BareDeg $ DegGet (Var2 VarLast) $ mu) $ nu
+    ModtyTermComp nu dmid mu -> do
+      let mu' = ModtyAbs ddom dcod $ NamedBinding (Just $ Name NonOp "i") $ unDegree $
+                  BareDeg $ DegGet (BareDeg $ DegGet (ReldttDegree $ Var2 VarLast) $ VarWkn <$> mu) $ VarWkn <$> nu
       whnormalizeModty parent gamma mu' reason
     _ -> _whnormalizeModty
 
 instance SysWHN Reldtt where
-  whnormalizeSys parent gamma (TermModty mu) reason = Expr2 . TermSys . TermModty <$> whnormalizeModty parent gamma mu reason
-  whnormalizeSys parent gamma t reason = _whnormalizeSys
+  whnormalizeSys parent gamma (TermModty mu) ty reason =
+    Expr2 . TermSys . TermModty <$> whnormalizeModty parent gamma mu reason
+  whnormalizeSys parent gamma t ty reason = _whnormalizeSys
 
   leqMod ddom dcod mu1 mu2 = _leqMod
 
