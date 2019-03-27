@@ -1,6 +1,7 @@
 module Menkar.Systems.Reldtt.WHN where
 
 import Menkar.Basic
+import Menkar.WHN
 import Menkar.System.Fine
 import Menkar.System.Scoper
 import Menkar.System.WHN
@@ -12,27 +13,68 @@ import Menkar.Systems.Reldtt.Scoper
 import Control.Monad.Writer.Class
 import Data.Void
 
-whnormalizeModty :: (MonadWHN Reldtt m, MonadWriter [Int] m) =>
+whnormalizeModty :: (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
   ModtyTerm v ->
+  Type Reldtt v ->
   String ->
-  m (ModtyTerm v)
-whnormalizeModty parent gamma mu reason = do
+  whn (ReldttModality v)
+whnormalizeModty parent gamma mu ty reason = do
+  whnTy <- whnormalizeType parent gamma ty reason
+  let maybeDomCod = case whnTy of
+        Type (Expr2 (TermSys (TermTyModty ddom dcod))) -> Just (ddom, dcod)
+        _ -> Nothing
+  let returnMu = return $ BareModty $ mu
+  --let returnMuProblem = return $ ReldttModality $ Expr2 $ TermProblem $ Expr2 $ TermSys $ TermModty $ mu
   case mu of
-    ModtyTermFinal ddom -> return $ ModtyTermFinal ddom
-    ModtyTermId d -> do
-      let mu' = ModtyAbs d d $ NamedBinding (Just $ Name NonOp "i") $ Var2 VarLast
-      whnormalizeModty parent gamma mu' reason
-    ModtyTermComp nu dmid mu -> do
-      let mu' = ModtyAbs ddom dcod $ NamedBinding (Just $ Name NonOp "i") $ unDegree $
-                  BareDeg $ DegGet (BareDeg $ DegGet (ReldttDegree $ Var2 VarLast) $ VarWkn <$> mu) $ VarWkn <$> nu
-      whnormalizeModty parent gamma mu' reason
-    _ -> _whnormalizeModty
+    ModtyTermCrisp ddom dcod -> returnMu
+    ModtyTermDiscPar d m n -> do
+      whnD <- whnormalize parent gamma d (hs2type NatType) reason
+      case whnD of
+        Expr2 (TermCons ConsZero) -> return $ BareModty $ ModtyTermCrisp m n
+        _ -> returnMu
+    ModtyTermDiscIrr ddom d n -> do
+      whnD <- whnormalize parent gamma d (hs2type NatType) reason
+      case whnD of
+        Expr2 (TermCons ConsZero) -> return $ BareModty $ ModtyTermCrisp ddom n
+        _ -> returnMu
+
+    ModtyTermCrispOne dcod -> returnMu
+    ModtyTermDiscRelOne d n -> do
+      whnD <- whnormalize parent gamma d (hs2type NatType) reason
+      case whnD of
+        Expr2 (TermCons ConsZero) -> return $ BareModty $ ModtyTermCrispOne n
+        _ -> returnMu
+    ModtyTermDiscIrrOne d n -> do
+      whnD <- whnormalize parent gamma d (hs2type NatType) reason
+      case whnD of
+        Expr2 (TermCons ConsZero) -> return $ BareModty $ ModtyTermCrispOne n
+        _ -> returnMu
+
+    ModtyTermCrispOneOne -> returnMu
+    ModtyTermContOneOne -> returnMu
+    ModtyTermIrrOneOne -> returnMu
+
+    ModtyTermCrispNull dcod -> returnMu
+    ModtyTermDiscIrrNull d n -> do
+      whnD <- whnormalize parent gamma d (hs2type NatType) reason
+      case whnD of
+        Expr2 (TermCons ConsZero) -> return $ BareModty $ ModtyTermCrispNull n
+        _ -> returnMu
+        
+    ModtyTermCrispNullOne -> returnMu
+    ModtyTermIrrNullOne -> returnMu
+    
+    ModtyTermNullNull -> returnMu
+
+    ModtyTermComp mu2 dmid mu1 -> _ModtyTermComp
+    ModtyTermDiv rho mu -> returnMu -- TODO
+    ModtyApproxLeftAdjointProj mu -> _ModtyApproxLeftAdjointProj
 
 instance SysWHN Reldtt where
   whnormalizeSys parent gamma (TermModty mu) ty reason =
-    Expr2 . TermSys . TermModty <$> whnormalizeModty parent gamma mu reason
+    unModality <$> whnormalizeModty parent gamma mu ty reason
   whnormalizeSys parent gamma t ty reason = _whnormalizeSys
 
   leqMod ddom dcod mu1 mu2 = _leqMod

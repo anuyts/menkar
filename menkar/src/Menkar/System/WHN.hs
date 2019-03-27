@@ -9,7 +9,8 @@ import Data.Void
 import Control.Monad.Writer
 
 class SysScoper sys => SysWHN sys where
-  whnormalizeSys :: (MonadWHN sys whn, MonadWriter [Int] whn) =>
+  whnormalizeSys :: forall whn v .
+    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     SysTerm sys v ->
