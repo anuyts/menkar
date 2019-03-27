@@ -88,7 +88,7 @@ instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
   idMod d = BareModty $ ModtyTermId d
-  compMod dcod mu2 dmid mu1 ddom = BareModty $ ModtyTermComp dcod mu2 dmid mu1 ddom
+  compMod mu2 dmid mu1 = BareModty $ ModtyTermComp _ mu2 dmid mu1 _
   divMod (ModedModality d' mu') (ModedModality d mu) = BareModty $ ModtyTermDiv mu' mu
   crispMod d = BareModty $ ModtyAbs dataMode d $ NamedBinding Nothing $ unDegree $ BareDeg $ DegEq
   dataMode = ReldttMode $ Expr2 $ TermCons $ ConsZero

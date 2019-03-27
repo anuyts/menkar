@@ -7,8 +7,7 @@ import Menkar.System.Fine.Syntax
 
 class (SysSyntax (Term sys) sys) => Multimode sys where
   idMod :: Mode sys v -> Modality sys v
-  {-| If @mu : d1 -> d2@ and @nu : d2 -> d3@, then the composite is @'compMod' d3 nu d2 mu d1@ -}
-  compMod :: (Mode sys) v -> (Modality sys) v -> (Mode sys) v -> (Modality sys) v -> (Mode sys) v -> (Modality sys) v
+  compMod :: (Modality sys) v -> (Mode sys) v -> (Modality sys) v -> (Modality sys) v
   -- | Only for use by the prettyprinter. Good behaviour w.r.t. inequality checking is not required.
   divMod :: ModedModality sys v -> ModedModality sys v -> Modality sys v
   crispMod :: Mode sys v {-^ Codomain. -} -> (Modality sys) v
@@ -32,14 +31,14 @@ idModedModality :: (Multimode sys) => (Mode sys) v -> ModedModality sys v
 idModedModality d = ModedModality d (idMod d)
 
 compModedModality :: (Multimode sys) =>
-  Mode sys v -> ModedModality sys v -> ModedModality sys v -> ModedModality sys v
-compModedModality dcod (ModedModality dmid mu2) (ModedModality ddom mu1) = ModedModality ddom (compMod dcod mu2 dmid mu1 ddom)
+  ModedModality sys v -> ModedModality sys v -> ModedModality sys v
+compModedModality (ModedModality d' mu') (ModedModality d mu) = ModedModality d (compMod mu' d' mu)
 
 concatModedModalityDiagrammatically :: (Multimode sys) =>
   [ModedModality sys v] -> Mode sys v {-^ Codomain of the result -} -> ModedModality sys v
 concatModedModalityDiagrammatically [] d = idModedModality d
 concatModedModalityDiagrammatically (dmu : dmus) d =
-  compModedModality d (concatModedModalityDiagrammatically dmus d) dmu
+  compModedModality (concatModedModalityDiagrammatically dmus d) dmu
 
 divModedModality :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v -> ModedModality sys v
