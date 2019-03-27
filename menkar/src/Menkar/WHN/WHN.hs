@@ -13,10 +13,10 @@ import Data.Void
 import Data.Maybe
 import Control.Monad.Writer
 import Data.Functor.Compose
-import Control.Monad.Trans.Maybe
 import Data.Monoid
+import Control.Monad.Writer.Class
 
-tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
+tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   ModedModality sys v {-^ how eliminee is used -} ->
@@ -25,7 +25,7 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Eliminator sys v ->
   Type sys v {-^ type of the result -} ->
   String ->
-  WriterT [Int] whn (Term sys v)
+  whn (Term sys v)
 tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   let returnElim = return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
@@ -67,7 +67,7 @@ tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason = do
    * For non-projectible pairs, there was no eta-rule anyway.
    In summary, we don't eta-expand.
 -}
-whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
+whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   ModedModality sys v {-^ how eliminee is used -} ->
@@ -76,7 +76,7 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
   Eliminator sys v ->
   Type sys v {-^ type of the result -} ->
   String ->
-  WriterT [Int] whn (Term sys v)
+  whn (Term sys v)
 -- careful with glue/weld!
 whnormalizeElim parent gamma dmu eliminee tyEliminee e tyResult reason = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
@@ -197,13 +197,13 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e tyResult reason = do
           (ConsRefl, _) -> return termProblem
       (Expr2 _) -> unreachable
 
-whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
+whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   TermNV sys v ->
   Type sys v ->
   String ->
-  WriterT [Int] whn (Term sys v)
+  whn (Term sys v)
 -- Constructor: return it
 whnormalizeNV parent gamma t@(TermCons _) ty reason = return $ Expr2 $ t   -- Mind glue and weld!
 -- Eliminator: call whnormalizeElim
@@ -211,7 +211,7 @@ whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) ty reason = whnormalize
 -- Meta: return if unsolved, otherwise whnormalize solution.
 whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty reason = do
   --solution <- fromMaybe (Expr2 t) <$> awaitMeta parent ty reason meta depcies
-  maybeSolution <- lift $ awaitMeta parent reason meta depcies
+  maybeSolution <- awaitMeta parent reason meta depcies
   case maybeSolution of
     Nothing -> case neutrality of
       MetaBlocked -> Expr2 t <$ tell [meta]
@@ -243,24 +243,24 @@ whnormalizeNV parent gamma t@(TermProblem _) ty reason = return $ Expr2 t
      or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
      writes the indices of all metavariables that could (each in itself) unblock the situation.
 -}
-whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
+whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
   Type sys v ->
   String ->
-  WriterT [Int] whn (Term sys v)
+  whn (Term sys v)
 -- Variable: return it
 whnormalize parent gamma (Var2 v) ty reason = return $ Var2 v
 -- Not a variable: call whnormalizeNV
 whnormalize parent gamma (Expr2 t) ty reason = whnormalizeNV parent gamma t ty reason
 
-whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v) =>
+whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Type sys v ->
   String ->
-  WriterT [Int] whn (Type sys v)
+  whn (Type sys v)
 whnormalizeType parent gamma (Type ty) reason = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   Type <$> whnormalize parent gamma ty (hs2type $ UniHS dgamma) reason

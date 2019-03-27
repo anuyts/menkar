@@ -9,13 +9,13 @@ import Data.Void
 import Control.Monad.Writer
 
 class SysScoper sys => SysWHN sys where
-  whnormalizeSys :: MonadWHN sys whn =>
+  whnormalizeSys :: (MonadWHN sys whn, MonadWriter [Int] whn) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     SysTerm sys v ->
     Type sys v ->
     String ->
-    WriterT [Int] whn (Term sys v)
+    whn (Term sys v)
   {-| @'leqMod' ddom dcod mu1 mu2@ returns whether @mu1 <= mu2@, or
       @'Nothing'@ if it is presently unclear.
       This method may call @'awaitMeta'@.
