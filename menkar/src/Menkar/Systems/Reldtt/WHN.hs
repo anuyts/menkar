@@ -13,7 +13,20 @@ import Menkar.Systems.Reldtt.Scoper
 import Control.Monad.Writer.Class
 import Data.Void
 
-whnormalizeModty :: (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+whnormalizeComp :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  Ctx Type Reldtt v Void ->
+  ReldttModality v ->
+  ReldttMode v ->
+  ReldttModality v ->
+  String ->
+  whn (ReldttModality v)
+whnormalizeComp parent gamma mu2 dmid mu1 reason = do
+  _
+
+whnormalizeModty :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
   ModtyTerm v ->
@@ -21,10 +34,6 @@ whnormalizeModty :: (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v
   String ->
   whn (ReldttModality v)
 whnormalizeModty parent gamma mu ty reason = do
-  whnTy <- whnormalizeType parent gamma ty reason
-  let maybeDomCod = case whnTy of
-        Type (Expr2 (TermSys (TermTyModty ddom dcod))) -> Just (ddom, dcod)
-        _ -> Nothing
   let returnMu = return $ BareModty $ mu
   --let returnMuProblem = return $ ReldttModality $ Expr2 $ TermProblem $ Expr2 $ TermSys $ TermModty $ mu
   case mu of
@@ -68,7 +77,7 @@ whnormalizeModty parent gamma mu ty reason = do
     
     ModtyTermNullNull -> returnMu
 
-    ModtyTermComp mu2 dmid mu1 -> _ModtyTermComp
+    ModtyTermComp mu2 dmid mu1 -> whnormalizeComp parent gamma mu2 dmid mu1 reason
     ModtyTermDiv rho mu -> returnMu -- TODO
     ModtyApproxLeftAdjointProj mu -> _ModtyApproxLeftAdjointProj
 
