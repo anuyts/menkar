@@ -24,6 +24,47 @@ compKnownModty (KnownModty kmid kcod []) mu =
 compKnownModty (KnownModty kmid kcod krevdegs) mu =
   KnownModty (_knownModty'dom mu) kcod $ flip getDegKnown mu <$> krevdegs
 
+compModtyTail :: ModtyTail v -> ModtyTail v -> ModtyTail v
+compModtyTail (TailCont d) tail1 = tail1
+compModtyTail tail2 (TailCont d) = tail2
+compModtyTail TailEmpty TailEmpty = TailEmpty
+compModtyTail TailEmpty (TailDisc   _) = TailEmpty
+compModtyTail TailEmpty (TailCodisc _) = TailEmpty
+compModtyTail TailEmpty (TailForget ddom) = TailForget ddom
+compModtyTail TailEmpty (TailDiscForget   ddom _) = TailForget ddom
+compModtyTail TailEmpty (TailCodiscForget ddom _) = TailForget ddom
+compModtyTail (TailDisc   dcod) TailEmpty = TailDisc dcod
+compModtyTail (TailDisc   dcod) (TailDisc   _) = TailDisc dcod
+compModtyTail (TailDisc   dcod) (TailCodisc _) = TailDisc dcod
+compModtyTail (TailDisc   dcod) (TailForget ddom) = TailDiscForget ddom dcod
+compModtyTail (TailDisc   dcod) (TailDiscForget   ddom _) = TailDiscForget ddom dcod
+compModtyTail (TailDisc   dcod) (TailCodiscForget ddom _) = TailDiscForget ddom dcod
+compModtyTail (TailCodisc dcod) TailEmpty = TailCodisc dcod
+compModtyTail (TailCodisc dcod) (TailDisc   _) = TailCodisc dcod
+compModtyTail (TailCodisc dcod) (TailCodisc _) = TailCodisc dcod
+compModtyTail (TailCodisc dcod) (TailForget ddom) = TailCodiscForget ddom dcod
+compModtyTail (TailCodisc dcod) (TailDiscForget   ddom _) = TailCodiscForget ddom dcod
+compModtyTail (TailCodisc dcod) (TailCodiscForget ddom _) = TailCodiscForget ddom dcod
+compModtyTail (TailForget _) TailEmpty = TailEmpty
+compModtyTail (TailForget _) (TailDisc   _) = TailEmpty
+compModtyTail (TailForget _) (TailCodisc _) = TailEmpty
+compModtyTail (TailForget _) (TailForget ddom) = TailForget ddom
+compModtyTail (TailForget _) (TailDiscForget   ddom _) = TailForget ddom
+compModtyTail (TailForget _) (TailCodiscForget ddom _) = TailForget ddom
+compModtyTail (TailDiscForget   _ dcod) TailEmpty = TailDisc dcod
+compModtyTail (TailDiscForget   _ dcod) (TailDisc   _) = TailDisc dcod
+compModtyTail (TailDiscForget   _ dcod) (TailCodisc _) = TailDisc dcod
+compModtyTail (TailDiscForget   _ dcod) (TailForget ddom) = TailDiscForget ddom dcod
+compModtyTail (TailDiscForget   _ dcod) (TailDiscForget   ddom _) = TailDiscForget ddom dcod
+compModtyTail (TailDiscForget   _ dcod) (TailCodiscForget ddom _) = TailDiscForget ddom dcod
+compModtyTail (TailCodiscForget _ dcod) TailEmpty = TailCodisc dcod
+compModtyTail (TailCodiscForget _ dcod) (TailDisc   _) = TailCodisc dcod
+compModtyTail (TailCodiscForget _ dcod) (TailCodisc _) = TailCodisc dcod
+compModtyTail (TailCodiscForget _ dcod) (TailForget ddom) = TailCodiscForget ddom dcod
+compModtyTail (TailCodiscForget _ dcod) (TailDiscForget   ddom _) = TailCodiscForget ddom dcod
+compModtyTail (TailCodiscForget _ dcod) (TailCodiscForget ddom _) = TailCodiscForget ddom dcod
+compModtyTail _ _ = _
+
 whnormalizeComp :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
@@ -55,7 +96,7 @@ whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
             Nothing -> Expr2 . TermProblem <$> giveUp
             Just ((snout1, tail1), (snout2, tail2)) -> do
               let snoutComp = compKnownModty snout2 snout1
-              let tailComp = _
+              let tailComp = compModtyTail tail2 tail1
               return $ BareModty $ ModtyTerm snoutComp tailComp
         (_, _) -> return $ BareModty $ ModtyTermComp whnMu2 dmid whnMu1
     otherwise -> giveUp
