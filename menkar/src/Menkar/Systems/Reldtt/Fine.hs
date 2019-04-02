@@ -7,24 +7,26 @@ import GHC.Generics
 
 data Reldtt :: KSys where
 
-type instance Mode Reldtt = ReldttMode
-type instance Modality Reldtt = ReldttModality
-type instance Degree Reldtt = ReldttDegree
-type instance SysTerm Reldtt = ReldttTerm
+type instance Mode Reldtt = Term Reldtt
+type instance Modality Reldtt = Term Reldtt
+type instance Degree Reldtt = Term Reldtt
+type instance SysTerm Reldtt = ReldttSysTerm
 
+{-
 {-| @ReldttModeOne@ and @ReldttModeNull@ are really just modes 1 and 0 (depth 0 and -1) but with a special treatment.
 -}
-data ReldttMode v = ReldttMode {unMode :: Term Reldtt v}
+newtype ReldttMode v = ReldttMode {unMode :: Term Reldtt v}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 newtype ReldttModality v = ReldttModality {unModality :: Term Reldtt v}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 newtype ReldttDegree v = ReldttDegree {unDegree :: Term Reldtt v}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+-}
 
-pattern BareMode d = ReldttMode (Expr2 (TermSys (TermMode d)))
+pattern BareMode d = Expr2 (TermSys (SysTermMode d))
 pattern BareFinMode d = BareMode (ModeTermFinite (Expr2 (TermCons d)))
-pattern BareModty mu = ReldttModality (Expr2 (TermSys (TermModty mu)))
-pattern BareDeg i = ReldttDegree (Expr2 (TermSys (TermDeg i)))
+pattern BareModty mu = Expr2 (TermSys (SysTermModty mu))
+pattern BareDeg i = Expr2 (TermSys (SysTermDeg i))
 
 data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
@@ -34,48 +36,49 @@ data KnownModty = KnownModty Int {-^ Domain -} Int {-^ Codomain -} [KnownDeg]
 data ModtyTail v =
   TailEmpty |
 
-  TailDisc   (ReldttMode v) {-^ Tail codomain -} |
-  TailCodisc (ReldttMode v) {-^ Tail codomain -} |
+  TailDisc   (Term Reldtt v) {-^ Tail codomain, can be omega -} |
+  TailCodisc (Term Reldtt v) {-^ Tail codomain, can be omega -} |
 
-  TailForget (ReldttMode v) {-^ Tail domain -} |
+  TailForget (Term Reldtt v) {-^ Tail domain, can be omega -} |
 
-  TailDiscForget   (ReldttMode v) {-^ Tail domain -} (ReldttMode v) {-^ Tail codomain -} |
-  TailCodiscForget (ReldttMode v) {-^ Tail domain -} (ReldttMode v) {-^ Tail codomain -} |
-  TailCont (ReldttMode v)
+  TailDiscForget   (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
+  TailCodiscForget (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
+  TailCont (Term Reldtt v) {-^ Tail domain and codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ModtyTerm v =
   ModtyTerm KnownModty (ModtyTail v) |
   
   {-| If @mu : d1 -> d2@ and @nu : d2 -> d3@, then the composite is @'ModtyTermComp' nu d2 mu@ -}
-  ModtyTermComp (ReldttModality v) (ReldttMode v) (ReldttModality v) |
-  {-| Only for prettyprinting. -} 
-  ModtyTermDiv (ReldttModality v) (ReldttModality v) |
-  ModtyApproxLeftAdjointProj (ReldttModality v) {-^ The argument modality -} |
+  ModtyTermComp (Term Reldtt v) (Term Reldtt v) (Term Reldtt v) |
+  {-| Only for prettypring.
+      If @mu : d1 -> dcod@ and @rho : d2 -> dcod@, then @'ModtyTermDiv' rho mu@ denotes @rho \ mu : d1 -> d2@ -} 
+  ModtyTermDiv (Term Reldtt v) (Term Reldtt v) |
+  ModtyApproxLeftAdjointProj (Term Reldtt v) {-^ The argument modality -} |
   
   {-| Only for prettyprinting. -} 
-  ModtyUnavailable (ReldttMode v) {-^ The domain -} (ReldttMode v) {-^ The codomain. -}
+  ModtyUnavailable (Term Reldtt v) {-^ The domain, can be omega -} (Term Reldtt v) {-^ The codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data DegTerm v =
   DegEq |
   DegZero |
   {-| Forbidden for terms that might reduce to Top. -}
-  DegSuc (ReldttDegree v) |
+  DegSuc (Term Reldtt v) |
   DegTop |
-  DegGet (ReldttDegree v) (ReldttModality v)
+  DegGet (Term Reldtt v) {-^ Degree -} (Term Reldtt v) {-^ Modality -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-data ReldttTerm v =
-  TermMode (ModeTerm v) |
-  TermModty (ModtyTerm v) |
-  TermDeg (DegTerm v) |
+data ReldttSysTerm v =
+  SysTermMode (ModeTerm v) |
+  SysTermModty (ModtyTerm v) |
+  SysTermDeg (DegTerm v) |
   {-| Type of modes. -}
-  TermTyMode |
+  SysTypeMode |
   {-| Type of degrees. -}
-  TermTyDeg (ReldttMode v) |
+  SysTypeDeg (Term Reldtt v) {-^ Mode, can be omega. -} |
   {-| Type of modalities. -}
-  TermTyModty (ReldttMode v) (ReldttMode v)
+  SysTypeModty (Term Reldtt v) {-^ Domain, can be omega -} (Term Reldtt v) {-^ Codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 ------------------------------
