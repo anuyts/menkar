@@ -22,10 +22,17 @@ instance SysScoper Reldtt where
         Just rawArg -> AnnotMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
       Raw.Qualified [] "m" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `m` requires an argument."
-        Just rawArg -> AnnotModality <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
+        Just rawArg -> do
+          mu <- expr (crispModedModality dgamma' :\\ gamma) rawArg
+          ddom <- newMetaMode Nothing gamma "Inferring domain of modality."
+          dcod <- newMetaMode Nothing gamma "Inferring codomain of modality."
+          return $ AnnotModality $ wrapInChainModty ddom dcod mu
       _   -> scopeFail $ "Illegal annotation: " ++ (render
                (Raw.unparse' qstring \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
                $? id
              )
   newMetaMode maybeParent gamma reason = newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
-  newMetaModty maybeParent gamma reason = newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+  newMetaModty maybeParent gamma reason = do
+    ddom <- newMetaMode Nothing gamma "Inferring domain of modality."
+    dcod <- newMetaMode Nothing gamma "Inferring codomain of modality."
+    wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason

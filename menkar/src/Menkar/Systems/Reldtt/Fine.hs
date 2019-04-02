@@ -85,6 +85,9 @@ data ChainModty v = ChainModty {
   }
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
+wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
+wrapInChainModty ddom dcod t = ChainModty (idKnownModty dcod) $ Compose [t :*: idKnownModty ddom]
+
 _chainModty'dom :: ChainModty v -> Term Reldtt v
 _chainModty'dom mu = _knownModty'dom $ _chainModty'knownPrefix $ mu
 _chainModty'cod :: ChainModty v -> Term Reldtt v
