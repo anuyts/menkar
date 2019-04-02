@@ -57,109 +57,6 @@ data ModtyTerm v =
   ModtyUnavailable (ReldttMode v) {-^ The domain -} (ReldttMode v) {-^ The codomain. -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-  {-
-  {-| @ModtyTermCrisp ddom dcod@ is @< = | =, ..., = > : ddom -> dcod@ -}
-  ModtyTermCrisp (Term Reldtt v) (Term Reldtt v) |
-  {-| @ModtyTermDiscPar d m n@ is @disc_0^n . fget_0^m = < = | =^n, m, m+1, ..., m+d-1> : m+d -> n+d@ -}
-  ModtyTermDiscPar (Term Reldtt v) (Term Reldtt v) (Term Reldtt v) |
-  {-| @ModtyTermDiscIrr ddom d n@ is @disc_0^n . irr = < = | =^n, T, T, ..., T > : ddom -> n+d@ -}
-  ModtyTermDiscIrr (Term Reldtt v) (Term Reldtt v) (Term Reldtt v) |
-  
-  {-| @ModtyTermCrispOne dcod@ is @< = | =, ..., = > : one -> dcod@ -}
-  ModtyTermCrispOne (Term Reldtt v) |
-  {-| @ModtyTermDiscRelOne d n@ is @disc_0^n . rel = < = | =^n, 0, 0, ..., 0 > : one -> n+d@ -}
-  ModtyTermDiscRelOne (Term Reldtt v) (Term Reldtt v) |
-  {-| @ModtyTermDiscIrrOne d n@ is @disc_0^n . irr = < = | =^n, T, T, ..., T > : one -> n+d@ -}
-  ModtyTermDiscIrrOne (Term Reldtt v) (Term Reldtt v) |
-  --{-| @ModtyTermCophiRelOne d@ is @cohpi_0 . rel = < 0 | 0, ..., 0 > : one -> d@ -}
-  --ModtyTermCophiRelOne (Term Reldtt v) |
-  --{-| @ModtyTermDiscIrrCohpiRelOne d@ is @disc_0^n . irr . cohpi_0 . rel = < 0 | 0^n, T, ..., T > : one -> d@ -}
-  --ModtyTermDiscIrrCohpiRelOne (Term Reldtt v) |
-  --{-| @ModtyTermCophiIrrOne d@ is @cohpi_0 . irr = < T | T, ..., T > : one -> d@ -}
-  --ModtyTermCophiIrrOne (Term Reldtt v) |
-
-  {-| @< = | = > : one -> one@ -}
-  ModtyTermCrispOneOne |
-  {-| @< = | 0 > : one -> one@ -}
-  ModtyTermContOneOne |
-  {-| @< = | T > : one -> one@ -}
-  ModtyTermIrrOneOne |
-  --{-| @< 0 | 0 > : one -> one@ -}
-  --ModtyTermCohpiRelOneOne |
-  --{-| @< 0 | T > : one -> one@ -}
-  --ModtyTermIrrCohpiRelOneOne |
-  --{-| @< T | T > : one -> one@ -}
-  --ModtyTermCophiIrrOneOne |
-
-  {-| @ModtyTermCrispNull dcod@ is @< = | =, ..., = > : null -> dcod@ -}
-  ModtyTermCrispNull (Term Reldtt v) |
-  {-| @ModtyTermCrispNull d n@ is @< = | =^n, T, ..., T > : null -> n+d@ -}
-  ModtyTermDiscIrrNull (Term Reldtt v) (Term Reldtt v) |
-
-  {-| @< = | = > : null -> one@ -}
-  ModtyTermCrispNullOne |
-  {-| @< = | T > : null -> one@ -}
-  ModtyTermIrrNullOne |
-  --{-| @< T | T > : null -> one@ -}
-  --ModtyTermCohpiIrrNullOne |
-
-  {-| @< = | > : null -> null@ -}
-  ModtyTermNullNull |
-  
-  {-| If @mu : d1 -> d2@ and @nu : d2 -> d3@, then the composite is @'ModtyTermComp' nu d2 mu@ -}
-  ModtyTermComp (ReldttModality v) (ReldttMode v) (ReldttModality v) |
-  {-| Only for prettyprinting. -} 
-  ModtyTermDiv (ReldttModality v) (ReldttModality v) |
-  ModtyApproxLeftAdjointProj (ReldttModality v) {-^ The argument modality -} |
-  
-  {-| Only for prettyprinting. -} 
-  ModtyUnavailable (ReldttMode v) {-^ The domain -} (ReldttMode v) {-^ The codomain. -}
-  -}
-  
-  
-  {-
-  {-| The modality @<> : d -> 0@ mapping presheaves to their set of points. -}
-  ModtyTermFinal (ReldttMode v) {-^ The domain -} |
-  ModtyTermId (ReldttMode v) {-^ The mode -} |
-  {-| If @mu : d1 -> d2@ and @nu : d2 -> d3@, then the composite is @'ModtyTermComp' nu d2 mu@ -}
-  ModtyTermComp (ReldttModality v) (ReldttMode v) (ReldttModality v) |
-  {-| Only for prettyprinting. -} 
-  ModtyTermDiv (ReldttModality v) (ReldttModality v) |
-  --ModtyTermPar (ReldttMode v) {-^ The codomain -} |
-  --ModtyTermDisc (ReldttMode v) {-^ The domain -} |
-  --ModtyTermPrep0 (ReldttModality v) {-^ The argument modality -} |
-  {-| Only for prettyprinting. -} 
-  ModtyUnavailable (ReldttMode v) {-^ The domain -} (ReldttMode v) {-^ The codomain. -} |
-  ModtyApproxLeftAdjointProj (ReldttModality v) {-^ The argument modality -} |
-  {-| @'ModtyPrep' d mu@ represents @<d, 0*mu, ..., n*mu>@.
-      Forbidden for combinations that after reduction might create non-monotonous modalities. -}
-  ModtyPrep (ReldttDegree v) (ReldttModality v) |
-  {-| Forbidden for expressions that might reduce to something non-monotonous. -}
-  ModtyAbs (ReldttMode v) {-^ The domain -} (ReldttMode v) {-^ The codomain. -} (NamedBinding Term Reldtt v)
-  -}
-
-{-
-_modtyTerm'dom :: ModtyTerm v -> ReldttMode v
-_modtyTerm'dom (ModtyTermFinal ddom) = ddom
-_modtyTerm'dom (ModtyTermId d) = d
-_modtyTerm'dom (ModtyTermComp nu mu) = _modtyTerm'dom mu
-_modtyTerm'dom (ModtyTermDiv rho mu) = _modtyTerm'dom mu
-_modtyTerm'dom (ModtyUnavailable ddom dcod) = ddom
-_modtyTerm'dom (ModtyApproxLeftAdjointProj mu) = _modtyTerm'cod mu
-_modtyTerm'dom (ModtyPrep deg mu) = _modtyTerm'dom mu
-_modtyTerm'dom (ModtyAbs ddom dcod namedBinding) = ddom
-
-_modtyTerm'cod :: ModtyTerm v -> ReldttMode v
-_modtyTerm'cod (ModtyTermFinal ddom) = BareMode d
-_modtyTerm'cod (ModtyTermId d) = d
-_modtyTerm'cod (ModtyTermComp nu mu) = _modtyTerm'cod nu
-_modtyTerm'cod (ModtyTermDiv rho mu) = _modtyTerm'dom rho
-_modtyTerm'cod (ModtyUnavailable ddom dcod) = dcod
-_modtyTerm'cod (ModtyApproxLeftAdjointProj mu) = _modtyTerm'dom mu
-_modtyTerm'cod (ModtyPrep deg mu) = BareMode $ ConsSuc $ unMode $ _modtyTerm'cod mu
-_modtyTerm'cod (ModtyAbs ddom dcod namedBinding) = dcod
--}
-
 data DegTerm v =
   DegEq |
   DegZero |
@@ -194,19 +91,6 @@ instance Multimode Reldtt where
   crispMod d = BareModty $ ModtyTerm (KnownModty 0 0 []) $ TailDisc d
   dataMode = BareFinMode $ ConsZero
   approxLeftAdjointProj (ModedModality d mu) dcod = BareModty $ ModtyApproxLeftAdjointProj mu
-
-{-
-  idMod (ReldttModeNull) = BareModty $ ModtyTermNullNull
-  idMod (ReldttModeOne) = BareModty $ ModtyTermContOneOne
-  idMod (ReldttMode d) = BareModty $ ModtyTermDiscPar d (Expr2 $ TermCons $ ConsZero) (Expr2 $ TermCons $ ConsZero)
-  compMod mu2 dmid mu1 = BareModty $ ModtyTermComp mu2 dmid mu1
-  divMod (ModedModality d' mu') (ModedModality d mu) = BareModty $ ModtyTermDiv mu' mu
-  crispMod (ReldttModeNull) = BareModty $ ModtyTermNullNull
-  crispMod (ReldttModeOne) = BareModty $ ModtyTermCrispNullOne
-  crispMod (ReldttMode d) = BareModty $ ModtyTermCrispNull d
-  dataMode = ReldttModeNull
-  approxLeftAdjointProj (ModedModality d mu) dcod = BareModty $ ModtyApproxLeftAdjointProj mu
--}
 
 instance Degrees Reldtt where
   eqDeg = BareDeg $ DegEq
