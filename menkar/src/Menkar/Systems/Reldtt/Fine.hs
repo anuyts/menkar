@@ -32,7 +32,7 @@ data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop
-data KnownModty = KnownModty Int {-^ Domain -} Int {-^ Codomain -} [KnownDeg]
+data KnownModty = KnownModty Int {-^ Domain -} Int {-^ Codomain -} [KnownDeg] {-^ Degrees in REVERSE ORDER. -}
 data ModtyTail v =
   TailEmpty |
 
@@ -45,6 +45,32 @@ data ModtyTail v =
   TailCodiscForget (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
   TailCont (Term Reldtt v) {-^ Tail domain and codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
+extDisc :: KnownModty -> KnownModty
+extDisc (KnownModty kdom kcod []) = (KnownModty kdom (kcod + 1) [KnownDegEq])
+extDisc (KnownModty kdom kcod (kdeg : kdegs)) = (KnownModty kdom (kcod + 1) (kdeg : kdeg : kdegs))
+extCodisc :: KnownModty -> KnownModty
+extCodisc (KnownModty kdom kcod kdegs) = (KnownModty kdom (kcod + 1) (KnownDegTop : kdegs))
+extForget :: KnownModty -> KnownModty
+extForget (KnownModty kdom kcod kdegs) = (KnownModty (kdom + 1) kcod kdegs)
+
+_modtyTail'dom :: ModtyTail v -> Term Reldtt v
+_modtyTail'dom TailEmpty = BareFinMode $ ConsZero
+_modtyTail'dom (TailDisc dcod) = BareFinMode $ ConsZero
+_modtyTail'dom (TailCodisc dcod) = BareFinMode $ ConsZero
+_modtyTail'dom (TailForget ddom) = ddom
+_modtyTail'dom (TailDiscForget ddom dcod) = ddom
+_modtyTail'dom (TailCodiscForget ddom dcod) = ddom
+_modtyTail'dom (TailCont d) = d
+
+_modtyTail'cod :: ModtyTail v -> Term Reldtt v
+_modtyTail'cod TailEmpty = BareFinMode $ ConsZero
+_modtyTail'cod (TailDisc dcod) = dcod
+_modtyTail'cod (TailCodisc dcod) = dcod
+_modtyTail'cod (TailForget ddom) = BareFinMode $ ConsZero
+_modtyTail'cod (TailDiscForget ddom dcod) = dcod
+_modtyTail'cod (TailCodiscForget ddom dcod) = dcod
+_modtyTail'cod (TailCont d) = d
 
 data ModtyTerm v =
   ModtyTerm KnownModty (ModtyTail v) |

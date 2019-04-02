@@ -94,10 +94,53 @@ instance SysWHN Reldtt where
 -}
 
 instance SysWHN Reldtt where
-  whnormalizeSys parent gamma (SysTermMode mu) ty reason = case mu of
-    ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
-    ModeTermOmega -> return $ BareMode $ ModeTermOmega
-  whnormalizeSys parent gamma t ty reason = _whnormalizeSys
+  whnormalizeSys parent gamma sysT ty reason = do
+    let returnSysT = return $ Expr2 $ TermSys $ sysT
+    --let returnProblem = return $ Expr2 $ TermProblem $ Expr2 $ TermSys $ sysT
+    case sysT of
+      SysTermMode d -> case d of
+        ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
+        ModeTermOmega -> return $ BareMode $ ModeTermOmega
+      SysTermModty mu -> case mu of
+        ModtyTerm knownPart tail -> case tail of
+          TailEmpty -> returnSysT
+          TailDisc dcod -> do
+            whnDCod <- whnormalize parent gamma dcod (Expr2 $ TermSys $ SysTypeMode) reason
+            case whnDCod of
+              BareFinMode ConsZero -> return $ BareModty $ ModtyTerm knownPart TailEmpty
+              BareFinMode (ConsSuc d) ->
+                whnormalize parent gamma (BareModty $ ModtyTerm (extDisc knownPart) $ TailDisc d) ty reason
+              _ -> return $ BareModty $ ModtyTerm knownPart $ TailDisc whnDCod
+          TailCodisc dcod -> do
+            whnDCod <- whnormalize parent gamma dcod (Expr2 $ TermSys $ SysTypeMode) reason
+            case whnDCod of
+              BareFinMode ConsZero -> return $ BareModty $ ModtyTerm knownPart TailEmpty
+              BareFinMode (ConsSuc d) ->
+                whnormalize parent gamma (BareModty $ ModtyTerm (extCodisc knownPart) $ TailCodisc d) ty reason
+              _ -> return $ BareModty $ ModtyTerm knownPart $ TailCodisc whnDCod
+          TailForget ddom -> do
+            whnDDom <- whnormalize parent gamma ddom (Expr2 $ TermSys $ SysTypeMode) reason
+            case whnDDom of
+              BareFinMode ConsZero -> return $ BareModty $ ModtyTerm knownPart TailEmpty
+              BareFinMode (ConsSuc d) ->
+                whnormalize parent gamma (BareModty $ ModtyTerm (extForget knownPart) $ TailForget d) ty reason
+              _ -> return $ BareModty $ ModtyTerm knownPart $ TailForget whnDDom
+          TailDiscForget ddom dcod -> do
+            whnDCod <- whnormalize parent gamma dcod (Expr2 $ TermSys $ SysTypeMode) reason
+            case whnDCod of
+              BareFinMode ConsZero ->
+                whnormalize parent gamma (BareModty $ ModtyTerm knownPart $ TailForget ddom) ty reason
+              BareFinMode (ConsSuc d) ->
+                whnormalize parent gamma (BareModty $ ModtyTerm (extDisc knownPart) $ TailDiscForget ddom d) ty reason
+              _ -> do
+                whnDDom <- whnormalize parent gamma ddom (Expr2 $ TermSys $ SysTypeMode) reason
+                case whnDDom of
+                  BareFinMode ConsZero ->
+                    whnormalize parent gamma (BareModty $ ModtyTerm knownPart $ TailDisc whnDCod) ty reason
+                  BareFinMode (ConsSuc d)
+          _ -> _whnormalizeModty'
+        _ -> _whnormalizeModty
+      _ -> _whnormalizeSys
 
   leqMod ddom dcod mu1 mu2 = _leqMod
 
