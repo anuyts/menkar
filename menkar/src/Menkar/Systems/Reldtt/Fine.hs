@@ -67,12 +67,19 @@ data ModtyTail v =
 
   TailDiscForget   (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
   --TailCodiscForget (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
-  TailCont (Term Reldtt v) {-^ Tail domain and codomain, can be omega -}
+  TailCont (Term Reldtt v) {-^ Tail domain and codomain, can be omega -} |
+
+  TailProblem
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
 data KnownModty v = KnownModty {_knownModty'snout :: ModtySnout, _knownModty'tail :: ModtyTail v}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
 idKnownModty :: Term Reldtt v -> KnownModty v
 idKnownModty d = KnownModty (ModtySnout 0 0 []) (TailCont d)
+
+problemKnownModty :: KnownModty v
+problemKnownModty = KnownModty (ModtySnout 0 0 []) TailProblem
 
 _knownModty'dom :: KnownModty v -> Term Reldtt v
 _knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (Expr2 . TermCons . ConsSuc) $ _modtyTail'dom tail
@@ -121,6 +128,7 @@ forceDom snoutOrig tailOrig snoutDomNew tailDomNew
       TailDiscForget   tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailDiscForget   tailDomNew tailCod)
       --TailCodiscForget tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailCodiscForget tailDomNew tailCod)
       TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailDomNew)
+      TailProblem -> Nothing
   | otherwise = unreachable
     where n = snoutDomNew - _modtySnout'dom snoutOrig
 
@@ -141,6 +149,7 @@ forceCod snoutOrig tailOrig snoutCodNew tailCodNew
       TailDiscForget   tailDom tailCodOrig -> Just (nTimes n extDisc   snoutOrig, TailDiscForget   tailDom tailCodNew)
       --TailCodiscForget tailDom tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodiscForget tailDom tailCodNew)
       TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailCodNew)
+      TailProblem -> Nothing
   | otherwise = unreachable
     where n = snoutCodNew - _modtySnout'cod snoutOrig
 
@@ -152,6 +161,7 @@ _modtyTail'dom (TailForget ddom) = ddom
 _modtyTail'dom (TailDiscForget ddom dcod) = ddom
 --_modtyTail'dom (TailCodiscForget ddom dcod) = ddom
 _modtyTail'dom (TailCont d) = d
+_modtyTail'dom (TailProblem) = Expr2 $ TermProblem $ BareFinMode $ ConsZero
 
 _modtyTail'cod :: ModtyTail v -> Term Reldtt v
 _modtyTail'cod TailEmpty = BareFinMode $ ConsZero
@@ -161,6 +171,7 @@ _modtyTail'cod (TailForget ddom) = BareFinMode $ ConsZero
 _modtyTail'cod (TailDiscForget ddom dcod) = dcod
 --_modtyTail'cod (TailCodiscForget ddom dcod) = dcod
 _modtyTail'cod (TailCont d) = d
+_modtyTail'cod (TailProblem) = Expr2 $ TermProblem $ BareFinMode $ ConsZero
 
 data ModtyTerm v =
  --ModtyTerm ModtySnout (ModtyTail v) |
