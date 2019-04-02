@@ -80,10 +80,10 @@ data ModtyTerm v =
   {-| Only for prettypring.
       If @mu : d1 -> dcod@ and @rho : d2 -> dcod@, then @'ModtyTermDiv' rho mu@ denotes @rho \ mu : d1 -> d2@ -} 
   ModtyTermDiv (Term Reldtt v) (Term Reldtt v) |
-  ModtyApproxLeftAdjointProj (Term Reldtt v) {-^ The argument modality -} |
+  ModtyTermApproxLeftAdjointProj (Term Reldtt v) {-^ The argument modality -} |
   
   {-| Only for prettyprinting. -} 
-  ModtyUnavailable (Term Reldtt v) {-^ The domain, can be omega -} (Term Reldtt v) {-^ The codomain, can be omega -}
+  ModtyTermUnavailable (Term Reldtt v) {-^ The domain, can be omega -} (Term Reldtt v) {-^ The codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data DegTerm v =
@@ -119,7 +119,7 @@ instance Multimode Reldtt where
   divMod (ModedModality d' mu') (ModedModality d mu) = BareModty $ ModtyTermDiv mu' mu
   crispMod d = BareModty $ ModtyTerm (KnownModty 0 0 []) $ TailDisc d
   dataMode = BareFinMode $ ConsZero
-  approxLeftAdjointProj (ModedModality d mu) dcod = BareModty $ ModtyApproxLeftAdjointProj mu
+  approxLeftAdjointProj (ModedModality d mu) dcod = BareModty $ ModtyTermApproxLeftAdjointProj mu
 
 instance Degrees Reldtt where
   eqDeg = BareDeg $ DegEq

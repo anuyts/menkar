@@ -13,19 +13,19 @@ import Menkar.Systems.Reldtt.Scoper
 import Control.Monad.Writer.Class
 import Data.Void
 
-{-
 whnormalizeComp :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
-  ReldttModality v ->
-  ReldttMode v ->
-  ReldttModality v ->
+  Term Reldtt v ->
+  Term Reldtt v ->
+  Term Reldtt v ->
   String ->
-  whn (ReldttModality v)
+  whn (Term Reldtt v)
 whnormalizeComp parent gamma mu2 dmid mu1 reason = do
-  _
+  _whnormalizeComp
 
+{-
 whnormalizeModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
@@ -102,7 +102,8 @@ instance SysWHN Reldtt where
         ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
         ModeTermOmega -> return $ BareMode $ ModeTermOmega
       SysTermModty mu -> case mu of
-        ModtyTerm knownPart tail -> case tail of
+        ModtyTerm knownPart tail -> returnSysT
+          {-
           TailEmpty -> returnSysT
           TailDisc dcod -> do
             whnDCod <- whnormalize parent gamma dcod (Expr2 $ TermSys $ SysTypeMode) reason
@@ -139,7 +140,11 @@ instance SysWHN Reldtt where
                     whnormalize parent gamma (BareModty $ ModtyTerm knownPart $ TailDisc whnDCod) ty reason
                   BareFinMode (ConsSuc d)
           _ -> _whnormalizeModty'
-        _ -> _whnormalizeModty
+          -}
+        ModtyTermComp mu2 dmid mu1 -> whnormalizeComp parent gamma mu2 dmid mu1 reason
+        ModtyTermDiv rho mu -> returnSysT -- TODO
+        ModtyTermApproxLeftAdjointProj mu -> _ModtyApproxLeftAdjointProj
+        ModtyTermUnavailable ddom dcod -> returnSysT
       _ -> _whnormalizeSys
 
   leqMod ddom dcod mu1 mu2 = _leqMod
