@@ -13,16 +13,16 @@ import Menkar.Systems.Reldtt.Scoper
 import Control.Monad.Writer.Class
 import Data.Void
 
-getDegKnown :: KnownDeg -> KnownModty -> KnownDeg
+getDegKnown :: KnownDeg -> ModtySnout -> KnownDeg
 getDegKnown KnownDegEq mu = KnownDegEq
-getDegKnown (KnownDeg i) (KnownModty kdom kcod krevdegs) = krevdegs !! (length krevdegs - i - 1)
+getDegKnown (KnownDeg i) (ModtySnout kdom kcod krevdegs) = krevdegs !! (length krevdegs - i - 1)
 getDegKnown KnownDegTop mu = KnownDegTop
 
-compKnownModty :: KnownModty -> KnownModty -> KnownModty
-compKnownModty (KnownModty kmid kcod []) mu =
-  KnownModty (_knownModty'dom mu) kcod []
-compKnownModty (KnownModty kmid kcod krevdegs) mu =
-  KnownModty (_knownModty'dom mu) kcod $ flip getDegKnown mu <$> krevdegs
+compModtySnout :: ModtySnout -> ModtySnout -> ModtySnout
+compModtySnout (ModtySnout kmid kcod []) mu =
+  ModtySnout (_modtySnout'dom mu) kcod []
+compModtySnout (ModtySnout kmid kcod krevdegs) mu =
+  ModtySnout (_modtySnout'dom mu) kcod $ flip getDegKnown mu <$> krevdegs
 
 compModtyTail :: ModtyTail v -> ModtyTail v -> ModtyTail v
 compModtyTail (TailCont d) tail1 = tail1
@@ -87,14 +87,14 @@ whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
         (_, BareModty (ModtyTermUnavailable dmid' dcod')) ->
           return $ BareModty $ ModtyTermUnavailable ddom dcod' -- USING THE TYPE!
         (BareModty (ModtyTerm snout2 tail2), BareModty (ModtyTerm snout1 tail1)) -> do
-          let maybeStuff = case compare (_knownModty'cod snout1) (_knownModty'dom snout2) of
-                LT -> (, (snout2, tail2)) <$> forceCod snout1 tail1 (_knownModty'dom snout2) (_modtyTail'dom tail2)
+          let maybeStuff = case compare (_modtySnout'cod snout1) (_modtySnout'dom snout2) of
+                LT -> (, (snout2, tail2)) <$> forceCod snout1 tail1 (_modtySnout'dom snout2) (_modtyTail'dom tail2)
                 EQ -> Just ((snout1, tail1), (snout2, tail2))
-                GT -> ((snout1, tail1), ) <$> forceDom snout2 tail2 (_knownModty'cod snout1) (_modtyTail'cod tail1)
+                GT -> ((snout1, tail1), ) <$> forceDom snout2 tail2 (_modtySnout'cod snout1) (_modtyTail'cod tail1)
           case maybeStuff of
             Nothing -> Expr2 . TermProblem <$> giveUp
             Just ((snout1, tail1), (snout2, tail2)) -> do
-              let snoutComp = compKnownModty snout2 snout1
+              let snoutComp = compModtySnout snout2 snout1
               let tailComp = compModtyTail tail2 tail1
               return $ BareModty $ ModtyTerm snoutComp tailComp
         (_, _) -> return $ BareModty $ ModtyTermComp whnMu2 dmid whnMu1
@@ -188,7 +188,7 @@ whnormalizeByMode :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
-  KnownModty ->
+  ModtySnout ->
   ModtyTail v ->
   Type Reldtt v ->
   String ->
