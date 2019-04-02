@@ -29,40 +29,40 @@ compModtyTail (TailCont d) tail1 = tail1
 compModtyTail tail2 (TailCont d) = tail2
 compModtyTail TailEmpty TailEmpty = TailEmpty
 compModtyTail TailEmpty (TailDisc   _) = TailEmpty
-compModtyTail TailEmpty (TailCodisc _) = TailEmpty
+--compModtyTail TailEmpty (TailCodisc _) = TailEmpty
 compModtyTail TailEmpty (TailForget ddom) = TailForget ddom
 compModtyTail TailEmpty (TailDiscForget   ddom _) = TailForget ddom
-compModtyTail TailEmpty (TailCodiscForget ddom _) = TailForget ddom
+--compModtyTail TailEmpty (TailCodiscForget ddom _) = TailForget ddom
 compModtyTail (TailDisc   dcod) TailEmpty = TailDisc dcod
 compModtyTail (TailDisc   dcod) (TailDisc   _) = TailDisc dcod
-compModtyTail (TailDisc   dcod) (TailCodisc _) = TailDisc dcod
+--compModtyTail (TailDisc   dcod) (TailCodisc _) = TailDisc dcod
 compModtyTail (TailDisc   dcod) (TailForget ddom) = TailDiscForget ddom dcod
 compModtyTail (TailDisc   dcod) (TailDiscForget   ddom _) = TailDiscForget ddom dcod
-compModtyTail (TailDisc   dcod) (TailCodiscForget ddom _) = TailDiscForget ddom dcod
-compModtyTail (TailCodisc dcod) TailEmpty = TailCodisc dcod
+--compModtyTail (TailDisc   dcod) (TailCodiscForget ddom _) = TailDiscForget ddom dcod
+{-compModtyTail (TailCodisc dcod) TailEmpty = TailCodisc dcod
 compModtyTail (TailCodisc dcod) (TailDisc   _) = TailCodisc dcod
 compModtyTail (TailCodisc dcod) (TailCodisc _) = TailCodisc dcod
 compModtyTail (TailCodisc dcod) (TailForget ddom) = TailCodiscForget ddom dcod
 compModtyTail (TailCodisc dcod) (TailDiscForget   ddom _) = TailCodiscForget ddom dcod
-compModtyTail (TailCodisc dcod) (TailCodiscForget ddom _) = TailCodiscForget ddom dcod
+compModtyTail (TailCodisc dcod) (TailCodiscForget ddom _) = TailCodiscForget ddom dcod-}
 compModtyTail (TailForget _) TailEmpty = TailEmpty
 compModtyTail (TailForget _) (TailDisc   _) = TailEmpty
-compModtyTail (TailForget _) (TailCodisc _) = TailEmpty
+--compModtyTail (TailForget _) (TailCodisc _) = TailEmpty
 compModtyTail (TailForget _) (TailForget ddom) = TailForget ddom
 compModtyTail (TailForget _) (TailDiscForget   ddom _) = TailForget ddom
-compModtyTail (TailForget _) (TailCodiscForget ddom _) = TailForget ddom
+--compModtyTail (TailForget _) (TailCodiscForget ddom _) = TailForget ddom
 compModtyTail (TailDiscForget   _ dcod) TailEmpty = TailDisc dcod
 compModtyTail (TailDiscForget   _ dcod) (TailDisc   _) = TailDisc dcod
-compModtyTail (TailDiscForget   _ dcod) (TailCodisc _) = TailDisc dcod
+--compModtyTail (TailDiscForget   _ dcod) (TailCodisc _) = TailDisc dcod
 compModtyTail (TailDiscForget   _ dcod) (TailForget ddom) = TailDiscForget ddom dcod
 compModtyTail (TailDiscForget   _ dcod) (TailDiscForget   ddom _) = TailDiscForget ddom dcod
-compModtyTail (TailDiscForget   _ dcod) (TailCodiscForget ddom _) = TailDiscForget ddom dcod
-compModtyTail (TailCodiscForget _ dcod) TailEmpty = TailCodisc dcod
+--compModtyTail (TailDiscForget   _ dcod) (TailCodiscForget ddom _) = TailDiscForget ddom dcod
+{-compModtyTail (TailCodiscForget _ dcod) TailEmpty = TailCodisc dcod
 compModtyTail (TailCodiscForget _ dcod) (TailDisc   _) = TailCodisc dcod
 compModtyTail (TailCodiscForget _ dcod) (TailCodisc _) = TailCodisc dcod
 compModtyTail (TailCodiscForget _ dcod) (TailForget ddom) = TailCodiscForget ddom dcod
 compModtyTail (TailCodiscForget _ dcod) (TailDiscForget   ddom _) = TailCodiscForget ddom dcod
-compModtyTail (TailCodiscForget _ dcod) (TailCodiscForget ddom _) = TailCodiscForget ddom dcod
+compModtyTail (TailCodiscForget _ dcod) (TailCodiscForget ddom _) = TailCodiscForget ddom dcod-}
 
 whnormalizeComp :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
@@ -168,6 +168,62 @@ instance SysWHN Reldtt where
     
 -}
 
+whnormalizeModtyTail :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  Ctx Type Reldtt v Void ->
+  ModtyTail v ->
+  String ->
+  whn (ModtyTail v)
+whnormalizeModtyTail parent gamma tail reason =
+  case tail of
+    TailEmpty -> return TailEmpty
+    TailDisc   dcod -> TailDisc   <$> whnormalize parent gamma dcod (BareSysType $ SysTypeMode) reason
+    TailForget ddom -> TailForget <$> whnormalize parent gamma ddom (BareSysType $ SysTypeMode) reason
+    TailDiscForget ddom dcod -> TailDiscForget <$> whnormalize parent gamma ddom (BareSysType $ SysTypeMode) reason
+                                               <*> whnormalize parent gamma dcod (BareSysType $ SysTypeMode) reason
+    TailCont   d    -> TailCont   <$> whnormalize parent gamma d    (BareSysType $ SysTypeMode) reason
+
+whnormalizeByMode :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  Ctx Type Reldtt v Void ->
+  KnownModty ->
+  ModtyTail v ->
+  Type Reldtt v ->
+  String ->
+  whn (Term Reldtt v)
+whnormalizeByMode parent gamma snout tail ty reason = do
+  tail <- whnormalizeModtyTail parent gamma tail reason
+  case tail of
+    TailEmpty -> return $ BareModty $ ModtyTerm snout TailEmpty
+    TailDisc dcod -> case dcod of
+      BareFinMode ConsZero -> return $ BareModty $ ModtyTerm snout TailEmpty
+      BareFinMode (ConsSuc d) ->
+        whnormalize parent gamma (BareModty $ ModtyTerm (extDisc snout) $ TailDisc d) ty reason
+      _ -> return $ BareModty $ ModtyTerm snout tail
+    TailForget ddom -> case ddom of
+      BareFinMode ConsZero -> return $ BareModty $ ModtyTerm snout TailEmpty
+      BareFinMode (ConsSuc d) ->
+        whnormalize parent gamma (BareModty $ ModtyTerm (extForget snout) $ TailForget d) ty reason
+      _ -> return $ BareModty $ ModtyTerm snout tail
+    TailDiscForget ddom dcod -> case dcod of
+      BareFinMode ConsZero ->
+        whnormalize parent gamma (BareModty $ ModtyTerm snout $ TailForget ddom) ty reason
+      BareFinMode (ConsSuc d) ->
+        whnormalize parent gamma (BareModty $ ModtyTerm (extDisc snout) $ TailDiscForget ddom d) ty reason
+      _ -> case ddom of
+        BareFinMode ConsZero ->
+          whnormalize parent gamma (BareModty $ ModtyTerm snout $ TailDisc dcod) ty reason
+        BareFinMode (ConsSuc d) ->
+          whnormalize parent gamma (BareModty $ ModtyTerm (extForget snout) $ TailDiscForget d dcod) ty reason
+        _ -> return $ BareModty $ ModtyTerm snout tail
+    TailCont d -> case d of
+      BareFinMode ConsZero -> return $ BareModty $ ModtyTerm snout TailEmpty
+      BareFinMode (ConsSuc dpred) ->
+        whnormalize parent gamma (BareModty $ ModtyTerm (extCont snout) $ TailCont dpred) ty reason
+      _ -> return $ BareModty $ ModtyTerm snout tail
+
 instance SysWHN Reldtt where
   whnormalizeSys parent gamma sysT ty reason = do
     let returnSysT = return $ Expr2 $ TermSys $ sysT
@@ -177,45 +233,7 @@ instance SysWHN Reldtt where
         ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
         ModeTermOmega -> return $ BareMode $ ModeTermOmega
       SysTermModty mu -> case mu of
-        ModtyTerm knownPart tail -> returnSysT
-          {-
-          TailEmpty -> returnSysT
-          TailDisc dcod -> do
-            whnDCod <- whnormalize parent gamma dcod (Expr2 $ TermSys $ SysTypeMode) reason
-            case whnDCod of
-              BareFinMode ConsZero -> return $ BareModty $ ModtyTerm knownPart TailEmpty
-              BareFinMode (ConsSuc d) ->
-                whnormalize parent gamma (BareModty $ ModtyTerm (extDisc knownPart) $ TailDisc d) ty reason
-              _ -> return $ BareModty $ ModtyTerm knownPart $ TailDisc whnDCod
-          TailCodisc dcod -> do
-            whnDCod <- whnormalize parent gamma dcod (Expr2 $ TermSys $ SysTypeMode) reason
-            case whnDCod of
-              BareFinMode ConsZero -> return $ BareModty $ ModtyTerm knownPart TailEmpty
-              BareFinMode (ConsSuc d) ->
-                whnormalize parent gamma (BareModty $ ModtyTerm (extCodisc knownPart) $ TailCodisc d) ty reason
-              _ -> return $ BareModty $ ModtyTerm knownPart $ TailCodisc whnDCod
-          TailForget ddom -> do
-            whnDDom <- whnormalize parent gamma ddom (Expr2 $ TermSys $ SysTypeMode) reason
-            case whnDDom of
-              BareFinMode ConsZero -> return $ BareModty $ ModtyTerm knownPart TailEmpty
-              BareFinMode (ConsSuc d) ->
-                whnormalize parent gamma (BareModty $ ModtyTerm (extForget knownPart) $ TailForget d) ty reason
-              _ -> return $ BareModty $ ModtyTerm knownPart $ TailForget whnDDom
-          TailDiscForget ddom dcod -> do
-            whnDCod <- whnormalize parent gamma dcod (Expr2 $ TermSys $ SysTypeMode) reason
-            case whnDCod of
-              BareFinMode ConsZero ->
-                whnormalize parent gamma (BareModty $ ModtyTerm knownPart $ TailForget ddom) ty reason
-              BareFinMode (ConsSuc d) ->
-                whnormalize parent gamma (BareModty $ ModtyTerm (extDisc knownPart) $ TailDiscForget ddom d) ty reason
-              _ -> do
-                whnDDom <- whnormalize parent gamma ddom (Expr2 $ TermSys $ SysTypeMode) reason
-                case whnDDom of
-                  BareFinMode ConsZero ->
-                    whnormalize parent gamma (BareModty $ ModtyTerm knownPart $ TailDisc whnDCod) ty reason
-                  BareFinMode (ConsSuc d)
-          _ -> _whnormalizeModty'
-          -}
+        ModtyTerm snout tail -> whnormalizeByMode parent gamma snout tail ty reason
         ModtyTermComp mu2 dmid mu1 -> whnormalizeComp parent gamma mu2 dmid mu1 ty reason
         ModtyTermDiv rho mu -> returnSysT -- TODO
         ModtyTermApproxLeftAdjointProj mu -> _ModtyApproxLeftAdjointProj

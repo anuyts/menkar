@@ -30,6 +30,7 @@ pattern BareMode d = Expr2 (TermSys (SysTermMode d))
 pattern BareFinMode d = BareMode (ModeTermFinite (Expr2 (TermCons d)))
 pattern BareModty mu = Expr2 (TermSys (SysTermModty mu))
 pattern BareDeg i = Expr2 (TermSys (SysTermDeg i))
+pattern BareSysType systy = Type (Expr2 (TermSys systy))
 
 data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
@@ -45,20 +46,20 @@ data ModtyTail v =
   TailEmpty |
 
   TailDisc   (Term Reldtt v) {-^ Tail codomain, can be omega -} |
-  TailCodisc (Term Reldtt v) {-^ Tail codomain, can be omega -} |
+  --TailCodisc (Term Reldtt v) {-^ Tail codomain, can be omega -} |
 
   TailForget (Term Reldtt v) {-^ Tail domain, can be omega -} |
 
   TailDiscForget   (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
-  TailCodiscForget (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
+  --TailCodiscForget (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
   TailCont (Term Reldtt v) {-^ Tail domain and codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 extDisc :: KnownModty -> KnownModty
 extDisc (KnownModty kdom kcod []) = (KnownModty kdom (kcod + 1) [KnownDegEq])
 extDisc (KnownModty kdom kcod (kdeg : krevdegs)) = (KnownModty kdom (kcod + 1) (kdeg : kdeg : krevdegs))
-extCodisc :: KnownModty -> KnownModty
-extCodisc (KnownModty kdom kcod krevdegs) = (KnownModty kdom (kcod + 1) (KnownDegTop : krevdegs))
+--extCodisc :: KnownModty -> KnownModty
+--extCodisc (KnownModty kdom kcod krevdegs) = (KnownModty kdom (kcod + 1) (KnownDegTop : krevdegs))
 extForget :: KnownModty -> KnownModty
 extForget (KnownModty kdom kcod krevdegs) = (KnownModty (kdom + 1) kcod krevdegs)
 extCont :: KnownModty -> KnownModty
@@ -76,10 +77,10 @@ forceDom snoutOrig tailOrig snoutDomNew tailDomNew
   | _knownModty'dom snoutOrig <  snoutDomNew = case tailOrig of
       TailEmpty -> Nothing
       TailDisc   tailCod -> Nothing
-      TailCodisc tailCod -> Nothing
+      --TailCodisc tailCod -> Nothing
       TailForget tailDomOrig -> Just (nTimes n extForget snoutOrig, TailForget tailDomNew)
       TailDiscForget   tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailDiscForget   tailDomNew tailCod)
-      TailCodiscForget tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailCodiscForget tailDomNew tailCod)
+      --TailCodiscForget tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailCodiscForget tailDomNew tailCod)
       TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailDomNew)
   | otherwise = unreachable
     where n = snoutDomNew - _knownModty'dom snoutOrig
@@ -96,10 +97,10 @@ forceCod snoutOrig tailOrig snoutCodNew tailCodNew
   | _knownModty'cod snoutOrig <  snoutCodNew = case tailOrig of
       TailEmpty -> Nothing
       TailDisc   tailCodOrig -> Just (nTimes n extDisc   snoutOrig, TailDisc   tailCodNew)
-      TailCodisc tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodisc tailCodNew)
+      --TailCodisc tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodisc tailCodNew)
       TailForget tailDom -> Nothing
       TailDiscForget   tailDom tailCodOrig -> Just (nTimes n extDisc   snoutOrig, TailDiscForget   tailDom tailCodNew)
-      TailCodiscForget tailDom tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodiscForget tailDom tailCodNew)
+      --TailCodiscForget tailDom tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodiscForget tailDom tailCodNew)
       TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailCodNew)
   | otherwise = unreachable
     where n = snoutCodNew - _knownModty'cod snoutOrig
@@ -107,19 +108,19 @@ forceCod snoutOrig tailOrig snoutCodNew tailCodNew
 _modtyTail'dom :: ModtyTail v -> Term Reldtt v
 _modtyTail'dom TailEmpty = BareFinMode $ ConsZero
 _modtyTail'dom (TailDisc dcod) = BareFinMode $ ConsZero
-_modtyTail'dom (TailCodisc dcod) = BareFinMode $ ConsZero
+--_modtyTail'dom (TailCodisc dcod) = BareFinMode $ ConsZero
 _modtyTail'dom (TailForget ddom) = ddom
 _modtyTail'dom (TailDiscForget ddom dcod) = ddom
-_modtyTail'dom (TailCodiscForget ddom dcod) = ddom
+--_modtyTail'dom (TailCodiscForget ddom dcod) = ddom
 _modtyTail'dom (TailCont d) = d
 
 _modtyTail'cod :: ModtyTail v -> Term Reldtt v
 _modtyTail'cod TailEmpty = BareFinMode $ ConsZero
 _modtyTail'cod (TailDisc dcod) = dcod
-_modtyTail'cod (TailCodisc dcod) = dcod
+--_modtyTail'cod (TailCodisc dcod) = dcod
 _modtyTail'cod (TailForget ddom) = BareFinMode $ ConsZero
 _modtyTail'cod (TailDiscForget ddom dcod) = dcod
-_modtyTail'cod (TailCodiscForget ddom dcod) = dcod
+--_modtyTail'cod (TailCodiscForget ddom dcod) = dcod
 _modtyTail'cod (TailCont d) = d
 
 data ModtyTerm v =
