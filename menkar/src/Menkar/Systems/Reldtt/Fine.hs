@@ -3,7 +3,10 @@ module Menkar.Systems.Reldtt.Fine where
 import Menkar.Fine
 import Menkar.System
 
+import Control.Exception.AssertFalse
+
 import GHC.Generics
+import Util
 
 data Reldtt :: KSys where
 
@@ -53,11 +56,53 @@ data ModtyTail v =
 
 extDisc :: KnownModty -> KnownModty
 extDisc (KnownModty kdom kcod []) = (KnownModty kdom (kcod + 1) [KnownDegEq])
-extDisc (KnownModty kdom kcod (kdeg : kdegs)) = (KnownModty kdom (kcod + 1) (kdeg : kdeg : kdegs))
+extDisc (KnownModty kdom kcod (kdeg : krevdegs)) = (KnownModty kdom (kcod + 1) (kdeg : kdeg : krevdegs))
 extCodisc :: KnownModty -> KnownModty
-extCodisc (KnownModty kdom kcod kdegs) = (KnownModty kdom (kcod + 1) (KnownDegTop : kdegs))
+extCodisc (KnownModty kdom kcod krevdegs) = (KnownModty kdom (kcod + 1) (KnownDegTop : krevdegs))
 extForget :: KnownModty -> KnownModty
-extForget (KnownModty kdom kcod kdegs) = (KnownModty (kdom + 1) kcod kdegs)
+extForget (KnownModty kdom kcod krevdegs) = (KnownModty (kdom + 1) kcod krevdegs)
+extCont :: KnownModty -> KnownModty
+extCont (KnownModty kdom kcod krevdegs) = KnownModty (kdom + 1) (kcod + 1) (KnownDeg kdom : krevdegs)
+
+forceDom :: forall v .
+  KnownModty ->
+  ModtyTail v ->
+  Int ->
+  Term Reldtt v ->
+  Maybe (KnownModty, ModtyTail v)
+forceDom snoutOrig tailOrig snoutDomNew tailDomNew
+  | _knownModty'dom snoutOrig >  snoutDomNew = unreachable
+  | _knownModty'dom snoutOrig == snoutDomNew = Just (snoutOrig, tailOrig)
+  | _knownModty'dom snoutOrig <  snoutDomNew = case tailOrig of
+      TailEmpty -> Nothing
+      TailDisc   tailCod -> Nothing
+      TailCodisc tailCod -> Nothing
+      TailForget tailDomOrig -> Just (nTimes n extForget snoutOrig, TailForget tailDomNew)
+      TailDiscForget   tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailDiscForget   tailDomNew tailCod)
+      TailCodiscForget tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailCodiscForget tailDomNew tailCod)
+      TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailDomNew)
+  | otherwise = unreachable
+    where n = snoutDomNew - _knownModty'dom snoutOrig
+
+forceCod :: forall v .
+  KnownModty ->
+  ModtyTail v ->
+  Int ->
+  Term Reldtt v ->
+  Maybe (KnownModty, ModtyTail v)
+forceCod snoutOrig tailOrig snoutCodNew tailCodNew
+  | _knownModty'cod snoutOrig >  snoutCodNew = unreachable
+  | _knownModty'cod snoutOrig == snoutCodNew = Just (snoutOrig, tailOrig)
+  | _knownModty'cod snoutOrig <  snoutCodNew = case tailOrig of
+      TailEmpty -> Nothing
+      TailDisc   tailCodOrig -> Just (nTimes n extDisc   snoutOrig, TailDisc   tailCodNew)
+      TailCodisc tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodisc tailCodNew)
+      TailForget tailDom -> Nothing
+      TailDiscForget   tailDom tailCodOrig -> Just (nTimes n extDisc   snoutOrig, TailDiscForget   tailDom tailCodNew)
+      TailCodiscForget tailDom tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodiscForget tailDom tailCodNew)
+      TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailCodNew)
+  | otherwise = unreachable
+    where n = snoutCodNew - _knownModty'cod snoutOrig
 
 _modtyTail'dom :: ModtyTail v -> Term Reldtt v
 _modtyTail'dom TailEmpty = BareFinMode $ ConsZero

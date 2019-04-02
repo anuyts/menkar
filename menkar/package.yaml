@@ -32,6 +32,7 @@ dependencies:
 - unordered-containers == 0.2.8.0
 - containers == 0.5.7.1
 - terminal-size == 0.3.2.1
+- ghc == 8.0.2
 
 library:
   source-dirs: src
