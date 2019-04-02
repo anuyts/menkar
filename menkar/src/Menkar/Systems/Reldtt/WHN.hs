@@ -20,10 +20,30 @@ whnormalizeComp :: forall whn v .
   Term Reldtt v ->
   Term Reldtt v ->
   Term Reldtt v ->
+  Type Reldtt v ->
   String ->
   whn (Term Reldtt v)
-whnormalizeComp parent gamma mu2 dmid mu1 reason = do
-  _whnormalizeComp
+whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
+  whnTy <- whnormalizeType parent gamma ty reason
+  let giveUp = return $ BareModty $ ModtyTermComp mu2 dmid mu1
+  case unType whnTy of
+    Expr2 (TermSys (SysTypeModty ddom dcod)) -> do
+      whnMu1 <- whnormalize parent gamma mu1 (Type $ Expr2 $ TermSys $ SysTypeModty ddom dmid) reason
+      whnMu2 <- whnormalize parent gamma mu2 (Type $ Expr2 $ TermSys $ SysTypeModty dmid dcod) reason
+      case (whnMu1, whnMu2) of
+        (BareModty (ModtyTermUnavailable ddom' dmid'), _) ->
+          return $ BareModty $ ModtyTermUnavailable ddom' dcod -- USING THE TYPE!
+        (_, BareModty (ModtyTermUnavailable dmid' dcod')) ->
+          return $ BareModty $ ModtyTermUnavailable ddom dcod' -- USING THE TYPE!
+        (BareModty (ModtyTerm snout2 tail2), BareModty (ModtyTerm snout1 tail1)) -> do
+          --purposefully shadowing
+          (snout1, snout2) <- case compare (_knownModty'cod snout1) (_knownModty'dom snout2) of
+            LT -> _
+            EQ -> return (snout1, snout2)
+            GT -> _
+          _
+        (_, _) -> return $ BareModty $ ModtyTermComp whnMu2 dmid whnMu1
+    otherwise -> giveUp
 
 {-
 whnormalizeModty :: forall whn v .
@@ -141,7 +161,7 @@ instance SysWHN Reldtt where
                   BareFinMode (ConsSuc d)
           _ -> _whnormalizeModty'
           -}
-        ModtyTermComp mu2 dmid mu1 -> whnormalizeComp parent gamma mu2 dmid mu1 reason
+        ModtyTermComp mu2 dmid mu1 -> whnormalizeComp parent gamma mu2 dmid mu1 ty reason
         ModtyTermDiv rho mu -> returnSysT -- TODO
         ModtyTermApproxLeftAdjointProj mu -> _ModtyApproxLeftAdjointProj
         ModtyTermUnavailable ddom dcod -> returnSysT

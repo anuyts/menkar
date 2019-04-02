@@ -32,7 +32,12 @@ data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop
-data KnownModty = KnownModty Int {-^ Domain -} Int {-^ Codomain -} [KnownDeg] {-^ Degrees in REVERSE ORDER. -}
+data KnownModty = KnownModty
+  {_knownModty'dom :: Int,
+   _knownModty'cod :: Int,
+   {-| Degrees in REVERSE ORDER. -}
+   _knownModty'degreesReversed :: [KnownDeg]
+  }
 data ModtyTail v =
   TailEmpty |
 
