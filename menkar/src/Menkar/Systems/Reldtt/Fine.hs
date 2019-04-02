@@ -9,6 +9,11 @@ import GHC.Generics
 import Util
 import Data.Functor.Compose
 
+fst1 :: (a :*: b) c -> a c
+fst1 (a :*: b) = a
+snd1 :: (a :*: b) c -> b c
+snd1 (a :*: b) = b
+
 data Reldtt :: KSys where
 
 type instance Mode Reldtt = Term Reldtt
@@ -69,11 +74,22 @@ data KnownModty v = KnownModty {_knownModty'snout :: ModtySnout, _knownModty'tai
 idKnownModty :: Term Reldtt v -> KnownModty v
 idKnownModty d = KnownModty (ModtySnout 0 0 []) (TailCont d)
 
+_knownModty'dom :: KnownModty v -> Term Reldtt v
+_knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (Expr2 . TermCons . ConsSuc) $ _modtyTail'dom tail
+_knownModty'cod :: KnownModty v -> Term Reldtt v
+_knownModty'cod (KnownModty snout tail) = nTimes (_modtySnout'cod snout) (Expr2 . TermCons . ConsSuc) $ _modtyTail'cod tail
+
 data ChainModty v = ChainModty {
-  _modty'knownPrefix :: KnownModty v,
-  _modty'Remainder :: Compose [] (Term Reldtt :*: KnownModty) v
+  _chainModty'knownPrefix :: KnownModty v,
+  _chainModty'Remainder :: Compose [] (Term Reldtt :*: KnownModty) v
   }
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
+_chainModty'dom :: ChainModty v -> Term Reldtt v
+_chainModty'dom mu = _knownModty'dom $ _chainModty'knownPrefix $ mu
+_chainModty'cod :: ChainModty v -> Term Reldtt v
+_chainModty'cod (ChainModty mu (Compose [])) = _knownModty'cod mu
+_chainModty'cod (ChainModty mu (Compose remainder)) = _knownModty'cod $ snd1 $ last remainder
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])
@@ -187,8 +203,8 @@ instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
   idMod d = ChainModty (idKnownModty d) $ Compose []
-  compMod mu2 dmid mu1 = ChainModty (idKnownModty _dcod) $
-    Compose [BareChainModty mu2 :*: idKnownModty dmid, BareChainModty mu1 :*: idKnownModty _ddom]
+  compMod mu2 dmid mu1 = ChainModty (idKnownModty $ _chainModty'cod mu2) $
+    Compose [BareChainModty mu2 :*: idKnownModty dmid, BareChainModty mu1 :*: idKnownModty (_chainModty'dom mu1)]
   divMod (ModedModality d' mu') (ModedModality d mu) = ChainModty (idKnownModty d') $
     Compose [BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu)) :*: idKnownModty d]
   crispMod d = ChainModty (KnownModty (ModtySnout 0 0 []) $ TailDisc d) $ Compose []
