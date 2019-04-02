@@ -63,7 +63,6 @@ compModtyTail (TailCodiscForget _ dcod) (TailCodisc _) = TailCodisc dcod
 compModtyTail (TailCodiscForget _ dcod) (TailForget ddom) = TailCodiscForget ddom dcod
 compModtyTail (TailCodiscForget _ dcod) (TailDiscForget   ddom _) = TailCodiscForget ddom dcod
 compModtyTail (TailCodiscForget _ dcod) (TailCodiscForget ddom _) = TailCodiscForget ddom dcod
-compModtyTail _ _ = _
 
 whnormalizeComp :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
