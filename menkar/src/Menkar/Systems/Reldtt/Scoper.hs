@@ -19,13 +19,13 @@ instance SysScoper Reldtt where
     case qstring of
       Raw.Qualified [] "d" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `d` requires an argument."
-        Just rawArg -> AnnotMode . ReldttMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
+        Just rawArg -> AnnotMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
       Raw.Qualified [] "m" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `m` requires an argument."
-        Just rawArg -> AnnotModality . ReldttModality <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
+        Just rawArg -> AnnotModality <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
       _   -> scopeFail $ "Illegal annotation: " ++ (render
                (Raw.unparse' qstring \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
                $? id
              )
-  newMetaMode maybeParent gamma reason = ReldttMode <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
-  newMetaModty maybeParent gamma reason = ReldttModality <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+  newMetaMode maybeParent gamma reason = newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+  newMetaModty maybeParent gamma reason = newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
