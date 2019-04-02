@@ -13,6 +13,7 @@ import Menkar.Systems.Reldtt.Scoper
 import Control.Monad.Writer.Class
 import Data.Void
 
+{-
 whnormalizeComp :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
@@ -90,3 +91,14 @@ instance SysWHN Reldtt where
 
   leqDeg d deg1 deg2 = _leqDeg
     
+-}
+
+instance SysWHN Reldtt where
+  whnormalizeSys parent gamma (SysTermMode mu) ty reason = case mu of
+    ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
+    ModeTermOmega -> return $ BareMode $ ModeTermOmega
+  whnormalizeSys parent gamma t ty reason = _whnormalizeSys
+
+  leqMod ddom dcod mu1 mu2 = _leqMod
+
+  leqDeg d deg1 deg2 = _leqDeg
