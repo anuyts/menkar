@@ -50,7 +50,7 @@ pattern BareSysType systy = Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) ::
 data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop
+data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop deriving (Eq, Ord)
 data ModtySnout = ModtySnout
   {_modtySnout'dom :: Int,
    _modtySnout'cod :: Int,
@@ -95,6 +95,8 @@ data ChainModty v = ChainModty {
 wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
 wrapInChainModty ddom dcod t = ChainModty (idKnownModty dcod) $ Compose [t :*: idKnownModty ddom]
 
+pattern ChainModtyKnown kmu = ChainModty kmu (Compose [])
+
 _chainModty'dom :: ChainModty v -> Term Reldtt v
 _chainModty'dom mu = _knownModty'dom $ _chainModty'knownPrefix $ mu
 _chainModty'cod :: ChainModty v -> Term Reldtt v
@@ -116,18 +118,21 @@ forceDom :: forall v .
   ModtyTail v ->
   Int ->
   Term Reldtt v ->
-  Maybe (ModtySnout, ModtyTail v)
+  Maybe (KnownModty v)
 forceDom snoutOrig tailOrig snoutDomNew tailDomNew
   | _modtySnout'dom snoutOrig >  snoutDomNew = unreachable
-  | _modtySnout'dom snoutOrig == snoutDomNew = Just (snoutOrig, tailOrig)
+  | _modtySnout'dom snoutOrig == snoutDomNew = Just $ KnownModty snoutOrig tailOrig
   | _modtySnout'dom snoutOrig <  snoutDomNew = case tailOrig of
       TailEmpty -> Nothing
       TailDisc   tailCod -> Nothing
       --TailCodisc tailCod -> Nothing
-      TailForget tailDomOrig -> Just (nTimes n extForget snoutOrig, TailForget tailDomNew)
-      TailDiscForget   tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailDiscForget   tailDomNew tailCod)
+      TailForget tailDomOrig ->
+        Just $ KnownModty (nTimes n extForget snoutOrig) (TailForget tailDomNew)
+      TailDiscForget   tailDomOrig tailCod ->
+        Just $ KnownModty (nTimes n extForget snoutOrig) (TailDiscForget tailDomNew tailCod)
       --TailCodiscForget tailDomOrig tailCod -> Just (nTimes n extForget snoutOrig, TailCodiscForget tailDomNew tailCod)
-      TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailDomNew)
+      TailCont tailModeOrig ->
+        Just $ KnownModty (nTimes n extCont snoutOrig) (TailCont tailDomNew)
       TailProblem -> Nothing
   | otherwise = unreachable
     where n = snoutDomNew - _modtySnout'dom snoutOrig
@@ -137,18 +142,21 @@ forceCod :: forall v .
   ModtyTail v ->
   Int ->
   Term Reldtt v ->
-  Maybe (ModtySnout, ModtyTail v)
+  Maybe (KnownModty v)
 forceCod snoutOrig tailOrig snoutCodNew tailCodNew
   | _modtySnout'cod snoutOrig >  snoutCodNew = unreachable
-  | _modtySnout'cod snoutOrig == snoutCodNew = Just (snoutOrig, tailOrig)
+  | _modtySnout'cod snoutOrig == snoutCodNew = Just $ KnownModty snoutOrig tailOrig
   | _modtySnout'cod snoutOrig <  snoutCodNew = case tailOrig of
       TailEmpty -> Nothing
-      TailDisc   tailCodOrig -> Just (nTimes n extDisc   snoutOrig, TailDisc   tailCodNew)
+      TailDisc   tailCodOrig ->
+        Just $ KnownModty (nTimes n extDisc snoutOrig) (TailDisc tailCodNew)
       --TailCodisc tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodisc tailCodNew)
       TailForget tailDom -> Nothing
-      TailDiscForget   tailDom tailCodOrig -> Just (nTimes n extDisc   snoutOrig, TailDiscForget   tailDom tailCodNew)
+      TailDiscForget tailDom tailCodOrig ->
+        Just $ KnownModty (nTimes n extDisc snoutOrig) (TailDiscForget tailDom tailCodNew)
       --TailCodiscForget tailDom tailCodOrig -> Just (nTimes n extCodisc snoutOrig, TailCodiscForget tailDom tailCodNew)
-      TailCont tailModeOrig -> Just (nTimes n extCont snoutOrig, TailCont tailCodNew)
+      TailCont tailModeOrig ->
+        Just $ KnownModty (nTimes n extCont snoutOrig) (TailCont tailCodNew)
       TailProblem -> Nothing
   | otherwise = unreachable
     where n = snoutCodNew - _modtySnout'cod snoutOrig

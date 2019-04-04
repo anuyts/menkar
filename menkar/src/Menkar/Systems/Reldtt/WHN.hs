@@ -10,7 +10,11 @@ import Menkar.Monad
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Systems.Reldtt.Scoper
 
+import Control.Monad.Trans.Class
 import Control.Monad.Writer.Class
+import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Maybe
+import Control.Applicative
 import Data.Void
 import GHC.Generics
 import Data.Functor.Compose
@@ -71,12 +75,12 @@ compModtyTail _ TailProblem = TailProblem
 compKnownModty :: KnownModty v -> KnownModty v -> KnownModty v
 compKnownModty mu2@(KnownModty snout2 tail2) mu1@(KnownModty snout1 tail1) =
   let maybeStuff = case compare (_modtySnout'cod snout1) (_modtySnout'dom snout2) of
-                     LT -> (, (snout2, tail2)) <$> forceCod snout1 tail1 (_modtySnout'dom snout2) (_modtyTail'dom tail2)
-                     EQ -> Just ((snout1, tail1), (snout2, tail2))
-                     GT -> ((snout1, tail1), ) <$> forceDom snout2 tail2 (_modtySnout'cod snout1) (_modtyTail'cod tail1)
+                     LT -> (, mu2) <$> forceCod snout1 tail1 (_modtySnout'dom snout2) (_modtyTail'dom tail2)
+                     EQ -> Just (mu1, mu2)
+                     GT -> (mu1, ) <$> forceDom snout2 tail2 (_modtySnout'cod snout1) (_modtyTail'cod tail1)
   in case maybeStuff of
        Nothing -> problemKnownModty
-       Just ((snout1, tail1), (snout2, tail2)) ->
+       Just (mu1@(KnownModty snout1 tail1), mu2@(KnownModty snout2 tail2)) ->
          let snoutComp = compModtySnout snout2 snout1
              tailComp = compModtyTail tail2 tail1
          in  KnownModty snoutComp tailComp
@@ -228,9 +232,32 @@ instance SysWHN Reldtt where
         ModtyTermUnavailable ddom dcod -> returnSysT
       _ -> _whnormalizeSys
 
-  leqMod ddom dcod mu1 mu2 = do
-    mu1 <- whnormalizeChainModty parent gamma mu1 _reason
-    mu2 <- whnormalizeChainModty parent gamma mu2 _reason
-    _leqMod
+  leqMod parent gamma mu1 mu2 ddom dcod reason = runMaybeT $ do
+    -- You need to normalize: a tail might become empty!
+    (mu1, metasMu1) <- lift $ runWriterT $ whnormalizeChainModty parent gamma mu1 reason
+    (mu2, metasMu2) <- lift $ runWriterT $ whnormalizeChainModty parent gamma mu2 reason
+    case (metasMu1, metasMu2) of
+      -- Both are normal
+      ([], []) -> case (mu1, mu2) of
+        (ChainModtyKnown kmu1@(KnownModty snout1 tail1), ChainModtyKnown kmu2@(KnownModty snout2 tail2)) -> do
+          (kmu1, kmu2) <- MaybeT $ return $
+            case compare (_modtySnout'dom $ _knownModty'snout kmu1) (_modtySnout'dom $ _knownModty'snout kmu2) of
+              LT -> (, kmu2) <$> forceDom snout1 tail1 (_modtySnout'dom snout2) (_modtyTail'dom tail2)
+              EQ -> Just (kmu1, kmu2)
+              GT -> (kmu1, ) <$> forceDom snout2 tail2 (_modtySnout'dom snout1) (_modtyTail'dom tail1)
+          (kmu1, kmu2) <- MaybeT $ return $
+            case compare (_modtySnout'cod $ _knownModty'snout kmu1) (_modtySnout'cod $ _knownModty'snout kmu2) of
+              LT -> (, kmu2) <$> forceCod snout1 tail1 (_modtySnout'cod snout2) (_modtyTail'cod tail2)
+              EQ -> Just (kmu1, kmu2)
+              GT -> (kmu1, ) <$> forceCod snout2 tail2 (_modtySnout'cod snout1) (_modtyTail'cod tail1)
+          let leqSnout = and $ getZipList $
+                (<=) <$> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu1)
+                     <*> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu2)
+          let leqTail = _
+          return $ leqSnout && leqTail
+        -- There are neutrals involved: don't bother.
+        (_, _) -> return False
+      -- Either is not normal
+      (_ , _ ) -> MaybeT $ return $ Nothing
 
-  leqDeg d deg1 deg2 = _leqDeg
+  leqDeg parent gamma deg1 deg2 d reason = _leqDeg
