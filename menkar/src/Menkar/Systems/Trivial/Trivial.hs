@@ -68,10 +68,10 @@ instance SysScoper Trivial where
 
 instance SysWHN Trivial where
   whnormalizeSys parent gamma t reason = absurd1 t
-  leqMod U1 U1 U1 U1 = return $ Just True
-  leqDeg U1 U1 U1 = return $ Just True
-  isEqDeg U1 U1 = return $ Just True
-  isTopDeg U1 U1 = return $ Just False
+  leqMod parent gamma U1 U1 U1 U1 reason = return $ Just True
+  leqDeg parent gamma U1 U1 U1 reason = return $ Just True
+  isEqDeg parent gamma U1 U1 reason = return $ Just True
+  isTopDeg parent gamma U1 U1 reason = return $ Just False
 
 instance SysTC Trivial where
   checkTermSys parent gamma t ty = absurd1 t

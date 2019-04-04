@@ -802,8 +802,10 @@ etaExpand parent gamma t (Pi piBinding) = do
             "Infer function body."
   return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) body
 etaExpand parent gamma t (Sigma sigmaBinding) = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
-  allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
+  allowsEta parent (crispModedModality dgamma' :\\ gamma) dmu dgamma "Need to know if eta is allowed." >>= \case
     Just True -> do
         tmFst <- newMetaTerm
                    (Just parent)
@@ -823,8 +825,10 @@ etaExpand parent gamma t (Sigma sigmaBinding) = do
     Just False -> return $ Just Nothing
     Nothing -> return $ Nothing
 etaExpand parent gamma t (BoxType boxSeg) = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty $ boxSeg
-  allowsEta dmu (unVarFromCtx <$> ctx'mode gamma) >>= \ case
+  allowsEta parent (crispModedModality dgamma' :\\ gamma) dmu dgamma "Need to know if eta is allowed." >>= \case
     Just True -> do
       let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType boxSeg
       tmUnbox <- newMetaTerm
@@ -922,6 +926,8 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 
   let getVar2 :: Term sys v -> Maybe v
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   case sequenceA $ getVar2 <$> depcies1 of
     -- Some dependency is not a variable
     Nothing -> alternative "Cannot solve meta-variable: it has non-variable dependencies."
@@ -936,7 +942,9 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 
             -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
             let subst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
             let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-            solution <- isEqDeg (unVarFromCtx <$> ctx'mode gamma) deg >>= \case
+            itIsEqDeg <- isEqDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) deg dgamma
+              "Need to know if I'm checking for equality"
+            solution <- case itIsEqDeg of
               Just True ->
                    solveMetaImmediately parent
                      gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative

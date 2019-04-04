@@ -27,14 +27,15 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   String ->
   whn (Term sys v)
 tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let returnElim = return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
   case e of
     ElimDep motive clauses -> case clauses of
       ElimSigma pairClause -> case tyEliminee of
         Sigma sigmaBinding -> do
           let dmuSigma = _segment'modty $ binding'segment sigmaBinding
-          allowsEta dmuSigma dgamma >>= \ case
+          allowsEta parent (crispModedModality dgamma' :\\ gamma) dmuSigma dgamma reason >>= \case
             Just True -> do
               let tmFst = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuSigma dgamma) whnEliminee tyEliminee Fst
               let tmSnd = Expr2 $ TermElim (idModedModality                     dgamma) whnEliminee tyEliminee Snd
@@ -48,7 +49,7 @@ tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason = do
       ElimBox boxClause -> case tyEliminee of
         BoxType boxSeg -> do
           let dmuBox = _segment'modty boxSeg
-          allowsEta dmuBox dgamma >>= \ case
+          allowsEta parent (crispModedModality dgamma' :\\ gamma) dmuBox dgamma reason >>= \case
             Just True -> do
               let tmUnbox = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuBox dgamma) whnEliminee tyEliminee Unbox
               let subst v = case v of

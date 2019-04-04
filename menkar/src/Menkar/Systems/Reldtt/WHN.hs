@@ -228,6 +228,9 @@ instance SysWHN Reldtt where
         ModtyTermUnavailable ddom dcod -> returnSysT
       _ -> _whnormalizeSys
 
-  leqMod ddom dcod mu1 mu2 = _leqMod
+  leqMod ddom dcod mu1 mu2 = do
+    mu1 <- whnormalizeChainModty parent gamma mu1 _reason
+    mu2 <- whnormalizeChainModty parent gamma mu2 _reason
+    _leqMod
 
   leqDeg d deg1 deg2 = _leqDeg

@@ -598,7 +598,8 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   tc ()
 etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   let giveUp = checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
   case (ty1, ty2) of
     -- Pi-types: eta-expand
@@ -630,7 +631,9 @@ etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
     -- Sigma types: eta expand if allowed
     (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
       let dmu = _segment'modty $ binding'segment $ sigmaBinding1
-      allowsEta dmu dgamma >>= \case
+      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu dgamma
+        "Need to know if eta is allowed."
+      case etaAllowed of
         Just True -> do
           let fst1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t1 (Sigma sigmaBinding1) Fst
           let fst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t2 (Sigma sigmaBinding2) Fst
@@ -673,7 +676,9 @@ etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
     -- Box type: eta-expand
     (BoxType boxSeg1, BoxType boxSeg2) -> do
       let dmu = _segment'modty $ boxSeg1
-      allowsEta dmu dgamma >>= \case
+      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu dgamma
+        "Need to know if eta is allowed."
+      case etaAllowed of
         Just True -> do
           let unbox1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t1 (BoxType boxSeg1) Unbox
           let unbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t2 (BoxType boxSeg2) Unbox
@@ -742,9 +747,12 @@ checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Type sys v ->
   tc ()
 checkTermRel parent eta deg gamma t1 t2 ty1 ty2 = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   -- Top-relatedness is always ok.
-  isTopDeg dgamma deg >>= \ case
+  itIsTopDeg <- isTopDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) deg dgamma
+    "Need to know whether required degree of relatedness is Top."
+  case itIsTopDeg of
     -- It's certainly about top-relatedness
     Just True -> return ()
     -- We don't know

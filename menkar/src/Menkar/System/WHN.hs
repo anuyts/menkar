@@ -20,35 +20,63 @@ class SysScoper sys => SysWHN sys where
   {-| @'leqMod' ddom dcod mu1 mu2@ returns whether @mu1 <= mu2@, or
       @'Nothing'@ if it is presently unclear.
       This method may call @'awaitMeta'@.
+      This method should be efficient and can be ridiculously strict; the relation should probably be transitive,
+      but reflexivity is not even required. It should imply validity of the inequality judgement.
   -}
   leqMod :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Mode sys v -> Mode sys v -> Modality sys v -> Modality sys v -> whn (Maybe Bool)
-  {-| @'leqDeg' d deg1 deg2@ returns whether @deg1 <= deg2@ (equality is the least), or
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Modality sys v -> Modality sys v ->
+    Mode sys v -> Mode sys v ->
+    String ->
+    whn (Maybe Bool)
+  {-| @'leqDeg' d deg1 deg2@ returns whether @deg1 <= deg2@ (the equality-degree is the least), or
       @'Nothing'@ if it is presently unclear but may become clear.
       This method may call @'awaitMeta'@.
   -}
   leqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Mode sys v -> Degree sys v -> Degree sys v -> whn (Maybe Bool)
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Degree sys v -> 
+    Degree sys v -> 
+    Mode sys v ->
+    String ->
+    whn (Maybe Bool)
     
   isEqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Mode sys v -> Degree sys v -> whn (Maybe Bool)
-  isEqDeg d deg = leqDeg d deg eqDeg
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Degree sys v -> 
+    Mode sys v ->
+    String ->
+    whn (Maybe Bool)
+  isEqDeg parent gamma deg d reason = leqDeg parent gamma deg eqDeg d reason
 
   isTopDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Mode sys v -> Degree sys v -> whn (Maybe Bool)
-  isTopDeg d deg = case maybeTopDeg of
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    Degree sys v -> 
+    Mode sys v ->
+    String ->
+    whn (Maybe Bool)
+  isTopDeg parent gamma deg d reason = case maybeTopDeg of
     Nothing -> return $ Just False
-    Just topDeg -> leqDeg d topDeg deg
+    Just topDeg -> leqDeg parent gamma topDeg deg d reason
 
   -- | True if @id <= mu . nu@, where nu is the @approxLeftAdjointProj@.
   allowsEta :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    ModedModality sys v -> Mode sys v {-^ the codomain -} -> whn (Maybe Bool)
-  allowsEta dmu@(ModedModality ddom mu) dcod = do
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    ModedModality sys v ->
+    Mode sys v {-^ the codomain -} ->
+    String ->
+    whn (Maybe Bool)
+  allowsEta parent gamma dmu@(ModedModality ddom mu) dcod reason = do
     let nu = approxLeftAdjointProj dmu dcod
     let dnu = ModedModality dcod nu
-    leqMod dcod dcod (idMod dcod) (modality'mod $ compModedModality dmu dnu)
+    leqMod parent gamma (idMod dcod) (modality'mod $ compModedModality dmu dnu) dcod dcod reason
