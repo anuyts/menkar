@@ -230,6 +230,15 @@ instance SysWHN Reldtt where
         ModtyTermDiv rho mu -> returnSysT -- TODO
         ModtyTermApproxLeftAdjointProj mu -> _ModtyApproxLeftAdjointProj
         ModtyTermUnavailable ddom dcod -> returnSysT
+      SysTermDeg i -> case i of
+        DegKnown _ -> return $ BareDeg i
+        DegGet j mu ddom dcod -> do
+          j <- whnormalize parent gamma j (BareSysType $ SysTypeDeg dcod) reason
+          case j of
+            BareKnownDeg j' -> do
+              mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
+              _
+            _ -> return BareDeg $ DegGet j mu ddom dcod
       _ -> _whnormalizeSys
 
   leqMod parent gamma mu1 mu2 ddom dcod reason = runMaybeT $ do

@@ -44,6 +44,8 @@ pattern BareChainModty mu = BareModty (ModtyTermChain (mu :: ChainModty v)) :: T
 pattern BareKnownModty mu = BareChainModty (ChainModty (mu :: KnownModty v) (Compose [])) :: Term Reldtt v
 --pattern BareDeg i :: DegTerm v -> Term Reldtt v
 pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
+--pattern BareKnownDeg i :: KnownDeg -> Term Reldtt v
+pattern BareKnownDeg i = BareDeg (DegKnown (i :: KnownDeg)) :: Term Reldtt v
 --pattern BareSysType :: ReldttSysTerm v -> Type Reldtt v
 pattern BareSysType systy = Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) :: Type Reldtt v
 
@@ -230,12 +232,12 @@ data ModtyTerm v =
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data DegTerm v =
-  DegEq |
-  DegZero |
-  {-| Forbidden for terms that might reduce to Top. -}
-  DegSuc (Term Reldtt v) |
-  DegTop |
-  DegGet (Term Reldtt v) {-^ Degree -} (Term Reldtt v) {-^ Modality -}
+  DegKnown KnownDeg |
+  DegGet
+    (Term Reldtt v) {-^ Degree -}
+    (Term Reldtt v) {-^ Modality -}
+    (Term Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
+    (Term Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ReldttSysTerm v =
@@ -268,6 +270,6 @@ instance Multimode Reldtt where
     Compose [BareModty (ModtyTermApproxLeftAdjointProj $ BareChainModty mu) :*: idKnownModty dcod]
 
 instance Degrees Reldtt where
-  eqDeg = BareDeg $ DegEq
-  maybeTopDeg = Just $ BareDeg $ DegTop
-  divDeg (ModedModality d mu) i = BareDeg $ DegGet i $ BareChainModty mu
+  eqDeg = BareKnownDeg $ KnownDegEq
+  maybeTopDeg = Just $ BareKnownDeg $ KnownDegTop
+  divDeg (ModedModality d mu) i = BareDeg $ DegGet i (BareChainModty mu) _ d
