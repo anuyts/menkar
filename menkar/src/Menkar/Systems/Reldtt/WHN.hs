@@ -261,7 +261,10 @@ instance SysWHN Reldtt where
                 BareKnownModty mu' -> return $ BareKnownDeg $ knownGetDeg j' mu' 
                 _ -> return $ BareDeg $ DegGet j mu ddom dcod
             _ -> return $ BareDeg $ DegGet j mu ddom dcod
-      _ -> _whnormalizeSys
+      SysTypeMode -> returnSysT
+      SysTypeDeg d -> returnSysT
+      SysTypeModty ddom dcod -> returnSysT
+      --_ -> _whnormalizeSys
 
   leqMod parent gamma mu1 mu2 ddom dcod reason = runMaybeT $ do
     -- You need to normalize: a tail might become empty!
