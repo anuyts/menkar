@@ -19,16 +19,11 @@ import Data.Void
 import GHC.Generics
 import Data.Functor.Compose
 
-getDegKnown :: KnownDeg -> ModtySnout -> KnownDeg
-getDegKnown KnownDegEq mu = KnownDegEq
-getDegKnown (KnownDeg i) (ModtySnout kdom kcod krevdegs) = krevdegs !! (length krevdegs - i - 1)
-getDegKnown KnownDegTop mu = KnownDegTop
-
 compModtySnout :: ModtySnout -> ModtySnout -> ModtySnout
 compModtySnout (ModtySnout kmid kcod []) mu =
   ModtySnout (_modtySnout'dom mu) kcod []
 compModtySnout (ModtySnout kmid kcod krevdegs) mu =
-  ModtySnout (_modtySnout'dom mu) kcod $ flip getDegKnown mu <$> krevdegs
+  ModtySnout (_modtySnout'dom mu) kcod $ flip knownGetDegSnout mu <$> krevdegs
 
 compModtyTail :: ModtyTail v -> ModtyTail v -> ModtyTail v
 compModtyTail (TailCont d) tail1 = tail1
@@ -124,6 +119,11 @@ whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
 -}
 
 ---------------------
+
+knownGetDegSnout :: KnownDeg -> ModtySnout -> KnownDeg
+knownGetDegSnout KnownDegEq mu = KnownDegEq
+knownGetDegSnout (KnownDeg i) (ModtySnout kdom kcod krevdegs) = krevdegs !! (length krevdegs - i - 1)
+knownGetDegSnout KnownDegTop mu = KnownDegTop
 
 knownGetDeg :: KnownDeg -> KnownModty v -> KnownDeg
 knownGetDeg KnownDegEq _ = KnownDegEq
@@ -258,7 +258,7 @@ instance SysWHN Reldtt where
             BareKnownDeg j' -> do
               mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
               case mu of
-                BareKnownModty mu' -> _
+                BareKnownModty mu' -> return $ BareKnownDeg $ knownGetDeg j' mu' 
                 _ -> return $ BareDeg $ DegGet j mu ddom dcod
             _ -> return $ BareDeg $ DegGet j mu ddom dcod
       _ -> _whnormalizeSys
@@ -290,4 +290,10 @@ instance SysWHN Reldtt where
       -- Either is not normal
       (_ , _ ) -> MaybeT $ return $ Nothing
 
-  leqDeg parent gamma deg1 deg2 d reason = _leqDeg
+  leqDeg parent gamma deg1 deg2 d reason = do
+    (deg1, metasDeg1) <- runWriterT $ whnormalize parent gamma deg1 (BareSysType $ SysTypeDeg d) reason
+    (deg2, metasDeg2) <- runWriterT $ whnormalize parent gamma deg2 (BareSysType $ SysTypeDeg d) reason
+    case (metasDeg1, deg1, metasDeg2, deg2) of
+      (_, BareKnownDeg i1, _, BareKnownDeg i2) -> return $ Just $ i1 <= i2
+      ([], _, [], _) -> return $ Just False
+      (_ , _, _ , _) -> return Nothing
