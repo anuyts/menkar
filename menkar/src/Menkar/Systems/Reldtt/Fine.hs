@@ -52,7 +52,7 @@ pattern BareSysType systy = Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) ::
 data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop deriving (Eq, Ord)
+data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop | KnownDegProblem deriving (Eq, Ord)
 data ModtySnout = ModtySnout
   {_modtySnout'dom :: Int,
    _modtySnout'cod :: Int,
@@ -73,6 +73,11 @@ data ModtyTail v =
 
   TailProblem
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
+_snout'max :: ModtySnout -> KnownDeg
+_snout'max (ModtySnout idom icod krevdegs) = case krevdegs of
+  [] -> KnownDegEq
+  krevdegs -> last krevdegs
 
 {-| Precondition: Tails start at the same point and have the same (co)domain.
     Precondition for correct result: The snouts are leq. -} 
@@ -272,4 +277,4 @@ instance Multimode Reldtt where
 instance Degrees Reldtt where
   eqDeg = BareKnownDeg $ KnownDegEq
   maybeTopDeg = Just $ BareKnownDeg $ KnownDegTop
-  divDeg (ModedModality d mu) i = BareDeg $ DegGet i (BareChainModty mu) _ d
+  divDeg (ModedModality ddom mu) (ModedDegree dcod i) = BareDeg $ DegGet i (BareChainModty mu) ddom dcod

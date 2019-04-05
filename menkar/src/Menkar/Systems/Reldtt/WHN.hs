@@ -84,8 +84,6 @@ compKnownModty mu2@(KnownModty snout2 tail2) mu1@(KnownModty snout1 tail1) =
          let snoutComp = compModtySnout snout2 snout1
              tailComp = compModtyTail tail2 tail1
          in  KnownModty snoutComp tailComp
-    
-  
 
 {-
 whnormalizeComp :: forall whn v .
@@ -124,6 +122,26 @@ whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
         (_, _) -> return $ BareModty $ ModtyTermComp whnMu2 dmid whnMu1
     otherwise -> giveUp
 -}
+
+---------------------
+
+knownGetDeg :: KnownDeg -> KnownModty v -> KnownDeg
+knownGetDeg KnownDegEq _ = KnownDegEq
+knownGetDeg KnownDegTop _ = KnownDegTop
+knownGetDeg KnownDegProblem _ = KnownDegProblem
+knownGetDeg (KnownDeg i) (KnownModty snout@(ModtySnout idom icod krevdegs) tail) =
+  if i < length krevdegs
+  then krevdegs !! (length krevdegs - i - 1)
+  else case tail of
+    TailEmpty -> KnownDegProblem
+    TailDisc dcod -> snoutMax
+    TailForget ddom -> KnownDegProblem
+    TailDiscForget ddom dcod -> snoutMax
+    TailCont d -> snoutMax
+    TailProblem -> KnownDegProblem
+  where snoutMax = _snout'max snout
+
+---------------------
 
 whnormalizeModtyTail :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
@@ -235,10 +253,14 @@ instance SysWHN Reldtt where
         DegGet j mu ddom dcod -> do
           j <- whnormalize parent gamma j (BareSysType $ SysTypeDeg dcod) reason
           case j of
+            BareKnownDeg KnownDegEq -> return $ BareKnownDeg KnownDegEq
+            BareKnownDeg KnownDegTop -> return $ BareKnownDeg KnownDegTop
             BareKnownDeg j' -> do
               mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
-              _
-            _ -> return BareDeg $ DegGet j mu ddom dcod
+              case mu of
+                BareKnownModty mu' -> _
+                _ -> return $ BareDeg $ DegGet j mu ddom dcod
+            _ -> return $ BareDeg $ DegGet j mu ddom dcod
       _ -> _whnormalizeSys
 
   leqMod parent gamma mu1 mu2 ddom dcod reason = runMaybeT $ do
