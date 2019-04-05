@@ -130,14 +130,14 @@ knownGetDeg KnownDegEq _ = KnownDegEq
 knownGetDeg KnownDegTop _ = KnownDegTop
 knownGetDeg KnownDegProblem _ = KnownDegProblem
 knownGetDeg (KnownDeg i) (KnownModty snout@(ModtySnout idom icod krevdegs) tail) =
-  if i < length krevdegs
-  then krevdegs !! (length krevdegs - i - 1)
+  if i < icod
+  then krevdegs !! (icod - i - 1)
   else case tail of
     TailEmpty -> KnownDegProblem
     TailDisc dcod -> snoutMax
     TailForget ddom -> KnownDegProblem
     TailDiscForget ddom dcod -> snoutMax
-    TailCont d -> snoutMax
+    TailCont d -> KnownDeg (i - icod + idom)
     TailProblem -> KnownDegProblem
   where snoutMax = _snout'max snout
 
