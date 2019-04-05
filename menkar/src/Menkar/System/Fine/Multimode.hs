@@ -20,7 +20,7 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
 class (SysSyntax (Term sys) sys, Multimode sys) => Degrees sys where
   eqDeg :: (Degree sys) v
   maybeTopDeg :: Maybe (Degree sys v)
-  divDeg :: ModedModality sys v -> (Degree sys) v -> (Degree sys) v
+  divDeg :: ModedModality sys v -> ModedDegree sys v -> (Degree sys) v
   --These belong to type-checking and may get stuck on metas:
   --isTopDeg :: (Degree sys) v -> Bool
   --isEqDeg :: (Degree sys) v -> Bool
@@ -50,3 +50,13 @@ crispModedModality d = ModedModality dataMode (crispMod d)
 modedApproxLeftAdjointProj :: (Multimode sys) =>
   ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> ModedModality sys v
 modedApproxLeftAdjointProj dmu d' = ModedModality d' $ approxLeftAdjointProj dmu d'
+
+modedDivDeg :: (Degrees sys) =>
+  ModedModality sys v -> ModedDegree sys v -> ModedDegree sys v
+modedDivDeg dmu ddeg = ModedDegree (modality'dom dmu) $ divDeg dmu ddeg
+
+modedEqDeg :: Degrees sys => Mode sys v -> ModedDegree sys v
+modedEqDeg d = ModedDegree d eqDeg
+
+maybeModedTopDeg :: Degrees sys => Mode sys v -> Maybe (ModedDegree sys v)
+maybeModedTopDeg d = ModedDegree d <$> maybeTopDeg

@@ -116,6 +116,14 @@ deriving instance (SysTrav sys) => Generic1 (ModedContramodality sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ModedContramodality sys)
 
+data ModedDegree (sys :: KSys) (v :: *) =
+  ModedDegree {_degree'mode :: Mode sys v, _degree'deg :: Degree sys v}
+deriving instance (SysTrav sys) => Functor (ModedDegree sys)
+deriving instance (SysTrav sys) => Foldable (ModedDegree sys)
+deriving instance (SysTrav sys) => Traversable (ModedDegree sys)
+deriving instance (SysTrav sys) => Generic1 (ModedDegree sys)
+deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModedDegree sys)
+
 {-| Looking up something the module @modul@ in @dmu :\\ (gamma :<...> modul)@ yields
     @LeftDivided (ctx'mode gamma) dmu _@.-}
 data LeftDivided content (sys :: KSys) v = LeftDivided {

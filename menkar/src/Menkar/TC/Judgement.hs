@@ -60,11 +60,15 @@ checkConstraint parent = case constraint'judgement parent of
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
 
-  JudTypeRel deg gamma (Twice2 ty1 ty2) -> checkTypeRel parent deg gamma ty1 ty2
+  JudTypeRel deg gamma (Twice2 ty1 ty2) -> do
+    let dgamma = unVarFromCtx <$> ctx'mode gamma
+    checkTypeRel parent (ModedDegree dgamma deg) gamma ty1 ty2
 
   JudTerm gamma t ty -> checkTerm parent gamma t ty
 
-  JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> checkTermRel parent eta deg gamma t1 t2 ty1 ty2
+  JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> do
+    let dgamma = unVarFromCtx <$> ctx'mode gamma
+    checkTermRel parent eta (ModedDegree dgamma deg) gamma t1 t2 ty1 ty2
 
   JudEta gamma t tyT -> case t of
     Expr2 (TermMeta MetaBlocked meta (Compose depcies) maybeAlg) -> do

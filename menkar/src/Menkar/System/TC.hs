@@ -19,7 +19,7 @@ class SysWHN sys => SysTC sys where
   newRelatedSysTerm :: forall tc v vOrig .
     (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
     Constraint sys ->
-    Degree sys v ->
+    ModedDegree sys v ->
     Ctx Type sys vOrig Void ->
     Ctx (Twice2 Type) sys v Void ->
     (vOrig -> v) ->
@@ -33,7 +33,7 @@ class SysWHN sys => SysTC sys where
   checkTermRelSysTermWHNTermNoEta :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
-    Degree sys v ->
+    ModedDegree sys v ->
     Ctx (Twice2 Type) sys v Void ->
     SysTerm sys v ->
     Term sys v ->

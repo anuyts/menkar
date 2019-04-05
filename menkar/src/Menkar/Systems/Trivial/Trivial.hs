@@ -54,7 +54,7 @@ trivModedModality = ModedModality U1 U1
 instance Degrees Trivial where
   eqDeg = U1
   maybeTopDeg = Nothing
-  divDeg (ModedModality U1 U1) U1 = U1
+  divDeg (ModedModality U1 U1) (ModedDegree U1 U1) = U1
 
 instance SysScoper Trivial where
   scopeAnnotation gamma qstring maybeRawArg = scopeFail $ "Illegal annotation: " ++ (render

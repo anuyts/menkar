@@ -75,7 +75,7 @@ newRelatedMetaTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
   Eta ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -90,7 +90,7 @@ newRelatedMetaTerm parent eta deg gammaOrig gamma subst partialInv t2 ty1 ty2 ne
       t1orig <- newMetaTermNoCheck (Just parent) gammaOrig neutrality Nothing reason
       let t1 = subst <$> t1orig
       addNewConstraint
-        (JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2))
+        (JudTermRel eta (_degree'deg deg) gamma (Twice2 t1 t2) (Twice2 ty1 ty2))
         (Just parent)
         reason
       return t1orig
@@ -98,7 +98,7 @@ newRelatedMetaTerm parent eta deg gammaOrig gamma subst partialInv t2 ty1 ty2 ne
 newRelatedMetaType :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -110,7 +110,7 @@ newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
       ty1orig <- Type <$> newMetaTermNoCheck (Just parent) gammaOrig MetaBlocked Nothing reason
       let ty1 = subst <$> ty1orig
       addNewConstraint
-        (JudTypeRel deg gamma (Twice2 ty1 ty2))
+        (JudTypeRel (_degree'deg deg) gamma (Twice2 ty1 ty2))
         (Just parent)
         reason
       return ty1orig
@@ -119,7 +119,7 @@ newRelatedMetaType parent deg gammaOrig gamma subst partialInv ty2 reason = do
 
 newRelatedSegment :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -129,6 +129,7 @@ newRelatedSegment :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijn
 newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
   let dgammaOrig' = ctx'mode gammaOrig
   let dgamma'     = ctx'mode gamma
+  --let dgamma = unVarFromCtx <$> dgamma'
   let dmu2 = _decl'modty segment2
   dmu1orig <- newRelatedMetaModedModality
                 parent
@@ -141,7 +142,7 @@ newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
   let ty2 = _decl'content segment2
   ty1orig <- newRelatedMetaType
                parent
-               (divDeg dmu1 deg)
+               (modedDivDeg dmu1 deg)
                (VarFromCtx <$> dmu1orig :\\ gammaOrig)
                (VarFromCtx <$> dmu2 :\\ gamma)
                subst
@@ -157,7 +158,7 @@ newRelatedSegment parent deg gammaOrig gamma subst partialInv segment2 = do
 
 newRelatedBinding :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -193,7 +194,7 @@ newRelatedBinding parent deg gammaOrig gamma subst partialInv binding2 tyBody1 t
 
 newRelatedUniHSConstructor :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -240,7 +241,7 @@ newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
 newRelatedConstructorTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -292,7 +293,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
             let tyFst2 = _segment'content $ binding'segment sigmaBinding2
             ---------
             tmFst1orig <- newRelatedMetaTerm parent (Eta True)
-                            (divDeg dmuPair2 deg)
+                            (modedDivDeg dmuPair2 deg)
                             (VarFromCtx <$> dmuPair1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmuPair2 :\\ gamma)
                             subst partialInv tmFst2 tyFst1 tyFst2
@@ -330,7 +331,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
             let tyUnbox2 = _segment'content boxSeg2
             ---------
             tmUnbox1orig <- newRelatedMetaTerm parent (Eta True)
-                            (divDeg dmuTerm2 deg)
+                            (modedDivDeg dmuTerm2 deg)
                             (VarFromCtx <$> dmuTerm1orig :\\ gammaOrig)
                             (VarFromCtx <$> dmuTerm2 :\\ gamma)
                             subst partialInv tmUnbox2 tyUnbox1 tyUnbox2
@@ -353,7 +354,7 @@ newRelatedConstructorTerm parent deg gammaOrig gamma subst partialInv t2 ty1 ty2
 newRelatedDependentEliminator :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -517,7 +518,7 @@ newRelatedDependentEliminator parent deg gammaOrig gamma subst partialInv
 newRelatedEliminator :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -550,7 +551,7 @@ newRelatedEliminator parent deg gammaOrig gamma subst partialInv
         let dmuPi1 = subst <$> dmuPi1orig
         arg1orig <- newRelatedMetaTerm
                       parent (Eta True)
-                      (divDeg dmuPi1 deg)
+                      (modedDivDeg dmuPi1 deg)
                       (VarFromCtx <$> dmuPi1orig :\\ gammaOrig)
                       (VarFromCtx <$> dmuPi1     :\\ gamma)
                       subst
@@ -678,7 +679,7 @@ checkMetaPure parent gammaOrig gamma subst ty = do
 solveMetaAgainstWHNF :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx Type sys vOrig Void ->
   Ctx (Twice2 Type) sys v Void ->
   (vOrig -> v) ->
@@ -715,7 +716,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
         let dmu1 = subst <$> dmu1orig
         tyEliminee1orig <- newRelatedUniHSConstructor
                              parent
-                             (divDeg dmu1 deg)
+                             (modedDivDeg dmu1 deg)
                              (VarFromCtx <$> dmu1orig :\\ gammaOrig)
                              (VarFromCtx <$> dmu1 :\\ gamma)
                              subst
@@ -724,7 +725,7 @@ solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 meta
         let tyEliminee1 = subst <$> tyEliminee1orig
         eliminee1orig <- newRelatedMetaTerm
                              parent (Eta False)
-                             (divDeg dmu1 deg)
+                             (modedDivDeg dmu1 deg)
                              (VarFromCtx <$> dmu1orig :\\ gammaOrig)
                              (VarFromCtx <$> dmu1 :\\ gamma)
                              subst
@@ -772,12 +773,16 @@ solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBru
   tc (Maybe (Term sys vOrig))
 solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative = do
   -- Try to write t2 in gammaOrig
+  let dgamma' = ctx'mode gamma
+      dgamma = unVarFromCtx <$> dgamma'
   let maybeT2orig = sequenceA $ partialInv <$> t2
   case maybeT2orig of
     -- If it works, return that.
     Just t2orig -> return $ Just t2orig
     -- If t2 contains variables not in gammaOrig: solve against WHNF
-    Nothing -> solveMetaAgainstWHNF parent eqDeg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
+    Nothing ->
+      solveMetaAgainstWHNF parent
+        (modedEqDeg dgamma) gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
 
 --------------------------------------------------------
 -- ALWAYS ETA --
@@ -912,7 +917,7 @@ tryToSolveMeta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Eta ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
   Term sys v ->
@@ -942,7 +947,7 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 
             -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
             let subst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
             let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
-            itIsEqDeg <- isEqDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) deg dgamma
+            itIsEqDeg <- isEqDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
               "Need to know if I'm checking for equality"
             solution <- case itIsEqDeg of
               Just True ->
@@ -974,7 +979,7 @@ tryToSolveTerm :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Eta ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v {-^ Blocked. -} ->
   Term sys v ->

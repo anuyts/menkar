@@ -23,7 +23,7 @@ import Control.Monad.Writer.Lazy
 checkSegmentRel ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Segment Type sys v ->
   Segment Type sys v ->
@@ -44,7 +44,7 @@ checkSegmentRel parent deg gamma seg1 seg2 = do
   addNewConstraint
     (JudTermRel
       (Eta True)
-      deg
+      (_degree'deg deg)
       gamma
       (Twice2
         (unType $ _segment'content seg1)
@@ -58,7 +58,7 @@ checkSegmentRel parent deg gamma seg1 seg2 = do
 checkPiOrSigmaRel ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Binding Type Term sys v ->
   Binding Type Term sys v ->
@@ -78,7 +78,7 @@ checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 metasTy1 metasTy2 =
     addNewConstraint
       (JudTermRel
         (Eta True)
-        (VarWkn <$> deg)
+        (VarWkn <$> _degree'deg deg)
         (gamma :.. VarFromCtx <$> seg)
         (Twice2
           (binding'body binding1)
@@ -92,7 +92,7 @@ checkPiOrSigmaRel parent deg gamma binding1 binding2 ty1 ty2 metasTy1 metasTy2 =
 checkUniHSConstructorRel ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
@@ -107,7 +107,7 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case
     let nat = hs2type $ NatType
     addNewConstraint
       (JudTermRel
-        (divDeg irrModedModality deg)
+        (modedDivDeg irrModedModality deg)
         (irrModedModality :\\ gamma)
         (Twice2 lvl1 lvl2)
         (Twice2 nat nat)
@@ -129,15 +129,15 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case
   (NatType, _) -> tcFail parent "False."
   (EqType tyAmbient1 tL1 tR1, EqType tyAmbient2 tL2 tR2) -> do
     addNewConstraint
-      (JudTypeRel deg gamma (Twice2 tyAmbient1 tyAmbient2))
+      (JudTypeRel (_degree'deg deg) gamma (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating ambient types."
     addNewConstraint
-      (JudTermRel (Eta True) deg gamma (Twice2 tL1 tL2) (Twice2 tyAmbient1 tyAmbient2))
+      (JudTermRel (Eta True) (_degree'deg deg) gamma (Twice2 tL1 tL2) (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating left equands."
     addNewConstraint
-      (JudTermRel (Eta True) deg gamma (Twice2 tR1 tR2) (Twice2 tyAmbient1 tyAmbient2))
+      (JudTermRel (Eta True) (_degree'deg deg) gamma (Twice2 tR1 tR2) (Twice2 tyAmbient1 tyAmbient2))
       (Just parent)
       "Relating right equands."
   (EqType _ _ _, _) -> tcFail parent "False."
@@ -150,7 +150,7 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case
 checkConstructorTermRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   ConstructorTerm sys v ->
   ConstructorTerm sys v ->
@@ -183,7 +183,7 @@ checkConstructorTermRelNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = 
     addNewConstraint
       (JudTermRel
         (Eta True)
-        deg
+        (_degree'deg deg)
         gamma
         (Twice2 snd1 snd2)
         (Twice2
@@ -219,7 +219,7 @@ checkConstructorTermRelNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = 
   (ConsSuc n1, ConsSuc n2) -> do
     let nat = Type $ Expr2 $ TermCons $ ConsUniHS $ NatType
     addNewConstraint
-      (JudTermRel (Eta True) deg gamma (Twice2 n1 n2) (Twice2 nat nat))
+      (JudTermRel (Eta True) (_degree'deg deg) gamma (Twice2 n1 n2) (Twice2 nat nat))
       (Just parent)
       "Relating predecessors."
   (ConsSuc _, _) -> tcFail parent "False."
@@ -230,7 +230,7 @@ checkConstructorTermRelNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = 
 checkDependentEliminatorRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   ModedModality sys v {-^ Modality by which the eliminee is eliminated. -} ->
   Term sys v ->
@@ -283,7 +283,7 @@ checkDependentEliminatorRelNoEta parent deg gamma dmu
           addNewConstraint
             (JudTermRel
               (Eta True)
-              (VarWkn . VarWkn <$> deg)
+              (VarWkn . VarWkn <$> (_degree'deg deg))
               (gamma :.. VarFromCtx <$> segFst :.. VarFromCtx <$> segSnd)
               (Twice2
                 (_namedBinding'body $ _namedBinding'body $ pairClause1)
@@ -317,7 +317,7 @@ checkDependentEliminatorRelNoEta parent deg gamma dmu
            addNewConstraint
              (JudTermRel
                (Eta True)
-               (VarWkn <$> deg)
+               (VarWkn <$> (_degree'deg deg))
                (gamma :.. VarFromCtx <$> segContent)
                (Twice2
                  (_namedBinding'body $ boxClause1)
@@ -342,7 +342,7 @@ checkDependentEliminatorRelNoEta parent deg gamma dmu
         addNewConstraint
           (JudTermRel
             (Eta True)
-            deg
+            (_degree'deg deg)
             gamma
             (Twice2 clauseZero1 clauseZero2)
             (Twice2
@@ -374,7 +374,7 @@ checkDependentEliminatorRelNoEta parent deg gamma dmu
         addNewConstraint
           (JudTermRel
             (Eta True)
-            (VarWkn . VarWkn <$> deg)
+            (VarWkn . VarWkn <$> (_degree'deg deg))
             (gamma :.. VarFromCtx <$> segPred :.. VarFromCtx <$> segHyp)
             (Twice2
               (_namedBinding'body $ _namedBinding'body $ clauseSuc1)
@@ -393,7 +393,7 @@ checkDependentEliminatorRelNoEta parent deg gamma dmu
 checkEliminatorRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   ModedModality sys v ->
   Term sys v ->
@@ -446,7 +446,7 @@ checkEliminatorRelNoEta parent deg gamma dmu
           (Twice2 (hs2type tyEliminee1) (hs2type tyEliminee2))
     addNewConstraint
       (JudTypeRel
-        (VarWkn <$> deg)
+        (VarWkn <$> (_degree'deg deg))
         (gamma :.. VarFromCtx <$> seg)
         (Twice2 (_namedBinding'body motive1) (_namedBinding'body motive2))
       )
@@ -479,7 +479,7 @@ checkEliminatorRelNoEta parent deg gamma dmu
                )
       addNewConstraint
         (JudTypeRel
-          (VarWkn . VarWkn <$> deg)
+          (VarWkn . VarWkn <$> (_degree'deg deg))
           (gamma :.. VarFromCtx <$> segR :.. VarFromCtx <$> segEq)
           (Twice2 (_namedBinding'body $ _namedBinding'body motive1)
                  (_namedBinding'body $ _namedBinding'body motive2))
@@ -487,7 +487,7 @@ checkEliminatorRelNoEta parent deg gamma dmu
         (Just parent)
         "Relating the motives"
       addNewConstraint
-        (JudTermRel (Eta True) deg gamma (Twice2 crefl1 crefl2) $ Twice2
+        (JudTermRel (Eta True) (_degree'deg deg) gamma (Twice2 crefl1 crefl2) $ Twice2
           (substLast2 tL1 $ substLast2 (Expr2 $ TermCons $ ConsRefl :: Term sys _) $ bodyMotive1)
           (substLast2 tL2 $ substLast2 (Expr2 $ TermCons $ ConsRefl :: Term sys _) $ bodyMotive2)
         )
@@ -499,7 +499,7 @@ checkEliminatorRelNoEta parent deg gamma dmu
 
 checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
@@ -561,7 +561,7 @@ checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = cas
 
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
@@ -588,7 +588,7 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 metasTy1 metasT
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
@@ -616,7 +616,7 @@ etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
       addNewConstraint
         (JudTermRel
           (Eta True)
-          (VarWkn <$> deg)
+          (VarWkn <$> (_degree'deg deg))
           (gamma :.. VarFromCtx <$> seg)
           (Twice2 app1 app2)
           (Twice2
@@ -655,7 +655,7 @@ etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
           addNewConstraint
             (JudTermRel
               (Eta True)
-              deg
+              (_degree'deg deg)
               gamma
               (Twice2 snd1 snd2)
               (Twice2
@@ -703,7 +703,7 @@ etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
 
 checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
@@ -739,7 +739,7 @@ checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
 checkTermRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   Eta ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
@@ -750,7 +750,7 @@ checkTermRel parent eta deg gamma t1 t2 ty1 ty2 = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   -- Top-relatedness is always ok.
-  itIsTopDeg <- isTopDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) deg dgamma
+  itIsTopDeg <- isTopDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
     "Need to know whether required degree of relatedness is Top."
   case itIsTopDeg of
     -- It's certainly about top-relatedness
@@ -767,7 +767,7 @@ checkTermRel parent eta deg gamma t1 t2 ty1 ty2 = do
       parent <- defConstraint
             (JudTermRel
               eta
-              deg
+              (_degree'deg deg)
               gamma
               (Twice2 t1 t2)
               (Twice2 ty1 ty2)
@@ -786,7 +786,7 @@ checkTermRel parent eta deg gamma t1 t2 ty1 ty2 = do
 
 checkTypeRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Type sys v ->
   Type sys v ->
@@ -796,7 +796,7 @@ checkTypeRel parent deg gamma (Type ty1) (Type ty2) =
   in  addNewConstraint
         (JudTermRel
           (Eta True)
-          deg
+          (_degree'deg deg)
           gamma
           (Twice2 ty1 ty2)
           (Twice2 uni uni)
