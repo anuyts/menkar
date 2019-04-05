@@ -253,8 +253,7 @@ instance SysWHN Reldtt where
           let leqSnout = and $ getZipList $
                 (<=) <$> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu1)
                      <*> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu2)
-          let leqTail = _
-          return $ leqSnout && leqTail
+          return $ leqSnout && leqTail kmu1 kmu2
         -- There are neutrals involved: don't bother.
         (_, _) -> return False
       -- Either is not normal
