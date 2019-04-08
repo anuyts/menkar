@@ -14,6 +14,7 @@ import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
 
 import Control.Exception.AssertFalse
+import Control.Monad.DoUntilFail
 import Data.Omissible
 import Text.PrettyPrint.Tree
 
@@ -155,12 +156,6 @@ printOverview ref s = do
   putStrLn $ (show $ length $ _tcState'reports s) ++ " reports (reports)."
 
 ------------------------------------
-
-{-| Repeats 'action' until it returns 'False' -}
-doUntilFail :: Monad m => m Bool -> m ()
-doUntilFail action = do
-  succes <- action
-  when succes $ doUntilFail action
 
 {-| prints 'prefix' as a sign that the user should provide input; then returns the input. -}
 prompt :: String -> IO String

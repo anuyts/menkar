@@ -10,15 +10,20 @@ import Menkar.Monad
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Systems.Reldtt.Scoper
 
+import Control.Monad.DoUntilFail
+
 import Control.Monad.Trans.Class
 import Control.Monad.Writer.Class
 import Control.Monad.Trans.Writer.Lazy
 import Control.Monad.Trans.Maybe
+import Control.Monad.State.Lazy
 import Control.Applicative
+import Control.Lens
 import Data.Void
 import GHC.Generics
 import Data.Functor.Compose
 
+-- | The omega-case is not really handled!
 compModtySnout :: ModtySnout -> ModtySnout -> ModtySnout
 compModtySnout (ModtySnout kmid kcod []) mu =
   ModtySnout (_modtySnout'dom mu) kcod []
@@ -120,10 +125,13 @@ whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
 
 ---------------------
 
+-- | Beware that the omega-case is not really handled!
 knownGetDegSnout :: KnownDeg -> ModtySnout -> KnownDeg
 knownGetDegSnout KnownDegEq mu = KnownDegEq
 knownGetDegSnout (KnownDeg i) (ModtySnout kdom kcod krevdegs) = krevdegs !! (length krevdegs - i - 1)
+knownGetDegSnout KnownDegOmega mu = KnownDegOmega
 knownGetDegSnout KnownDegTop mu = KnownDegTop
+knownGetDegSnout KnownDegProblem mu = KnownDegProblem
 
 knownGetDeg :: KnownDeg -> KnownModty v -> KnownDeg
 knownGetDeg KnownDegEq _ = KnownDegEq
@@ -140,6 +148,60 @@ knownGetDeg (KnownDeg i) (KnownModty snout@(ModtySnout idom icod krevdegs) tail)
     TailCont d -> KnownDeg (i - icod + idom)
     TailProblem -> KnownDegProblem
   where snoutMax = _snout'max snout
+knownGetDeg KnownDegOmega (KnownModty snout@(ModtySnout idom icod krevdegs) tail) = case tail of
+  TailEmpty -> KnownDeg $ idom - 1
+  TailDisc dcod -> KnownDeg $ idom - 1
+  TailForget ddom -> KnownDegOmega
+  TailDiscForget ddom dcod -> KnownDegOmega
+  TailCont d -> KnownDegOmega
+  TailProblem -> KnownDegProblem
+
+---------------------
+
+knownApproxLeftAdjointProj :: KnownModty v -> KnownModty v
+knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs) tail) =
+  {- Fields:
+     _1: number of degrees popped from the input modality, minus one.
+     _2: remaining tail of the input modality
+     _3: already constructed part of output modality, REVERSED
+     _4: length of _3
+  -}
+  let (_, _, krevdegs', _) = flip execState (-1, reverse krevdegs, [], 0) $
+        doUntilFail $ do
+          remainingTail <- use _2
+          threshold <- use _4
+          case remainingTail of
+            nextDeg : remainingTail' -> if nextDeg <= KnownDeg threshold
+              then do -- Write a degree, increase the length
+                nextDeg' <- use _1
+                _3 %= (nextDeg' :)
+                _4 += 1
+                return True
+              else do -- Pop a degree, increase the pop-counter
+                _2 .= remainingTail'
+                _1 += 1
+                return True
+            [] -> do
+              currentLength <- use _4
+              if currentLength < idom
+                then do -- Write a degree, increase the length
+                  nextDeg' <- use _1
+                  _3 %= (nextDeg' :)
+                  _4 += 1
+                  return True
+                else return False
+      snout' = ModtySnout icod idom (int2deg <$> krevdegs')
+      snoutCohpi' = ModtySnout icod idom $ krevdegs' <&> \ i -> if i == (idom - 1) then KnownDegOmega else int2deg i
+  in  case tail of
+        TailEmpty -> KnownModty snout' $ TailEmpty
+        TailDisc dcod -> KnownModty snoutCohpi' $ TailForget dcod
+        TailForget ddom -> KnownModty snout' $ TailDisc ddom
+        TailDiscForget ddom dcod -> KnownModty snoutCohpi' $ TailDiscForget dcod ddom
+        TailCont d -> KnownModty snout' $ TailCont d
+        TailProblem -> KnownModty snout' $ TailProblem
+  where int2deg :: Int -> KnownDeg
+        int2deg (-1) = KnownDegEq
+        int2deg i = KnownDeg i
 
 ---------------------
 
@@ -158,6 +220,7 @@ whnormalizeModtyTail parent gamma tail reason =
     TailDiscForget ddom dcod -> TailDiscForget <$> whnormalize parent gamma ddom (BareSysType $ SysTypeMode) reason
                                                <*> whnormalize parent gamma dcod (BareSysType $ SysTypeMode) reason
     TailCont   d    -> TailCont   <$> whnormalize parent gamma d    (BareSysType $ SysTypeMode) reason
+    TailProblem -> return TailProblem
 
 {-
 whnormalizeKnownModty :: forall whn v .
@@ -246,7 +309,12 @@ instance SysWHN Reldtt where
       SysTermModty mu -> case mu of
         ModtyTermChain mu -> BareChainModty <$> whnormalizeChainModty parent gamma mu reason
         ModtyTermDiv rho mu -> returnSysT -- TODO
-        ModtyTermApproxLeftAdjointProj mu -> _ModtyApproxLeftAdjointProj
+        ModtyTermApproxLeftAdjointProj ddom dcod mu -> do
+          mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty dcod ddom) reason
+          case mu of
+            BareKnownModty kmu ->
+                 return $ BareKnownModty $ knownApproxLeftAdjointProj kmu
+            _ -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
         ModtyTermUnavailable ddom dcod -> returnSysT
       SysTermDeg i -> case i of
         DegKnown _ -> return $ BareDeg i

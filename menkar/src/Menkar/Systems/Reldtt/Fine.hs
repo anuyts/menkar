@@ -52,7 +52,7 @@ pattern BareSysType systy = Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) ::
 data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop | KnownDegProblem deriving (Eq, Ord)
+data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop | KnownDegOmega | KnownDegProblem deriving (Eq, Ord)
 data ModtySnout = ModtySnout
   {_modtySnout'dom :: Int,
    _modtySnout'cod :: Int,
@@ -230,7 +230,10 @@ data ModtyTerm v =
   {-| Only for prettypring.
       If @mu : d1 -> dcod@ and @rho : d2 -> dcod@, then @'ModtyTermDiv' rho mu@ denotes @rho \ mu : d1 -> d2@ -} 
   ModtyTermDiv (Term Reldtt v) (Term Reldtt v) |
-  ModtyTermApproxLeftAdjointProj (Term Reldtt v) {-^ The argument modality -} |
+  ModtyTermApproxLeftAdjointProj
+    (Term Reldtt v) {-^ Domain of result -}
+    (Term Reldtt v) {-^ Codomain of result -}
+    (Term Reldtt v) {-^ The argument modality -} |
   
   {-| Only for prettyprinting. -} 
   ModtyTermUnavailable (Term Reldtt v) {-^ The domain, can be omega -} (Term Reldtt v) {-^ The codomain, can be omega -}
@@ -272,7 +275,7 @@ instance Multimode Reldtt where
   crispMod d = ChainModty (KnownModty (ModtySnout 0 0 []) $ TailDisc d) $ Compose []
   dataMode = BareFinMode $ ConsZero
   approxLeftAdjointProj (ModedModality d mu) dcod = ChainModty (idKnownModty d) $
-    Compose [BareModty (ModtyTermApproxLeftAdjointProj $ BareChainModty mu) :*: idKnownModty dcod]
+    Compose [BareModty (ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu) :*: idKnownModty dcod]
 
 instance Degrees Reldtt where
   eqDeg = BareKnownDeg $ KnownDegEq
