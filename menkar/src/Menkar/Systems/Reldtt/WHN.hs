@@ -228,16 +228,17 @@ whnormalizeKnownModty :: forall whn v .
   KnownModty v ->
   String ->
   whn (KnownModty v)
+-- In return statements with domainless tail, make sure to numberfy the omegas!
 whnormalizeKnownModty parent gamma mu@(KnownModty snout tail) reason = do
   tail <- whnormalizeModtyTail parent gamma tail reason
   let snoutNoOmegas = numberfyOmegasForDomainlessTail snout
   case tail of
-    TailEmpty -> return $ KnownModty snout TailEmpty
+    TailEmpty -> return $ KnownModty snoutNoOmegas TailEmpty
     TailDisc dcod -> case dcod of
       BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
       BareFinMode (ConsSuc d) ->
-        whnormalizeKnownModty parent gamma (KnownModty (extDisc snoutNoOmegas) $ TailDisc d) reason
-      _ -> return $ KnownModty snout tail
+        whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDisc d) reason
+      _ -> return $ KnownModty snoutNoOmegas tail
     TailForget ddom -> case ddom of
       BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
       BareFinMode (ConsSuc d) ->
@@ -250,12 +251,12 @@ whnormalizeKnownModty parent gamma mu@(KnownModty snout tail) reason = do
         whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDiscForget ddom d) reason
       _ -> case ddom of
         BareFinMode ConsZero ->
-          whnormalizeKnownModty parent gamma (KnownModty snoutNoOmegas $ TailDisc dcod) reason
+          whnormalizeKnownModty parent gamma (KnownModty snout $ TailDisc dcod) reason
         BareFinMode (ConsSuc d) ->
           whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailDiscForget d dcod) reason
         _ -> return $ KnownModty snout tail
     TailCont d -> case d of
-      BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
+      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
       BareFinMode (ConsSuc dpred) ->
         whnormalizeKnownModty parent gamma (KnownModty (extCont snout) $ TailCont dpred) reason
       _ -> return $ KnownModty snout tail
