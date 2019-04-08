@@ -221,7 +221,6 @@ whnormalizeModtyTail parent gamma tail reason =
     TailCont   d    -> TailCont   <$> whnormalize parent gamma d    (BareSysType $ SysTypeMode) reason
     TailProblem -> return TailProblem
 
-{-
 whnormalizeKnownModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
@@ -231,15 +230,16 @@ whnormalizeKnownModty :: forall whn v .
   whn (KnownModty v)
 whnormalizeKnownModty parent gamma mu@(KnownModty snout tail) reason = do
   tail <- whnormalizeModtyTail parent gamma tail reason
+  let snoutNoOmegas = numberfyOmegasForDomainlessTail snout
   case tail of
     TailEmpty -> return $ KnownModty snout TailEmpty
     TailDisc dcod -> case dcod of
-      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
+      BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
       BareFinMode (ConsSuc d) ->
-        whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDisc d) reason
+        whnormalizeKnownModty parent gamma (KnownModty (extDisc snoutNoOmegas) $ TailDisc d) reason
       _ -> return $ KnownModty snout tail
     TailForget ddom -> case ddom of
-      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
+      BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
       BareFinMode (ConsSuc d) ->
         whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailForget d) reason
       _ -> return $ KnownModty snout tail
@@ -250,16 +250,16 @@ whnormalizeKnownModty parent gamma mu@(KnownModty snout tail) reason = do
         whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDiscForget ddom d) reason
       _ -> case ddom of
         BareFinMode ConsZero ->
-          whnormalizeKnownModty parent gamma (KnownModty snout $ TailDisc dcod) reason
+          whnormalizeKnownModty parent gamma (KnownModty snoutNoOmegas $ TailDisc dcod) reason
         BareFinMode (ConsSuc d) ->
           whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailDiscForget d dcod) reason
         _ -> return $ KnownModty snout tail
     TailCont d -> case d of
-      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
+      BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
       BareFinMode (ConsSuc dpred) ->
         whnormalizeKnownModty parent gamma (KnownModty (extCont snout) $ TailCont dpred) reason
       _ -> return $ KnownModty snout tail
--}
+    TailProblem -> return $ KnownModty snout TailProblem
 
 whnormalizeChainModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
@@ -269,10 +269,11 @@ whnormalizeChainModty :: forall whn v .
   String ->
   whn (ChainModty v)
 whnormalizeChainModty parent gamma mu@(ChainModty knownMu remainder) reason = do
+  knownMu <- whnormalizeKnownModty parent gamma knownMu reason
   -- mu . remainder
   case (getCompose remainder) of
     -- mu
-    [] -> return $ ChainModty knownMu remainder
+    [] -> return $ ChainModtyKnown knownMu
     -- mu . nu . rho . remainderTail
     (termNu :*: knownRho) : remainderTail -> do
       termNu <- whnormalize parent gamma termNu

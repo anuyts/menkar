@@ -8,6 +8,7 @@ import Control.Exception.AssertFalse
 import GHC.Generics
 import Util
 import Data.Functor.Compose
+import Control.Lens
 
 fst1 :: (a :*: b) c -> a c
 fst1 (a :*: b) = a
@@ -80,6 +81,11 @@ _snout'max :: ModtySnout -> KnownDeg
 _snout'max (ModtySnout idom icod krevdegs) = case krevdegs of
   [] -> KnownDegEq
   krevdegs -> last krevdegs
+
+numberfyOmegasForDomainlessTail :: ModtySnout -> ModtySnout
+numberfyOmegasForDomainlessTail mu@(ModtySnout idom icod krevdegs) = ModtySnout idom icod $ krevdegs <&> \ case
+  KnownDegOmega -> KnownDeg $ idom - 1
+  kdeg -> kdeg
 
 {-| Precondition: Tails start at the same point and have the same (co)domain.
     Precondition for correct result: The snouts are leq. -} 
@@ -286,3 +292,5 @@ instance Degrees Reldtt where
   eqDeg = BareKnownDeg $ KnownDegEq
   maybeTopDeg = Just $ BareKnownDeg $ KnownDegTop
   divDeg (ModedModality ddom mu) (ModedDegree dcod i) = BareDeg $ DegGet i (BareChainModty mu) ddom dcod
+
+------------------------------
