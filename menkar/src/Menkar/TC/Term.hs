@@ -405,6 +405,26 @@ checkDependentEliminator parent gamma dmu eliminee
 
 -------
 
+checkProjectionsAllowed :: forall sys tc v .
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    ModedModality sys v ->
+    Mode sys v ->
+    tc ()
+checkProjectionsAllowed parent gamma dmuProj dcod = do
+  let ddom = modality'dom $ dmuProj
+  addNewConstraint
+    (JudModalityRel ModLeq
+      (duplicateCtx gamma)
+      (modality'mod $ compModedModality (modedApproxLeftAdjointProj dmuProj dcod) dmuProj)
+      (modality'mod $ idModedModality ddom)
+      ddom
+      ddom
+    )
+    (Just parent)
+    "Checking if projection/unboxing is allowed."
+
 {-| Checks whether the eliminator applies and has the correct output type. -}
 checkEliminator :: forall sys tc v .
     (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -436,6 +456,10 @@ checkEliminator parent gamma dmu eliminee (Pi binding) (App arg) ty = do
     "Checking whether actual type equals expected type."
 checkEliminator parent gamma dmu eliminee tyEliminee (App arg) ty = unreachable
 checkEliminator parent gamma dmu eliminee (Sigma binding) Fst ty = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  let dmuSigma = _segment'modty $ binding'segment binding
+  checkProjectionsAllowed parent (crispModedModality dgamma' :\\ gamma) dmuSigma dgamma
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
@@ -450,6 +474,10 @@ checkEliminator parent gamma dmu eliminee (Sigma binding) Fst ty = do
 checkEliminator parent gamma dmu eliminee tyEliminee Fst ty = unreachable
 checkEliminator parent gamma dmu eliminee
     tyEliminee@(Sigma binding) Snd ty = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  let dmuSigma = _segment'modty $ binding'segment binding
+  checkProjectionsAllowed parent (crispModedModality dgamma' :\\ gamma) dmuSigma dgamma
   let dFst = modality'dom $ _segment'modty $ binding'segment $ binding
       muSigma = modality'mod $ _segment'modty $ binding'segment $ binding
       dSnd = unVarFromCtx <$> ctx'mode gamma
@@ -469,6 +497,10 @@ checkEliminator parent gamma dmu eliminee
 checkEliminator parent gamma dmu eliminee tyEliminee Snd ty = unreachable
 checkEliminator parent gamma dmu eliminee
     tyEliminee@(BoxType segment) Unbox ty = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  let dmuSigma = _segment'modty segment
+  checkProjectionsAllowed parent (crispModedModality dgamma' :\\ gamma) dmuSigma dgamma
   addNewConstraint
     (JudTypeRel
       (eqDeg :: Degree sys _)
