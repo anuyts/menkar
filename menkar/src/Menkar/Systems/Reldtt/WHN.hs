@@ -23,7 +23,6 @@ import Data.Void
 import GHC.Generics
 import Data.Functor.Compose
 
--- | The omega-case is not really handled!
 compModtySnout :: ModtySnout -> KnownModty v -> ModtySnout
 compModtySnout (ModtySnout kmid kcod []) mu =
   ModtySnout (_modtySnout'dom $ _knownModty'snout $ mu) kcod []
