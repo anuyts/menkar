@@ -276,7 +276,7 @@ whnormalizeChainModty parent gamma mu@(ChainModty knownMu remainder) reason = do
     -- mu . nu . rho . remainderTail
     (termNu :*: knownRho) : remainderTail -> do
       termNu <- whnormalize parent gamma termNu
-        (Type $ Expr2 $ TermSys $ SysTypeModty (_knownModty'cod knownRho) (_knownModty'dom knownMu)) reason
+        (BareSysType $ SysTypeModty (_knownModty'cod knownRho) (_knownModty'dom knownMu)) reason
       case termNu of
         BareChainModty chainNu -> case chainNu of
           -- mu . nu . rho . remainderTail
@@ -328,9 +328,9 @@ instance SysWHN Reldtt where
                 BareKnownModty mu' -> return $ BareKnownDeg $ knownGetDeg j' mu' 
                 _ -> return $ BareDeg $ DegGet j mu ddom dcod
             _ -> return $ BareDeg $ DegGet j mu ddom dcod
-      SysTypeMode -> returnSysT
-      SysTypeDeg d -> returnSysT
-      SysTypeModty ddom dcod -> returnSysT
+      --SysTypeMode -> returnSysT
+      --SysTypeDeg d -> returnSysT
+      --SysTypeModty ddom dcod -> returnSysT
       --_ -> _whnormalizeSys
 
   leqMod parent gamma mu1 mu2 ddom dcod reason = runMaybeT $ do

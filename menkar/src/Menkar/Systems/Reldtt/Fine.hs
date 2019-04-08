@@ -20,6 +20,7 @@ type instance Mode Reldtt = Term Reldtt
 type instance Modality Reldtt = ChainModty
 type instance Degree Reldtt = Term Reldtt
 type instance SysTerm Reldtt = ReldttSysTerm
+type instance SysUniHSConstructor Reldtt = ReldttUniHSConstructor
 
 {-
 {-| @ReldttModeOne@ and @ReldttModeNull@ are really just modes 1 and 0 (depth 0 and -1) but with a special treatment.
@@ -46,8 +47,9 @@ pattern BareKnownModty mu = BareChainModty (ChainModty (mu :: KnownModty v) (Com
 pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
 --pattern BareKnownDeg i :: KnownDeg -> Term Reldtt v
 pattern BareKnownDeg i = BareDeg (DegKnown (i :: KnownDeg)) :: Term Reldtt v
---pattern BareSysType :: ReldttSysTerm v -> Type Reldtt v
-pattern BareSysType systy = Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) :: Type Reldtt v
+--pattern BareSysType :: ReldttUniHSConstructor v -> Type Reldtt v
+pattern BareSysType systy = TypeHS (SysType (systy :: ReldttUniHSConstructor v)) :: Type Reldtt v
+  --Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) :: Type Reldtt v
 
 data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
@@ -251,7 +253,10 @@ data DegTerm v =
 data ReldttSysTerm v =
   SysTermMode (ModeTerm v) |
   SysTermModty (ModtyTerm v) |
-  SysTermDeg (DegTerm v) |
+  SysTermDeg (DegTerm v)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
+data ReldttUniHSConstructor v =
   {-| Type of modes. -}
   SysTypeMode |
   {-| Type of degrees. -}
