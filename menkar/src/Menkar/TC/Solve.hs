@@ -237,6 +237,7 @@ newRelatedUniHSConstructor parent deg gammaOrig gamma subst partialInv t2 = do
         newRelatedMetaTerm parent (Eta True) deg gammaOrig gamma subst partialInv tR2 tyAmbient1 tyAmbient2
           MetaBlocked "Inferring right equand."
       return $ EqType tyAmbient1orig tL1orig tR1orig
+    SysType sysTy2 -> SysType <$> newRelatedSysUniHSConstructor parent deg gammaOrig gamma subst partialInv sysTy2
 
 newRelatedConstructorTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
@@ -851,6 +852,7 @@ etaExpand parent gamma t (UniHS _) = return $ Just $ Nothing
 etaExpand parent gamma t EmptyType = return $ Just $ Nothing
 etaExpand parent gamma t NatType = return $ Just $ Nothing
 etaExpand parent gamma t (EqType _ _ _) = return $ Just $ Nothing
+etaExpand parent gamma t (SysType sysType) = etaExpandSysType parent gamma t sysType
 
 checkEtaForNormalType :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -878,6 +880,7 @@ checkEtaForNormalType parent gamma t ty = do
         "Eta-expand"
       return True
 
+-- | Check whether a term is equal to its eta expansion if that exists.
 checkEta ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->

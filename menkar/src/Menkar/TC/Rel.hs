@@ -141,6 +141,9 @@ checkUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = case
       (Just parent)
       "Relating right equands."
   (EqType _ _ _, _) -> tcFail parent "False."
+  (SysType sysType1, SysType sysType2) ->
+    checkSysUniHSConstructorRel parent deg gamma sysType1 sysType2 ty1 ty2 metasTy1 metasTy2
+  (SysType _, _) -> tcFail parent "False"
   --(_, _) -> _checkUniHSConstructorRel
 
 --------------------------------------------------------

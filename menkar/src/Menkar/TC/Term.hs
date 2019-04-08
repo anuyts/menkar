@@ -162,6 +162,7 @@ checkUniHSConstructor parent gamma (EqType tyAmbient tyL tyR) ty = do
     (JudTerm gamma tyR tyAmbient)
     (Just parent)
     "Checking right equand."
+checkUniHSConstructor parent gamma (SysType sysType) ty = checkSysUniHSConstructor parent gamma sysType ty
 --checkUniHSConstructor parent gamma t ty = _checkUniHSConstructor
 
 checkConstructorTerm :: forall sys tc v .

@@ -85,6 +85,7 @@ instance (SysPretty sys,
     \\\ ["(" ++| fine2pretty gamma tyL opts |++ ")"]
     /+/ " == .{" ++| fine2pretty gamma tyAmbient opts |++ "} "
     \\\ ["(" ++| fine2pretty gamma tyR opts |++ ")"]
+  fine2pretty gamma (SysType sysType) opts = fine2pretty gamma sysType opts
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (UniHSConstructor sys Void) where

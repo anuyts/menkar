@@ -25,6 +25,7 @@ type instance Mode Trivial = U1
 type instance Modality Trivial = U1
 type instance Degree Trivial = U1
 type instance SysTerm Trivial = V1
+type instance SysUniHSConstructor Trivial = V1
 type instance SysJudgement Trivial = Void
 
 instance SysTrav Trivial where
@@ -78,6 +79,10 @@ instance SysTC Trivial where
   newRelatedSysTerm parent deg gammaOrig gamma subst partialInv t ty1 ty2 alternative = absurd1 t
   checkTermRelSysTermWHNTermNoEta parent deg gamma t1 t2 ty1 ty2 = absurd1 t1
   checkEtaWHNSysTy parent gamma t1 t2 = absurd1 t2
+  checkSysUniHSConstructor parent gamma t ty = absurd1 t
+  newRelatedSysUniHSConstructor parent deg gammaOrig gamma subst partialInv t = absurd1 t
+  etaExpandSysType parent gamma t sysType = absurd1 sysType
+  checkSysUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = absurd1 t1
   checkMode parent gamma U1 = return ()
   checkModeRel parent gamma U1 U1 = return ()
   checkModality parent gamma U1 U1 U1 = return ()

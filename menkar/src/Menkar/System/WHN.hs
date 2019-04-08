@@ -68,6 +68,7 @@ class SysScoper sys => SysWHN sys where
     Just topDeg -> leqDeg parent gamma topDeg deg d reason
 
   -- | True if @id <= mu . nu@, where nu is the @approxLeftAdjointProj@.
+  -- | Should at least imply that @nu . mu <= id@ as a judgemental inequality.
   allowsEta :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
     Constraint sys ->

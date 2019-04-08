@@ -222,7 +222,8 @@ data UniHSConstructor (sys :: KSys) (v :: *) =
   UnitType |
   BoxType (Segment Type sys v) |
   NatType |
-  EqType (Type sys v) (Term sys v) (Term sys v)
+  EqType (Type sys v) (Term sys v) (Term sys v) |
+  SysType (SysUniHSConstructor sys v)
 deriving instance (SysTrav sys) => Functor (UniHSConstructor sys)
 deriving instance (SysTrav sys) => Foldable (UniHSConstructor sys)
 deriving instance (SysTrav sys) => Traversable (UniHSConstructor sys)

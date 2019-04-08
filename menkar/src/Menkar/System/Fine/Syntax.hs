@@ -24,12 +24,15 @@ type family Degree (sys :: KSys) = (degree :: * -> *) | degree -> sys
 
 type family SysTerm (sys :: KSys) = (sysTerm :: * -> *) | sysTerm -> sys
 
+type family SysUniHSConstructor (sys :: KSys) = (sysUniHSConstructor :: * -> *) | sysUniHSConstructor -> sys
+
 type family SysJudgement (sys :: KSys) = (sysJudgement :: *) | sysJudgement -> sys
 
 class (Traversable (Mode sys),
        Traversable (Modality sys),
        Traversable (Degree sys),
-       Traversable (SysTerm sys))
+       Traversable (SysTerm sys),
+       Traversable (SysUniHSConstructor sys))
       => SysTrav sys where
 
 -- Terms have not been defined at this point.
@@ -37,5 +40,6 @@ class (SysTrav sys,
        CanSwallow t (Mode sys),
        CanSwallow t (Modality sys),
        CanSwallow t (Degree sys),
-       CanSwallow t (SysTerm sys))
+       CanSwallow t (SysTerm sys),
+       CanSwallow t (SysUniHSConstructor sys))
       => SysSyntax t sys where
