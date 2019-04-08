@@ -24,11 +24,11 @@ import GHC.Generics
 import Data.Functor.Compose
 
 -- | The omega-case is not really handled!
-compModtySnout :: ModtySnout -> ModtySnout -> ModtySnout
+compModtySnout :: ModtySnout -> KnownModty v -> ModtySnout
 compModtySnout (ModtySnout kmid kcod []) mu =
-  ModtySnout (_modtySnout'dom mu) kcod []
+  ModtySnout (_modtySnout'dom $ _knownModty'snout $ mu) kcod []
 compModtySnout (ModtySnout kmid kcod krevdegs) mu =
-  ModtySnout (_modtySnout'dom mu) kcod $ flip knownGetDegSnout mu <$> krevdegs
+  ModtySnout (_modtySnout'dom $ _knownModty'snout $ mu) kcod $ flip knownGetDeg mu <$> krevdegs
 
 compModtyTail :: ModtyTail v -> ModtyTail v -> ModtyTail v
 compModtyTail (TailCont d) tail1 = tail1
@@ -81,7 +81,7 @@ compKnownModty mu2@(KnownModty snout2 tail2) mu1@(KnownModty snout1 tail1) =
   in case maybeStuff of
        Nothing -> problemKnownModty
        Just (mu1@(KnownModty snout1 tail1), mu2@(KnownModty snout2 tail2)) ->
-         let snoutComp = compModtySnout snout2 snout1
+         let snoutComp = compModtySnout snout2 mu1
              tailComp = compModtyTail tail2 tail1
          in  KnownModty snoutComp tailComp
 
@@ -125,6 +125,7 @@ whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
 
 ---------------------
 
+{-
 -- | Beware that the omega-case is not really handled!
 knownGetDegSnout :: KnownDeg -> ModtySnout -> KnownDeg
 knownGetDegSnout KnownDegEq mu = KnownDegEq
@@ -132,6 +133,7 @@ knownGetDegSnout (KnownDeg i) (ModtySnout kdom kcod krevdegs) = krevdegs !! (len
 knownGetDegSnout KnownDegOmega mu = KnownDegOmega
 knownGetDegSnout KnownDegTop mu = KnownDegTop
 knownGetDegSnout KnownDegProblem mu = KnownDegProblem
+-}
 
 knownGetDeg :: KnownDeg -> KnownModty v -> KnownDeg
 knownGetDeg KnownDegEq _ = KnownDegEq
@@ -148,13 +150,10 @@ knownGetDeg (KnownDeg i) (KnownModty snout@(ModtySnout idom icod krevdegs) tail)
     TailCont d -> KnownDeg (i - icod + idom)
     TailProblem -> KnownDegProblem
   where snoutMax = _snout'max snout
-knownGetDeg KnownDegOmega (KnownModty snout@(ModtySnout idom icod krevdegs) tail) = case tail of
-  TailEmpty -> KnownDeg $ idom - 1
-  TailDisc dcod -> KnownDeg $ idom - 1
-  TailForget ddom -> KnownDegOmega
-  TailDiscForget ddom dcod -> KnownDegOmega
-  TailCont d -> KnownDegOmega
+knownGetDeg KnownDegOmega mu@(KnownModty snout@(ModtySnout idom icod krevdegs) tail) = case tail of
   TailProblem -> KnownDegProblem
+  TailCont d -> KnownDegOmega
+  _ -> knownGetDeg (KnownDeg $ idom - 1) mu
 
 ---------------------
 
