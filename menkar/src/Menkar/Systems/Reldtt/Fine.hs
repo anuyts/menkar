@@ -5,17 +5,15 @@ import Menkar.System
 
 import Control.Exception.AssertFalse
 
---import GHC.Generics
+import GHC.Generics
 import Util
 import Data.Functor.Compose
 import Control.Lens
 
-{-
 fst1 :: (a :*: b) c -> a c
 fst1 (a :*: b) = a
 snd1 :: (a :*: b) c -> b c
 snd1 (a :*: b) = b
--}
 
 data Reldtt :: KSys where
 
@@ -47,7 +45,7 @@ pattern BareModty mu = Expr2 (TermSys (SysTermModty (mu :: ModtyTerm v))) :: Ter
 --pattern BareChainModty :: ChainModty v -> Term Reldtt v
 pattern BareChainModty mu = BareModty (ModtyTermChain (mu :: ChainModty v)) :: Term Reldtt v
 --pattern BareKnownModty :: KnownModty v -> Term Reldtt v
-pattern BareKnownModty mu = BareChainModty (ChainModty (mu :: KnownModty v) (Compose Nothing)) :: Term Reldtt v
+pattern BareKnownModty mu = BareChainModty (ChainModty (mu :: KnownModty v) (Compose [])) :: Term Reldtt v
 --pattern BareDeg i :: DegTerm v -> Term Reldtt v
 pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
 --pattern BareKnownDeg i :: KnownDeg -> Term Reldtt v
@@ -146,23 +144,21 @@ _knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (Expr2 
 _knownModty'cod :: KnownModty v -> Term Reldtt v
 _knownModty'cod (KnownModty snout tail) = nTimes (_modtySnout'cod snout) (Expr2 . TermCons . ConsSuc) $ _modtyTail'cod tail
 
-{-
 data ChainModty v = ChainModty {
   _chainModty'knownPrefix :: KnownModty v,
-  _chainModty'Remainder :: Compose Maybe (Term Reldtt :*: Term Reldtt) v
+  _chainModty'Remainder :: Compose [] (Term Reldtt :*: KnownModty) v
   }
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
--}
 
 wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
-wrapInChainModty ddom dcod t = ChainModty (idKnownModty dcod) $ Compose $ Just $ t :*: BareKnownModty (idKnownModty ddom)
+wrapInChainModty ddom dcod t = ChainModty (idKnownModty dcod) $ Compose [t :*: idKnownModty ddom]
 
-pattern ChainModtyKnown kmu = ChainModty kmu (Compose Nothing)
+pattern ChainModtyKnown kmu = ChainModty kmu (Compose [])
 
 _chainModty'dom :: ChainModty v -> Term Reldtt v
 _chainModty'dom mu = _knownModty'dom $ _chainModty'knownPrefix $ mu
 _chainModty'cod :: ChainModty v -> Term Reldtt v
-_chainModty'cod (ChainModty mu (Compose Nothing)) = _knownModty'cod mu
+_chainModty'cod (ChainModty mu (Compose [])) = _knownModty'cod mu
 _chainModty'cod (ChainModty mu (Compose remainder)) = _knownModty'cod $ snd1 $ last remainder
 
 extDisc :: ModtySnout -> ModtySnout
