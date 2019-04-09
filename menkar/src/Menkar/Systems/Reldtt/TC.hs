@@ -11,6 +11,7 @@ import Menkar.Monad
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Systems.Reldtt.Scoper
 import Menkar.Systems.Reldtt.WHN
+import Menkar.TC.Solve
 
 import Control.Exception.AssertFalse
 
@@ -81,6 +82,8 @@ checkChainModty parent gamma chainModty@(ChainModty kmu (Compose remainder)) = c
     return (dcod, last domsKnowns)
 
 instance SysTC Reldtt where
+
+  ---------------------------------------------------------
   
   checkTermSys parent gamma t ty = case t of
     
@@ -140,3 +143,38 @@ instance SysTC Reldtt where
         )
         (Just parent)
         "Checking that actual type equals expected type."
+
+  ---------------------------------------------------------
+
+  -- NO ETA --
+  newRelatedSysTerm parent ddeg gammaOrig gamma subst partialInv t2 ty1 ty2 alternative = do
+
+    case t2 of
+
+      SysTermMode d2 -> do
+        case d2 of
+          ModeTermZero -> return $ Just $ BareMode $ ModeTermZero
+          ModeTermSuc dpred2 -> do
+            dpred1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv dpred2
+                            (BareSysType SysTypeMode) (BareSysType SysTypeMode) MetaBlocked "Inferring predecessor."
+            return $ Just $ BareMode $ ModeTermSuc dpred1orig
+          ModeTermOmega -> return $ Just $ BareMode $ ModeTermOmega
+
+      SysTermModty mu2 -> do
+        case mu2 of
+          ModtyTermChain chmu2 -> _
+          ModtyTermDiv rho2 nu2 -> unreachable
+          ModtyTermApproxLeftAdjointProj ddom2 dcod2 nu2 -> do
+            ddom1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv ddom2
+                           (BareSysType SysTypeMode) (BareSysType SysTypeMode) MetaBlocked
+                           "Inferring domain of left adjoint."
+            let ddom1 = subst <$> ddom1orig
+            dcod1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv dcod2
+                           (BareSysType SysTypeMode) (BareSysType SysTypeMode) MetaBlocked
+                           "Inferring codomain of left adjoint."
+            let dcod1 = subst <$> dcod1orig
+            nu1orig <- newRelatedMetaTerm parent (EtaTrue) ddeg gammaOrig gamma subst partialInv nu2
+                           (BareSysType $ SysTypeModty dcod1 ddom1) (BareSysType $ SysTypeModty dcod2 ddom2) MetaBlocked
+                           "Inferring original modality."
+            return $ Just $ BareModty $ ModtyTermApproxLeftAdjointProj ddom1orig dcod1orig nu1orig
+          ModtyTermUnavailable ddom2 dcod2 -> unreachable
