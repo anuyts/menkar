@@ -140,11 +140,3 @@ instance SysTC Reldtt where
         )
         (Just parent)
         "Checking that actual type equals expected type."
-      
-    SysTermDeg deg -> do
-      case deg of
-        DegKnown kdeg -> do
-          _
-          --case kdeg of
-          --  KnownDegProblem 
-        DegGet deg mu ddom dcod -> _

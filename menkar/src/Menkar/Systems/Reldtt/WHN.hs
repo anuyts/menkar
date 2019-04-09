@@ -312,6 +312,28 @@ whnormalizeChainModty parent gamma mu@(ChainModty knownMu remainder) reason = do
               reason
         _ -> return $ ChainModty knownMu $ Compose $ (termNu :*: knownRho) : remainderTail
 
+whnormalizeDeg :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  Ctx Type Reldtt v Void ->
+  DegTerm v ->
+  String ->
+  whn (DegTerm v)
+whnormalizeDeg parent gamma i reason = do
+  case i of
+    DegKnown _ -> return i
+    DegGet j mu ddom dcod -> do
+      j <- whnormalizeDeg parent gamma j reason
+      case j of
+        DegKnown KnownDegEq -> return $ DegKnown KnownDegEq
+        DegKnown KnownDegTop -> return $ DegKnown KnownDegTop
+        DegKnown j' -> do
+          mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
+          case mu of
+            BareKnownModty mu' -> return $ DegKnown $ knownGetDeg j' mu' 
+            _ -> return $ DegGet j mu ddom dcod
+        _ -> return $ DegGet j mu ddom dcod
+
 instance SysWHN Reldtt where
   whnormalizeSys parent gamma sysT ty reason = do
     let returnSysT = return $ Expr2 $ TermSys $ sysT
@@ -337,7 +359,7 @@ instance SysWHN Reldtt where
               Nothing -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
             _ -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
         ModtyTermUnavailable ddom dcod -> returnSysT
-      SysTermDeg i -> case i of
+{-      SysTermDeg i -> case i of
         DegKnown _ -> return $ BareDeg i
         DegGet j mu ddom dcod -> do
           j <- whnormalize parent gamma j (BareSysType $ SysTypeDeg dcod) reason
@@ -349,7 +371,7 @@ instance SysWHN Reldtt where
               case mu of
                 BareKnownModty mu' -> return $ BareKnownDeg $ knownGetDeg j' mu' 
                 _ -> return $ BareDeg $ DegGet j mu ddom dcod
-            _ -> return $ BareDeg $ DegGet j mu ddom dcod
+            _ -> return $ BareDeg $ DegGet j mu ddom dcod-}
       --SysTypeMode -> returnSysT
       --SysTypeDeg d -> returnSysT
       --SysTypeModty ddom dcod -> returnSysT
@@ -383,9 +405,9 @@ instance SysWHN Reldtt where
       (_ , _ ) -> MaybeT $ return $ Nothing
 
   leqDeg parent gamma deg1 deg2 d reason = do
-    (deg1, metasDeg1) <- runWriterT $ whnormalize parent gamma deg1 (BareSysType $ SysTypeDeg d) reason
-    (deg2, metasDeg2) <- runWriterT $ whnormalize parent gamma deg2 (BareSysType $ SysTypeDeg d) reason
+    (deg1, metasDeg1) <- runWriterT $ whnormalizeDeg parent gamma deg1 reason
+    (deg2, metasDeg2) <- runWriterT $ whnormalizeDeg parent gamma deg2 reason
     case (metasDeg1, deg1, metasDeg2, deg2) of
-      (_, BareKnownDeg i1, _, BareKnownDeg i2) -> return $ Just $ i1 <= i2
+      (_, DegKnown i1, _, DegKnown i2) -> return $ Just $ i1 <= i2
       ([], _, [], _) -> return $ Just False
       (_ , _, _ , _) -> return Nothing

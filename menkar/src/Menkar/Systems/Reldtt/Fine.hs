@@ -19,7 +19,7 @@ data Reldtt :: KSys where
 
 type instance Mode Reldtt = Term Reldtt
 type instance Modality Reldtt = ChainModty
-type instance Degree Reldtt = Term Reldtt
+type instance Degree Reldtt = DegTerm
 type instance SysTerm Reldtt = ReldttSysTerm
 type instance SysUniHSConstructor Reldtt = ReldttUniHSConstructor
 
@@ -47,9 +47,9 @@ pattern BareChainModty mu = BareModty (ModtyTermChain (mu :: ChainModty v)) :: T
 --pattern BareKnownModty :: KnownModty v -> Term Reldtt v
 pattern BareKnownModty mu = BareChainModty (ChainModty (mu :: KnownModty v) (Compose [])) :: Term Reldtt v
 --pattern BareDeg i :: DegTerm v -> Term Reldtt v
-pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
+--pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
 --pattern BareKnownDeg i :: KnownDeg -> Term Reldtt v
-pattern BareKnownDeg i = BareDeg (DegKnown (i :: KnownDeg)) :: Term Reldtt v
+--pattern BareKnownDeg i = BareDeg (DegKnown (i :: KnownDeg)) :: Term Reldtt v
 --pattern BareSysType :: ReldttUniHSConstructor v -> Type Reldtt v
 pattern BareSysType systy = TypeHS (SysType (systy :: ReldttUniHSConstructor v)) :: Type Reldtt v
   --Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) :: Type Reldtt v
@@ -262,7 +262,7 @@ data ModtyTerm v =
 data DegTerm v =
   DegKnown KnownDeg |
   DegGet
-    (Term Reldtt v) {-^ Degree -}
+    (DegTerm v) {-^ Degree -}
     (Term Reldtt v) {-^ Modality -}
     (Term Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
     (Term Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
@@ -270,8 +270,8 @@ data DegTerm v =
 
 data ReldttSysTerm v =
   SysTermMode (ModeTerm v) |
-  SysTermModty (ModtyTerm v) |
-  SysTermDeg (DegTerm v)
+  SysTermModty (ModtyTerm v)
+  --SysTermDeg (DegTerm v)
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ReldttUniHSConstructor v =
@@ -301,8 +301,8 @@ instance Multimode Reldtt where
     Compose [BareModty (ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu) :*: idKnownModty dcod]
 
 instance Degrees Reldtt where
-  eqDeg = BareKnownDeg $ KnownDegEq
-  maybeTopDeg = Just $ BareKnownDeg $ KnownDegTop
-  divDeg (ModedModality ddom mu) (ModedDegree dcod i) = BareDeg $ DegGet i (BareChainModty mu) ddom dcod
+  eqDeg = DegKnown $ KnownDegEq
+  maybeTopDeg = Just $ DegKnown $ KnownDegTop
+  divDeg (ModedModality ddom mu) (ModedDegree dcod i) = DegGet i (BareChainModty mu) ddom dcod
 
 ------------------------------
