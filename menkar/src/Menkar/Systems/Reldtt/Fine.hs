@@ -37,7 +37,7 @@ newtype ReldttDegree v = ReldttDegree {unDegree :: Term Reldtt v}
 --pattern BareMode :: ModeTerm v -> Term Reldtt v
 pattern BareMode d = Expr2 (TermSys (SysTermMode (d :: ModeTerm v))) :: Term Reldtt v
 --pattern BareFinMode :: ConstructorTerm Reldtt v -> Term Reldtt v
-pattern BareFinMode d = BareMode (ModeTermFinite (Expr2 (TermCons (d :: ConstructorTerm Reldtt v)))) :: Term Reldtt v
+--pattern BareFinMode d = BareMode (ModeTermFinite (Expr2 (TermCons (d :: ConstructorTerm Reldtt v)))) :: Term Reldtt v
 --pattern BareModeOmega :: Term Reldtt v
 pattern BareModeOmega = BareMode ModeTermOmega :: Term Reldtt v
 --pattern BareModty :: ModtyTerm v -> Term Reldtt v
@@ -54,7 +54,7 @@ pattern BareKnownDeg i = BareDeg (DegKnown (i :: KnownDeg)) :: Term Reldtt v
 pattern BareSysType systy = TypeHS (SysType (systy :: ReldttUniHSConstructor v)) :: Type Reldtt v
   --Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) :: Type Reldtt v
 
-data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
+data ModeTerm v = ModeTermZero | ModeTermSuc (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data KnownDeg =
@@ -64,6 +64,8 @@ data KnownDeg =
   KnownDegOmega {-^ Only allowed in infinite modes. -} |
   KnownDegProblem
   deriving (Eq, Ord)
+
+-- | It is an error to create a nonsensical @'ModtySnout'@.
 data ModtySnout = ModtySnout
   {_modtySnout'dom :: Int,
    _modtySnout'cod :: Int,
@@ -140,9 +142,9 @@ problemKnownModty :: KnownModty v
 problemKnownModty = KnownModty (ModtySnout 0 0 []) TailProblem
 
 _knownModty'dom :: KnownModty v -> Term Reldtt v
-_knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (Expr2 . TermCons . ConsSuc) $ _modtyTail'dom tail
+_knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (BareMode . ModeTermSuc) $ _modtyTail'dom tail
 _knownModty'cod :: KnownModty v -> Term Reldtt v
-_knownModty'cod (KnownModty snout tail) = nTimes (_modtySnout'cod snout) (Expr2 . TermCons . ConsSuc) $ _modtyTail'cod tail
+_knownModty'cod (KnownModty snout tail) = nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc) $ _modtyTail'cod tail
 
 data ChainModty v = ChainModty {
   _chainModty'knownPrefix :: KnownModty v,
@@ -220,24 +222,24 @@ forceCod snoutOrig tailOrig snoutCodNew tailCodNew
     where n = snoutCodNew - _modtySnout'cod snoutOrig
 
 _modtyTail'dom :: ModtyTail v -> Term Reldtt v
-_modtyTail'dom TailEmpty = BareFinMode $ ConsZero
-_modtyTail'dom (TailDisc dcod) = BareFinMode $ ConsZero
+_modtyTail'dom TailEmpty = BareMode $ ModeTermZero
+_modtyTail'dom (TailDisc dcod) = BareMode $ ModeTermZero
 --_modtyTail'dom (TailCodisc dcod) = BareFinMode $ ConsZero
 _modtyTail'dom (TailForget ddom) = ddom
 _modtyTail'dom (TailDiscForget ddom dcod) = ddom
 --_modtyTail'dom (TailCodiscForget ddom dcod) = ddom
 _modtyTail'dom (TailCont d) = d
-_modtyTail'dom (TailProblem) = Expr2 $ TermProblem $ BareFinMode $ ConsZero
+_modtyTail'dom (TailProblem) = Expr2 $ TermProblem $ BareMode $ ModeTermZero
 
 _modtyTail'cod :: ModtyTail v -> Term Reldtt v
-_modtyTail'cod TailEmpty = BareFinMode $ ConsZero
+_modtyTail'cod TailEmpty = BareMode $ ModeTermZero
 _modtyTail'cod (TailDisc dcod) = dcod
 --_modtyTail'cod (TailCodisc dcod) = dcod
-_modtyTail'cod (TailForget ddom) = BareFinMode $ ConsZero
+_modtyTail'cod (TailForget ddom) = BareMode $ ModeTermZero
 _modtyTail'cod (TailDiscForget ddom dcod) = dcod
 --_modtyTail'cod (TailCodiscForget ddom dcod) = dcod
 _modtyTail'cod (TailCont d) = d
-_modtyTail'cod (TailProblem) = Expr2 $ TermProblem $ BareFinMode $ ConsZero
+_modtyTail'cod (TailProblem) = Expr2 $ TermProblem $ BareMode $ ModeTermZero
 
 data ModtyTerm v =
  --ModtyTerm ModtySnout (ModtyTail v) |
@@ -294,7 +296,7 @@ instance Multimode Reldtt where
   divMod (ModedModality d' mu') (ModedModality d mu) = ChainModty (idKnownModty d') $
     Compose [BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu)) :*: idKnownModty d]
   crispMod d = ChainModty (KnownModty (ModtySnout 0 0 []) $ TailDisc d) $ Compose []
-  dataMode = BareFinMode $ ConsZero
+  dataMode = BareMode $ ModeTermZero
   approxLeftAdjointProj (ModedModality d mu) dcod = ChainModty (idKnownModty d) $
     Compose [BareModty (ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu) :*: idKnownModty dcod]
 

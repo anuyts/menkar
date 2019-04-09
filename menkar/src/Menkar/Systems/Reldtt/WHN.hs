@@ -248,29 +248,29 @@ whnormalizeKnownModty parent gamma mu@(KnownModty snout tail) reason = do
   case tail of
     TailEmpty -> return $ KnownModty snout TailEmpty
     TailDisc dcod -> case dcod of
-      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
-      BareFinMode (ConsSuc d) ->
+      BareMode ModeTermZero -> return $ KnownModty snout TailEmpty
+      BareMode (ModeTermSuc d) ->
         whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDisc d) reason
       _ -> return $ KnownModty snout tail
     TailForget ddom -> case ddom of
-      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
-      BareFinMode (ConsSuc d) ->
+      BareMode ModeTermZero -> return $ KnownModty snout TailEmpty
+      BareMode (ModeTermSuc d) ->
         whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailForget d) reason
       _ -> return $ KnownModty snout tail
     TailDiscForget ddom dcod -> case dcod of
-      BareFinMode ConsZero ->
+      BareMode ModeTermZero ->
         whnormalizeKnownModty parent gamma (KnownModty snout $ TailForget ddom) reason
-      BareFinMode (ConsSuc d) ->
+      BareMode (ModeTermSuc d) ->
         whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDiscForget ddom d) reason
       _ -> case ddom of
-        BareFinMode ConsZero ->
+        BareMode ModeTermZero ->
           whnormalizeKnownModty parent gamma (KnownModty snout $ TailDisc dcod) reason
-        BareFinMode (ConsSuc d) ->
+        BareMode (ModeTermSuc d) ->
           whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailDiscForget d dcod) reason
         _ -> return $ KnownModty snout tail
     TailCont d -> case d of
-      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
-      BareFinMode (ConsSuc dpred) ->
+      BareMode ModeTermZero -> return $ KnownModty snout TailEmpty
+      BareMode (ModeTermSuc dpred) ->
         whnormalizeKnownModty parent gamma (KnownModty (extCont snout) $ TailCont dpred) reason
       _ -> return $ KnownModty snout tail
     TailProblem -> return $ KnownModty snout TailProblem
@@ -318,7 +318,13 @@ instance SysWHN Reldtt where
     --let returnProblem = return $ Expr2 $ TermProblem $ Expr2 $ TermSys $ sysT
     case sysT of
       SysTermMode d -> case d of
-        ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
+        ModeTermZero -> return $ BareMode $ ModeTermZero
+        --ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
+        ModeTermSuc d -> do
+          d <- whnormalize parent gamma d (BareSysType $ SysTypeMode) reason
+          case d of
+            BareMode ModeTermOmega -> return $ BareMode $ ModeTermOmega
+            _ -> return $ BareMode $ ModeTermSuc d
         ModeTermOmega -> return $ BareMode $ ModeTermOmega
       SysTermModty mu -> case mu of
         ModtyTermChain mu -> BareChainModty <$> whnormalizeChainModty parent gamma mu reason
