@@ -200,11 +200,17 @@ knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs)
         TailEmpty -> Just $ KnownModty snout' $ TailEmpty
         TailDisc dcod -> case dcod of
           BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailForget dcod
-          _ -> Nothing
+          _ -> case krevdegs of
+            -- We can read the tail as TailCodisc
+            KnownDegTop : _ -> Just $ KnownModty snout' $ TailForget dcod
+            _ -> Nothing
         TailForget ddom -> Just $ KnownModty snout' $ TailDisc ddom
         TailDiscForget ddom dcod -> case dcod of
           BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailDiscForget dcod ddom
-          _ -> Nothing
+          _ -> case krevdegs of
+            -- We can read the tail as TailCodiscForget
+            KnownDegTop : _ -> Just $ KnownModty snout' $ TailDiscForget dcod ddom
+            _ -> Nothing
         TailCont d -> Just $ KnownModty snout' $ TailCont d
         TailProblem -> Just $ KnownModty snout' $ TailProblem
   where int2deg :: Int -> KnownDeg
