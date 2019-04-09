@@ -150,13 +150,19 @@ knownGetDeg (KnownDeg i) (KnownModty snout@(ModtySnout idom icod krevdegs) tail)
     TailProblem -> KnownDegProblem
   where snoutMax = _snout'max snout
 knownGetDeg KnownDegOmega mu@(KnownModty snout@(ModtySnout idom icod krevdegs) tail) = case tail of
-  TailProblem -> KnownDegProblem
+  TailEmpty -> KnownDegProblem
+  TailDisc dcod -> knownGetDeg (KnownDeg $ idom - 1) mu
+  TailForget ddom -> KnownDegProblem
+  TailDiscForget ddom dcod -> knownGetDeg (KnownDeg $ idom - 1) mu
   TailCont d -> KnownDegOmega
-  _ -> knownGetDeg (KnownDeg $ idom - 1) mu
+  TailProblem -> KnownDegProblem
 
 ---------------------
 
-knownApproxLeftAdjointProj :: KnownModty v -> KnownModty v
+{-| Fails for modalities with a discrete tail of neutral length.
+    Precondition: argument has been whnormalized to the extent possible.
+-}
+knownApproxLeftAdjointProj :: KnownModty v -> Maybe (KnownModty v)
 knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs) tail) =
   {- Fields:
      _1: number of degrees popped from the input modality, minus one.
@@ -191,12 +197,16 @@ knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs)
       snout' = ModtySnout icod idom (int2deg <$> krevdegs')
       snoutCohpi' = ModtySnout icod idom $ krevdegs' <&> \ i -> if i == (idom - 1) then KnownDegOmega else int2deg i
   in  case tail of
-        TailEmpty -> KnownModty snout' $ TailEmpty
-        TailDisc dcod -> KnownModty snoutCohpi' $ TailForget dcod
-        TailForget ddom -> KnownModty snout' $ TailDisc ddom
-        TailDiscForget ddom dcod -> KnownModty snoutCohpi' $ TailDiscForget dcod ddom
-        TailCont d -> KnownModty snout' $ TailCont d
-        TailProblem -> KnownModty snout' $ TailProblem
+        TailEmpty -> Just $ KnownModty snout' $ TailEmpty
+        TailDisc dcod -> case dcod of
+          BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailForget dcod
+          _ -> Nothing
+        TailForget ddom -> Just $ KnownModty snout' $ TailDisc ddom
+        TailDiscForget ddom dcod -> case dcod of
+          BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailDiscForget dcod ddom
+          _ -> Nothing
+        TailCont d -> Just $ KnownModty snout' $ TailCont d
+        TailProblem -> Just $ KnownModty snout' $ TailProblem
   where int2deg :: Int -> KnownDeg
         int2deg (-1) = KnownDegEq
         int2deg i = KnownDeg i
@@ -227,19 +237,17 @@ whnormalizeKnownModty :: forall whn v .
   KnownModty v ->
   String ->
   whn (KnownModty v)
--- In return statements with domainless tail, make sure to numberfy the omegas!
 whnormalizeKnownModty parent gamma mu@(KnownModty snout tail) reason = do
   tail <- whnormalizeModtyTail parent gamma tail reason
-  let snoutNoOmegas = numberfyOmegasForDomainlessTail snout
   case tail of
-    TailEmpty -> return $ KnownModty snoutNoOmegas TailEmpty
+    TailEmpty -> return $ KnownModty snout TailEmpty
     TailDisc dcod -> case dcod of
-      BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
+      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
       BareFinMode (ConsSuc d) ->
         whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDisc d) reason
-      _ -> return $ KnownModty snoutNoOmegas tail
+      _ -> return $ KnownModty snout tail
     TailForget ddom -> case ddom of
-      BareFinMode ConsZero -> return $ KnownModty snoutNoOmegas TailEmpty
+      BareFinMode ConsZero -> return $ KnownModty snout TailEmpty
       BareFinMode (ConsSuc d) ->
         whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailForget d) reason
       _ -> return $ KnownModty snout tail
@@ -312,8 +320,9 @@ instance SysWHN Reldtt where
         ModtyTermApproxLeftAdjointProj ddom dcod mu -> do
           mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty dcod ddom) reason
           case mu of
-            BareKnownModty kmu ->
-                 return $ BareKnownModty $ knownApproxLeftAdjointProj kmu
+            BareKnownModty kmu -> case knownApproxLeftAdjointProj kmu of
+              Just knu -> return $ BareKnownModty $ knu
+              Nothing -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
             _ -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
         ModtyTermUnavailable ddom dcod -> returnSysT
       SysTermDeg i -> case i of

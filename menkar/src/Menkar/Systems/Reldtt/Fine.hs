@@ -38,6 +38,8 @@ newtype ReldttDegree v = ReldttDegree {unDegree :: Term Reldtt v}
 pattern BareMode d = Expr2 (TermSys (SysTermMode (d :: ModeTerm v))) :: Term Reldtt v
 --pattern BareFinMode :: ConstructorTerm Reldtt v -> Term Reldtt v
 pattern BareFinMode d = BareMode (ModeTermFinite (Expr2 (TermCons (d :: ConstructorTerm Reldtt v)))) :: Term Reldtt v
+--pattern BareModeOmega :: Term Reldtt v
+pattern BareModeOmega = BareMode ModeTermOmega :: Term Reldtt v
 --pattern BareModty :: ModtyTerm v -> Term Reldtt v
 pattern BareModty mu = Expr2 (TermSys (SysTermModty (mu :: ModtyTerm v))) :: Term Reldtt v
 --pattern BareChainModty :: ChainModty v -> Term Reldtt v
@@ -55,7 +57,13 @@ pattern BareSysType systy = TypeHS (SysType (systy :: ReldttUniHSConstructor v))
 data ModeTerm v = ModeTermFinite (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-data KnownDeg = KnownDegEq | KnownDeg Int | KnownDegTop | KnownDegOmega | KnownDegProblem deriving (Eq, Ord)
+data KnownDeg =
+  KnownDegEq |
+  KnownDeg Int |
+  KnownDegTop |
+  KnownDegOmega {-^ Only allowed in infinite modes. -} |
+  KnownDegProblem
+  deriving (Eq, Ord)
 data ModtySnout = ModtySnout
   {_modtySnout'dom :: Int,
    _modtySnout'cod :: Int,
@@ -82,10 +90,12 @@ _snout'max (ModtySnout idom icod krevdegs) = case krevdegs of
   [] -> KnownDegEq
   krevdegs -> last krevdegs
 
+{-
 numberfyOmegasForDomainlessTail :: ModtySnout -> ModtySnout
 numberfyOmegasForDomainlessTail mu@(ModtySnout idom icod krevdegs) = ModtySnout idom icod $ krevdegs <&> \ case
   KnownDegOmega -> KnownDeg $ idom - 1
   kdeg -> kdeg
+-}
 
 {-| Precondition: Tails start at the same point and have the same (co)domain.
     Precondition for correct result: The snouts are leq. -} 
