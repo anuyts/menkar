@@ -282,6 +282,23 @@ whnormalizeChainModty :: forall whn v .
   ChainModty v ->
   String ->
   whn (ChainModty v)
+whnormalizeChainModty parent gamma mu@(ChainModtyKnown knownMu) reason =
+  ChainModtyKnown <$> whnormalizeKnownModty parent gamma knownMu reason
+whnormalizeChainModty parent gamma mu@(ChainModtyComp knownMu termNu termRho ddom) reason = do
+  -- mu . nu . rho
+  knownMu <- whnormalizeKnownModty parent gamma knownMu reason
+  termNu <- whnormalize parent gamma termNu
+    (BareSysType $ SysTypeModty (_knownModty'cod knownRho) (_knownModty'dom knownMu)) reason
+  case termNu of
+    BareChainModty chainNu -> case chainNu of
+      ChainModtyKnown knownNu ->
+        whnormalizeChainModty parent gamma
+          (ChainModtyComp (knownMu `compKnownModty` knownNu) termRho (BareKnownModty $ idKnownModty ddom))
+      ChainModtyComp knownNu1 termNu2 termNu3 ddom' -> _
+    _ -> return $ ChainModtyComp knownMu termNu termRho ddom
+
+
+
 whnormalizeChainModty parent gamma mu@(ChainModty knownMu remainder) reason = do
   knownMu <- whnormalizeKnownModty parent gamma knownMu reason
   -- mu . remainder

@@ -5,7 +5,7 @@ import Menkar.System
 
 import Control.Exception.AssertFalse
 
---import GHC.Generics
+import GHC.Generics
 import Util
 import Data.Functor.Compose
 import Control.Lens
@@ -47,7 +47,7 @@ pattern BareModty mu = Expr2 (TermSys (SysTermModty (mu :: ModtyTerm v))) :: Ter
 --pattern BareChainModty :: ChainModty v -> Term Reldtt v
 pattern BareChainModty mu = BareModty (ModtyTermChain (mu :: ChainModty v)) :: Term Reldtt v
 --pattern BareKnownModty :: KnownModty v -> Term Reldtt v
-pattern BareKnownModty mu = BareChainModty (ChainModty (mu :: KnownModty v) (Compose Nothing)) :: Term Reldtt v
+pattern BareKnownModty mu = BareChainModty (ChainModtyKnown (mu :: KnownModty v)) :: Term Reldtt v
 --pattern BareDeg i :: DegTerm v -> Term Reldtt v
 pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
 --pattern BareKnownDeg i :: KnownDeg -> Term Reldtt v
@@ -146,6 +146,13 @@ _knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (Expr2 
 _knownModty'cod :: KnownModty v -> Term Reldtt v
 _knownModty'cod (KnownModty snout tail) = nTimes (_modtySnout'cod snout) (Expr2 . TermCons . ConsSuc) $ _modtyTail'cod tail
 
+data ChainModty v =
+  ChainModtyKnown {_chainModty'knownPrefix :: KnownModty v} |
+  ChainModtyComp {_chainModty'knownPrefix :: KnownModty v,
+                  _chainModtyComp'focus :: Term Reldtt v,
+                  _chainModtyComp'remainder :: Term Reldtt v,
+                  _chainModtyComp'dom :: Term Reldtt v}
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 {-
 data ChainModty v = ChainModty {
   _chainModty'knownPrefix :: KnownModty v,
@@ -155,15 +162,14 @@ data ChainModty v = ChainModty {
 -}
 
 wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
-wrapInChainModty ddom dcod t = ChainModty (idKnownModty dcod) $ Compose $ Just $ t :*: BareKnownModty (idKnownModty ddom)
+wrapInChainModty ddom dcod t =
+  ChainModtyComp (idKnownModty dcod) t (BareKnownModty $ idKnownModty ddom) ddom
 
-pattern ChainModtyKnown kmu = ChainModty kmu (Compose Nothing)
-
-_chainModty'dom :: ChainModty v -> Term Reldtt v
-_chainModty'dom mu = _knownModty'dom $ _chainModty'knownPrefix $ mu
 _chainModty'cod :: ChainModty v -> Term Reldtt v
-_chainModty'cod (ChainModty mu (Compose Nothing)) = _knownModty'cod mu
-_chainModty'cod (ChainModty mu (Compose remainder)) = _knownModty'cod $ snd1 $ last remainder
+_chainModty'cod mu = _knownModty'cod $ _chainModty'knownPrefix $ mu
+_chainModty'dom :: ChainModty v -> Term Reldtt v
+_chainModty'dom (ChainModtyKnown mu) = _knownModty'dom mu
+_chainModty'dom (ChainModtyComp _ _ _ ddom) = ddom
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])
@@ -292,15 +298,18 @@ instance SysTrav Reldtt where
 instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
-  idMod d = ChainModty (idKnownModty d) $ Compose []
-  compMod mu2 dmid mu1 = ChainModty (idKnownModty $ _chainModty'cod mu2) $
-    Compose [BareChainModty mu2 :*: idKnownModty dmid, BareChainModty mu1 :*: idKnownModty (_chainModty'dom mu1)]
-  divMod (ModedModality d' mu') (ModedModality d mu) = ChainModty (idKnownModty d') $
-    Compose [BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu)) :*: idKnownModty d]
-  crispMod d = ChainModty (KnownModty (ModtySnout 0 0 []) $ TailDisc d) $ Compose []
+  idMod d = ChainModtyKnown (idKnownModty d)
+  compMod mu2 dmid mu1 = ChainModtyComp
+    (idKnownModty $ _chainModty'cod mu2)
+    (BareChainModty mu2)
+    (BareChainModty mu1)
+    (_chainModty'dom mu1)
+  divMod (ModedModality d' mu') (ModedModality d mu) =
+    wrapInChainModty d d' $ BareModty $ ModtyTermDiv (BareChainModty mu') (BareChainModty mu)
+  crispMod d = ChainModtyKnown $ KnownModty (ModtySnout 0 0 []) $ TailDisc d
   dataMode = BareFinMode $ ConsZero
-  approxLeftAdjointProj (ModedModality d mu) dcod = ChainModty (idKnownModty d) $
-    Compose [BareModty (ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu) :*: idKnownModty dcod]
+  approxLeftAdjointProj (ModedModality d mu) dcod =
+    wrapInChainModty dcod d $ BareModty $ ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu
 
 instance Degrees Reldtt where
   eqDeg = BareKnownDeg $ KnownDegEq
