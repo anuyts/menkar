@@ -40,41 +40,22 @@ class (
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
-      @'newMetaThingNoCheck'@ should only be used when you are sure the meta will be type-checked
-      (in an appropriate judgement) later on.
+      @'newMetaTermNoCheck'@ should only be used when you are sure the meta will be type-checked (in a term judgement)
+      later on.
   -}
-  newMetaThingNoCheck :: forall sys v descr t .
-    (DeBruijnLevel v, AllowsMetas sys descr t) =>
+  newMetaTermNoCheck :: (DeBruijnLevel v) =>
     Maybe (Constraint sys)
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
     -> Ctx Type sys v Void
     -> MetaNeutrality
-    -> descr v
+    -> Maybe (Algorithm sys v)
     -> String
-    -> sc (t v)
+    -> sc (Term sys v)
   scopeFail :: String -> sc a
 
-{-| After scoping, before type-checking, metas are put to sleep.
-    They awake as soon as the type-checker tries to query one.
-
-    @'newMetaTermNoCheck'@ should only be used when you are sure the meta will be type-checked (in a term judgement)
-    later on.
--}
-newMetaTermNoCheck :: forall sc sys v .
-  (MonadScoper sys sc, DeBruijnLevel v) =>
-  Maybe (Constraint sys)
-  -- -> Degree sys v {-^ Degree up to which it should be solved -}
-  -> Ctx Type sys v Void
-  -> MetaNeutrality
-  -> Maybe (Algorithm sys v)
-  -> String
-  -> sc (Term sys v)
-newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason =
-  newMetaThingNoCheck maybeParent gamma neutrality (Compose maybeAlg) reason
-
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
-  newMetaThingNoCheck maybeParent gamma neutrality descr reason =
-    lift $ newMetaThingNoCheck maybeParent gamma neutrality descr reason
+  newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason =
+    lift $ newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason
   scopeFail msg = lift $ scopeFail msg
 
 class (
