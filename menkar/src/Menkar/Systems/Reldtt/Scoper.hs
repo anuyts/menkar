@@ -35,4 +35,6 @@ instance SysScoper Reldtt where
   newMetaModty maybeParent gamma reason = do
     ddom <- newMetaMode Nothing gamma "Inferring domain of modality."
     dcod <- newMetaMode Nothing gamma "Inferring codomain of modality."
-    wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+    _
+    --Expr2 (TermMeta )
+    --wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason

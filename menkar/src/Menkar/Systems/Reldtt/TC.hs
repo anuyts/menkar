@@ -118,6 +118,7 @@ checkChainModtyAgainstModes parent gamma chainMu ddomExp dcodExp = do
     (Just parent)
     "Checking whether actual codomain equals expected codomain."
 
+{-
 newRelatedChainModty :: forall tc v vOrig .
     (MonadTC Reldtt tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
     Constraint Reldtt ->
@@ -129,6 +130,7 @@ newRelatedChainModty :: forall tc v vOrig .
     (String -> tc ()) ->
     tc (Maybe (ChainModty vOrig))
 newRelatedChainModty parent gammaOrig gamma subst partialInv chainMu2 alternative = _
+-}
 
 instance SysTC Reldtt where
 
@@ -216,8 +218,10 @@ instance SysTC Reldtt where
 
       SysTermModty mu2 -> do
         case mu2 of
-          ModtyTermChain chmu2 ->
-            fmap BareChainModty <$> newRelatedChainModty parent gammaOrig gamma subst partialInv chmu2 alternative
+          ModtyTermChain chmu2 -> do
+            tMeta <- 
+            fmap BareChainModty <$> _
+              --newRelatedChainModty parent gammaOrig gamma subst partialInv chmu2 alternative
           ModtyTermDiv rho2 nu2 -> unreachable
           ModtyTermApproxLeftAdjointProj ddom2 dcod2 nu2 -> do
             ddom1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv ddom2

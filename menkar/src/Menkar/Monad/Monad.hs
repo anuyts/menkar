@@ -37,13 +37,16 @@ class (
     (sys :: KSys)
     (sc :: * -> *)
     | sc -> sys where
+  newMetaID :: (DeBruijnLevel v) => Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Int, [Term sys v])
+  scopeFail :: String -> sc a
+
   {-| After scoping, before type-checking, metas are put to sleep.
       They awake as soon as the type-checker tries to query one.
 
       @'newMetaTermNoCheck'@ should only be used when you are sure the meta will be type-checked (in a term judgement)
       later on.
   -}
-  newMetaTermNoCheck :: (DeBruijnLevel v) =>
+newMetaTermNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
     Maybe (Constraint sys)
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
     -> Ctx Type sys v Void
@@ -51,11 +54,13 @@ class (
     -> Maybe (Algorithm sys v)
     -> String
     -> sc (Term sys v)
-  scopeFail :: String -> sc a
+newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
+  (meta, depcies) <- newMetaID maybeParent gamma reason
+  return $ Expr2 $ TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
-  newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason =
-    lift $ newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason
+  newMetaID maybeParent gamma reason =
+    lift $ newMetaID maybeParent gamma reason
   scopeFail msg = lift $ scopeFail msg
 
 class (
