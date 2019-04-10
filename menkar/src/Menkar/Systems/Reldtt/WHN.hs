@@ -291,30 +291,32 @@ whnormalizeChainModty parent gamma mu@(ChainModtyLink knownMu termNu chainRho) r
   termNu <- whnormalize parent gamma termNu
     (BareSysType $ SysTypeModty (_chainModty'cod chainRho) (_knownModty'dom knownMu)) reason
   case termNu of
-    BareChainModty chainNu -> case chainNu of
-      ChainModtyKnown knownNu -> do
-        let composite = case chainRho of
-              ChainModtyKnown knownRho ->
-                ChainModtyKnown (knownMu `compKnownModty` knownNu `compKnownModty` knownRho)
-              ChainModtyLink knownSigma termTau chainUpsilon ->
-                -- mu . nu . sigma . tau . upsilon
-                ChainModtyLink (knownMu `compKnownModty` knownNu `compKnownModty` knownSigma) termTau chainUpsilon
-        whnormalizeChainModty parent gamma composite reason
-      ChainModtyLink knownNuA termNuB chainNuC -> do
-        -- mu . nuA . nuB . nuC . rho
-        let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
-                        compMod chainNuC (_chainModty'cod chainRho) chainRho
-        whnormalizeChainModty parent gamma composite reason
-      ChainModtyMeta ddom dcod meta depcies -> do
-        maybeSolution <- awaitMeta parent reason meta (getCompose depcies)
-        case maybeSolution of
-          Nothing -> return $ ChainModtyLink knownMu termNu chainRho
-          Just solution -> case solution of
-            Expr2 (TermSys (SysTermChainModtyInDisguise chainNu)) ->
-              whnormalizeChainModty parent gamma (ChainModtyLink knownMu (BareChainModty chainNu) chainRho) reason
-              -- THIS IS INEFFICIENT: YOU'RE NORMALIZING knownMu AGAIN.
-            _ -> unreachable -- chainmodty-meta is solved with something of a different syntax class!
+    BareChainModty chainNu -> do
+      chainNu <- whnormalizeChainModty parent gamma chainNu reason
+      case chainNu of
+        ChainModtyKnown knownNu -> do
+          let composite = case chainRho of
+                ChainModtyKnown knownRho ->
+                  ChainModtyKnown (knownMu `compKnownModty` knownNu `compKnownModty` knownRho)
+                ChainModtyLink knownSigma termTau chainUpsilon ->
+                  -- mu . nu . sigma . tau . upsilon
+                  ChainModtyLink (knownMu `compKnownModty` knownNu `compKnownModty` knownSigma) termTau chainUpsilon
+          whnormalizeChainModty parent gamma composite reason
+        ChainModtyLink knownNuA termNuB chainNuC -> do
+          -- mu . nuA . nuB . nuC . rho
+          let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
+                          compMod chainNuC (_chainModty'cod chainRho) chainRho
+          whnormalizeChainModty parent gamma composite reason
+        ChainModtyMeta ddom dcod meta depcies -> unreachable
     _ -> return $ ChainModtyLink knownMu termNu chainRho
+whnormalizeChainModty parent gamma mu@(ChainModtyMeta ddom dcod meta depcies) reason = do
+  maybeSolution <- awaitMeta parent reason meta (getCompose depcies)
+  case maybeSolution of
+    Nothing -> return $ mu
+    Just solution -> case solution of
+      Expr2 (TermSys (SysTermChainModtyInDisguise chainNu)) ->
+        whnormalizeChainModty parent gamma chainNu reason
+      _ -> unreachable -- ChainModty-meta is solved with something of a different syntax class!
 
 whnormalizeDeg :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
