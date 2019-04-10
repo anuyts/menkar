@@ -47,9 +47,9 @@ instance MonadFail SimpleScoper where
   fail s = unreachable
 
 instance MonadScoper Trivial SimpleScoper where
-  newMetaThingNoCheck maybeParent gamma neutrality descr reason = do
+  newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
     i <- fresh
-    return $ hackMeta neutrality i (Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)) descr
+    return $ Expr2 $ TermMeta neutrality i (Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)) (Compose maybeAlg)
   scopeFail msg = SimpleScoper $ lift $ Left msg
 
 ---------------------------

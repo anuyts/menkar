@@ -74,8 +74,7 @@ printTrace ref c = do
       putStrLn ""
       printTrace ref parent
 
-printBlockInfo :: (DeBruijnLevel v, AllowsMetas Trivial descr t, Fine2Pretty Trivial t) =>
-  IORef MainState -> TCState Trivial m -> ([Int], BlockInfo Trivial m t v) -> IO ()
+printBlockInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> ([Int], BlockInfo Trivial m v) -> IO ()
 printBlockInfo ref s (blockingMetas, blockInfo) = do
   putStrLn $ ""
   putStrLn $ "Reason for blocking: " ++ _blockInfo'reasonBlock blockInfo
@@ -83,8 +82,7 @@ printBlockInfo ref s (blockingMetas, blockInfo) = do
   putStrLn $ "Blocked on:" ++ (fold $ (" ?" ++) . show <$> blockingMetas)
   printConstraint ref $ _blockInfo'parent blockInfo
 
-printMetaInfo :: (DeBruijnLevel v, AllowsMetas Trivial descr t, Fine2Pretty Trivial t) =>
-  IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m t v -> IO ()
+printMetaInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m v -> IO ()
 printMetaInfo ref s meta info = do
   mainState <- readIORef ref
   putStrLn $ "Context:"
@@ -129,11 +127,9 @@ printMeta ref s meta =
   then putStrLn $ "Meta index out of bounds."
   else do
     let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
-    forThisDeBruijnLevel (forThisClassWithMetas (printMetaInfo ref s meta)) metaInfo
+    forThisDeBruijnLevel (printMetaInfo ref s meta) metaInfo
 
-summarizeUnsolvedMeta :: forall m descr t v .
-  (AllowsMetas Trivial descr t) =>
-  IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m t v -> IO ()
+summarizeUnsolvedMeta :: IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m v -> IO ()
 summarizeUnsolvedMeta ref s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
   Right solutionInfo -> return ()
   Left blocks -> putStrLn $
@@ -141,9 +137,7 @@ summarizeUnsolvedMeta ref s meta metaInfo = case _metaInfo'maybeSolution metaInf
 
 printUnsolvedMetas :: IORef MainState -> TCState Trivial m -> IO ()
 printUnsolvedMetas ref s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
-  forThisDeBruijnLevel (forThisClassWithMetas (summarizeUnsolvedMeta ref s meta)) metaInfo
-  
-  --summarizeUnsolvedMeta ref s meta (forThisDeBruijnLevel . forThisClassWithMetas) metaInfo
+  summarizeUnsolvedMeta ref s meta `forThisDeBruijnLevel` metaInfo
 
 printReport :: IORef MainState -> TCState Trivial m -> TCReport Trivial -> IO ()
 printReport ref s report = do
@@ -155,7 +149,7 @@ printReport ref s report = do
 
 printOverview :: IORef MainState -> TCState Trivial m -> IO ()
 printOverview ref s = do
-  let nUnsolved = length $ filter (not . forThisDeBruijnLevel (forThisClassWithMetas isSolved)) $ toList $ _tcState'metaMap s
+  let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
   putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
     ++ show nUnsolved ++ " unsolved (metas),"
   putStrLn $ (show $ _tcState'constraintCounter s) ++ " constraints (constraint i),"
@@ -236,7 +230,7 @@ printMetaSolutionsOn :: IORef MainState -> TCState Trivial m -> IO ()
 printMetaSolutionsOn ref s = do
   let setSolutionMap maybeMap = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printSolutions .~ maybeMap
   setSolutionMap $ Just $ _tcState'metaMap s & (mapMaybe $
-        \ (ForSomeDeBruijnLevel (ForSomeClassWithMetas metaInfo)) -> case _metaInfo'maybeSolution metaInfo of
+        \ (ForSomeDeBruijnLevel metaInfo) -> case _metaInfo'maybeSolution metaInfo of
           Left blocks -> Nothing
           Right solutionInfo -> Just $ ForSomeDeBruijnLevel $ _solutionInfo'solution solutionInfo
       )

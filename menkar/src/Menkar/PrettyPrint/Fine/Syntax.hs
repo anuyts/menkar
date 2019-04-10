@@ -333,9 +333,9 @@ meta2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose may
         Nothing -> metaNoSolution
         Just solutions -> case lookup meta solutions of
           Nothing -> metaNoSolution
-          Just (ForSomeDeBruijnLevel (ForSomeClassWithMetas (Identity2 t))) ->
+          Just (ForSomeDeBruijnLevel t) ->
             ["\x27ea" ++|
-              fine2pretty gamma (swallow $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
+              fine2pretty gamma (join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
             |++ "\x27eb"]
   where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies
         metaNoSolution = case maybeAlg of
