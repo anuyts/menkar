@@ -45,7 +45,7 @@ pattern BareModty mu = Expr2 (TermSys (SysTermModty (mu :: ModtyTerm v))) :: Ter
 --pattern BareChainModty :: ChainModty v -> Term Reldtt v
 pattern BareChainModty mu = BareModty (ModtyTermChain (mu :: ChainModty v)) :: Term Reldtt v
 --pattern BareKnownModty :: KnownModty v -> Term Reldtt v
-pattern BareKnownModty mu = BareChainModty (ChainModtyKnown (mu :: KnownModty v)) :: Term Reldtt v
+pattern BareKnownModty mu = BareChainModty (ChainModty (mu :: KnownModty v) (Compose [])) :: Term Reldtt v
 --pattern BareDeg i :: DegTerm v -> Term Reldtt v
 --pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
 --pattern BareKnownDeg i :: KnownDeg -> Term Reldtt v
@@ -146,27 +146,22 @@ _knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (BareMo
 _knownModty'cod :: KnownModty v -> Term Reldtt v
 _knownModty'cod (KnownModty snout tail) = nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc) $ _modtyTail'cod tail
 
-data ChainModty v =
-  ChainModtyKnown (KnownModty v) |
-  ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
-  ChainModtyMeta
-    (Term Reldtt v) {-^ domain -}
-    (Term Reldtt v) {-^ codomain -}
-    Int {-^ meta index -}
-    (Compose [] (Term Reldtt) v) {-^ dependencies -}
+data ChainModty v = ChainModty {
+  _chainModty'knownPrefix :: KnownModty v,
+  _chainModty'Remainder :: Compose [] (Term Reldtt :*: KnownModty) v
+  }
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
-wrapInChainModty ddom dcod t = ChainModtyLink (idKnownModty dcod) t $ ChainModtyKnown $ idKnownModty ddom
+wrapInChainModty ddom dcod t = ChainModty (idKnownModty dcod) $ Compose [t :*: idKnownModty ddom]
+
+pattern ChainModtyKnown kmu = ChainModty kmu (Compose [])
 
 _chainModty'dom :: ChainModty v -> Term Reldtt v
-_chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
-_chainModty'dom (ChainModtyLink kmu termNu chainRho) = _knownModty'dom $ kmu
-_chainModty'dom (ChainModtyMeta dom cod meta depcies) = dom
+_chainModty'dom mu = _knownModty'dom $ _chainModty'knownPrefix $ mu
 _chainModty'cod :: ChainModty v -> Term Reldtt v
-_chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
-_chainModty'cod (ChainModtyLink kmu termNu chainRho) = _chainModty'cod $ chainRho
-_chainModty'cod (ChainModtyMeta dom cod meta depcies) = cod
+_chainModty'cod (ChainModty mu (Compose [])) = _knownModty'cod mu
+_chainModty'cod (ChainModty mu (Compose remainder)) = _knownModty'cod $ snd1 $ last remainder
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])
@@ -275,9 +270,7 @@ data DegTerm v =
 
 data ReldttSysTerm v =
   SysTermMode (ModeTerm v) |
-  SysTermModty (ModtyTerm v) |
-  -- | This is a hack so that we can have metas for @'ChainModty'@
-  SysTermChainModtyInDisguise (ChainModty v)
+  SysTermModty (ModtyTerm v)
   --SysTermDeg (DegTerm v)
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
@@ -297,19 +290,15 @@ instance SysTrav Reldtt where
 instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
-  idMod d = ChainModtyKnown (idKnownModty d)
-  compMod mu2 dmid mu1 =
-    ChainModtyLink (idKnownModty $ _chainModty'cod mu2) (BareChainModty mu2) $
-    ChainModtyLink (idKnownModty $ dmid) (BareChainModty mu1) $
-    ChainModtyKnown (idKnownModty $ _chainModty'dom mu1)
-  divMod (ModedModality d' mu') (ModedModality d mu) =
-    ChainModtyLink (idKnownModty d') (BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu))) $
-    ChainModtyKnown (idKnownModty d)
-  crispMod d = ChainModtyKnown (KnownModty (ModtySnout 0 0 []) $ TailDisc d)
+  idMod d = ChainModty (idKnownModty d) $ Compose []
+  compMod mu2 dmid mu1 = ChainModty (idKnownModty $ _chainModty'cod mu2) $
+    Compose [BareChainModty mu2 :*: idKnownModty dmid, BareChainModty mu1 :*: idKnownModty (_chainModty'dom mu1)]
+  divMod (ModedModality d' mu') (ModedModality d mu) = ChainModty (idKnownModty d') $
+    Compose [BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu)) :*: idKnownModty d]
+  crispMod d = ChainModty (KnownModty (ModtySnout 0 0 []) $ TailDisc d) $ Compose []
   dataMode = BareMode $ ModeTermZero
-  approxLeftAdjointProj (ModedModality d mu) dcod =
-    ChainModtyLink (idKnownModty d) (BareModty (ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu)) $
-    ChainModtyKnown (idKnownModty dcod)
+  approxLeftAdjointProj (ModedModality d mu) dcod = ChainModty (idKnownModty d) $
+    Compose [BareModty (ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu) :*: idKnownModty dcod]
 
 instance Degrees Reldtt where
   eqDeg = DegKnown $ KnownDegEq
