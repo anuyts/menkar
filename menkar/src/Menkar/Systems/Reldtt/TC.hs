@@ -173,7 +173,7 @@ instance SysTC Reldtt where
                            (BareSysType SysTypeMode) (BareSysType SysTypeMode) MetaBlocked
                            "Inferring codomain of left adjoint."
             let dcod1 = subst <$> dcod1orig
-            nu1orig <- newRelatedMetaTerm parent (EtaTrue) ddeg gammaOrig gamma subst partialInv nu2
+            nu1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv nu2
                            (BareSysType $ SysTypeModty dcod1 ddom1) (BareSysType $ SysTypeModty dcod2 ddom2) MetaBlocked
                            "Inferring original modality."
             return $ Just $ BareModty $ ModtyTermApproxLeftAdjointProj ddom1orig dcod1orig nu1orig
