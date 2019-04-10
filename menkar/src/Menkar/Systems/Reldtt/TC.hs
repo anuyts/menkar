@@ -58,28 +58,65 @@ checkKnownModty parent gamma kmu@(KnownModty snout tail) = do
     TailProblem -> tcFail parent "Erroneous tail."
   return (_knownModty'cod kmu, _knownModty'dom kmu)
 
+{-| Returns the codomain and domain IN THAT ORDER.
+-}
 checkChainModty :: forall tc v .
   (MonadTC Reldtt tc, DeBruijnLevel v) =>
   Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
   ChainModty v ->
   tc (Term Reldtt v, Term Reldtt v)
-checkChainModty parent gamma chainModty@(ChainModty kmu (Compose remainder)) = case remainder of
-  [] -> checkKnownModty parent gamma kmu
-  _:_ -> do
-    (dcod, d1) <- checkKnownModty parent gamma kmu
-    codsNdomsKnowns <- sequenceA $ checkKnownModty parent gamma . snd1 <$> remainder
-    let codsKnowns = fst <$> codsNdomsKnowns
-    let domsKnowns = snd <$> codsNdomsKnowns
-    let domsNeutrals = codsKnowns
-    let codsNeutrals = d1 : init domsKnowns
-    sequenceA $ zip3 codsNeutrals domsNeutrals remainder <&>
-      \ (dcodNeutral, ddomNeutral, (rhoNeutral :*: _)) -> do
-        addNewConstraint
-          (JudTerm gamma rhoNeutral (BareSysType $ SysTypeModty ddomNeutral dcodNeutral))
-          (Just parent)
-          "Type-checking a constituent modality."
-    return (dcod, last domsKnowns)
+checkChainModty parent gamma chainMu@(ChainModtyKnown kmu) =
+  checkKnownModty parent gamma kmu
+checkChainModty parent gamma chainMu@(ChainModtyLink kmu termNu chainRho) = do
+  (dcod, d2) <- checkKnownModty parent gamma kmu
+  (d1, ddom) <- checkChainModty parent gamma chainRho
+  addNewConstraint
+    (JudTerm gamma termNu (BareSysType $ SysTypeModty d1 d2))
+    (Just parent)
+    "Type-checking a constituent modality"
+  return (dcod, ddom)
+checkChainModty parent gamma chainMu@(ChainModtyMeta ddom dcod meta depcies) = do
+  maybeSolution <- awaitMeta parent "I want to know what I'm supposed to type-check." meta $ getCompose depcies
+  chainMu <- case maybeSolution of
+    Nothing -> tcBlock parent "I want to know what I'm supposed to type-check."
+    Just solution -> case solution of
+      Expr2 (TermSys (SysTermChainModtyInDisguise chainMu')) -> return chainMu'
+      _ -> unreachable
+  childConstraint <- defConstraint
+    (JudModality gamma chainMu ddom dcod)
+    (Just parent)
+    "Look up meta."
+  checkChainModtyAgainstModes childConstraint gamma chainMu ddom dcod
+  return (dcod, ddom)
+-- TODO ADD/USE A JUDGEMENT
+
+checkChainModtyAgainstModes :: forall tc v .
+  (MonadTC Reldtt tc, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  Ctx Type Reldtt v Void ->
+  ChainModty v ->
+  Term Reldtt v ->
+  Term Reldtt v ->
+  tc ()
+checkChainModtyAgainstModes parent gamma chainMu ddomExp dcodExp = do
+  (dcodAct, ddomAct) <- checkChainModty parent gamma chainMu
+  addNewConstraint
+    (JudTermRel (Eta True) eqDeg
+      (duplicateCtx gamma)
+      (Twice2 ddomAct ddomExp)
+      (Twice2 (BareSysType SysTypeMode) (BareSysType SysTypeMode))
+    )
+    (Just parent)
+    "Checking whether actual domain equals expected domain."
+  addNewConstraint
+    (JudTermRel (Eta True) eqDeg
+      (duplicateCtx gamma)
+      (Twice2 dcodAct dcodExp)
+      (Twice2 (BareSysType SysTypeMode) (BareSysType SysTypeMode))
+    )
+    (Just parent)
+    "Checking whether actual codomain equals expected codomain."
 
 newRelatedChainModty :: forall tc v vOrig .
     (MonadTC Reldtt tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
@@ -120,7 +157,12 @@ instance SysTC Reldtt where
     SysTermModty mu -> do
       -- check contents and extract (co)domain
       (dcod, ddom) <- case mu of
-        ModtyTermChain chmu -> checkChainModty parent gamma chmu
+        ModtyTermChain chmu -> do
+          childConstraint <- defConstraint
+            (JudModality gamma chmu (Expr2 TermWildcard) (Expr2 TermWildcard))
+            (Just parent)
+            "Checking underlying modality."
+          checkChainModty childConstraint gamma chmu
         ModtyTermDiv rho nu -> unreachable -- only for prettyprinting
         ModtyTermApproxLeftAdjointProj ddom dcod nu -> do
           addNewConstraint
