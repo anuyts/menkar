@@ -159,14 +159,14 @@ data ChainModty v =
 wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
 wrapInChainModty ddom dcod t = ChainModtyLink (idKnownModty dcod) t $ ChainModtyKnown $ idKnownModty ddom
 
-_chainModty'dom :: ChainModty v -> Term Reldtt v
-_chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
-_chainModty'dom (ChainModtyLink kmu termNu chainRho) = _knownModty'dom $ kmu
-_chainModty'dom (ChainModtyMeta dom cod meta depcies) = dom
 _chainModty'cod :: ChainModty v -> Term Reldtt v
 _chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
-_chainModty'cod (ChainModtyLink kmu termNu chainRho) = _chainModty'cod $ chainRho
+_chainModty'cod (ChainModtyLink kmu termNu chainRho) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyMeta dom cod meta depcies) = cod
+_chainModty'dom :: ChainModty v -> Term Reldtt v
+_chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
+_chainModty'dom (ChainModtyLink kmu termNu chainRho) = _chainModty'dom $ chainRho
+_chainModty'dom (ChainModtyMeta dom cod meta depcies) = dom
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])
@@ -276,7 +276,7 @@ data DegTerm v =
 data ReldttSysTerm v =
   SysTermMode (ModeTerm v) |
   SysTermModty (ModtyTerm v) |
-  -- | This is a hack so that we can have metas for @'ChainModty'@
+   -- | This is a hack so that we can have metas for @'ChainModty'@
   SysTermChainModtyInDisguise (ChainModty v)
   --SysTermDeg (DegTerm v)
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
