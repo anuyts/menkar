@@ -13,6 +13,9 @@ import Data.Omissible
 import Data.IntMap.Lazy hiding (map, size)
 import Control.Lens
 import Data.Void
+import Data.Kind
+
+newtype Identity2 (f :: k -> *) (x :: k) = Identity2 {runIdentity2 :: f x}
 
 data PrintEntryVerbosity = PrintEntryName | PrintEntryNameAnnots | PrintEntryEntirely
 
@@ -31,7 +34,7 @@ data Fine2PrettyOptions sys = Fine2PrettyOptions {
   _fine2pretty'humanReadableMetas :: Bool,
   _fine2pretty'printAlgorithm :: PrintAlgorithmVerbosity,
   -- | When printing a solved meta, print its solution instead.
-  _fine2pretty'printSolutions :: Maybe (IntMap (ForSomeDeBruijnLevel (Term sys))),
+  _fine2pretty'printSolutions :: Maybe (IntMap (ForSomeDeBruijnLevel (ForSomeClassWithMetas sys Identity2))),
   -- | When printing contexts, explicity print left divisions, rather than computing the divided
   -- | modality.
   _fine2pretty'explicitLeftDivision :: Bool,
