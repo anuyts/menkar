@@ -301,6 +301,9 @@ whnormalizeChainModty parent gamma mu@(ChainModtyLink knownMu termNu chainRho) r
                 ChainModtyLink knownSigma termTau chainUpsilon ->
                   -- mu . nu . sigma . tau . upsilon
                   ChainModtyLink (knownMu `compKnownModty` knownNu `compKnownModty` knownSigma) termTau chainUpsilon
+                ChainModtyMeta ddom dcod meta depcies ->
+                  ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
+                    ChainModtyKnown $ idKnownModty ddom
           whnormalizeChainModty parent gamma composite reason
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
@@ -367,6 +370,7 @@ instance SysWHN Reldtt where
               Nothing -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
             _ -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
         ModtyTermUnavailable ddom dcod -> returnSysT
+      SysTermChainModtyInDisguise _ -> unreachable
 {-      SysTermDeg i -> case i of
         DegKnown _ -> return $ BareDeg i
         DegGet j mu ddom dcod -> do
