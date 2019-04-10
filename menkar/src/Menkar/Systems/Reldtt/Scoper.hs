@@ -12,6 +12,7 @@ import Text.PrettyPrint.Tree
 import Data.Omissible
 
 import Data.Maybe
+import Data.Functor.Compose
 
 instance SysScoper Reldtt where
   scopeAnnotation gamma qstring maybeRawArg = do
@@ -35,6 +36,7 @@ instance SysScoper Reldtt where
   newMetaModty maybeParent gamma reason = do
     ddom <- newMetaMode Nothing gamma "Inferring domain of modality."
     dcod <- newMetaMode Nothing gamma "Inferring codomain of modality."
-    _
+    (meta, depcies) <- newMetaID maybeParent gamma reason
+    return $ ChainModtyMeta ddom dcod meta (Compose depcies)
     --Expr2 (TermMeta )
     --wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason

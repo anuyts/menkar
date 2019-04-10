@@ -200,6 +200,8 @@ instance SysTC Reldtt where
         (Just parent)
         "Checking that actual type equals expected type."
 
+    SysTermChainModtyInDisguise _ -> unreachable
+
   ---------------------------------------------------------
 
   -- NO ETA --
@@ -219,9 +221,15 @@ instance SysTC Reldtt where
       SysTermModty mu2 -> do
         case mu2 of
           ModtyTermChain chmu2 -> do
-            tMeta <- 
-            fmap BareChainModty <$> _
-              --newRelatedChainModty parent gammaOrig gamma subst partialInv chmu2 alternative
+              chmu1orig <- newMetaModty (Just parent) gammaOrig "Inferring underlying modality."
+              let chmu1 = subst <$> chmu1orig
+              let dom1 = _chainModty'dom chmu1
+              let cod1 = _chainModty'cod chmu1
+              addNewConstraint
+                (JudModalityRel ModEq gamma chmu1 chmu2 dom1 cod1)
+                (Just parent)
+                "Inferring underlying modality."
+              return $ Just $ BareChainModty chmu1orig
           ModtyTermDiv rho2 nu2 -> unreachable
           ModtyTermApproxLeftAdjointProj ddom2 dcod2 nu2 -> do
             ddom1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv ddom2
@@ -237,3 +245,6 @@ instance SysTC Reldtt where
                            "Inferring original modality."
             return $ Just $ BareModty $ ModtyTermApproxLeftAdjointProj ddom1orig dcod1orig nu1orig
           ModtyTermUnavailable ddom2 dcod2 -> unreachable
+          
+
+      SysTermChainModtyInDisguise _ -> unreachable
