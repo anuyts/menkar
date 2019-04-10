@@ -43,21 +43,24 @@ import Data.List hiding (insert)
 import Data.List.Utils (mergeBy)
 import Data.Ord
 
+unsafeCoerce1 :: forall f g v . f v -> g v
+unsafeCoerce1 = unsafeCoerce
+
 type TCResult (sys :: KSys) = () --TCSuccess | TCWaiting
 
-data SolutionInfo (sys :: KSys) (m :: * -> *) (v :: *) = SolutionInfo {
+data SolutionInfo (sys :: KSys) (m :: * -> *) (t :: * -> *) (v :: *) = SolutionInfo {
   _solutionInfo'parent :: Constraint sys,
-  _solutionInfo'solution :: Term sys v
+  _solutionInfo'solution :: t v
   }
 
-data BlockInfo (sys :: KSys) (m :: * -> *) (v :: *) = BlockInfo {
+data BlockInfo (sys :: KSys) (m :: * -> *) (t :: * -> *) (v :: *) = BlockInfo {
   _blockInfo'parent :: Constraint sys,
   _blockInfo'reasonBlock :: String,
   _blockInfo'reasonAwait :: String,
-  _blockInfo'cont :: (Maybe (Term sys v) -> TCT sys m (TCResult sys))
+  _blockInfo'cont :: (Maybe (t v) -> TCT sys m (TCResult sys))
   }
 
-data MetaInfo (sys :: KSys) m v = MetaInfo {
+data MetaInfo (sys :: KSys) m (t :: * -> *) v = MetaInfo {
   _metaInfo'maybeParent :: Maybe (Constraint sys),
   _metaInfo'context :: Ctx Type sys v Void,
   --_metaInfo'deg :: U1 v,
@@ -65,13 +68,14 @@ data MetaInfo (sys :: KSys) m v = MetaInfo {
   {-| If solved, info about the solution.
       If unsolved, a list of blocked problems, from new to old, from outermost to innermost.
   -}
-  _metaInfo'maybeSolution :: Either [([Int {- all metas blocking this thing -}], BlockInfo sys m v)] (SolutionInfo sys m v)
+  _metaInfo'maybeSolution ::
+      Either [([Int {- all metas blocking this thing -}], BlockInfo sys m t v)] (SolutionInfo sys m t v)
   }
-isDormant :: MetaInfo sys m v -> Bool
+isDormant :: MetaInfo sys m t v -> Bool
 isDormant metaInfo = case _metaInfo'maybeSolution metaInfo of
   Left [] -> True
   _ -> False
-isBlockingStuff :: MetaInfo sys m v -> Bool
+isBlockingStuff :: MetaInfo sys m t v -> Bool
 isBlockingStuff metaInfo = case _metaInfo'maybeSolution metaInfo of
   Left [] -> False
   Left _ -> True
@@ -85,7 +89,7 @@ data TCReport sys = TCReport {
 
 data TCState sys m = TCState {
   _tcState'metaCounter :: Int,
-  _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo sys m)),
+  _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (ForSomeClassWithMetas sys (MetaInfo sys m))),
   _tcState'constraintCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint sys),
   _tcState'reports :: [(TCReport sys)],
@@ -115,7 +119,7 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 data TCError sys m =
   TCErrorConstraintBound |
   {-| The outermost blocked @awaitMeta@ is first in the list. -}
-  TCErrorBlocked (Constraint sys) String [(Int, ForSomeDeBruijnLevel (BlockInfo sys m))] |
+  TCErrorBlocked (Constraint sys) String [(Int, ForSomeDeBruijnLevel (ForSomeClassWithMetas sys (BlockInfo sys m)))] |
   TCErrorTCFail (TCReport sys) |
   TCErrorScopeFail String |
   TCErrorInternal (Maybe (Constraint sys)) String
@@ -173,11 +177,23 @@ typeCheck = do
 
 instance {-# OVERLAPPING #-} (Monad m, SysScoper sys, Degrees sys) => MonadScoper sys (TCT sys m) where
 
-  newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
+  newMetaThingNoCheck :: forall v descr t .
+    (DeBruijnLevel v, AllowsMetas sys descr t) =>
+    Maybe (Constraint sys)
+    -- -> Degree sys v {-^ Degree up to which it should be solved -}
+    -> Ctx Type sys v Void
+    -> MetaNeutrality
+    -> descr v
+    -> String
+    -> TCT sys m (t v)
+  newMetaThingNoCheck maybeParent gamma neutrality descr reason = do
     meta <- tcState'metaCounter <<%= (+1)
-    tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
+    tcState'metaMap %=
+      (insert meta $ ForSomeDeBruijnLevel $ ForSomeClassWithMetas $
+        (MetaInfo maybeParent gamma reason (Left []) :: MetaInfo sys m t v)
+      )
     let depcies = Compose $ Var2 <$> listAll Proxy
-    return $ Expr2 $ TermMeta neutrality meta depcies (Compose maybeAlg)
+    return $ hackMeta neutrality meta depcies descr
 
   --scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
   scopeFail reason = throwError $ TCErrorScopeFail reason
@@ -187,9 +203,9 @@ catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blocks -> do
     let blockingMetas = fst <$> blocks
     -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
-    sequenceA_ $ reverse blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
-      tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
-        ForSomeDeBruijnLevel $ over (metaInfo'maybeSolution . _LeftUnsafe)
+    sequenceA_ $ reverse blocks <&> \(meta, ForSomeDeBruijnLevel (ForSomeClassWithMetas blockInfo)) -> do
+      tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel (ForSomeClassWithMetas metaInfo)) ->
+        ForSomeDeBruijnLevel $ ForSomeClassWithMetas $ over (metaInfo'maybeSolution . _LeftUnsafe)
           ((blockingMetas, unsafeCoerce blockInfo) :) metaInfo
       {-
       maybeMetaInfo <- use $ tcState'metaMap . at meta
@@ -210,26 +226,26 @@ instance {-# OVERLAPPING #-} (SysWHN sys, Degrees sys, Monad m) => MonadWHN sys 
     maybeMetaInfo <- use $ tcState'metaMap . at meta
     case maybeMetaInfo of
       Nothing -> unreachable
-      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reasonMeta maybeSolution)) -> do
+      Just (ForSomeDeBruijnLevel (ForSomeClassWithMetas (MetaInfo maybeParent gamma reasonMeta maybeSolution))) -> do
         case maybeSolution of
           Right (SolutionInfo parent solution) -> do
-            return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
+            return $ Just $ swallow $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> unsafeCoerce1 solution
           Left blocks -> shiftDC $ \ k -> do
-            -- Try to continue with an unsolved meta
             k Nothing `catchError` \case
               TCErrorBlocked blockParent blockReason blocks -> do
                 -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
                 -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
                 let blocks' = Prelude.filter (\(blockMeta, blockInfo) -> blockMeta /= meta) blocks
                 let blockInfo = BlockInfo blockParent blockReason reasonAwait $
-                      k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
+                      k . fmap (swallow . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
                 -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
-                throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks')
+                throwError $ TCErrorBlocked blockParent blockReason
+                  ((meta, ForSomeDeBruijnLevel $ ForSomeClassWithMetas blockInfo) : blocks')
                 -- throwError $ TCErrorBlocked blockParent blockReason (blocks ++ [(meta, ForSomeDeBruijnLevel blockInfo)])
                 --tcState'metaMap . at meta .=
                 --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e
-  
+
 instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (TCT sys m) where
   
   --newConstraintID = tcState'constraintCounter <<%= (+1)
@@ -251,7 +267,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
   addConstraintReluctantly constraint = todo
 
   solveMeta parent meta getSolution = do
-    ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
+    ForSomeDeBruijnLevel (ForSomeClassWithMetas metaInfo) <- use $ tcState'metaMap . at meta . _JustUnsafe
     case _metaInfo'maybeSolution metaInfo of
       Right _ -> throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
       Left blocks -> do
@@ -268,16 +284,18 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
               -}
               -- Check whether this is the first meta (among those on which this constraint is blocked) to be resolved.
               allAreUnsolved <- fmap (not . getAny . fold) $ sequenceA $ blockingMetas <&>
-                \blockingMeta -> fmap (Any . forThisDeBruijnLevel isSolved) $ use $
+                \blockingMeta -> fmap (Any . forThisDeBruijnLevel (forThisClassWithMetas isSolved)) $ use $
                   tcState'metaMap . at blockingMeta . _JustUnsafe
               if allAreUnsolved
               -- If so, then unblock with the solution just provided
-              then addTask PriorityDefault $ catchBlocks $ k $ Just $ solution
+              then addTask PriorityDefault $ catchBlocks $ k $ Just $ unsafeCoerce1 solution
               -- Else forget about this blocked constraint, it has been unblocked already.
               else return ()
             -- Save the solution
             tcState'metaMap . at meta . _JustUnsafe .=
-              ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
+              (ForSomeDeBruijnLevel $ ForSomeClassWithMetas $
+                 set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo
+              )
 
 {-do
     maybeMetaInfo <- use $ tcState'metaMap . at meta

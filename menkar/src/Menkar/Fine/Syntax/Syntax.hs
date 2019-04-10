@@ -381,13 +381,15 @@ deriving instance (SysSyntax (Term sys) sys) =>
 
 type Term = Expr2 TermNV
 
-class (Functor t, Foldable t, Traversable t, CanSwallow (Term sys) t) => AllowsMetas sys descr t | t -> descr where
+class (Functor t, Foldable t, Traversable t, CanSwallow (Term sys) t) =>
+  AllowsMetas sys descr t | t -> sys, t -> descr where
   hackMeta :: MetaNeutrality -> Int -> (Compose [] (Term sys) v) -> descr v -> t v
 instance (SysSyntax (Term sys) sys) => AllowsMetas sys (Compose Maybe (Algorithm sys)) (Term sys) where
   hackMeta neutrality meta depcies descr = Expr2 $ TermMeta neutrality meta depcies descr
 
 data ForSomeClassWithMetas sys f v = forall descr t . AllowsMetas sys descr t => ForSomeClassWithMetas (f t v)
-forThisClassWithMetas :: forall sys f s v .
+
+forThisClassWithMetas1 :: forall sys f s v .
   (forall descr t w .
     AllowsMetas sys descr t =>
     f t w ->
@@ -395,6 +397,16 @@ forThisClassWithMetas :: forall sys f s v .
   ) ->
   ForSomeClassWithMetas sys f v ->
   s v
+forThisClassWithMetas1 f (ForSomeClassWithMetas x) = f x
+
+forThisClassWithMetas :: forall sys f s v .
+  (forall descr t w .
+    AllowsMetas sys descr t =>
+    f t w ->
+    s
+  ) ->
+  ForSomeClassWithMetas sys f v ->
+  s
 forThisClassWithMetas f (ForSomeClassWithMetas x) = f x
   
 ------------------------------------

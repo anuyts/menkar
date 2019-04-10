@@ -90,3 +90,4 @@ default-extensions:
 - ExistentialQuantification
 - TypeInType
 - TypeFamilyDependencies
+- InstanceSigs
