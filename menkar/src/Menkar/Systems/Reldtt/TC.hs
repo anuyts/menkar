@@ -81,6 +81,18 @@ checkChainModty parent gamma chainModty@(ChainModty kmu (Compose remainder)) = c
           "Type-checking a constituent modality."
     return (dcod, last domsKnowns)
 
+newRelatedChainModty :: forall tc v vOrig .
+    (MonadTC Reldtt tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+    Constraint Reldtt ->
+    Ctx Type Reldtt vOrig Void ->
+    Ctx (Twice2 Type) Reldtt v Void ->
+    (vOrig -> v) ->
+    (v -> Maybe vOrig) ->
+    ChainModty v ->
+    (String -> tc ()) ->
+    tc (Maybe (ChainModty vOrig))
+newRelatedChainModty parent gammaOrig gamma subst partialInv chainMu2 alternative = _
+
 instance SysTC Reldtt where
 
   ---------------------------------------------------------
@@ -162,7 +174,8 @@ instance SysTC Reldtt where
 
       SysTermModty mu2 -> do
         case mu2 of
-          ModtyTermChain chmu2 -> _
+          ModtyTermChain chmu2 ->
+            fmap BareChainModty <$> newRelatedChainModty parent gammaOrig gamma subst partialInv chmu2 alternative
           ModtyTermDiv rho2 nu2 -> unreachable
           ModtyTermApproxLeftAdjointProj ddom2 dcod2 nu2 -> do
             ddom1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv ddom2
@@ -173,7 +186,7 @@ instance SysTC Reldtt where
                            (BareSysType SysTypeMode) (BareSysType SysTypeMode) MetaBlocked
                            "Inferring codomain of left adjoint."
             let dcod1 = subst <$> dcod1orig
-            nu1orig <- newRelatedMetaTerm parent (EtaTrue) ddeg gammaOrig gamma subst partialInv nu2
+            nu1orig <- newRelatedMetaTerm parent (Eta True) ddeg gammaOrig gamma subst partialInv nu2
                            (BareSysType $ SysTypeModty dcod1 ddom1) (BareSysType $ SysTypeModty dcod2 ddom2) MetaBlocked
                            "Inferring original modality."
             return $ Just $ BareModty $ ModtyTermApproxLeftAdjointProj ddom1orig dcod1orig nu1orig
