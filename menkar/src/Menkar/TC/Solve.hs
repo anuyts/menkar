@@ -61,7 +61,7 @@ newRelatedMetaModedModality :: forall sys tc v vOrig .
   String ->
   tc (ModedModality sys vOrig)
 newRelatedMetaModedModality parent gammaOrig gamma subst partialInv dmu2 dcod reason = do
-  dmu1orig <- newMetaModedModality (Just parent) gammaOrig reason
+  dmu1orig <- newMetaModedModalityNoCheck (Just parent) gammaOrig reason
   let dmu1 = subst <$> dmu1orig
   addNewConstraint
     (JudModedModalityRel ModEq gamma (subst <$> dmu1orig) dmu2 dcod)

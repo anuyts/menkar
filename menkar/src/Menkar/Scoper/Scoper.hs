@@ -44,7 +44,7 @@ eliminator gamma (Raw.ElimDots) = return SmartElimDots
 --eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
   let dgamma' = ctx'mode gamma
-  dmu <- newMetaModedModality Nothing (crispModedModality dgamma' :\\ gamma) "Inferring modality of argument."
+  dmu <- newMetaModedModalityNoCheck Nothing (crispModedModality dgamma' :\\ gamma) "Inferring modality of argument."
   fineExpr <- expr (VarFromCtx <$> dmu :\\ gamma) rawExpr
   return $ SmartElimArg argSpec dmu fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
@@ -93,7 +93,7 @@ elimination :: forall sys sc v .
 elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  dmus <- forM rawElims $ \_ -> newMetaModedModality Nothing (crispModedModality dgamma' :\\ gamma)
+  dmus <- forM rawElims $ \_ -> newMetaModedModalityNoCheck Nothing (crispModedModality dgamma' :\\ gamma)
                                   "Inferring elimination modality."
   let dmuTotal : dmuTails = flip concatModedModalityDiagrammatically dgamma <$> tails dmus
   fineEliminee <- exprC (VarFromCtx <$> dmuTotal :\\ gamma) rawEliminee
@@ -134,7 +134,7 @@ simpleLambda ::
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
     let dgamma' = ctx'mode gamma
-    dmu <- newMetaModedModality Nothing (crispModedModality dgamma' :\\ gamma) "Infer domain mode/modality."
+    dmu <- newMetaModedModalityNoCheck Nothing (crispModedModality dgamma' :\\ gamma) "Infer domain mode/modality."
     fineTy <- Type <$> newMetaTermNoCheck Nothing {-eqDeg-} (VarFromCtx <$> dmu :\\ gamma) MetaBlocked Nothing "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
@@ -354,10 +354,10 @@ buildDeclaration gamma generateContent partDecl = do
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
-          Compose Nothing -> newMetaMode Nothing (crispModedModality dgamma' :\\ gamma) "Infer mode."
+          Compose Nothing -> newMetaModeNoCheck Nothing (crispModedModality dgamma' :\\ gamma) "Infer mode."
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
-          Compose Nothing -> newMetaModty Nothing (crispModedModality dgamma' :\\ gamma) "Infer modality."
+          Compose Nothing -> newMetaModtyNoCheck Nothing (crispModedModality dgamma' :\\ gamma) "Infer modality."
         let plic = case _pdecl'plicity partDecl of
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit

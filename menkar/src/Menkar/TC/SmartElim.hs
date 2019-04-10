@@ -310,11 +310,11 @@ popModality parent gamma eliminee tyEliminee eliminators result tyResult =
     (Pair2 dmu1 elim1 : eliminators') -> do
       let dgamma' = ctx'mode gamma
       let ModedModality d1a mu1 = dmu1
-      d1b <- newMetaMode (Just parent) (crispModedModality dgamma' :\\ gamma)
+      d1b <- newMetaModeNoCheck (Just parent) (crispModedModality dgamma' :\\ gamma)
                "Inferring output mode of next implicit elimination."
-      mu1a <- newMetaModty (Just parent) (crispModedModality dgamma' :\\ gamma)
+      mu1a <- newMetaModtyNoCheck (Just parent) (crispModedModality dgamma' :\\ gamma)
                 "Inferring modality of next implicit elimination."
-      mu1b <- newMetaModty (Just parent) (crispModedModality dgamma' :\\ gamma) $
+      mu1b <- newMetaModtyNoCheck (Just parent) (crispModedModality dgamma' :\\ gamma) $
         "Inferring composite of the modalities of all eliminations as of (not including) the next implicit one, " ++
         "until (and including) the next explicit one."
       let dmu1a = ModedModality d1a mu1a

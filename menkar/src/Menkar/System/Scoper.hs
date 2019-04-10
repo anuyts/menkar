@@ -9,17 +9,17 @@ import Data.Void
 class SysSyntax (Term sys) sys => SysScoper sys where
   scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void -> 
     Raw.Qualified String -> Maybe (Raw.Expr) -> sc (Annotation sys v)
-  newMetaMode :: (MonadScoper sys sc, DeBruijnLevel v) =>
+  newMetaModeNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>
     Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Mode sys v)
-  newMetaModty :: (MonadScoper sys sc, DeBruijnLevel v) =>
+  newMetaModtyNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>
     Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Modality sys v)
 
-newMetaModedModality :: (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
+newMetaModedModalityNoCheck :: (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   String ->
   sc (ModedModality sys v)
-newMetaModedModality parent gamma reason = do
-  d <- newMetaMode parent gamma reason
-  mu <- newMetaModty parent gamma reason
+newMetaModedModalityNoCheck parent gamma reason = do
+  d <- newMetaModeNoCheck parent gamma reason
+  mu <- newMetaModtyNoCheck parent gamma reason
   return $ ModedModality d mu

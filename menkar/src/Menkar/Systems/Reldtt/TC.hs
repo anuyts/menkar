@@ -221,7 +221,7 @@ instance SysTC Reldtt where
       SysTermModty mu2 -> do
         case mu2 of
           ModtyTermChain chmu2 -> do
-              chmu1orig <- newMetaModty (Just parent) gammaOrig "Inferring underlying modality."
+              chmu1orig <- newMetaModtyNoCheck (Just parent) gammaOrig "Inferring underlying modality."
               let chmu1 = subst <$> chmu1orig
               let dom1 = _chainModty'dom chmu1
               let cod1 = _chainModty'cod chmu1
