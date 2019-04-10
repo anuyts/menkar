@@ -349,7 +349,9 @@ instance SysWHN Reldtt where
             _ -> return $ BareMode $ ModeTermSuc d
         ModeTermOmega -> return $ BareMode $ ModeTermOmega
       SysTermModty mu -> case mu of
-        ModtyTermChain mu -> BareChainModty <$> whnormalizeChainModty parent gamma mu reason
+        ModtyTermChain mu -> returnSysT
+          -- ModtyTermChain is a constructor, don't normalize under it!
+          --BareChainModty <$> whnormalizeChainModty parent gamma mu reason
         ModtyTermDiv rho mu -> returnSysT -- TODO
         ModtyTermApproxLeftAdjointProj ddom dcod mu -> do
           mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty dcod ddom) reason

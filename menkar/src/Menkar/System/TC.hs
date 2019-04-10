@@ -43,7 +43,7 @@ class SysWHN sys => SysTC sys where
     [Int] ->
     tc ()
   -- | see Menkar.TC.Solve.checkEta.
-  -- | This will generally yield false, unless a system introduces types with eta via SysTerm.
+  -- | This will generally yield false (true?), unless a system introduces types with eta via SysTerm.
   -- | ABOLISH THIS: eta isn't supported for non-universe types.
   checkEtaWHNSysTy :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
