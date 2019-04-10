@@ -72,7 +72,7 @@ checkConstraint parent = case constraint'judgement parent of
 
   JudEta gamma t tyT -> case t of
     Expr2 (TermMeta MetaBlocked meta (Compose depcies) maybeAlg) -> do
-      maybeT <- awaitMetaTerm parent "If it's solved, then I needn't bother." meta depcies
+      maybeT <- awaitMeta parent "If it's solved, then I needn't bother." meta depcies
       case maybeT of
         Nothing -> void $ checkEta parent gamma t tyT
         Just _ -> return () -- every known term is obviously equal to its eta-expansion.

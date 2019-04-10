@@ -43,7 +43,7 @@ class (
       @'newMetaThingNoCheck'@ should only be used when you are sure the meta will be type-checked
       (in an appropriate judgement) later on.
   -}
-  newMetaThingNoCheck :: forall v descr t .
+  newMetaThingNoCheck :: forall sys v descr t .
     (DeBruijnLevel v, AllowsMetas sys descr t) =>
     Maybe (Constraint sys)
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
@@ -89,13 +89,7 @@ class (
          are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
          run with the soluiton.
       It is an error to await the same meta twice. -}
-  awaitMeta :: forall descr t v .
-    AllowsMetas sys descr t =>
-    Constraint sys -> String -> Int -> [Term sys v] -> whn (Maybe (t v))
-
-awaitMetaTerm :: forall whn sys v .
-  MonadWHN sys whn => Constraint sys -> String -> Int -> [Term sys v] -> whn (Maybe (Term sys v))
-awaitMetaTerm = awaitMeta
+  awaitMeta :: Constraint sys -> String -> Int -> [Term sys v] -> whn (Maybe (Term sys v))
 
 instance (MonadWHN sys whn, MonadTrans mT, MonadFail (mT whn)) => MonadWHN sys (mT whn) where
   awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
@@ -126,14 +120,13 @@ class (
   addConstraintReluctantly :: Constraint sys -> tc ()
   {-| Provide a solution for the meta. All continuations thus unblocked are added to the task stack.
       Return @'Nothing'@ if you don't want to solve the meta. -}
-  solveMeta :: forall descr t v .
-    (AllowsMetas sys descr t) =>
+  solveMeta ::
     Constraint sys ->
     Int ->
     (forall v .
       (Eq v, DeBruijnLevel v) =>
       Ctx Type sys v Void ->
-      tc (Maybe (t v))
+      tc (Maybe (Term sys v))
     ) -> tc ()
   --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
   ---}
@@ -149,17 +142,6 @@ class (
   --leqMod :: Modality sys v -> Modality sys v -> tc Bool
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
   --selfcontained :: Constraint sys -> tc () -> tc ()
-
-solveMetaTerm :: forall sys tc v .
-    (MonadTC sys tc) =>
-    Constraint sys ->
-    Int ->
-    (forall v .
-      (Eq v, DeBruijnLevel v) =>
-      Ctx Type sys v Void ->
-      tc (Maybe (Term sys v))
-    ) -> tc ()
-solveMetaTerm = solveMeta
 
 await :: (MonadWHN sys whn) =>
   Constraint sys -> String -> Term sys v -> whn (Maybe (Term sys v))
