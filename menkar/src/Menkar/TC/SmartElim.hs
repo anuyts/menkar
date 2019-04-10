@@ -281,8 +281,8 @@ insertImplicitArgument parent gamma eliminee piBinding dmuInfer eliminators resu
   let dmuArg = _segment'modty $ binding'segment $ piBinding
   let dmuElimTotal = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
   let tyArg = _segment'content $ binding'segment $ piBinding
-  arg <- newMetaTerm (Just parent) (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElimTotal :\\ gamma)
-           tyArg MetaBlocked "Inferring implicit argument."
+  arg <- newMetaTermNoCheck (Just parent) (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> dmuElimTotal :\\ gamma)
+           {-tyArg-} MetaBlocked Nothing "Inferring implicit argument."
   apply parent gamma eliminee piBinding Nothing arg dmuInfer eliminators result tyResult
 
 elimineeMode ::
