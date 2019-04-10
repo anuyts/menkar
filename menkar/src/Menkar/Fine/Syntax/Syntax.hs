@@ -381,6 +381,11 @@ deriving instance (SysSyntax (Term sys) sys) =>
 
 type Term = Expr2 TermNV
 
+class (Functor t, Foldable t, Traversable t, CanSwallow (Term sys) t) => AllowsMetas sys descr t where
+  hackMeta :: MetaNeutrality -> Int -> (Compose [] (Term sys) v) -> descr v -> t v
+instance (SysSyntax (Term sys) sys) => AllowsMetas sys (Compose Maybe (Algorithm sys)) (Term sys) where
+  hackMeta neutrality meta depcies descr = Expr2 $ TermMeta neutrality meta depcies descr
+  
 ------------------------------------
 
 --data SegmentInfo = SegmentInfo {name :: String}
