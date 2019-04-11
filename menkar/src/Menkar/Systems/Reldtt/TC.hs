@@ -135,6 +135,16 @@ newRelatedChainModty parent gammaOrig gamma subst partialInv chainMu2 alternativ
 
 ------------------------------------------------
 
+checkKnownModtyRel :: forall tc v .
+  (MonadTC Reldtt tc, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  ModRel ->
+  Ctx (Twice2 Type) Reldtt v Void ->
+  KnownModty v ->
+  KnownModty v ->
+  tc ()
+checkKnownModtyRel parent rel gamma kmu1 kmu2 = _checkKnownModtyRel
+
 checkWHNChainModtyRel :: forall tc v .
   (MonadTC Reldtt tc, DeBruijnLevel v) =>
   Constraint Reldtt ->
@@ -146,12 +156,34 @@ checkWHNChainModtyRel :: forall tc v .
 checkWHNChainModtyRel parent rel gamma chmu1 chmu2 = do
   case (chmu1, chmu2) of
     (ChainModtyKnown kmu1,
-     ChainModtyKnown kmu2) -> _
+     ChainModtyKnown kmu2) -> checkKnownModtyRel parent rel gamma kmu1 kmu2
       
     (ChainModtyKnown kmu1, _) -> tcFail parent "False."
     
     (ChainModtyLink knu1 termRho1 chainSigma1,
-     ChainModtyLink knu2 termRho2 chainSigma2) -> _
+     ChainModtyLink knu2 termRho2 chainSigma2) -> do
+      checkKnownModtyRel parent rel gamma knu1 knu2
+      addNewConstraint
+        (JudTermRel (Eta True)
+          eqDeg -- Neutral modalities can only be comparable if they are equal.
+          gamma
+          (Twice2 termRho1 termRho2)
+          (Twice2
+            (BareSysType $ SysTypeModty (_chainModty'cod chainSigma1) (_knownModty'dom knu1))
+            (BareSysType $ SysTypeModty (_chainModty'cod chainSigma2) (_knownModty'dom knu2))
+          )
+        )
+        (Just parent)
+        "Relating first neutral components."
+      addNewConstraint
+        (JudModalityRel rel
+          gamma
+          chainSigma1 chainSigma2
+          (_chainModty'dom chainSigma1)
+          (_chainModty'cod chainSigma1)
+        )
+        (Just parent)
+        "Relating part after first neutral components."
       
     (ChainModtyLink knu1 termRho1 chainSigma1, _) -> tcFail parent "False."
 
