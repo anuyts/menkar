@@ -19,6 +19,7 @@ import Data.Void
 import Data.Functor.Compose
 import Control.Lens
 import GHC.Generics
+import Control.Monad.Writer.Lazy
 
 {-| Returns the codomain and domain IN THAT ORDER.
 -}
@@ -132,6 +133,44 @@ newRelatedChainModty :: forall tc v vOrig .
 newRelatedChainModty parent gammaOrig gamma subst partialInv chainMu2 alternative = _
 -}
 
+------------------------------------------------
+
+checkWHNChainModtyRel :: forall tc v .
+  (MonadTC Reldtt tc, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  ModRel ->
+  Ctx (Twice2 Type) Reldtt v Void ->
+  ChainModty v ->
+  ChainModty v ->
+  tc ()
+checkWHNChainModtyRel parent rel gamma chmu1 chmu2 = do
+  case (chmu1, chmu2) of
+    (ChainModtyKnown kmu1,
+     ChainModtyKnown kmu2) -> _
+      
+    (ChainModtyKnown kmu1, _) -> tcFail parent "False."
+    
+    (ChainModtyLink knu1 termRho1 chainSigma1,
+     ChainModtyLink knu2 termRho2 chainSigma2) -> _
+      
+    (ChainModtyLink knu1 termRho1 chainSigma1, _) -> tcFail parent "False."
+
+    (ChainModtyMeta _ _ _ _, _) -> unreachable
+
+tryToSolveChainModty :: forall tc v .
+  (MonadTC Reldtt tc, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  ModRel ->
+  Ctx (Twice2 Type) Reldtt v Void ->
+  ChainModty v {-^ Blocked -} ->
+  ChainModty v ->
+  tc ()
+tryToSolveChainModty parent rel gamma chmu1 chmu2 = do
+  case rel of
+    ModLeq -> tcFail parent "Cannot solve inequality: one side is blocked on a meta-variable."
+    ModEq -> return ()
+  _tryToSolveChainModty
+
 checkChainModtyRel :: forall tc v .
   (MonadTC Reldtt tc, DeBruijnLevel v) =>
   Constraint Reldtt ->
@@ -140,7 +179,16 @@ checkChainModtyRel :: forall tc v .
   ChainModty v ->
   ChainModty v ->
   tc ()
-checkChainModtyRel parent rel gamma chmu1 chmu2 = _checkChainModtyRel
+checkChainModtyRel parent rel gamma chmu1 chmu2 = do
+  (chmu1, metasMu1) <- runWriterT $ whnormalizeChainModty parent (fstCtx gamma) chmu1 "Weak-head-normalizing first modality."
+  (chmu2, metasMu2) <- runWriterT $ whnormalizeChainModty parent (sndCtx gamma) chmu2 "Weak-head-normalizing second modality."
+  case (metasMu1, metasMu2) of
+    ([], []) -> checkWHNChainModtyRel parent rel gamma chmu1 chmu2
+    (_ , []) -> tryToSolveChainModty parent rel          gamma  chmu1 chmu2
+    ([], _ ) -> tryToSolveChainModty parent rel (flipCtx gamma) chmu2 chmu1
+    (_ , _ ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
+
+------------------------------------------------
 
 instance SysTC Reldtt where
 
@@ -259,6 +307,8 @@ instance SysTC Reldtt where
 
       SysTermChainModtyInDisguise _ -> unreachable
 
+  ---------------------------------------------------------
+
   checkTermRelSysTermWHNTermNoEta parent ddeg gamma syst1 t2 ty1 ty2 metasTy1 metasTy2 = do
 
     syst2 <- case t2 of
@@ -331,3 +381,5 @@ instance SysTC Reldtt where
       (SysTermModty mu1, _) -> tcFail parent "False."
 
       (SysTermChainModtyInDisguise _, _) -> unreachable
+
+  ---------------------------------------------------------
