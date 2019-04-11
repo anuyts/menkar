@@ -132,6 +132,16 @@ newRelatedChainModty :: forall tc v vOrig .
 newRelatedChainModty parent gammaOrig gamma subst partialInv chainMu2 alternative = _
 -}
 
+checkChainModtyRel :: forall tc v .
+  (MonadTC Reldtt tc, DeBruijnLevel v) =>
+  Constraint Reldtt ->
+  ModRel ->
+  Ctx (Twice2 Type) Reldtt v Void ->
+  ChainModty v ->
+  ChainModty v ->
+  tc ()
+checkChainModtyRel parent rel gamma chmu1 chmu2 = _checkChainModtyRel
+
 instance SysTC Reldtt where
 
   ---------------------------------------------------------
@@ -248,3 +258,76 @@ instance SysTC Reldtt where
           
 
       SysTermChainModtyInDisguise _ -> unreachable
+
+  checkTermRelSysTermWHNTermNoEta parent ddeg gamma syst1 t2 ty1 ty2 metasTy1 metasTy2 = do
+
+    syst2 <- case t2 of
+      (Expr2 (TermSys syst2)) -> return syst2
+      _ -> tcFail parent "False."
+
+    case (syst1, syst2) of
+
+      (SysTermMode d1, SysTermMode d2) -> case (d1, d2) of
+        (ModeTermZero, ModeTermZero) -> return ()
+        (ModeTermSuc dpred1, ModeTermSuc dpred2) ->
+          addNewConstraint
+            (JudTermRel (Eta True) eqDeg
+              gamma
+              (Twice2 dpred1 dpred2)
+              (Twice2 (BareSysType SysTypeMode) (BareSysType SysTypeMode))
+            )
+            (Just parent)
+            "Relating predecessors"
+        (ModeTermOmega, ModeTermOmega) -> return ()
+        (_, _) -> tcFail parent "False."
+        
+      (SysTermMode d1, _) -> tcFail parent "False."
+
+      (SysTermModty mu1, SysTermModty mu2) -> case (mu1, mu2) of
+        
+        (ModtyTermChain chmu1,
+         ModtyTermChain chmu2) -> do
+          parent <- defConstraint
+            (JudModalityRel ModEq gamma chmu1 chmu2 (Expr2 TermWildcard) (Expr2 TermWildcard))
+            (Just parent)
+            "Relating underlying modalities."
+          checkChainModtyRel parent ModEq gamma chmu1 chmu2
+          
+        (ModtyTermChain chmu1, _) -> tcFail parent "False."
+        
+        (ModtyTermDiv _ _, _) -> unreachable -- only for prettyprinting
+        
+        (ModtyTermApproxLeftAdjointProj ddom1 dcod1 nu1,
+         ModtyTermApproxLeftAdjointProj ddom2 dcod2 nu2) -> do
+          addNewConstraint
+            (JudTermRel (Eta True) eqDeg
+              gamma
+              (Twice2 ddom1 ddom2)
+              (Twice2 (BareSysType SysTypeMode) (BareSysType SysTypeMode))
+            )
+            (Just parent)
+            "Relating domains."
+          addNewConstraint
+            (JudTermRel (Eta True) eqDeg
+              gamma
+              (Twice2 dcod1 dcod2)
+              (Twice2 (BareSysType SysTypeMode) (BareSysType SysTypeMode))
+            )
+            (Just parent)
+            "Relating codomains."
+          addNewConstraint
+            (JudTermRel (Eta True) eqDeg
+              gamma
+              (Twice2 nu1 nu2)
+              (Twice2 (BareSysType $ SysTypeModty ddom1 dcod1) (BareSysType $ SysTypeModty ddom2 dcod2))
+            )
+            (Just parent)
+            "Relating argument modalitiies."
+          
+        (ModtyTermApproxLeftAdjointProj ddom1 dcod1 nu1, _) -> tcFail parent "False."
+
+        (ModtyTermUnavailable ddom1 dcod1, _) -> unreachable -- only for prettyprinting
+        
+      (SysTermModty mu1, _) -> tcFail parent "False."
+
+      (SysTermChainModtyInDisguise _, _) -> unreachable
