@@ -20,6 +20,9 @@ import Data.Functor.Compose
 import Control.Lens
 import GHC.Generics
 import Control.Monad.Writer.Lazy
+import Data.List
+import Data.List.Unique
+import Data.Proxy
 
 {-| Returns the codomain and domain IN THAT ORDER.
 -}
@@ -222,7 +225,30 @@ tryToSolveChainModty parent rel gamma chmu1 chmu2 = do
   case rel of
     ModLeq -> tcFail parent "Cannot solve inequality: one side is blocked on a meta-variable."
     ModEq -> return ()
-  _tryToSolveChainModty
+  case chmu1 of
+    ChainModtyMeta dom1 cod1 meta1 (Compose depcies1) -> do
+      -- This is regrettable code duplication from Menkar.TC.Solve.tryToSolveMeta
+      let getVar2 :: Term sys v -> Maybe v
+          getVar2 (Var2 v) = Just v
+          getVar2 _ = Nothing
+      case sequenceA $ getVar2 <$> depcies1 of
+        -- Some dependency is not a variable
+        Nothing -> tcBlock parent "Cannot solve meta-variable: it has non-variable dependencies."
+        Just depcyVars -> do
+          let (_, repeatedVars, _) = complex depcyVars
+          case repeatedVars of
+            -- Some variables occur twice
+            _:_ -> tcBlock parent "Cannot solve meta-variable: it has undergone contraction of dependencies."
+            -- All variables are unique
+            [] -> solveMeta parent meta1 ( \ gammaOrig -> do
+                -- Turn list of variables into a function mapping variables from gammaOrig to variables from gamma
+                let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
+                let maybeSolution = sequenceA $ partialInv <$> chmu2
+                case maybeSolution of
+                  Nothing -> tcBlock parent "Cannot solve meta-variable: Solution has unallowed dependencies."
+                  Just solution -> return $ Just $ Expr2 $ TermSys $ SysTermChainModtyInDisguise $ solution
+              )
+    _ -> tcBlock parent "Cannot solve relation: one side is blocked on a meta-variable."
 
 checkChainModtyRel :: forall tc v .
   (MonadTC Reldtt tc, DeBruijnLevel v) =>
