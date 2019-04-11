@@ -23,6 +23,32 @@ import Control.Lens
 import Data.Void
 import GHC.Generics
 import Data.Functor.Compose
+import Data.Maybe
+
+{-| Compare known modalities, assuming they have the same type.
+    Return a boolean if they compare, or @Nothing@ in case of problems.
+-}
+relKnownModty :: forall v . ModRel -> KnownModty v -> KnownModty v -> Maybe Bool
+relKnownModty rel kmu1@(KnownModty snout1 tail1) kmu2@(KnownModty snout2 tail2) = do
+          (kmu1, kmu2) <-
+            case compare (_modtySnout'dom $ _knownModty'snout kmu1) (_modtySnout'dom $ _knownModty'snout kmu2) of
+              LT -> (, kmu2) <$> forceDom snout1 tail1 (_modtySnout'dom snout2) (_modtyTail'dom tail2)
+              EQ -> Just (kmu1, kmu2)
+              GT -> (kmu1, ) <$> forceDom snout2 tail2 (_modtySnout'dom snout1) (_modtyTail'dom tail1)
+          (kmu1, kmu2) <-
+            case compare (_modtySnout'cod $ _knownModty'snout kmu1) (_modtySnout'cod $ _knownModty'snout kmu2) of
+              LT -> (, kmu2) <$> forceCod snout1 tail1 (_modtySnout'cod snout2) (_modtyTail'cod tail2)
+              EQ -> Just (kmu1, kmu2)
+              GT -> (kmu1, ) <$> forceCod snout2 tail2 (_modtySnout'cod snout1) (_modtyTail'cod tail1)
+          let opSnout = case rel of
+                ModEq -> (==)
+                ModLeq -> (<=)
+          let relSnout = and $ getZipList $
+                (opSnout) <$> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu1)
+                          <*> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu2)
+          return $ relSnout && relTail rel kmu1 kmu2
+
+----------------------------------
 
 compModtySnout :: ModtySnout -> KnownModty v -> ModtySnout
 compModtySnout (ModtySnout kmid kcod []) mu =
@@ -389,32 +415,18 @@ instance SysWHN Reldtt where
       --SysTypeModty ddom dcod -> returnSysT
       --_ -> _whnormalizeSys
 
-  leqMod parent gamma mu1 mu2 ddom dcod reason = runMaybeT $ do
+  leqMod parent gamma mu1 mu2 ddom dcod reason = do
     -- You need to normalize: a tail might become empty!
-    (mu1, metasMu1) <- lift $ runWriterT $ whnormalizeChainModty parent gamma mu1 reason
-    (mu2, metasMu2) <- lift $ runWriterT $ whnormalizeChainModty parent gamma mu2 reason
+    (mu1, metasMu1) <- runWriterT $ whnormalizeChainModty parent gamma mu1 reason
+    (mu2, metasMu2) <- runWriterT $ whnormalizeChainModty parent gamma mu2 reason
     case (metasMu1, metasMu2) of
       -- Both are normal
       ([], []) -> case (mu1, mu2) of
-        (ChainModtyKnown kmu1@(KnownModty snout1 tail1), ChainModtyKnown kmu2@(KnownModty snout2 tail2)) -> do
-          (kmu1, kmu2) <- MaybeT $ return $
-            case compare (_modtySnout'dom $ _knownModty'snout kmu1) (_modtySnout'dom $ _knownModty'snout kmu2) of
-              LT -> (, kmu2) <$> forceDom snout1 tail1 (_modtySnout'dom snout2) (_modtyTail'dom tail2)
-              EQ -> Just (kmu1, kmu2)
-              GT -> (kmu1, ) <$> forceDom snout2 tail2 (_modtySnout'dom snout1) (_modtyTail'dom tail1)
-          (kmu1, kmu2) <- MaybeT $ return $
-            case compare (_modtySnout'cod $ _knownModty'snout kmu1) (_modtySnout'cod $ _knownModty'snout kmu2) of
-              LT -> (, kmu2) <$> forceCod snout1 tail1 (_modtySnout'cod snout2) (_modtyTail'cod tail2)
-              EQ -> Just (kmu1, kmu2)
-              GT -> (kmu1, ) <$> forceCod snout2 tail2 (_modtySnout'cod snout1) (_modtyTail'cod tail1)
-          let leqSnout = and $ getZipList $
-                (<=) <$> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu1)
-                     <*> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu2)
-          return $ leqSnout && leqTail kmu1 kmu2
+        (ChainModtyKnown kmu1, ChainModtyKnown kmu2) -> return $ Just $ fromMaybe False $ relKnownModty ModLeq kmu1 kmu2
         -- There are neutrals involved: don't bother.
-        (_, _) -> return False
+        (_, _) -> return $ Just False
       -- Either is not normal
-      (_ , _ ) -> MaybeT $ return $ Nothing
+      (_ , _ ) -> return $ Nothing
 
   leqDeg parent gamma deg1 deg2 d reason = do
     (deg1, metasDeg1) <- runWriterT $ whnormalizeDeg parent gamma deg1 reason

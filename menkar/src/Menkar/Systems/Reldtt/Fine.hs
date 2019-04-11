@@ -101,36 +101,40 @@ numberfyOmegasForDomainlessTail mu@(ModtySnout idom icod krevdegs) = ModtySnout 
 
 {-| Precondition: Tails start at the same point and have the same (co)domain.
     Precondition for correct result: The snouts are leq. -} 
-leqTail_ :: ModtySnout -> ModtySnout -> ModtyTail v -> ModtyTail v -> Bool
-leqTail_ _ _ TailProblem _ = False
-leqTail_ _ _ _ TailProblem = False
-leqTail_ _ _ TailEmpty TailEmpty = True
-leqTail_ _ _ TailEmpty _ = unreachable
-leqTail_ _ _ _ TailEmpty = unreachable
-leqTail_ _ _ (TailDisc dcod) (TailDisc dcod') = True
-leqTail_ _ _ (TailDisc dcod) (TailForget ddom') = unreachable
-leqTail_ _ _ (TailDisc dcod) (TailDiscForget ddom' dcod') = unreachable
-leqTail_ _ _ (TailDisc dcod) (TailCont d') = unreachable
-leqTail_ _ _ (TailForget ddom) (TailDisc dcod') = unreachable
-leqTail_ _ _ (TailForget ddom) (TailForget ddom') = True
-leqTail_ _ _ (TailForget ddom) (TailDiscForget ddom' dcod') = unreachable
-leqTail_ _ _ (TailForget ddom) (TailCont d') = unreachable
-leqTail_ _ _ (TailDiscForget ddom dcod) (TailDisc dcod') = unreachable
-leqTail_ _ _ (TailDiscForget ddom dcod) (TailForget ddom') = unreachable
-leqTail_ _ _ (TailDiscForget ddom dcod) (TailDiscForget ddom' dcod') = True
-leqTail_ _ _ (TailDiscForget ddom dcod) (TailCont d') = True
-  -- The only way that this can be false, is when the left snout ends in Top, but then
+relTail_ :: ModRel -> ModtySnout -> ModtySnout -> ModtyTail v -> ModtyTail v -> Bool
+relTail_ rel _ _ TailProblem _ = False
+relTail_ rel _ _ _ TailProblem = False
+relTail_ rel _ _ TailEmpty TailEmpty = True
+relTail_ rel _ _ TailEmpty _ = unreachable
+relTail_ rel _ _ _ TailEmpty = unreachable
+relTail_ rel _ _ (TailDisc dcod) (TailDisc dcod') = True
+relTail_ rel _ _ (TailDisc dcod) (TailForget ddom') = unreachable
+relTail_ rel _ _ (TailDisc dcod) (TailDiscForget ddom' dcod') = unreachable
+relTail_ rel _ _ (TailDisc dcod) (TailCont d') = unreachable
+relTail_ rel _ _ (TailForget ddom) (TailDisc dcod') = unreachable
+relTail_ rel _ _ (TailForget ddom) (TailForget ddom') = True
+relTail_ rel _ _ (TailForget ddom) (TailDiscForget ddom' dcod') = unreachable
+relTail_ rel _ _ (TailForget ddom) (TailCont d') = unreachable
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailDisc dcod') = unreachable
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailForget ddom') = unreachable
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailDiscForget ddom' dcod') = True
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailCont d') = case rel of
+  ModLeq -> True
+  ModEq -> False
+  -- The only way that @ModLeq@ can be false, is when the left snout ends in Top, but then
   -- if the snouts are leq, then so does the right one, so you can't have TailCont.
-leqTail_ _ _ (TailCont d) (TailDisc dcod') = unreachable
-leqTail_ _ _ (TailCont d) (TailForget ddom') = unreachable
-leqTail_ _ snoutR (TailCont d) (TailDiscForget ddom' dcod') = case _modtySnout'degreesReversed snoutR of
-  [] -> False
-  (KnownDegTop : _) -> True
-  _ -> False
-leqTail_ _ _ (TailCont d) (TailCont d') = True
+relTail_ rel _ _ (TailCont d) (TailDisc dcod') = unreachable
+relTail_ rel _ _ (TailCont d) (TailForget ddom') = unreachable
+relTail_ rel _ snoutR (TailCont d) (TailDiscForget ddom' dcod') = case rel of
+  ModEq -> False
+  ModLeq -> case _modtySnout'degreesReversed snoutR of
+    [] -> False
+    (KnownDegTop : _) -> True
+    _ -> False
+relTail_ rel _ _ (TailCont d) (TailCont d') = True
 
-leqTail :: KnownModty v -> KnownModty v -> Bool
-leqTail (KnownModty snoutL tailL) (KnownModty snoutR tailR) = leqTail_ snoutL snoutR tailL tailR
+relTail :: ModRel -> KnownModty v -> KnownModty v -> Bool
+relTail rel (KnownModty snoutL tailL) (KnownModty snoutR tailR) = relTail_ rel snoutL snoutR tailL tailR
 
 data KnownModty v = KnownModty {_knownModty'snout :: ModtySnout, _knownModty'tail :: ModtyTail v}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))

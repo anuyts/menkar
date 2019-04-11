@@ -143,7 +143,28 @@ checkKnownModtyRel :: forall tc v .
   KnownModty v ->
   KnownModty v ->
   tc ()
-checkKnownModtyRel parent rel gamma kmu1 kmu2 = _checkKnownModtyRel
+checkKnownModtyRel parent rel gamma kmu1 kmu2 = do
+  addNewConstraint
+    (JudTermRel (Eta True) eqDeg
+      gamma
+      (Twice2 (_knownModty'dom kmu1) (_knownModty'dom kmu2))
+      (Twice2 (BareSysType SysTypeMode) (BareSysType SysTypeMode))
+    )
+    (Just parent)
+    "Relating domains."
+  addNewConstraint
+    (JudTermRel (Eta True) eqDeg
+      gamma
+      (Twice2 (_knownModty'cod kmu1) (_knownModty'cod kmu2))
+      (Twice2 (BareSysType SysTypeMode) (BareSysType SysTypeMode))
+    )
+    (Just parent)
+    "Relating codomains."
+  let maybeResult = relKnownModty rel kmu1 kmu2
+  case maybeResult of
+    Nothing -> tcFail parent "I need to relate modalities that are not of the same modes."
+    Just False -> tcFail parent "False."
+    Just True -> return ()
 
 checkWHNChainModtyRel :: forall tc v .
   (MonadTC Reldtt tc, DeBruijnLevel v) =>
