@@ -9,6 +9,7 @@ import Menkar.Fine.Context
 import Menkar.System.Fine.Multimode
 
 import Data.Functor.Functor1
+import Data.Omissible
 
 import GHC.Generics
 import Data.Functor.Const
@@ -23,9 +24,9 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type Classif (ModedModality sys) = Mode sys :*: Mode sys -- domain and codomain
   type Relation (ModedModality sys) = Const ModRel
   analyze token fromType h gamma (MaybeClassified (ModedModality ddom dcod mu) _ maybeRel) = Just $ do
-    rddom <- h id gamma (MaybeClassified ddom (Just U1) (toIfRelate token U1)) (AddressInfo ["domain"] True)
-    rdcod <- h id gamma (MaybeClassified dcod (Just U1) (toIfRelate token U1)) (AddressInfo ["codomain"] True)
-    rmu   <- h id gamma (MaybeClassified mu (Just $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True)
+    rddom <- h id gamma (MaybeClassified ddom (Just U1) (toIfRelate token U1)) (AddressInfo ["domain"] True omit)
+    rdcod <- h id gamma (MaybeClassified dcod (Just U1) (toIfRelate token U1)) (AddressInfo ["codomain"] True omit)
+    rmu   <- h id gamma (MaybeClassified mu (Just $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True omit)
     return $ case token of
         TokenSubterms -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rdcod) (unbox1 rmu)
         TokenTypes -> BoxClassif $ ddom :*: dcod
@@ -40,10 +41,10 @@ instance (SysAnalyzer sys,
   analyze token fromType h gamma (MaybeClassified (Binding seg body) maybeCl maybeDDeg) = Just $ do
     rseg <- h id gamma
       (MaybeClassified seg (fst1 <$> maybeCl) maybeDDeg)
-      (AddressInfo ["segment"] False)
+      (AddressInfo ["segment"] False omit)
     rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
       (MaybeClassified body (unComp1 . snd1 <$> maybeCl) (fmap VarWkn <$> maybeDDeg))
-      (AddressInfo ["body"] False)
+      (AddressInfo ["body"] False omit)
     return $ case token of
       TokenSubterms -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
       TokenTypes -> BoxClassif $ unboxClassif rseg :*: Comp1 (unboxClassif rbody)
@@ -65,7 +66,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       UniHS d -> do
         rd <- h id (crispModedModality dgamma' :\\ gamma)
           (MaybeClassified d (Just U1) (toIfRelate token U1))
-          (AddressInfo ["mode"] False)
+          (AddressInfo ["mode"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ UniHS (unbox1 rd)
           TokenTypes -> BoxClassif $ Compose $ Just $ d
@@ -80,7 +81,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       UnitType -> handleConstant
 
       BoxType segment -> do
-        rsegment <- h id gamma (MaybeClassified segment (Just U1) maybeDDeg) (AddressInfo ["segment"] False)
+        rsegment <- h id gamma (MaybeClassified segment (Just U1) maybeDDeg)
+          (AddressInfo ["segment"] False EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ BoxType $ unbox1 rsegment
           TokenTypes -> BoxClassif $ Compose Nothing
@@ -89,16 +91,17 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       NatType -> handleConstant
 
       EqType tyAmbient tL tR -> do
-        rtyAmbient <- h id gamma (MaybeClassified tyAmbient (Just U1) maybeDDeg) (AddressInfo ["ambient type"] False)
-        rtL <- h id gamma (MaybeClassified tL (Just tyAmbient) maybeDDeg) (AddressInfo ["left equand"] False)
-        rtR <- h id gamma (MaybeClassified tR (Just tyAmbient) maybeDDeg) (AddressInfo ["right equand"] False)
+        rtyAmbient <- h id gamma (MaybeClassified tyAmbient (Just U1) maybeDDeg) (AddressInfo ["ambient type"] False omit)
+        rtL <- h id gamma (MaybeClassified tL (Just tyAmbient) maybeDDeg) (AddressInfo ["left equand"] False omit)
+        rtR <- h id gamma (MaybeClassified tR (Just tyAmbient) maybeDDeg) (AddressInfo ["right equand"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
           TokenTypes -> BoxClassif $ Compose Nothing
           TokenRelate -> Unit2
 
       SysType systy -> do
-        rsysty <- h id gamma (MaybeClassified systy maybeMaybeD maybeDDeg) (AddressInfo ["system-specific type"] False)
+        rsysty <- h id gamma (MaybeClassified systy maybeMaybeD maybeDDeg)
+          (AddressInfo ["system-specific type"] False EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ SysType $ unbox1 rsysty
           TokenTypes -> BoxClassif $ unboxClassif $ rsysty
@@ -114,7 +117,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             --      Just (Compose (Just d)) -> Just $ U1 :*: Comp1 (hs2type $ UniHS $ VarWkn <$> d)
             rbinding <- h id gamma
               (MaybeClassified binding Nothing maybeDDeg)
-              (AddressInfo ["binding"] False)
+              (AddressInfo ["binding"] False EntirelyBoring)
             return $ case token of
               TokenSubterms -> Box1 $ binder $ unbox1 rbinding
               TokenTypes -> BoxClassif $ Compose Nothing

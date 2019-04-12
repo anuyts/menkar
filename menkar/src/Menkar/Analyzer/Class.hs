@@ -5,6 +5,7 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 
 import Data.Functor.Coerce
+import Data.Omissible
 
 import Control.Lens
 import Data.Kind hiding (Type)
@@ -25,10 +26,16 @@ data MaybeClassified (option :: AnalyzerOption) (t :: * -> *) (v :: *) = MaybeCl
   _maybeClassified'maybeClassifier :: Maybe (Classif t v),
   _maybeClassified'relation :: IfRelate option (Relation t v)}
 
+data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
+
+instance Omissible Boredom where
+  omit = WorthScheduling
+
 data AddressInfo = AddressInfo {
   {-| Deepest last -}
   _addressInfo'address :: [String],
-  _addressInfo'shouldWHN :: Bool
+  _addressInfo'shouldWHN :: Bool,
+  _addressInfo'boredom :: Boredom
   }
 
 type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> * -> *) | result -> option
