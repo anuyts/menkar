@@ -22,18 +22,16 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type Classif (ModedModality sys) = Mode sys :*: Mode sys -- domain and codomain
   type Relation (ModedModality sys) = Const ModRel
   analyze token fromType h gamma (MaybeClassified (ModedModality ddom dcod mu) _ maybeRel) = Just $ do
-    rddom <- h id gamma (MaybeClassified ddom (Just U1) (Just U1)) (AddressInfo ["domain"] True)
-    rdcod <- h id gamma (MaybeClassified dcod (Just U1) (Just U1)) (AddressInfo ["codomain"] True)
+    rddom <- h id gamma (MaybeClassified ddom (Just U1) (toIfRelate token U1)) (AddressInfo ["domain"] True)
+    rdcod <- h id gamma (MaybeClassified dcod (Just U1) (toIfRelate token U1)) (AddressInfo ["codomain"] True)
     rmu   <- h id gamma (MaybeClassified mu (Just $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True)
     return $ case token of
         TokenSubterms -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rdcod) (unbox1 rmu)
         TokenTypes -> BoxClassif $ ddom :*: dcod
 
 instance (SysAnalyzer sys,
-          Analyzable sys (Type sys),
           Analyzable sys (rhs sys),
           Analyzable sys (Segment Type sys),
-          Relation (Type sys) ~ ModedDegree sys,
           Relation (rhs sys) ~ ModedDegree sys,
           Relation (Segment Type sys) ~ ModedDegree sys
          ) => Analyzable sys (Binding Type rhs sys) where
@@ -49,14 +47,11 @@ instance (SysAnalyzer sys,
     return $ case token of
       TokenSubterms -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
       TokenTypes -> BoxClassif $ unboxClassif rseg :*: Comp1 (unboxClassif rbody)
+      TokenRelate -> Unit2
 
 instance (SysAnalyzer sys,
           Analyzable sys (Segment Type sys),
-          Analyzable sys (Type sys),
-          Analyzable sys (Term sys),
           Classif (Term sys) ~ Type sys,
-          Relation (Type sys) ~ ModedDegree sys,
-          Relation (Term sys) ~ ModedDegree sys,
           Relation (Segment Type sys) ~ ModedDegree sys
          ) => Analyzable sys (UniHSConstructor sys) where
   
@@ -72,11 +67,12 @@ instance (SysAnalyzer sys,
       
       UniHS d -> do
         rd <- h id (crispModedModality dgamma' :\\ gamma)
-          (MaybeClassified d (Just U1) (Just U1))
+          (MaybeClassified d (Just U1) (toIfRelate token U1))
           (AddressInfo ["mode"] False)
         return $ case token of
           TokenSubterms -> Box1 $ UniHS (unbox1 rd)
           TokenTypes -> BoxClassif $ Compose $ Just $ d
+          TokenRelate -> Unit2
 
       Pi binding -> do
         let bindingClassif = case maybeMaybeD of
@@ -89,3 +85,11 @@ instance (SysAnalyzer sys,
         return $ case token of
           TokenSubterms -> Box1 $ Pi $ unbox1 rbinding
           TokenTypes -> BoxClassif $ Compose Nothing
+          TokenRelate -> Unit2
+
+instance SysAnalyzer sys => Analyzable sys (Type sys) where
+  type Relation (Type sys) = ModedDegree sys
+
+instance SysAnalyzer sys => Analyzable sys (Term sys) where
+  type Classif (Term sys) = Type sys
+  type Relation (Term sys) = ModedDegree sys

@@ -9,6 +9,8 @@ import Data.Functor.Coerce
 import Control.Lens
 import Data.Kind hiding (Type)
 import Data.Void
+import Data.Functor.Identity
+import GHC.Generics
 
 data AnalyzerOption = OptionSubterms | OptionTypes | OptionRelate
 data AnalyzerToken (option :: AnalyzerOption) where
@@ -18,10 +20,10 @@ data AnalyzerToken (option :: AnalyzerOption) where
 
 newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
-data MaybeClassified t v = MaybeClassified {
+data MaybeClassified (option :: AnalyzerOption) (t :: * -> *) (v :: *) = MaybeClassified {
   _maybeClassified'get :: t v,
   _maybeClassified'maybeClassifier :: Maybe (Classif t v),
-  _maybeClassified'maybeRelation :: Maybe (Relation t v)}
+  _maybeClassified'relation :: IfRelate option (Relation t v)}
 
 data AddressInfo = AddressInfo {
   {-| Deepest last -}
@@ -34,6 +36,18 @@ type instance AnalyzerResult OptionSubterms = Box1
 type instance AnalyzerResult OptionTypes = BoxClassif
 type instance AnalyzerResult OptionRelate = Unit2
 
+data IfRelate (option :: AnalyzerOption) a where
+  IfRelateSubterms :: IfRelate OptionSubterms a
+  IfRelateTypes :: IfRelate OptionTypes a
+  IfRelate :: a -> IfRelate OptionRelate a
+
+deriving instance Functor (IfRelate option)
+
+toIfRelate :: AnalyzerToken option -> a -> IfRelate option a
+toIfRelate TokenSubterms a = IfRelateSubterms
+toIfRelate TokenTypes a = IfRelateTypes
+toIfRelate TokenRelate a = IfRelate a
+
 {-| A supercombinator for type-checking, relatedness-checking, weak-head-normalization, normalization,
     weak-head-meta-resolution and more.
 
@@ -41,7 +55,7 @@ type instance AnalyzerResult OptionRelate = Unit2
     - From above, you get
       - a context,
       - an AST,
-      - maybe an expected classifier (which you probably don't need),
+      - maybe an expected classifier (which you probably don't need FOR TERMS),
       - maybe a relation.
     - For each subAST you pass back
       - an adapted context (+ weakening operation),
@@ -75,12 +89,12 @@ class (Functor t) => Analyzable sys t where
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
       Ctx lhs sys w Void ->
-      MaybeClassified s w ->
+      MaybeClassified option s w ->
       AddressInfo ->
       f (AnalyzerResult option s w)
     ) ->
     Ctx lhs sys v Void ->
-    MaybeClassified t v ->
+    MaybeClassified option t v ->
     Maybe (f (AnalyzerResult option t v))
 
 subtermsTyped :: forall sys f t v .
@@ -89,12 +103,12 @@ subtermsTyped :: forall sys f t v .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
-    MaybeClassified s w ->
+    MaybeClassified OptionSubterms s w ->
     AddressInfo ->
     f (s w)
   ) ->
   Ctx Type sys v Void ->
-  MaybeClassified t v ->
+  MaybeClassified OptionSubterms t v ->
   Maybe (f (t v))
 subtermsTyped h gamma maybeClassifiedT = fmap unbox1 <$> analyze TokenSubterms id
   (\ wkn gamma maybeClassifiedS addressInfo -> Box1 <$> h wkn gamma maybeClassifiedS addressInfo)
@@ -115,7 +129,7 @@ subterms :: forall sys f t v .
   Maybe (f (t v))
 subterms h gamma t = subtermsTyped
   (\ wkn gamma maybeClassifiedS addressInfo -> h wkn gamma (_maybeClassified'get maybeClassifiedS) addressInfo)
-  gamma (MaybeClassified t Nothing Nothing)
+  gamma (MaybeClassified t Nothing IfRelateSubterms)
 
 typetrick :: forall sys lhs f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
@@ -124,12 +138,12 @@ typetrick :: forall sys lhs f t v .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx lhs sys w Void ->
-    MaybeClassified s w ->
+    MaybeClassified OptionTypes s w ->
     AddressInfo ->
     f (Classif s w)
   ) ->
   Ctx lhs sys v Void ->
-  MaybeClassified t v ->
+  MaybeClassified OptionTypes t v ->
   Maybe (f (Classif t v))
 typetrick fromType h gamma maybeClassifiedT = fmap unboxClassif <$> analyze TokenTypes fromType
   (\ wkn gamma maybeClassifiedS addressInfo -> BoxClassif <$> h wkn gamma maybeClassifiedS addressInfo)
