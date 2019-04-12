@@ -77,16 +77,43 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 
       EmptyType -> handleConstant
 
+      UnitType -> handleConstant
+
+      BoxType segment -> do
+        rsegment <- h id gamma (MaybeClassified segment (Just U1) maybeDDeg) (AddressInfo ["segment"] False)
+        return $ case token of
+          TokenSubterms -> Box1 $ BoxType $ unbox1 rsegment
+          TokenTypes -> BoxClassif $ Compose Nothing
+          TokenRelate -> Unit2
+
+      NatType -> handleConstant
+
+      EqType tyAmbient tL tR -> do
+        rtyAmbient <- h id gamma (MaybeClassified tyAmbient (Just U1) maybeDDeg) (AddressInfo ["ambient type"] False)
+        rtL <- h id gamma (MaybeClassified tL (Just tyAmbient) maybeDDeg) (AddressInfo ["left equand"] False)
+        rtR <- h id gamma (MaybeClassified tR (Just tyAmbient) maybeDDeg) (AddressInfo ["right equand"] False)
+        return $ case token of
+          TokenSubterms -> Box1 $ EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
+          TokenTypes -> BoxClassif $ Compose Nothing
+          TokenRelate -> Unit2
+
+      SysType systy -> do
+        rsysty <- h id gamma (MaybeClassified systy maybeMaybeD maybeDDeg) (AddressInfo ["system-specific type"] False)
+        return $ case token of
+          TokenSubterms -> Box1 $ SysType $ unbox1 rsysty
+          TokenTypes -> BoxClassif $ unboxClassif $ rsysty
+          TokenRelate -> Unit2
+
     where handleBinder ::
             (Binding Type Term sys v -> UniHSConstructor sys v) -> Binding Type Term sys v ->
             _ (AnalyzerResult option (UniHSConstructor sys) v)
           handleBinder binder binding = do
-            let bindingClassif = case maybeMaybeD of
-                  Nothing -> Nothing
-                  Just (Compose Nothing) -> Nothing
-                  Just (Compose (Just d)) -> Just $ U1 :*: Comp1 (hs2type $ UniHS $ VarWkn <$> d)
+            --let bindingClassif = case maybeMaybeD of
+            --      Nothing -> Nothing
+            --      Just (Compose Nothing) -> Nothing
+            --      Just (Compose (Just d)) -> Just $ U1 :*: Comp1 (hs2type $ UniHS $ VarWkn <$> d)
             rbinding <- h id gamma
-              (MaybeClassified binding bindingClassif maybeDDeg)
+              (MaybeClassified binding Nothing maybeDDeg)
               (AddressInfo ["binding"] False)
             return $ case token of
               TokenSubterms -> Box1 $ binder $ unbox1 rbinding
