@@ -17,6 +17,7 @@ import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
 import Data.Void
+import Data.Maybe
 
 -------------------------
 
@@ -127,6 +128,30 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             TokenSubterms -> Box1 $ ty
             TokenTypes -> BoxClassif $ Compose Nothing
             TokenRelate -> Unit2
+
+instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
+  type Classif (ConstructorTerm sys) = Type sys
+  type Relation (ConstructorTerm sys) = ModedDegree sys
+  analyze token fromType h gamma (MaybeClassified t _ maybeRel) = Just $ case t of
+
+    ConsUniHS ty -> do
+      rty <- h id gamma (MaybeClassified ty Nothing maybeRel)
+        (AddressInfo ["UniHS-constructor"] False EntirelyBoring)
+      return $ case token of
+        TokenSubterms -> Box1 $ ConsUniHS $ unbox1 rty
+        TokenTypes -> BoxClassif $ hs2type $ UniHS $
+          fromMaybe (unVarFromCtx <$> ctx'mode gamma) $ getCompose $ unboxClassif rty
+        TokenRelate -> Unit2
+
+    Lam binding -> do
+      rbinding <- h id gamma (MaybeClassified binding Nothing maybeRel)
+        (AddressInfo ["binding"] False EntirelyBoring)
+      return $ case token of
+        TokenSubterms -> Box1 $ Lam $ unbox1 rbinding
+        TokenTypes ->
+          let (U1 :*: Comp1 ty) = unboxClassif rbinding
+          in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) (unType ty)
+        TokenRelate -> Unit2
 
 instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type Classif (Type sys) = U1

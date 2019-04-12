@@ -76,7 +76,7 @@ toIfRelate TokenRelate a = IfRelate a
 
     In option "types", the type-checker checks the subASTs, makes sure their inferred type matches the expected type
     if you provided one, and passes you back the expected/inferred classifier. You should collect these into a classifier
-    of the entire AST.
+    of the entire AST. The type-checker then checks that this classifier equals the expected one provided to you earlier.
 
     In option "relate", nothing is returned, so there's nothing you need to do!
 
