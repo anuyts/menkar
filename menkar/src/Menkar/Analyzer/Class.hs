@@ -10,10 +10,11 @@ import Control.Lens
 import Data.Kind hiding (Type)
 import Data.Void
 
-data AnalyzerOption = OptionSubterms | OptionTypes
+data AnalyzerOption = OptionSubterms | OptionTypes | OptionRelate
 data AnalyzerToken (option :: AnalyzerOption) where
   TokenSubterms :: AnalyzerToken OptionSubterms
   TokenTypes :: AnalyzerToken OptionTypes
+  TokenRelate :: AnalyzerToken OptionRelate
 
 newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
@@ -31,9 +32,32 @@ data AddressInfo = AddressInfo {
 type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> * -> *) | result -> option
 type instance AnalyzerResult OptionSubterms = Box1
 type instance AnalyzerResult OptionTypes = BoxClassif
+type instance AnalyzerResult OptionRelate = Unit2
 
 {-| A supercombinator for type-checking, relatedness-checking, weak-head-normalization, normalization,
     weak-head-meta-resolution and more.
+
+    Idea:
+    - From above, you get
+      - a context,
+      - an AST,
+      - maybe an expected classifier (which you probably don't need),
+      - maybe a relation.
+    - For each subAST you pass back
+      - an adapted context (+ weakening operation),
+      - the subAST
+      - maybe an expected classifier
+      - a relation iff you got one from above
+      - a title for the subAST
+      - whether this subAST should be whnormal for the entire AST to be whnormal.
+
+    In option "subterms", a modified subAST is returned, which you should recollect to a bigger AST of the same shape.
+
+    In option "types", the type-checker checks the subASTs, makes sure their inferred type matches the expected type
+    if you provided one, and passes you back the expected/inferred classifier. You should collect these into a classifier
+    of the entire AST.
+
+    In option "relate", nothing is returned, so there's nothing you need to do!
 
     Some principles:
     - You probably don't want to use the input classifier given through the last argument.

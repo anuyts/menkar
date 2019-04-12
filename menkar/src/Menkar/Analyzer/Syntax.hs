@@ -19,15 +19,15 @@ import Control.Monad
 -------------------------
 
 instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
-  type Classif (ModedModality sys) = Mode sys -- the codomain
+  type Classif (ModedModality sys) = Mode sys :*: Mode sys -- domain and codomain
   type Relation (ModedModality sys) = Const ModRel
-  analyze token fromType h gamma (MaybeClassified (ModedModality ddom mu) maybeDCod maybeRel) = Just $ do
+  analyze token fromType h gamma (MaybeClassified (ModedModality ddom dcod mu) _ maybeRel) = Just $ do
     rddom <- h id gamma (MaybeClassified ddom (Just U1) (Just U1)) (AddressInfo ["domain"] True)
-    rmu   <- h id gamma (MaybeClassified mu ((ddom :*:) <$> maybeDCod) maybeRel) (AddressInfo ["modality"] True)
+    rdcod <- h id gamma (MaybeClassified dcod (Just U1) (Just U1)) (AddressInfo ["codomain"] True)
+    rmu   <- h id gamma (MaybeClassified mu (Just $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True)
     return $ case token of
-        TokenSubterms -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rmu)
-        TokenTypes -> case unboxClassif rmu of
-          (ddom' :*: dcod') -> BoxClassif $ dcod'
+        TokenSubterms -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rdcod) (unbox1 rmu)
+        TokenTypes -> BoxClassif $ ddom :*: dcod
 
 instance (SysAnalyzer sys,
           Analyzable sys (Type sys),
