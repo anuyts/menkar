@@ -16,8 +16,10 @@ class (SysSyntax (Term sys) sys,
        Analyzable sys (SysUniHSConstructor sys),
        Classif (Mode sys) ~ U1,
        Classif (Modality sys) ~ (Mode sys :*: Mode sys), -- domain and codomain
+       Classif (Degree sys) ~ Mode sys,
        Relation (Mode sys) ~ U1,
-       Relation (Modality sys) ~ Const ModRel
+       Relation (Modality sys) ~ Const ModRel,
+       Relation (Degree sys) ~ Const ModRel
       ) => SysAnalyzer sys where
 
 --type instance Classif (Mode sys) = U1

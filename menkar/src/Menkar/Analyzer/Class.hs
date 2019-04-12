@@ -32,26 +32,27 @@ type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> *
 type instance AnalyzerResult OptionSubterms = Box1
 type instance AnalyzerResult OptionTypes = BoxClassif
 
-class Analyzable sys t where
+class (Functor t) => Analyzable sys t where
   type Classif t :: * -> *
   type Relation t :: * -> *
-  analyze :: forall option f v .
-    (Applicative f, DeBruijnLevel v) =>
+  analyze :: forall option lhs f v .
+    (Applicative f, DeBruijnLevel v, Traversable (lhs sys)) =>
     AnalyzerToken option ->
+    (forall w . Type sys w -> lhs sys w) ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
-      Ctx Type sys w Void ->
+      Ctx lhs sys w Void ->
       MaybeClassified s w ->
       AddressInfo ->
       f (AnalyzerResult option s w)
     ) ->
-    Ctx Type sys v Void ->
+    Ctx lhs sys v Void ->
     MaybeClassified t v ->
     Maybe (f (AnalyzerResult option t v))
 
 subtermsTyped :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v) =>
+  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
@@ -63,12 +64,12 @@ subtermsTyped :: forall sys f t v .
   Ctx Type sys v Void ->
   MaybeClassified t v ->
   Maybe (f (t v))
-subtermsTyped h gamma maybeClassifiedT = fmap unbox1 <$> analyze TokenSubterms
+subtermsTyped h gamma maybeClassifiedT = fmap unbox1 <$> analyze TokenSubterms id
   (\ wkn gamma maybeClassifiedS addressInfo -> Box1 <$> h wkn gamma maybeClassifiedS addressInfo)
   gamma maybeClassifiedT
 
 subterms :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v) =>
+  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
@@ -84,19 +85,20 @@ subterms h gamma t = subtermsTyped
   (\ wkn gamma maybeClassifiedS addressInfo -> h wkn gamma (_maybeClassified'get maybeClassifiedS) addressInfo)
   gamma (MaybeClassified t Nothing Nothing)
 
-typetrick :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v) =>
+typetrick :: forall sys lhs f t v .
+  (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
+  (forall w . Type sys w -> lhs sys w) ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
-    Ctx Type sys w Void ->
+    Ctx lhs sys w Void ->
     MaybeClassified s w ->
     AddressInfo ->
     f (Classif s w)
   ) ->
-  Ctx Type sys v Void ->
+  Ctx lhs sys v Void ->
   MaybeClassified t v ->
   Maybe (f (Classif t v))
-typetrick h gamma maybeClassifiedT = fmap unboxClassif <$> analyze TokenTypes
+typetrick fromType h gamma maybeClassifiedT = fmap unboxClassif <$> analyze TokenTypes fromType
   (\ wkn gamma maybeClassifiedS addressInfo -> BoxClassif <$> h wkn gamma maybeClassifiedS addressInfo)
   gamma maybeClassifiedT
