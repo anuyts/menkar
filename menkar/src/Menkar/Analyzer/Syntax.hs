@@ -132,26 +132,82 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
   type Classif (ConstructorTerm sys) = Type sys
   type Relation (ConstructorTerm sys) = ModedDegree sys
-  analyze token fromType h gamma (MaybeClassified t _ maybeRel) = Just $ case t of
+  analyze token fromType h gamma (MaybeClassified t _ maybeRel) = Just $  do
+    
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
 
-    ConsUniHS ty -> do
-      rty <- h id gamma (MaybeClassified ty Nothing maybeRel)
-        (AddressInfo ["UniHS-constructor"] False EntirelyBoring)
-      return $ case token of
-        TokenSubterms -> Box1 $ ConsUniHS $ unbox1 rty
-        TokenTypes -> BoxClassif $ hs2type $ UniHS $
-          fromMaybe (unVarFromCtx <$> ctx'mode gamma) $ getCompose $ unboxClassif rty
+    case t of
+
+      ConsUniHS ty -> do
+        rty <- h id gamma (MaybeClassified ty Nothing maybeRel)
+          (AddressInfo ["UniHS-constructor"] False EntirelyBoring)
+        return $ case token of
+          TokenSubterms -> Box1 $ ConsUniHS $ unbox1 rty
+          TokenTypes -> BoxClassif $ hs2type $ UniHS $ fromMaybe dgamma $ getCompose $ unboxClassif rty
+          TokenRelate -> Unit2
+
+      Lam binding -> do
+        rbinding <- h id gamma (MaybeClassified binding Nothing maybeRel)
+          (AddressInfo ["binding"] False EntirelyBoring)
+        return $ case token of
+          TokenSubterms -> Box1 $ Lam $ unbox1 rbinding
+          TokenTypes ->
+            let (U1 :*: Comp1 ty) = unboxClassif rbinding
+            in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) (unType ty)
+          TokenRelate -> Unit2
+
+      Pair sigmaBinding tFst tSnd -> do
+        let sigmaBindingClassif = U1 :*: (Comp1 $ hs2type $ UniHS $ VarWkn <$> dgamma)
+        rsigmaBinding <- h id gamma (MaybeClassified sigmaBinding (Just sigmaBindingClassif) maybeRel)
+          (AddressInfo ["Sigma-type annotation"] False omit)
+        let tyFst = _segment'content $ binding'segment $ sigmaBinding
+        let tySnd = Type $ substLast2 tFst $ binding'body sigmaBinding
+        rtFst <- h id gamma (MaybeClassified tFst (Just tyFst) maybeRel)
+          (AddressInfo ["first component"] False omit)
+        rtSnd <- h id gamma (MaybeClassified tSnd (Just tySnd) maybeRel)
+          (AddressInfo ["second component"] False omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ Pair (unbox1 rsigmaBinding) (unbox1 rtFst) (unbox1 rtSnd)
+          TokenTypes -> BoxClassif $ hs2type $ Sigma sigmaBinding
+          TokenRelate -> Unit2
+
+      ConsUnit -> pure $ case token of
+        TokenSubterms -> Box1 $ ConsUnit
+        TokenTypes -> BoxClassif $ hs2type $ UnitType
         TokenRelate -> Unit2
 
-    Lam binding -> do
-      rbinding <- h id gamma (MaybeClassified binding Nothing maybeRel)
-        (AddressInfo ["binding"] False EntirelyBoring)
-      return $ case token of
-        TokenSubterms -> Box1 $ Lam $ unbox1 rbinding
-        TokenTypes ->
-          let (U1 :*: Comp1 ty) = unboxClassif rbinding
-          in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) (unType ty)
+      ConsBox boxSeg tUnbox -> do
+        rboxSeg <- h id gamma (MaybeClassified boxSeg (Just U1) maybeRel)
+          (AddressInfo ["Box-type annotation"] False omit)
+        let tyUnbox = _segment'content boxSeg
+        rtUnbox <- h id gamma (MaybeClassified tUnbox (Just tyUnbox) maybeRel)
+          (AddressInfo ["box content"] False omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ ConsBox (unbox1 rboxSeg) (unbox1 rtUnbox)
+          TokenTypes -> BoxClassif $ hs2type $ BoxType boxSeg
+          TokenRelate -> Unit2
+
+      ConsZero -> pure $ case token of
+        TokenSubterms -> Box1 $ ConsZero
+        TokenTypes -> BoxClassif $ hs2type $ NatType
         TokenRelate -> Unit2
+
+      ConsSuc t -> do
+        rt <- h id gamma (MaybeClassified t (Just $ hs2type NatType) maybeRel)
+          (AddressInfo ["predecessor"] False omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ ConsSuc $ (unbox1 rt)
+          TokenTypes -> BoxClassif $ hs2type $ NatType
+          TokenRelate -> Unit2
+
+      ConsRefl t -> do
+        rt <- h id gamma (MaybeClassified t Nothing maybeRel)
+          (AddressInfo ["self-equand"] False omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ ConsRefl $ (unbox1 rt)
+          TokenTypes -> BoxClassif $ hs2type $ EqType (unboxClassif rt) t t
+          TokenRelate -> Unit2
 
 instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type Classif (Type sys) = U1

@@ -259,7 +259,7 @@ data ConstructorTerm (sys :: KSys) (v :: *) =
     (Term sys v) {-^ box's content -} |
   ConsZero |
   ConsSuc (Term sys v) |
-  ConsRefl
+  ConsRefl (Term sys v)
 deriving instance (SysTrav sys) => Functor (ConstructorTerm sys)
 deriving instance (SysTrav sys) => Foldable (ConstructorTerm sys)
 deriving instance (SysTrav sys) => Traversable (ConstructorTerm sys)
