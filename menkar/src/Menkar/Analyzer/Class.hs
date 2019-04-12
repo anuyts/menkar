@@ -32,6 +32,14 @@ type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> *
 type instance AnalyzerResult OptionSubterms = Box1
 type instance AnalyzerResult OptionTypes = BoxClassif
 
+{-| A supercombinator for type-checking, relatedness-checking, weak-head-normalization, normalization,
+    weak-head-meta-resolution and more.
+
+    Some principles:
+    - You probably don't want to use the input classifier given through the last argument.
+    - Since you cannot allocate metas, you should pass down either a complete classifier or no classifier.
+      Hence, if you know something about a subAST's classifier, please know all about it.
+-}
 class (Functor t) => Analyzable sys t where
   type Classif t :: * -> *
   type Relation t :: * -> *

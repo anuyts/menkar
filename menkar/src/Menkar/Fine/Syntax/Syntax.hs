@@ -102,7 +102,10 @@ LookupResult sys (VarOpenCtx v w)deriving instance (Functor mode, Functor modty,
 data ModRel = ModEq | ModLeq
 
 data ModedModality (sys :: KSys) (v :: *) =
-  ModedModality {modality'dom :: Mode sys v, modality'mod :: Modality sys v}
+  ModedModality {
+    modality'dom :: Mode sys v,
+    modality'cod :: Mode sys v,
+    modality'mod :: Modality sys v}
 deriving instance (SysTrav sys) => Functor (ModedModality sys)
 deriving instance (SysTrav sys) => Foldable (ModedModality sys)
 deriving instance (SysTrav sys) => Traversable (ModedModality sys)

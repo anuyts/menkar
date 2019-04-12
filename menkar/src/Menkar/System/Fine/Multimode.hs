@@ -13,7 +13,7 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
   crispMod :: Mode sys v {-^ Codomain. -} -> (Modality sys) v
   dataMode :: (Mode sys) v
   -- | When applied to mu, this yields the greatest modality less than the left adjoint functor to mu.
-  approxLeftAdjointProj :: ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> (Modality sys) v
+  approxLeftAdjointProj :: ModedModality sys v -> (Modality sys) v
   --term2mode :: Term sys v -> Mode sys v
   --term2modty :: Term sys v -> Modality sys v
 
@@ -28,11 +28,11 @@ class (SysSyntax (Term sys) sys, Multimode sys) => Degrees sys where
 --------------
 
 idModedModality :: (Multimode sys) => (Mode sys) v -> ModedModality sys v
-idModedModality d = ModedModality d (idMod d)
+idModedModality d = ModedModality d d (idMod d)
 
 compModedModality :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v -> ModedModality sys v
-compModedModality (ModedModality d' mu') (ModedModality d mu) = ModedModality d (compMod mu' d' mu)
+compModedModality (ModedModality dmid dcod mu2) (ModedModality ddom dmid' mu1) = ModedModality ddom dcod (compMod mu2 dmid mu1)
 
 concatModedModalityDiagrammatically :: (Multimode sys) =>
   [ModedModality sys v] -> Mode sys v {-^ Codomain of the result -} -> ModedModality sys v
@@ -42,14 +42,15 @@ concatModedModalityDiagrammatically (dmu : dmus) d =
 
 divModedModality :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v -> ModedModality sys v
-divModedModality d'mu' dmu@(ModedModality d mu) = ModedModality d (divMod d'mu' dmu)
+divModedModality dmu'@(ModedModality ddom' dcod' mu') dmu@(ModedModality ddom dcod mu) =
+  ModedModality ddom ddom' (divMod dmu' dmu)
 
 crispModedModality :: (Multimode sys) => Mode sys v -> ModedModality sys v
-crispModedModality d = ModedModality dataMode (crispMod d)
+crispModedModality d = ModedModality dataMode d (crispMod d)
 
 modedApproxLeftAdjointProj :: (Multimode sys) =>
-  ModedModality sys v -> (Mode sys) v {-^ the codomain -} -> ModedModality sys v
-modedApproxLeftAdjointProj dmu d' = ModedModality d' $ approxLeftAdjointProj dmu d'
+  ModedModality sys v -> ModedModality sys v
+modedApproxLeftAdjointProj dmu@(ModedModality ddom dcod mu) = ModedModality dcod ddom $ approxLeftAdjointProj dmu
 
 modedDivDeg :: (Degrees sys) =>
   ModedModality sys v -> ModedDegree sys v -> ModedDegree sys v
