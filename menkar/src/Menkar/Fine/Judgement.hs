@@ -14,8 +14,6 @@ import Data.Functor.Identity
 import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 
-data ModRel = ModEq | ModLeq
-
 data Eta = Eta {unEta :: Bool}
 
 data Judgement (sys :: KSys) where

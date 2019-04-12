@@ -19,7 +19,8 @@ newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
 data MaybeClassified t v = MaybeClassified {
   _maybeClassified'get :: t v,
-  _maybeClassified'maybeClassifier :: Maybe (Classif t v)}
+  _maybeClassified'maybeClassifier :: Maybe (Classif t v),
+  _maybeClassified'maybeRelation :: Maybe (Relation t v)}
 
 data AddressInfo = AddressInfo {
   {-| Deepest last -}
@@ -33,6 +34,7 @@ type instance AnalyzerResult OptionTypes = BoxClassif
 
 class Analyzable sys t where
   type Classif t :: * -> *
+  type Relation t :: * -> *
   analyze :: forall option f v .
     (Applicative f, DeBruijnLevel v) =>
     AnalyzerToken option ->
@@ -80,7 +82,7 @@ subterms :: forall sys f t v .
   Maybe (f (t v))
 subterms h gamma t = subtermsTyped
   (\ wkn gamma maybeClassifiedS addressInfo -> h wkn gamma (_maybeClassified'get maybeClassifiedS) addressInfo)
-  gamma (MaybeClassified t Nothing)
+  gamma (MaybeClassified t Nothing Nothing)
 
 typetrick :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v) =>
