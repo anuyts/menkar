@@ -220,6 +220,15 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type Classif (Type sys) = U1
   type Relation (Type sys) = ModedDegree sys
+  analyze token fromType h gamma (MaybeClassified (Type t) _ maybeRel) = Just $ do
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
+    rt <- h id gamma (MaybeClassified t (Just $ hs2type $ UniHS dgamma) maybeRel)
+      (AddressInfo ["code"] True WorthMentioning)
+    return $ case token of
+      TokenSubterms -> Box1 $ Type $ unbox1 rt
+      TokenTypes -> BoxClassif U1
+      TokenRelate -> Unit2
 
 -------------------------
 
@@ -234,5 +243,3 @@ instance SysAnalyzer sys => Analyzable sys (Segment Type sys) where
   type Relation (Segment Type sys) = ModedDegree sys
 
 -------------------------
-
--- give bindings a type as their codomain!
