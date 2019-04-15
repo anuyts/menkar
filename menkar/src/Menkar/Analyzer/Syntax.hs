@@ -238,8 +238,23 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
 
 -------------------------
 
+-------------------------
+
 instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
-  --type Classif (Eliminator sys) = UniHSConstructor sys :*: 
+  type Classif (Eliminator sys) = Type sys :.: VarExt
+  type Relation (Eliminator sys) = ModedDegree sys
+  type AnalyzerExtraInput (Eliminator sys) = UniHSConstructor sys
+  analyze token fromType h gamma (AnalyzerInput eliminator tyEliminee _ maybeRel) = Just $ do
+
+    case (tyEliminee, eliminator) of
+
+      (Pi binding, App arg) -> do
+        rarg <- h id gamma (AnalyzerInput arg U1 (Just $ _segment'content $ binding'segment binding) maybeRel)
+          (AddressInfo ["argument"] False omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ App $ unbox1 rarg
+          TokenTypes -> BoxClassif $ Comp1 $ VarWkn <$> (substLast2 arg $ binding'body binding)
+          TokenRelate -> Unit2
 
 -------------------------
 
