@@ -33,6 +33,8 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
         TokenTypes -> BoxClassif $ ddom :*: dcod
         TokenRelate -> Unit2
 
+-------------------------
+
 instance (SysAnalyzer sys,
           Analyzable sys (rhs sys),
           Relation (rhs sys) ~ ModedDegree sys
@@ -50,6 +52,8 @@ instance (SysAnalyzer sys,
       TokenSubterms -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
       TokenTypes -> BoxClassif $ unboxClassif rseg :*: Comp1 (unboxClassif rbody)
       TokenRelate -> Unit2
+
+-------------------------
 
 instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   
@@ -109,7 +113,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           TokenRelate -> Unit2
 
     where handleBinder ::
-            (Binding Type Term sys v -> UniHSConstructor sys v) -> Binding Type Term sys v ->
+            (Binding Type Type sys v -> UniHSConstructor sys v) -> Binding Type Type sys v ->
             _ (AnalyzerResult option (UniHSConstructor sys) v)
           handleBinder binder binding = do
             --let bindingClassif = case maybeMaybeD of
@@ -128,6 +132,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             TokenSubterms -> Box1 $ ty
             TokenTypes -> BoxClassif $ Compose Nothing
             TokenRelate -> Unit2
+
+-------------------------
 
 instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
   type Classif (ConstructorTerm sys) = Type sys
@@ -154,15 +160,15 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenSubterms -> Box1 $ Lam $ unbox1 rbinding
           TokenTypes ->
             let (U1 :*: Comp1 ty) = unboxClassif rbinding
-            in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) (unType ty)
+            in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) ty
           TokenRelate -> Unit2
 
       Pair sigmaBinding tFst tSnd -> do
-        let sigmaBindingClassif = U1 :*: (Comp1 $ hs2type $ UniHS $ VarWkn <$> dgamma)
+        let sigmaBindingClassif = U1 :*: Comp1 U1 --(Comp1 $ hs2type $ UniHS $ VarWkn <$> dgamma)
         rsigmaBinding <- h id gamma (MaybeClassified sigmaBinding (Just sigmaBindingClassif) maybeRel)
           (AddressInfo ["Sigma-type annotation"] False omit)
         let tyFst = _segment'content $ binding'segment $ sigmaBinding
-        let tySnd = Type $ substLast2 tFst $ binding'body sigmaBinding
+        let tySnd = substLast2 tFst $ binding'body sigmaBinding
         rtFst <- h id gamma (MaybeClassified tFst (Just tyFst) maybeRel)
           (AddressInfo ["first component"] False omit)
         rtSnd <- h id gamma (MaybeClassified tSnd (Just tySnd) maybeRel)
@@ -209,14 +215,24 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenTypes -> BoxClassif $ hs2type $ EqType (unboxClassif rt) t t
           TokenRelate -> Unit2
 
+-------------------------
+
 instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type Classif (Type sys) = U1
   type Relation (Type sys) = ModedDegree sys
+
+-------------------------
 
 instance SysAnalyzer sys => Analyzable sys (Term sys) where
   type Classif (Term sys) = Type sys
   type Relation (Term sys) = ModedDegree sys
 
+-------------------------
+
 instance SysAnalyzer sys => Analyzable sys (Segment Type sys) where
   type Classif (Segment Type sys) = Classif (Type sys)
   type Relation (Segment Type sys) = ModedDegree sys
+
+-------------------------
+
+-- give bindings a type as their codomain!

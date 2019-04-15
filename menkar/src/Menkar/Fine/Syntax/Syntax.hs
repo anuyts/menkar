@@ -221,8 +221,8 @@ data UniHSConstructor (sys :: KSys) (v :: *) =
     (Mode sys v) {-^ mode (of both the universe and its elements) -}
     --(Term sys v) {-^ level it classifies -}
     |
-  Pi (Binding Type Term sys v) |
-  Sigma (Binding Type Term sys v) |
+  Pi (Binding Type Type sys v) |
+  Sigma (Binding Type Type sys v) |
   EmptyType |
   UnitType |
   BoxType (Segment Type sys v) |
@@ -250,7 +250,7 @@ data ConstructorTerm (sys :: KSys) (v :: *) =
     (UniHSConstructor sys v) {-^ Type -} |
   Lam (Binding Type Term sys v) |
   Pair
-    (Binding Type Term sys v) {-^ pair's sigma type -} 
+    (Binding Type Type sys v) {-^ pair's sigma type -} 
     (Term sys v)
     (Term sys v) |
   ConsUnit |
