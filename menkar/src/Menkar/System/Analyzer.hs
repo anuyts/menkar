@@ -10,6 +10,7 @@ import Data.Functor.Const
 
 class (SysSyntax (Term sys) sys,
        Multimode sys,
+       Degrees sys,
        Analyzable sys (Mode sys),
        Analyzable sys (Modality sys),
        Analyzable sys (Degree sys),

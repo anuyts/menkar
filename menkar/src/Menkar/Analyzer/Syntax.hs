@@ -232,6 +232,42 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
 
 -------------------------
 
+instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
+  --type Classif (Eliminator sys) = UniHSConstructor sys :*: 
+
+-------------------------
+
+instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
+  type Classif (TermNV sys) = Type sys
+  type Relation (TermNV sys) = ModedDegree sys
+  analyze token fromType h gamma (MaybeClassified t maybeTy maybeRel) = case t of
+
+    TermCons c -> Just $ do
+      rc <- h id gamma (MaybeClassified c maybeTy maybeRel)
+        (AddressInfo ["underlying constructor"] False EntirelyBoring)
+      return $ case token of
+        TokenSubterms -> Box1 $ TermCons $ unbox1 rc
+        TokenTypes -> BoxClassif $ unboxClassif rc
+        TokenRelate -> Unit2
+
+    TermElim dmuElim eliminee tyEliminee eliminator -> Just $ do
+      let dgamma' = ctx'mode gamma
+      let dgamma = unVarFromCtx <$> dgamma'
+      
+      rdmuElim <- h id (crispModedModality dgamma' :\\ gamma)
+        (MaybeClassified dmuElim (Just $ modality'dom dmuElim :*: dgamma) (toIfRelate token (Const ModEq)))
+        (AddressInfo ["modality of elimination"] False omit)
+      reliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
+        (MaybeClassified eliminee (Just $ hs2type tyEliminee) (modedDivDeg dmuElim <$> maybeRel))
+        (AddressInfo ["eliminee"] True omit)
+      rtyEliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
+        (MaybeClassified tyEliminee (Just $ Compose $ Just dgamma) (modedDivDeg dmuElim <$> maybeRel))
+        (AddressInfo ["type of eliminee"] False omit)
+        
+      _
+
+-------------------------
+
 instance SysAnalyzer sys => Analyzable sys (Term sys) where
   type Classif (Term sys) = Type sys
   type Relation (Term sys) = ModedDegree sys
