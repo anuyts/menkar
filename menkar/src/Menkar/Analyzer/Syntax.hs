@@ -24,10 +24,11 @@ import Data.Maybe
 instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type Classif (ModedModality sys) = Mode sys :*: Mode sys -- domain and codomain
   type Relation (ModedModality sys) = Const ModRel
-  analyze token fromType h gamma (MaybeClassified (ModedModality ddom dcod mu) _ maybeRel) = Just $ do
-    rddom <- h id gamma (MaybeClassified ddom (Just U1) (toIfRelate token U1)) (AddressInfo ["domain"] True omit)
-    rdcod <- h id gamma (MaybeClassified dcod (Just U1) (toIfRelate token U1)) (AddressInfo ["codomain"] True omit)
-    rmu   <- h id gamma (MaybeClassified mu (Just $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True omit)
+  type AnalyzerExtraInput (ModedModality sys) = U1
+  analyze token fromType h gamma (AnalyzerInput (ModedModality ddom dcod mu) U1 _ maybeRel) = Just $ do
+    rddom <- h id gamma (AnalyzerInput ddom U1 (Just U1) (toIfRelate token U1)) (AddressInfo ["domain"] True omit)
+    rdcod <- h id gamma (AnalyzerInput dcod U1 (Just U1) (toIfRelate token U1)) (AddressInfo ["codomain"] True omit)
+    rmu   <- h id gamma (AnalyzerInput mu U1 (Just $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True omit)
     return $ case token of
         TokenSubterms -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rdcod) (unbox1 rmu)
         TokenTypes -> BoxClassif $ ddom :*: dcod
@@ -37,16 +38,18 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
 
 instance (SysAnalyzer sys,
           Analyzable sys (rhs sys),
-          Relation (rhs sys) ~ ModedDegree sys
+          Relation (rhs sys) ~ ModedDegree sys,
+          AnalyzerExtraInput (rhs sys) ~ U1
          ) => Analyzable sys (Binding Type rhs sys) where
   type Classif (Binding Type rhs sys) = Classif (Segment Type sys) :*: (Classif (rhs sys) :.: VarExt)
   type Relation (Binding Type rhs sys) = ModedDegree sys
-  analyze token fromType h gamma (MaybeClassified (Binding seg body) maybeCl maybeDDeg) = Just $ do
+  type AnalyzerExtraInput (Binding Type rhs sys) = U1
+  analyze token fromType h gamma (AnalyzerInput (Binding seg body) U1 maybeCl maybeDDeg) = Just $ do
     rseg <- h id gamma
-      (MaybeClassified seg (fst1 <$> maybeCl) maybeDDeg)
+      (AnalyzerInput seg U1 (fst1 <$> maybeCl) maybeDDeg)
       (AddressInfo ["segment"] False omit)
     rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
-      (MaybeClassified body (unComp1 . snd1 <$> maybeCl) (fmap VarWkn <$> maybeDDeg))
+      (AnalyzerInput body U1 (unComp1 . snd1 <$> maybeCl) (fmap VarWkn <$> maybeDDeg))
       (AddressInfo ["body"] False omit)
     return $ case token of
       TokenSubterms -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
@@ -59,9 +62,10 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   
   type Classif (UniHSConstructor sys) = Compose Maybe (Mode sys) -- a mode if you care
   type Relation (UniHSConstructor sys) = ModedDegree sys
+  type AnalyzerExtraInput (UniHSConstructor sys) = U1
   
   analyze (token :: AnalyzerToken option) fromType h
-    (gamma :: Ctx lhs sys v Void) (MaybeClassified ty maybeMaybeD maybeDDeg) = Just $ do
+    (gamma :: Ctx lhs sys v Void) (AnalyzerInput ty U1 maybeMaybeD maybeDDeg) = Just $ do
     
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -70,7 +74,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       
       UniHS d -> do
         rd <- h id (crispModedModality dgamma' :\\ gamma)
-          (MaybeClassified d (Just U1) (toIfRelate token U1))
+          (AnalyzerInput d U1 (Just U1) (toIfRelate token U1))
           (AddressInfo ["mode"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ UniHS (unbox1 rd)
@@ -86,7 +90,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       UnitType -> handleConstant
 
       BoxType segment -> do
-        rsegment <- h id gamma (MaybeClassified segment (Just U1) maybeDDeg)
+        rsegment <- h id gamma (AnalyzerInput segment U1 (Just U1) maybeDDeg)
           (AddressInfo ["segment"] False EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ BoxType $ unbox1 rsegment
@@ -96,16 +100,16 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       NatType -> handleConstant
 
       EqType tyAmbient tL tR -> do
-        rtyAmbient <- h id gamma (MaybeClassified tyAmbient (Just U1) maybeDDeg) (AddressInfo ["ambient type"] False omit)
-        rtL <- h id gamma (MaybeClassified tL (Just tyAmbient) maybeDDeg) (AddressInfo ["left equand"] False omit)
-        rtR <- h id gamma (MaybeClassified tR (Just tyAmbient) maybeDDeg) (AddressInfo ["right equand"] False omit)
+        rtyAmbient <- h id gamma (AnalyzerInput tyAmbient U1 (Just U1) maybeDDeg) (AddressInfo ["ambient type"] False omit)
+        rtL <- h id gamma (AnalyzerInput tL U1 (Just tyAmbient) maybeDDeg) (AddressInfo ["left equand"] False omit)
+        rtR <- h id gamma (AnalyzerInput tR U1 (Just tyAmbient) maybeDDeg) (AddressInfo ["right equand"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
           TokenTypes -> BoxClassif $ Compose Nothing
           TokenRelate -> Unit2
 
       SysType systy -> do
-        rsysty <- h id gamma (MaybeClassified systy maybeMaybeD maybeDDeg)
+        rsysty <- h id gamma (AnalyzerInput systy U1 maybeMaybeD maybeDDeg)
           (AddressInfo ["system-specific type"] False EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ SysType $ unbox1 rsysty
@@ -121,7 +125,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             --      Just (Compose Nothing) -> Nothing
             --      Just (Compose (Just d)) -> Just $ U1 :*: Comp1 (hs2type $ UniHS $ VarWkn <$> d)
             rbinding <- h id gamma
-              (MaybeClassified binding Nothing maybeDDeg)
+              (AnalyzerInput binding U1 Nothing maybeDDeg)
               (AddressInfo ["binding"] False EntirelyBoring)
             return $ case token of
               TokenSubterms -> Box1 $ binder $ unbox1 rbinding
@@ -138,7 +142,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
   type Classif (ConstructorTerm sys) = Type sys
   type Relation (ConstructorTerm sys) = ModedDegree sys
-  analyze token fromType h gamma (MaybeClassified t _ maybeRel) = Just $  do
+  type AnalyzerExtraInput (ConstructorTerm sys) = U1
+  analyze token fromType h gamma (AnalyzerInput t U1 _ maybeRel) = Just $  do
     
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -146,7 +151,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
     case t of
 
       ConsUniHS ty -> do
-        rty <- h id gamma (MaybeClassified ty Nothing maybeRel)
+        rty <- h id gamma (AnalyzerInput ty U1 Nothing maybeRel)
           (AddressInfo ["UniHS-constructor"] False EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ ConsUniHS $ unbox1 rty
@@ -154,7 +159,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenRelate -> Unit2
 
       Lam binding -> do
-        rbinding <- h id gamma (MaybeClassified binding Nothing maybeRel)
+        rbinding <- h id gamma (AnalyzerInput binding U1 Nothing maybeRel)
           (AddressInfo ["binding"] False EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ Lam $ unbox1 rbinding
@@ -165,13 +170,13 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 
       Pair sigmaBinding tFst tSnd -> do
         let sigmaBindingClassif = U1 :*: Comp1 U1 --(Comp1 $ hs2type $ UniHS $ VarWkn <$> dgamma)
-        rsigmaBinding <- h id gamma (MaybeClassified sigmaBinding (Just sigmaBindingClassif) maybeRel)
+        rsigmaBinding <- h id gamma (AnalyzerInput sigmaBinding U1 (Just sigmaBindingClassif) maybeRel)
           (AddressInfo ["Sigma-type annotation"] False omit)
         let tyFst = _segment'content $ binding'segment $ sigmaBinding
         let tySnd = substLast2 tFst $ binding'body sigmaBinding
-        rtFst <- h id gamma (MaybeClassified tFst (Just tyFst) maybeRel)
+        rtFst <- h id gamma (AnalyzerInput tFst U1 (Just tyFst) maybeRel)
           (AddressInfo ["first component"] False omit)
-        rtSnd <- h id gamma (MaybeClassified tSnd (Just tySnd) maybeRel)
+        rtSnd <- h id gamma (AnalyzerInput tSnd U1 (Just tySnd) maybeRel)
           (AddressInfo ["second component"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ Pair (unbox1 rsigmaBinding) (unbox1 rtFst) (unbox1 rtSnd)
@@ -184,10 +189,10 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         TokenRelate -> Unit2
 
       ConsBox boxSeg tUnbox -> do
-        rboxSeg <- h id gamma (MaybeClassified boxSeg (Just U1) maybeRel)
+        rboxSeg <- h id gamma (AnalyzerInput boxSeg U1 (Just U1) maybeRel)
           (AddressInfo ["Box-type annotation"] False omit)
         let tyUnbox = _segment'content boxSeg
-        rtUnbox <- h id gamma (MaybeClassified tUnbox (Just tyUnbox) maybeRel)
+        rtUnbox <- h id gamma (AnalyzerInput tUnbox U1 (Just tyUnbox) maybeRel)
           (AddressInfo ["box content"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ ConsBox (unbox1 rboxSeg) (unbox1 rtUnbox)
@@ -200,7 +205,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         TokenRelate -> Unit2
 
       ConsSuc t -> do
-        rt <- h id gamma (MaybeClassified t (Just $ hs2type NatType) maybeRel)
+        rt <- h id gamma (AnalyzerInput t U1 (Just $ hs2type NatType) maybeRel)
           (AddressInfo ["predecessor"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ ConsSuc $ (unbox1 rt)
@@ -208,7 +213,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenRelate -> Unit2
 
       ConsRefl t -> do
-        rt <- h id gamma (MaybeClassified t Nothing maybeRel)
+        rt <- h id gamma (AnalyzerInput t U1 Nothing maybeRel)
           (AddressInfo ["self-equand"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ ConsRefl $ (unbox1 rt)
@@ -220,10 +225,11 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type Classif (Type sys) = U1
   type Relation (Type sys) = ModedDegree sys
-  analyze token fromType h gamma (MaybeClassified (Type t) _ maybeRel) = Just $ do
+  type AnalyzerExtraInput (Type sys) = U1
+  analyze token fromType h gamma (AnalyzerInput (Type t) U1 _ maybeRel) = Just $ do
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
-    rt <- h id gamma (MaybeClassified t (Just $ hs2type $ UniHS dgamma) maybeRel)
+    rt <- h id gamma (AnalyzerInput t U1 (Just $ hs2type $ UniHS dgamma) maybeRel)
       (AddressInfo ["code"] True WorthMentioning)
     return $ case token of
       TokenSubterms -> Box1 $ Type $ unbox1 rt
@@ -240,10 +246,11 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
 instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
   type Classif (TermNV sys) = Type sys
   type Relation (TermNV sys) = ModedDegree sys
-  analyze token fromType h gamma (MaybeClassified t maybeTy maybeRel) = case t of
+  type AnalyzerExtraInput (TermNV sys) = U1
+  analyze token fromType h gamma (AnalyzerInput t U1 maybeTy maybeRel) = case t of
 
     TermCons c -> Just $ do
-      rc <- h id gamma (MaybeClassified c maybeTy maybeRel)
+      rc <- h id gamma (AnalyzerInput c U1 maybeTy maybeRel)
         (AddressInfo ["underlying constructor"] False EntirelyBoring)
       return $ case token of
         TokenSubterms -> Box1 $ TermCons $ unbox1 rc
@@ -255,13 +262,13 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
       let dgamma = unVarFromCtx <$> dgamma'
       
       rdmuElim <- h id (crispModedModality dgamma' :\\ gamma)
-        (MaybeClassified dmuElim (Just $ modality'dom dmuElim :*: dgamma) (toIfRelate token (Const ModEq)))
+        (AnalyzerInput dmuElim U1 (Just $ modality'dom dmuElim :*: dgamma) (toIfRelate token (Const ModEq)))
         (AddressInfo ["modality of elimination"] False omit)
       reliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
-        (MaybeClassified eliminee (Just $ hs2type tyEliminee) (modedDivDeg dmuElim <$> maybeRel))
+        (AnalyzerInput eliminee U1 (Just $ hs2type tyEliminee) (modedDivDeg dmuElim <$> maybeRel))
         (AddressInfo ["eliminee"] True omit)
       rtyEliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
-        (MaybeClassified tyEliminee (Just $ Compose $ Just dgamma) (modedDivDeg dmuElim <$> maybeRel))
+        (AnalyzerInput tyEliminee U1 (Just $ Compose $ Just dgamma) (modedDivDeg dmuElim <$> maybeRel))
         (AddressInfo ["type of eliminee"] False omit)
         
       _
@@ -271,11 +278,13 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
 instance SysAnalyzer sys => Analyzable sys (Term sys) where
   type Classif (Term sys) = Type sys
   type Relation (Term sys) = ModedDegree sys
+  type AnalyzerExtraInput (Term sys) = U1
 
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (Segment Type sys) where
   type Classif (Segment Type sys) = Classif (Type sys)
   type Relation (Segment Type sys) = ModedDegree sys
+  type AnalyzerExtraInput (Segment Type sys) = U1
 
 -------------------------

@@ -21,10 +21,11 @@ data AnalyzerToken (option :: AnalyzerOption) where
 
 newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
-data MaybeClassified (option :: AnalyzerOption) (t :: * -> *) (v :: *) = MaybeClassified {
-  _maybeClassified'get :: t v,
-  _maybeClassified'maybeClassifier :: Maybe (Classif t v),
-  _maybeClassified'relation :: IfRelate option (Relation t v)}
+data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
+  _analyzerInput'get :: t v,
+  _analyzerInput'extra :: AnalyzerExtraInput t v,
+  _analyzerInput'maybeClassifier :: Maybe (Classif t v),
+  _analyzerInput'relation :: IfRelate option (Relation t v)}
 
 data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
 
@@ -86,6 +87,7 @@ toIfRelate TokenRelate a = IfRelate a
       Hence, if you know something about a subAST's classifier, please know all about it.
 -}
 class (Functor t) => Analyzable sys t where
+  type AnalyzerExtraInput t :: * -> *
   type Classif t :: * -> *
   type Relation t :: * -> *
   analyze :: forall option lhs f v .
@@ -96,12 +98,12 @@ class (Functor t) => Analyzable sys t where
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
       Ctx lhs sys w Void ->
-      MaybeClassified option s w ->
+      AnalyzerInput option s w ->
       AddressInfo ->
       f (AnalyzerResult option s w)
     ) ->
     Ctx lhs sys v Void ->
-    MaybeClassified option t v ->
+    AnalyzerInput option t v ->
     Maybe (f (AnalyzerResult option t v))
 
 subtermsTyped :: forall sys f t v .
@@ -110,16 +112,16 @@ subtermsTyped :: forall sys f t v .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
-    MaybeClassified OptionSubterms s w ->
+    AnalyzerInput OptionSubterms s w ->
     AddressInfo ->
     f (s w)
   ) ->
   Ctx Type sys v Void ->
-  MaybeClassified OptionSubterms t v ->
+  AnalyzerInput OptionSubterms t v ->
   Maybe (f (t v))
-subtermsTyped h gamma maybeClassifiedT = fmap unbox1 <$> analyze TokenSubterms id
-  (\ wkn gamma maybeClassifiedS addressInfo -> Box1 <$> h wkn gamma maybeClassifiedS addressInfo)
-  gamma maybeClassifiedT
+subtermsTyped h gamma inputT = fmap unbox1 <$> analyze TokenSubterms id
+  (\ wkn gamma inputS addressInfo -> Box1 <$> h wkn gamma inputS addressInfo)
+  gamma inputT
 
 subterms :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
@@ -128,15 +130,19 @@ subterms :: forall sys f t v .
     (v -> w) ->
     Ctx Type sys w Void ->
     s w ->
+    AnalyzerExtraInput s w ->
     AddressInfo ->
     f (s w)
   ) ->
   Ctx Type sys v Void ->
   t v ->
+  AnalyzerExtraInput t v ->
   Maybe (f (t v))
-subterms h gamma t = subtermsTyped
-  (\ wkn gamma maybeClassifiedS addressInfo -> h wkn gamma (_maybeClassified'get maybeClassifiedS) addressInfo)
-  gamma (MaybeClassified t Nothing IfRelateSubterms)
+subterms h gamma t extraInputT = subtermsTyped
+  (\ wkn gamma inputS addressInfo ->
+     h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
+  )
+  gamma (AnalyzerInput t extraInputT Nothing IfRelateSubterms)
 
 typetrick :: forall sys lhs f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
@@ -145,13 +151,13 @@ typetrick :: forall sys lhs f t v .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx lhs sys w Void ->
-    MaybeClassified OptionTypes s w ->
+    AnalyzerInput OptionTypes s w ->
     AddressInfo ->
     f (Classif s w)
   ) ->
   Ctx lhs sys v Void ->
-  MaybeClassified OptionTypes t v ->
+  AnalyzerInput OptionTypes t v ->
   Maybe (f (Classif t v))
-typetrick fromType h gamma maybeClassifiedT = fmap unboxClassif <$> analyze TokenTypes fromType
-  (\ wkn gamma maybeClassifiedS addressInfo -> BoxClassif <$> h wkn gamma maybeClassifiedS addressInfo)
-  gamma maybeClassifiedT
+typetrick fromType h gamma inputT = fmap unboxClassif <$> analyze TokenTypes fromType
+  (\ wkn gamma inputS addressInfo -> BoxClassif <$> h wkn gamma inputS addressInfo)
+  gamma inputT
