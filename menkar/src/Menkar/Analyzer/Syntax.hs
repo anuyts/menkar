@@ -513,11 +513,11 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
 
 -------------------------
 
-instance SysAnalyzer sys => Analyzable sys (Segment Type sys) where
-  type Classif (Segment Type sys) = Classif (Type sys)
-  type Relation (Segment Type sys) = ModedDegree sys
-  type AnalyzerExtraInput (Segment Type sys) = U1
-  analyze token fromType h gamma (AnalyzerInput seg@(Declaration name dmu plic ty) U1 maybeU1 maybeRel) = Just $ do
+instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declaration declSort rhs sys) where
+  type Classif (Declaration declSort rhs sys) = Classif (rhs sys)
+  type Relation (Declaration declSort rhs sys) = Relation (rhs sys)
+  type AnalyzerExtraInput (Declaration declSort rhs sys) = AnalyzerExtraInput (rhs sys)
+  analyze token fromType h gamma (AnalyzerInput seg@(Declaration name dmu plic ty) extra maybeTy maybeRel) = Just $ do
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
     
@@ -526,15 +526,25 @@ instance SysAnalyzer sys => Analyzable sys (Segment Type sys) where
       (AddressInfo ["modality"] True omit)
     -- TODO plic
     rty <- h id (VarFromCtx <$> dmu :\\ gamma)
-      (AnalyzerInput ty U1 (Just U1) maybeRel)
+      (AnalyzerInput ty extra maybeTy maybeRel)
       (AddressInfo ["type"] True omit)
 
     return $ case token of
       TokenSubterms -> Box1 $ Declaration name (unbox1 rdmu) plic (unbox1 rty)
-      TokenTypes -> BoxClassif $ U1
+      TokenTypes -> BoxClassif $ unboxClassif rty
       TokenRelate -> Unit2
 
 -------------------------
+
+instance (SysAnalyzer sys,
+          Analyzable sys (ty sys),
+          Analyzable sys (rhs sys),
+          Classif (ty sys) ~ U1,
+          Classif (rhs sys) ~ U1,
+          AnalyzerExtraInput (ty sys) ~ U1) => Analyzable sys (Telescoped ty rhs sys) where
+  type Classif (Telescoped ty rhs sys) = U1
+  type Relation (Telescoped ty rhs sys) = Relation (ty sys) :*: Relation (rhs sys)
+  type AnalyzerExtraInput (Telescoped ty rhs sys) = AnalyzerExtraInput (rhs sys)
 
 -------------------------
 
@@ -588,13 +598,17 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
   analyze token fromType h gamma (AnalyzerInput entry U1 maybeU1 maybeRel) = Just $ do
     case entry of
       EntryVal val -> do
-        rval <- h id gamma (AnalyzerInput val U1 (Just U1) maybeRel) (AddressInfo ["val"] True EntirelyBoring)
+        rval <- h id gamma
+          (AnalyzerInput val U1 (Just U1) ((\ x -> x :*: x) <$> maybeRel))
+          (AddressInfo ["val"] True EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ EntryVal $ unbox1 rval
           TokenTypes -> BoxClassif $ U1
           TokenRelate -> Unit2
       EntryModule modul -> do
-        rmodul <- h id gamma (AnalyzerInput modul U1 (Just U1) maybeRel) (AddressInfo ["module"] True EntirelyBoring)
+        rmodul <- h id gamma
+          (AnalyzerInput modul U1 (Just U1) ((\ x -> x :*: x) <$> maybeRel))
+          (AddressInfo ["module"] True EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ EntryModule $ unbox1 rmodul
           TokenTypes -> BoxClassif $ U1
