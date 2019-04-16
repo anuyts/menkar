@@ -10,6 +10,7 @@ import Menkar.System.Fine.Multimode
 
 import Data.Functor.Functor1
 import Data.Omissible
+import Control.Exception.AssertFalse
 
 import GHC.Generics
 import Data.Functor.Const
@@ -241,10 +242,12 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
-  type Classif (Eliminator sys) = Type sys :.: VarExt
+  type Classif (Eliminator sys) = Type sys
   type Relation (Eliminator sys) = ModedDegree sys
-  type AnalyzerExtraInput (Eliminator sys) = UniHSConstructor sys
-  analyze token fromType h gamma (AnalyzerInput eliminator tyEliminee _ maybeRel) = Just $ do
+  type AnalyzerExtraInput (Eliminator sys) = ModedModality sys :*: Term sys :*: UniHSConstructor sys
+  analyze token fromType h gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _ maybeRel) = Just $ do
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
 
     case (tyEliminee, eliminator) of
 
@@ -253,8 +256,67 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           (AddressInfo ["argument"] False omit)
         return $ case token of
           TokenSubterms -> Box1 $ App $ unbox1 rarg
-          TokenTypes -> BoxClassif $ Comp1 $ VarWkn <$> (substLast2 arg $ binding'body binding)
+          TokenTypes -> BoxClassif $ substLast2 arg $ binding'body binding
           TokenRelate -> Unit2
+      (_, App arg) -> unreachable
+
+      (Sigma binding, Fst) -> pure $ case token of
+          TokenSubterms -> Box1 $ Fst
+          TokenTypes -> BoxClassif $ _segment'content $ binding'segment binding
+          TokenRelate -> Unit2
+      (_, Fst) -> unreachable
+
+      (Sigma binding, Snd) -> pure $ case token of
+        TokenSubterms -> Box1 $ Snd
+        TokenTypes -> BoxClassif $
+          substLast2 (Expr2 $
+            TermElim
+              (modedApproxLeftAdjointProj $ _segment'modty $ binding'segment binding)
+              eliminee
+              (Sigma binding)
+              Fst
+            ) $
+          binding'body binding
+        TokenRelate -> Unit2
+      (_, Snd) -> unreachable
+
+      (BoxType seg, Unbox) -> pure $ case token of
+        TokenSubterms -> Box1 $ Unbox
+        TokenTypes -> BoxClassif $ _segment'content seg
+        TokenRelate -> Unit2
+      (_, Unbox) -> unreachable
+
+      (Pi binding, Funext) -> pure $ case token of
+        TokenSubterms -> Box1 $ Funext
+        TokenTypes -> case binding'body binding of
+          TypeHS (EqType tyAmbient tL tR) -> BoxClassif $ hs2type $ EqType
+            (hs2type $ Pi $           Binding (binding'segment binding) tyAmbient)
+            (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) tL)
+            (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) tR)
+          _ -> unreachable
+        TokenRelate -> Unit2
+      (_, Funext) -> unreachable
+
+      (EqType tyAmbient tL tR, ElimEq (NamedBinding nameR (NamedBinding nameEq motive)) clauseRefl) -> do
+         let segR = Declaration (DeclNameSegment nameR) dmuElim Explicit tyAmbient
+         let segEq = Declaration
+               (DeclNameSegment nameEq)
+               (VarWkn <$> dmuElim)
+               Explicit
+               (hs2type $ EqType (VarWkn <$> tyAmbient) (VarWkn <$> tL) (Var2 VarLast))
+         rmotive <- h (VarWkn . VarWkn)
+                      (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segR
+                             :.. VarFromCtx <$> (decl'content %~ fromType) segEq)
+                      (AnalyzerInput motive U1 (Just U1) (fmap (VarWkn . VarWkn) <$> maybeRel))
+                      (AddressInfo ["motive"] False omit)
+         let tyReflClause = substLast2 tL $ substLast2 (Expr2 $ TermCons $ ConsRefl $ VarWkn <$> tL) $ motive
+         rclauseRefl <- h id gamma (AnalyzerInput clauseRefl U1 (Just tyReflClause) maybeRel)
+                          (AddressInfo ["refl clause"] False omit)
+         return $ case token of
+           TokenSubterms -> Box1 $ ElimEq (NamedBinding nameR (NamedBinding nameEq $ unbox1 rmotive)) (unbox1 rclauseRefl)
+           TokenTypes -> BoxClassif $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $ motive
+           TokenRelate -> Unit2
+      (_, ElimEq _ _) -> unreachable
 
 -------------------------
 
