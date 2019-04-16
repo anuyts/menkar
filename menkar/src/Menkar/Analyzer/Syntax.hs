@@ -516,5 +516,21 @@ instance SysAnalyzer sys => Analyzable sys (Segment Type sys) where
   type Classif (Segment Type sys) = Classif (Type sys)
   type Relation (Segment Type sys) = ModedDegree sys
   type AnalyzerExtraInput (Segment Type sys) = U1
+  analyze token fromType h gamma (AnalyzerInput seg@(Declaration name dmu plic ty) U1 maybeU1 maybeRel) = Just $ do
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
+    
+    rdmu <- h id (crispModedModality dgamma' :\\ gamma)
+      (AnalyzerInput dmu U1 (Just $ modality'dom dmu :*: dgamma) (toIfRelate token $ Const ModEq))
+      (AddressInfo ["modality"] True omit)
+    -- TODO plic
+    rty <- h id (VarFromCtx <$> dmu :\\ gamma)
+      (AnalyzerInput ty U1 (Just U1) maybeRel)
+      (AddressInfo ["type"] True omit)
+
+    return $ case token of
+      TokenSubterms -> Box1 $ Declaration name (unbox1 rdmu) plic (unbox1 rty)
+      TokenTypes -> BoxClassif $ U1
+      TokenRelate -> Unit2
 
 -------------------------
