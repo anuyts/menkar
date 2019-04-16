@@ -469,6 +469,28 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         TokenTypes -> BoxClassif $ unboxClassif $ reliminator
         TokenRelate -> Unit2
 
+    TermMeta _ _ _ _ -> Nothing
+
+    TermWildcard -> Nothing
+
+    TermQName _ _ -> Nothing
+
+    TermAlreadyChecked t ty -> Nothing
+      {-Just $ do
+      rt <- h id gamma (AnalyzerInput t U1 (Just ty) maybeRel)
+      rty <- h id gamma (AnalyzerInput ty U1 (Just U1) maybeRel)
+      return $ case token of
+        TokenSubterms -> Box1 $ -}
+
+    TermAlgorithm _ _ -> Nothing
+
+    TermSys syst -> Just $ do
+      rsyst <- h id gamma (AnalyzerInput syst U1 maybeTy maybeRel) (AddressInfo ["system-specific term"] True EntirelyBoring)
+      return $ case token of
+        TokenSubterms -> Box1 $ TermSys $ unbox1 rsyst
+        TokenTypes -> BoxClassif $ unboxClassif rsyst
+        TokenRelate -> Unit2
+
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (Term sys) where

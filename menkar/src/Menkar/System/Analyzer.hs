@@ -19,14 +19,17 @@ class (SysSyntax (Term sys) sys,
        Classif (Mode sys) ~ U1,
        Classif (Modality sys) ~ (Mode sys :*: Mode sys), -- domain and codomain
        Classif (Degree sys) ~ Mode sys,
+       Classif (SysTerm sys) ~ Type sys,
        Classif (SysUniHSConstructor sys) ~ Classif (UniHSConstructor sys),
        Relation (Mode sys) ~ U1,
        Relation (Modality sys) ~ Const ModRel,
        Relation (Degree sys) ~ Const ModRel,
+       Relation (SysTerm sys) ~ ModedDegree sys,
        Relation (SysUniHSConstructor sys) ~ Relation (UniHSConstructor sys),
        AnalyzerExtraInput (Mode sys) ~ U1,
        AnalyzerExtraInput (Modality sys) ~ U1,
        AnalyzerExtraInput (Degree sys) ~ U1,
+       AnalyzerExtraInput (SysTerm sys) ~ U1,
        AnalyzerExtraInput (SysUniHSConstructor sys) ~ U1
       ) => SysAnalyzer sys where
 
