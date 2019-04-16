@@ -244,6 +244,99 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
   type Relation (DependentEliminator sys) = ModedDegree sys
   type AnalyzerExtraInput (DependentEliminator sys) =
     ModedModality sys :*: Term sys :*: UniHSConstructor sys :*: (Type sys :.: VarExt)
+  analyze token fromType h gamma
+    (AnalyzerInput clauses (dmuElim :*: eliminee :*: tyEliminee :*: Comp1 (motive :: Type sys (VarExt v))) _ maybeRel)
+    = Just $ do
+
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
+
+    case (tyEliminee, clauses) of
+
+      (Sigma binding, ElimSigma (NamedBinding nameFst (NamedBinding nameSnd pairClause))) -> do
+        let segFst = Declaration
+                 (DeclNameSegment nameFst)
+                 (compModedModality dmuElim (_segment'modty $ binding'segment $ binding))
+                 Explicit
+                 (_segment'content $ binding'segment $ binding)
+        let segSnd = Declaration
+                 (DeclNameSegment nameSnd)
+                 (VarWkn <$> dmuElim)
+                 Explicit
+                 (binding'body binding)
+        let subst VarLast = Expr2 $ TermCons $ Pair (VarWkn . VarWkn <$> binding) (Var2 $ VarWkn VarLast) (Var2 VarLast)
+            subst (VarWkn v) = Var2 $ VarWkn $ VarWkn v
+        rpairClause <- h (VarWkn . VarWkn)
+                         (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segFst
+                                :.. VarFromCtx <$> (decl'content %~ fromType) segSnd)
+                         (AnalyzerInput pairClause U1
+                           (Just $ swallow $ subst <$> motive)
+                           (fmap (VarWkn . VarWkn) <$> maybeRel)
+                         )
+                         (AddressInfo ["pair clause"] False omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ ElimSigma $ NamedBinding nameFst $ NamedBinding nameSnd $ unbox1 rpairClause
+          TokenTypes -> BoxClassif U1
+          TokenRelate -> Unit2
+      (_, ElimSigma _) -> unreachable
+
+      (BoxType seg, ElimBox (NamedBinding nameUnbox boxClause)) -> do
+        let segUnbox = Declaration
+                 (DeclNameSegment nameUnbox)
+                 (compModedModality dmuElim (_segment'modty $ seg))
+                 Explicit
+                 (_segment'content seg)
+        let subst VarLast = Expr2 $ TermCons $ ConsBox (VarWkn <$> seg) (Var2 VarLast)
+            subst (VarWkn v) = Var2 $ VarWkn v
+        rboxClause <- h VarWkn
+                         (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segUnbox)
+                         (AnalyzerInput boxClause U1
+                           (Just $ swallow $ subst <$> motive)
+                           (fmap VarWkn <$> maybeRel)
+                         )
+                         (AddressInfo ["box clause"] False omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ ElimBox $ NamedBinding nameUnbox $ unbox1 rboxClause
+          TokenTypes -> BoxClassif U1
+          TokenRelate -> Unit2
+      (_, ElimBox _) -> unreachable
+
+      (EmptyType, ElimEmpty) -> pure $ case token of
+        TokenSubterms -> Box1 ElimEmpty
+        TokenTypes -> BoxClassif U1
+        TokenRelate -> Unit2
+      (_, ElimEmpty) -> unreachable
+
+      (NatType, ElimNat (zeroClause :: Term sys v) (NamedBinding namePred (NamedBinding nameHyp sucClause))) -> do
+        
+        rzeroClause <- h id gamma
+          (AnalyzerInput zeroClause U1 (Just $ substLast2 (Expr2 $ TermCons $ ConsZero :: Term sys v) $ motive) maybeRel)
+          (AddressInfo ["zero clause"] False omit)
+
+        let segPred = Declaration
+                  (DeclNameSegment $ namePred)
+                  dmuElim
+                  Explicit
+                  (hs2type $ NatType)
+        let segHyp = Declaration
+                  (DeclNameSegment $ nameHyp)
+                  (idModedModality $ VarWkn <$> dgamma)
+                  Explicit
+                  motive
+        let substS :: VarExt v -> Term sys (VarExt (VarExt v))
+            substS VarLast = Expr2 $ TermCons $ ConsSuc $ Var2 $ VarWkn VarLast
+            substS (VarWkn v) = Var2 $ VarWkn $ VarWkn v
+        rsucClause <- h (VarWkn . VarWkn)
+          (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segPred
+                 :.. VarFromCtx <$> (decl'content %~ fromType) segHyp)
+          (AnalyzerInput sucClause U1 (Just $ swallow $ substS <$> motive) (fmap (VarWkn . VarWkn) <$> maybeRel))
+          (AddressInfo ["successor clause"] False omit)
+            
+        return $ case token of
+          TokenSubterms ->
+            Box1 $ ElimNat (unbox1 rzeroClause) $ NamedBinding namePred $ NamedBinding nameHyp $ unbox1 rsucClause
+          TokenTypes -> BoxClassif U1
+          TokenRelate -> Unit2
 
 -------------------------
 
