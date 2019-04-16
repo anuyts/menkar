@@ -611,9 +611,6 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
 
 -------------------------
 
--- Generalize the one for segments to all declarations
--- Implement analyzer for telescopes!
-
 {-
 instance SysAnalyzer sys => Analyzable (Val sys) where
   type Classif (Val sys) = U1
