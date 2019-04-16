@@ -460,8 +460,14 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
       rtyEliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
         (AnalyzerInput tyEliminee U1 (Just $ Compose $ Just dgamma) (modedDivDeg dmuElim <$> maybeRel))
         (AddressInfo ["type of eliminee"] False omit)
+      reliminator <- h id gamma
+        (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) Nothing maybeRel)
+        (AddressInfo ["eliminator"] False EntirelyBoring)
         
-      _
+      return $ case token of
+        TokenSubterms -> Box1 $ TermElim (unbox1 rdmuElim) (unbox1 reliminee) (unbox1 rtyEliminee) (unbox1 reliminator)
+        TokenTypes -> BoxClassif $ unboxClassif $ reliminator
+        TokenRelate -> Unit2
 
 -------------------------
 
