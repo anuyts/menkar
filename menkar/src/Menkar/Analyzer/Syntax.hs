@@ -19,6 +19,7 @@ import Data.Functor.Compose
 import Control.Monad
 import Data.Void
 import Data.Maybe
+import Data.List
 
 -------------------------
 
@@ -551,6 +552,22 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
 
 -------------------------
 
+instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
+  type Classif (ModuleRHS sys) = U1
+  type Relation (ModuleRHS sys) = ModedDegree sys
+  type AnalyzerExtraInput (ModuleRHS sys) = U1
+  analyze token fromType h gamma (AnalyzerInput moduleRHS@(ModuleRHS (Compose revEntries)) U1 maybeU1 maybeRel) = Just $ do
+    rcontent <- sequenceA $ zip (reverse revEntries) (reverse $ tails revEntries) <&> \ (entry, revPrevEntries) ->
+      h VarInModule (gamma :<...> VarFromCtx <$> ModuleRHS (Compose $ revPrevEntries))
+        (AnalyzerInput entry U1 (Just U1) (fmap VarInModule <$> maybeRel))
+        (AddressInfo ["an entry"] True omit)
+    return $ case token of
+      TokenSubterms -> Box1 $ ModuleRHS $ Compose $ unbox1 <$> rcontent
+      TokenTypes -> BoxClassif $ U1
+      TokenRelate -> Unit2
+
+-------------------------
+
 -- Generalize the one for segments to all declarations
 -- Implement analyzer for telescopes!
 
@@ -561,3 +578,25 @@ instance SysAnalyzer sys => Analyzable (Val sys) where
   type AnalyzerExtraInput (Val sys) = U1
   analyze token fromType h gamma (AnalyzerInput val@(Declaration ))
 -}
+
+------------------------
+
+instance SysAnalyzer sys => Analyzable sys (Entry sys) where
+  type Classif (Entry sys) = U1
+  type Relation (Entry sys) = ModedDegree sys
+  type AnalyzerExtraInput (Entry sys) = U1
+  analyze token fromType h gamma (AnalyzerInput entry U1 maybeU1 maybeRel) = Just $ do
+    case entry of
+      EntryVal val -> do
+        rval <- h id gamma (AnalyzerInput val U1 (Just U1) maybeRel) (AddressInfo ["val"] True EntirelyBoring)
+        return $ case token of
+          TokenSubterms -> Box1 $ EntryVal $ unbox1 rval
+          TokenTypes -> BoxClassif $ U1
+          TokenRelate -> Unit2
+      EntryModule modul -> do
+        rmodul <- h id gamma (AnalyzerInput modul U1 (Just U1) maybeRel) (AddressInfo ["module"] True EntirelyBoring)
+        return $ case token of
+          TokenSubterms -> Box1 $ EntryModule $ unbox1 rmodul
+          TokenTypes -> BoxClassif $ U1
+          TokenRelate -> Unit2
+        
