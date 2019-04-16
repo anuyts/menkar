@@ -643,4 +643,58 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           TokenSubterms -> Box1 $ EntryModule $ unbox1 rmodul
           TokenTypes -> BoxClassif $ U1
           TokenRelate -> Unit2
+
+------------------------
+------------------------
+
+instance (SysAnalyzer sys) => Analyzable sys U1 where
+  type Classif U1 = U1
+  type Relation U1 = U1
+  type AnalyzerExtraInput U1 = U1
+  analyze token fromType h gamma (AnalyzerInput U1 U1 _ _) =
+    Just $ pure $ case token of
+        TokenSubterms -> Box1 $ U1
+        TokenTypes -> BoxClassif $ U1
+        TokenRelate -> Unit2
+
+------------------------
+
+instance (SysAnalyzer sys,
+          Analyzable sys f,
+          Analyzable sys g) => Analyzable sys (f :*: g) where
+  type Classif (f :*: g) = Classif f :*: Classif g
+  type Relation (f :*: g) = Relation f :*: Relation g
+  type AnalyzerExtraInput (f :*: g) = AnalyzerExtraInput f :*: AnalyzerExtraInput g
+  analyze token fromType h gamma (AnalyzerInput (fv :*: gv) (extraF :*: extraG) maybeClassifs maybeRels) = do
+    analyzeF <- analyze token fromType h gamma (AnalyzerInput fv extraF (fst1 <$> maybeClassifs) (fst1 <$> maybeRels))
+    analyzeG <- analyze token fromType h gamma (AnalyzerInput gv extraG (snd1 <$> maybeClassifs) (snd1 <$> maybeRels))
+    return $ do
+      rfv <- analyzeF
+      rgv <- analyzeG
+      return $ case token of
+        TokenSubterms -> Box1 $ unbox1 rfv :*: unbox1 rgv
+        TokenTypes -> BoxClassif $ unboxClassif rfv :*: unboxClassif rgv
+        TokenRelate -> Unit2
+
+------------------------
+
+{-
+instance (SysAnalyzer sys,
+          Analyzable sys f,
+          Functor g) => Analyzable sys (f :.: g) where
+  type Classif (f :.: g) = Classif f :.: g
+  type Relation (f :.: g) = Relation f :.: g
+  type AnalyzerExtraInput (f :.: g) = AnalyzerExtraInput f :.: g
+  analyze token fromType h gamma (AnalyzerInput (Comp1 fgv) (Comp1 extra) maybeCompClassif maybeCompRel) = do
+    analyze <- analyze token fromType _h gamma
+      (AnalyzerInput fgv extra (unComp1 <$> maybeCompClassif) (unComp1 <$> maybeCompRel))
+    return $ do
+      rfgv <- analyze
+      return $ case token of
+        TokenSubterms -> Box1 $ Comp1 $ unbox1 rfgv
+        TokenTypes -> BoxClassif $ Comp1 $ unboxClassif rfgv
+        TokenRelate -> Unit2
+-}
+
+------------------------
         
