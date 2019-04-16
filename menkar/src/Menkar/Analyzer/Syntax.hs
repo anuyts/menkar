@@ -492,12 +492,23 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         TokenTypes -> BoxClassif $ unboxClassif rsyst
         TokenRelate -> Unit2
 
+    TermProblem t -> Nothing
+
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (Term sys) where
   type Classif (Term sys) = Type sys
   type Relation (Term sys) = ModedDegree sys
   type AnalyzerExtraInput (Term sys) = U1
+  analyze token fromType h gamma (AnalyzerInput t U1 maybeTy maybeRel) = case t of
+    Expr2 tnv -> Just $ do
+      --analyze token formType h gamma (AnalyzerInput tnv U1 maybeTy maybeRel)
+      rtnv <- h id gamma (AnalyzerInput tnv U1 maybeTy maybeRel) (AddressInfo ["non-variable"] True EntirelyBoring)
+      return $ case token of
+        TokenSubterms -> Box1 $ Expr2 $ unbox1 rtnv
+        TokenTypes -> BoxClassif $ unboxClassif $ rtnv
+        TokenRelate -> Unit2
+    Var2 v -> Nothing
 
 -------------------------
 
