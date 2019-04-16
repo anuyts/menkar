@@ -337,6 +337,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
             Box1 $ ElimNat (unbox1 rzeroClause) $ NamedBinding namePred $ NamedBinding nameHyp $ unbox1 rsucClause
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
+      (_, ElimNat _ _) -> unreachable
 
 -------------------------
 
