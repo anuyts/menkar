@@ -239,6 +239,12 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
 
 -------------------------
 
+instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
+  type Classif (DependentEliminator sys) = U1
+  type Relation (DependentEliminator sys) = ModedDegree sys
+  type AnalyzerExtraInput (DependentEliminator sys) =
+    ModedModality sys :*: Term sys :*: UniHSConstructor sys :*: (Type sys :.: VarExt)
+
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
@@ -296,6 +302,20 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           _ -> unreachable
         TokenRelate -> Unit2
       (_, Funext) -> unreachable
+
+      (_, ElimDep namedMotive@(NamedBinding name motive) clauses) -> do
+        let seg = Declaration (DeclNameSegment name) dmuElim Explicit (hs2type tyEliminee)
+        rmotive <- h VarWkn
+                     (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
+                     (AnalyzerInput motive U1 (Just U1) (fmap VarWkn <$> maybeRel))
+                     (AddressInfo ["motive"] False omit)
+        rclauses <- h id gamma
+                      (AnalyzerInput clauses (dmuElim :*: eliminee :*: tyEliminee :*: Comp1 motive) (Just $ U1) maybeRel)
+                      (AddressInfo ["clauses"] False EntirelyBoring)
+        return $ case token of
+          TokenSubterms -> Box1 $ ElimDep (NamedBinding name $ unbox1 rmotive) (unbox1 rclauses)
+          TokenTypes -> BoxClassif $ substLast2 eliminee motive
+          TokenRelate -> Unit2
 
       (EqType tyAmbient tL tR, ElimEq (NamedBinding nameR (NamedBinding nameEq motive)) clauseRefl) -> do
          let segR = Declaration (DeclNameSegment nameR) dmuElim Explicit tyAmbient
