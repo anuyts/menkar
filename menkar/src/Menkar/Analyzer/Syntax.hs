@@ -537,14 +537,47 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
 -------------------------
 
 instance (SysAnalyzer sys,
-          Analyzable sys (ty sys),
           Analyzable sys (rhs sys),
-          Classif (ty sys) ~ U1,
           Classif (rhs sys) ~ U1,
-          AnalyzerExtraInput (ty sys) ~ U1) => Analyzable sys (Telescoped ty rhs sys) where
-  type Classif (Telescoped ty rhs sys) = U1
-  type Relation (Telescoped ty rhs sys) = Relation (ty sys) :*: Relation (rhs sys)
-  type AnalyzerExtraInput (Telescoped ty rhs sys) = AnalyzerExtraInput (rhs sys)
+          AnalyzerExtraInput (rhs sys) ~ U1) => Analyzable sys (Telescoped Type rhs sys) where
+  type Classif (Telescoped Type rhs sys) = U1
+  type Relation (Telescoped Type rhs sys) = Relation (Type sys) :*: Relation (rhs sys)
+  type AnalyzerExtraInput (Telescoped Type rhs sys) = U1
+  analyze token fromType h gamma (AnalyzerInput telescopedRHS U1 maybeU1 maybeRels) = Just $ do
+
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
+
+    case telescopedRHS of
+      Telescoped rhs -> do
+        rrhs <- h id gamma (AnalyzerInput rhs U1 (Just U1) (snd1 <$> maybeRels))
+          (AddressInfo ["rhs"] True omit)
+        return $ case token of
+          TokenSubterms -> Box1 $ Telescoped $ unbox1 rrhs
+          TokenTypes -> BoxClassif U1
+          TokenRelate -> Unit2
+      seg :|- telescopedRHS -> do
+        rseg <- h id gamma (AnalyzerInput seg U1 (Just U1) (fst1 <$> maybeRels))
+          (AddressInfo ["a segment"] True omit)
+        rtelescopedRHS <- fromMaybe unreachable $
+          analyze token fromType (\ wkn -> h (wkn . VarWkn))
+            (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
+            (AnalyzerInput telescopedRHS U1 (Just U1) (fmap VarWkn <$> maybeRels))
+        return $ case token of
+          TokenSubterms -> Box1 $ unbox1 rseg :|- unbox1 rtelescopedRHS
+          TokenTypes -> BoxClassif U1
+          TokenRelate -> Unit2
+      dmu :** telescopedRHS -> do
+        rdmu <- h id (crispModedModality dgamma' :\\ gamma)
+          (AnalyzerInput dmu U1 (Just $ modality'dom dmu :*: dgamma) (toIfRelate token $ Const ModEq))
+          (AddressInfo ["applied modality"] True omit)
+        rtelescopedRHS <- fromMaybe unreachable $
+          analyze token fromType h (VarFromCtx <$> dmu :\\ gamma)
+            (AnalyzerInput telescopedRHS U1 (Just U1) maybeRels)
+        return $ case token of
+          TokenSubterms -> Box1 $ unbox1 rdmu :** unbox1 rtelescopedRHS
+          TokenTypes -> BoxClassif U1
+          TokenRelate -> Unit2
 
 -------------------------
 

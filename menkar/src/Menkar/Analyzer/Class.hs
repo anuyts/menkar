@@ -86,7 +86,7 @@ toIfRelate TokenRelate a = IfRelate a
     - Since you cannot allocate metas, you should pass down either a complete classifier or no classifier.
       Hence, if you know something about a subAST's classifier, please know all about it.
 -}
-class (Functor t) => Analyzable sys t where
+class (Functor t, Functor (Relation t)) => Analyzable sys t where
   type AnalyzerExtraInput t :: * -> *
   type Classif t :: * -> *
   type Relation t :: * -> *
