@@ -534,3 +534,30 @@ instance SysAnalyzer sys => Analyzable sys (Segment Type sys) where
       TokenRelate -> Unit2
 
 -------------------------
+
+-------------------------
+
+instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
+  type Classif (ValRHS sys) = U1
+  type Relation (ValRHS sys) = ModedDegree sys
+  type AnalyzerExtraInput (ValRHS sys) = U1
+  analyze token fromType h gamma (AnalyzerInput valRHS@(ValRHS t ty) U1 maybeU1 maybeRel) = Just $ do
+    rt <- h id gamma (AnalyzerInput t U1 (Just ty) maybeRel) (AddressInfo ["RHS"] True omit)
+    rty <- h id gamma (AnalyzerInput ty U1 (Just U1) maybeRel) (AddressInfo ["type"] True omit)
+    return $ case token of
+      TokenSubterms -> Box1 $ ValRHS (unbox1 rt) (unbox1 rty)
+      TokenTypes -> BoxClassif $ U1
+      TokenRelate -> Unit2
+
+-------------------------
+
+-- Generalize the one for segments to all declarations
+-- Implement analyzer for telescopes!
+
+{-
+instance SysAnalyzer sys => Analyzable (Val sys) where
+  type Classif (Val sys) = U1
+  type Relation (Val sys) = ModedDegree sys
+  type AnalyzerExtraInput (Val sys) = U1
+  analyze token fromType h gamma (AnalyzerInput val@(Declaration ))
+-}
