@@ -129,6 +129,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
       Ctx lhs sys w Void ->
       AnalyzerInput option s w ->
       AddressInfo ->
+      (t v -> Maybe (s w)) ->
       f (AnalyzerResult option s w)
     ) ->
     Ctx lhs sys v Void ->
@@ -149,7 +150,7 @@ subASTsTyped :: forall sys f t v .
   AnalyzerInput OptionSubASTs t v ->
   Maybe (f (t v))
 subASTsTyped h gamma inputT = fmap unbox1 <$> analyze TokenSubASTs id
-  (\ wkn gamma inputS addressInfo -> Box1 <$> h wkn gamma inputS addressInfo)
+  (\ wkn gamma inputS addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo)
   gamma inputT
 
 subASTs :: forall sys f t v .
@@ -188,5 +189,5 @@ typetrick :: forall sys lhs f t v .
   AnalyzerInput OptionTypes t v ->
   Maybe (f (Classif t v))
 typetrick fromType h gamma inputT = fmap unboxClassif <$> analyze TokenTypes fromType
-  (\ wkn gamma inputS addressInfo -> BoxClassif <$> h wkn gamma inputS addressInfo)
+  (\ wkn gamma inputS addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo)
   gamma inputT
