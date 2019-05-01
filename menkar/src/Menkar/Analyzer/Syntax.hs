@@ -43,7 +43,7 @@ instance (SysAnalyzer sys,
           Relation (rhs sys) ~ ModedDegree sys,
           AnalyzerExtraInput (rhs sys) ~ U1
          ) => Analyzable sys (Binding Type rhs sys) where
-  type Classif (Binding Type rhs sys) = Classif (Segment Type sys) :*: (Classif (rhs sys) :.: VarExt)
+  type Classif (Binding Type rhs sys) = Classif (Segment Type sys) :*: ClassifBinding Type (Classif (rhs sys)) sys
   type Relation (Binding Type rhs sys) = ModedDegree sys
   type AnalyzerExtraInput (Binding Type rhs sys) = U1
   analyze token fromType h gamma (AnalyzerInput (Binding seg body) U1 maybeCl maybeDDeg) = Just $ do
@@ -51,11 +51,11 @@ instance (SysAnalyzer sys,
       (AnalyzerInput seg U1 (fst1 <$> maybeCl) maybeDDeg)
       (AddressInfo ["segment"] False omit)
     rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
-      (AnalyzerInput body U1 (unComp1 . snd1 <$> maybeCl) (fmap VarWkn <$> maybeDDeg))
+      (AnalyzerInput body U1 (_classifBinding'body . snd1 <$> maybeCl) (fmap VarWkn <$> maybeDDeg))
       (AddressInfo ["body"] False omit)
     return $ case token of
       TokenSubterms -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
-      TokenTypes -> BoxClassif $ unboxClassif rseg :*: Comp1 (unboxClassif rbody)
+      TokenTypes -> BoxClassif $ unboxClassif rseg :*: ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
 
 -------------------------
@@ -165,13 +165,14 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (AddressInfo ["binding"] False EntirelyBoring)
         return $ case token of
           TokenSubterms -> Box1 $ Lam $ unbox1 rbinding
-          TokenTypes ->
-            let (U1 :*: Comp1 ty) = unboxClassif rbinding
-            in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) ty
+          TokenTypes -> BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) $
+            _classifBinding'body $ snd1 $ unboxClassif $ rbinding
+            --let (U1 :*: Comp1 ty) = unboxClassif rbinding
+            --in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) ty
           TokenRelate -> Unit2
 
       Pair sigmaBinding tFst tSnd -> do
-        let sigmaBindingClassif = U1 :*: Comp1 U1 --(Comp1 $ hs2type $ UniHS $ VarWkn <$> dgamma)
+        let sigmaBindingClassif = U1 :*: ClassifBinding (binding'segment sigmaBinding) U1
         rsigmaBinding <- h id gamma (AnalyzerInput sigmaBinding U1 (Just sigmaBindingClassif) maybeRel)
           (AddressInfo ["Sigma-type annotation"] False omit)
         let tyFst = _segment'content $ binding'segment $ sigmaBinding
@@ -698,3 +699,4 @@ instance (SysAnalyzer sys,
 
 ------------------------
         
+-- INSTEAD OF USING :.:, USE ClassifBinding, WHICH DOES NOT COMPARE SEGMENTS

@@ -195,6 +195,27 @@ deriving instance (
     CanSwallow (Term sys) (lhs sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (Binding lhs rhs sys)
+
+{-| Same as binding, but analyzer takes segment for granted and doesn't traverse it. -}
+data ClassifBinding
+    (lhs :: KSys -> * -> *)
+    (rhs :: * -> *)
+    (sys :: KSys) (v :: *) =
+  ClassifBinding {
+    _classifBinding'segment :: Segment lhs sys v,
+    _classifBinding'body :: rhs (VarExt v)
+  }
+deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs)) => Functor (ClassifBinding lhs rhs sys)
+deriving instance (SysTrav sys, Foldable (lhs sys), Foldable (rhs)) => Foldable (ClassifBinding lhs rhs sys)
+deriving instance (SysTrav sys, Traversable (lhs sys), Traversable (rhs)) => Traversable (ClassifBinding lhs rhs sys)
+deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs)) => Generic1 (ClassifBinding lhs rhs sys)
+deriving instance (
+    SysSyntax (Term sys) sys,
+    Functor (lhs sys),
+    Functor (rhs),
+    CanSwallow (Term sys) (lhs sys),
+    CanSwallow (Term sys) (rhs)
+  ) => CanSwallow (Term sys) (ClassifBinding lhs rhs sys)
   
 data NamedBinding
     (rhs :: KSys -> * -> *)

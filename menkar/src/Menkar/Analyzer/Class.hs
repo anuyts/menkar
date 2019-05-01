@@ -93,6 +93,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   analyze :: forall option lhs f v .
     (Applicative f, DeBruijnLevel v, Traversable (lhs sys)) =>
     AnalyzerToken option ->
+    {-| For adding stuff to the context. -}
     (forall w . Type sys w -> lhs sys w) ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
