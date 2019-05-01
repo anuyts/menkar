@@ -22,6 +22,7 @@ data AnalyzerToken (option :: AnalyzerOption) where
 data AnalyzableToken sys (ast :: * -> *) where
   AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
   AnTokenBinding :: AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
+  AnTokenClassifBinding :: AnalyzableToken sys rhs -> AnalyzableToken sys (ClassifBinding Type rhs sys)
   AnTokenUniHSConstructor :: AnalyzableToken sys (UniHSConstructor sys)
   AnTokenConstructorTerm :: AnalyzableToken sys (ConstructorTerm sys)
   AnTokenType :: AnalyzableToken sys (Type sys)

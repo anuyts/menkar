@@ -62,6 +62,26 @@ instance (SysAnalyzer sys,
 
 -------------------------
 
+instance (SysAnalyzer sys,
+          Analyzable sys rhs,
+          --Relation rhs ~ ModedDegree sys,
+          AnalyzerExtraInput rhs ~ U1
+         ) => Analyzable sys (ClassifBinding Type rhs sys) where
+  type Classif (ClassifBinding Type rhs sys) = ClassifBinding Type (Classif rhs) sys
+  type Relation (ClassifBinding Type rhs sys) = Relation rhs :.: VarExt
+  type AnalyzerExtraInput (ClassifBinding Type rhs sys) = U1
+  analyzableToken = AnTokenClassifBinding analyzableToken
+  analyze token fromType h gamma (AnalyzerInput (ClassifBinding seg body) U1 maybeCl maybeDDeg) = Just $ do
+    rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
+      (AnalyzerInput body U1 (_classifBinding'body <$> classifMust2will maybeCl) (unComp1 <$> maybeDDeg))
+      (AddressInfo ["body"] False EntirelyBoring)
+    return $ case token of
+      TokenSubASTs -> Box1 $ ClassifBinding seg (unbox1 rbody)
+      TokenTypes -> BoxClassif $ ClassifBinding seg (unboxClassif rbody)
+      TokenRelate -> Unit2
+
+-------------------------
+
 instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   
   type Classif (UniHSConstructor sys) = Compose Maybe (Mode sys) -- a mode if you care
