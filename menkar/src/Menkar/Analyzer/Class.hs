@@ -13,9 +13,9 @@ import Data.Void
 import Data.Functor.Identity
 import GHC.Generics
 
-data AnalyzerOption = OptionSubterms | OptionTypes | OptionRelate
+data AnalyzerOption = OptionSubASTs | OptionTypes | OptionRelate
 data AnalyzerToken (option :: AnalyzerOption) where
-  TokenSubterms :: AnalyzerToken OptionSubterms
+  TokenSubASTs :: AnalyzerToken OptionSubASTs
   TokenTypes :: AnalyzerToken OptionTypes
   TokenRelate :: AnalyzerToken OptionRelate
 
@@ -47,19 +47,19 @@ data AddressInfo = AddressInfo {
   }
 
 type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> * -> *) | result -> option
-type instance AnalyzerResult OptionSubterms = Box1
+type instance AnalyzerResult OptionSubASTs = Box1
 type instance AnalyzerResult OptionTypes = BoxClassif
 type instance AnalyzerResult OptionRelate = Unit2
 
 data IfRelate (option :: AnalyzerOption) a where
-  IfRelateSubterms :: IfRelate OptionSubterms a
+  IfRelateSubASTs :: IfRelate OptionSubASTs a
   IfRelateTypes :: IfRelate OptionTypes a
   IfRelate :: a -> IfRelate OptionRelate a
 
 deriving instance Functor (IfRelate option)
 
 toIfRelate :: AnalyzerToken option -> a -> IfRelate option a
-toIfRelate TokenSubterms a = IfRelateSubterms
+toIfRelate TokenSubASTs a = IfRelateSubASTs
 toIfRelate TokenTypes a = IfRelateTypes
 toIfRelate TokenRelate a = IfRelate a
 
@@ -80,10 +80,11 @@ toIfRelate TokenRelate a = IfRelate a
       - a title for the subAST
       - whether this subAST should be whnormal for the entire AST to be whnormal.
 
-    In option "subterms", a modified subAST is returned, which you should recollect to a bigger AST of the same shape.
+    In option "subASTs", a modified subAST is returned, which you should recollect to a bigger AST of the same shape.
 
     In option "types", the type-checker checks the subASTs, makes sure their inferred type matches the expected type
-    if you provided one, and passes you back the expected/inferred classifier. You should collect these into a classifier
+    if you provided one marked as 'ClassifMustBe',
+    and passes you back the expected/inferred classifier. You should collect these into a classifier
     of the entire AST. The type-checker then checks that this classifier equals the expected one provided to you earlier.
 
     In option "relate", nothing is returned, so there's nothing you need to do!
@@ -114,24 +115,24 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
     AnalyzerInput option t v ->
     Maybe (f (AnalyzerResult option t v))
 
-subtermsTyped :: forall sys f t v .
+subASTsTyped :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
-    AnalyzerInput OptionSubterms s w ->
+    AnalyzerInput OptionSubASTs s w ->
     AddressInfo ->
     f (s w)
   ) ->
   Ctx Type sys v Void ->
-  AnalyzerInput OptionSubterms t v ->
+  AnalyzerInput OptionSubASTs t v ->
   Maybe (f (t v))
-subtermsTyped h gamma inputT = fmap unbox1 <$> analyze TokenSubterms id
+subASTsTyped h gamma inputT = fmap unbox1 <$> analyze TokenSubASTs id
   (\ wkn gamma inputS addressInfo -> Box1 <$> h wkn gamma inputS addressInfo)
   gamma inputT
 
-subterms :: forall sys f t v .
+subASTs :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
@@ -146,11 +147,11 @@ subterms :: forall sys f t v .
   t v ->
   AnalyzerExtraInput t v ->
   Maybe (f (t v))
-subterms h gamma t extraInputT = subtermsTyped
+subASTs h gamma t extraInputT = subASTsTyped
   (\ wkn gamma inputS addressInfo ->
      h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
   )
-  gamma (AnalyzerInput t extraInputT ClassifUnknown IfRelateSubterms)
+  gamma (AnalyzerInput t extraInputT ClassifUnknown IfRelateSubASTs)
 
 typetrick :: forall sys lhs f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
