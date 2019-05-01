@@ -21,10 +21,17 @@ data AnalyzerToken (option :: AnalyzerOption) where
 
 newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
+data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | ClassifUnknown
+  deriving (Functor, Foldable, Traversable)
+
+classifMust2will :: ClassifInfo a -> ClassifInfo a
+classifMust2will (ClassifMustBe a) = ClassifWillBe a
+classifMust2will ca = ca
+
 data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
   _analyzerInput'get :: t v,
   _analyzerInput'extra :: AnalyzerExtraInput t v,
-  _analyzerInput'maybeClassifier :: Maybe (Classif t v),
+  _analyzerInput'classifInfo :: ClassifInfo (Classif t v),
   _analyzerInput'relation :: IfRelate option (Relation t v)}
 
 data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
@@ -143,7 +150,7 @@ subterms h gamma t extraInputT = subtermsTyped
   (\ wkn gamma inputS addressInfo ->
      h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
   )
-  gamma (AnalyzerInput t extraInputT Nothing IfRelateSubterms)
+  gamma (AnalyzerInput t extraInputT ClassifUnknown IfRelateSubterms)
 
 typetrick :: forall sys lhs f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
