@@ -19,33 +19,23 @@ data AnalyzerToken (option :: AnalyzerOption) where
   TokenTypes :: AnalyzerToken OptionTypes
   TokenRelate :: AnalyzerToken OptionRelate
 
--- Constraints of constructors need to be identical to constraints of instances of Analyzable!
 data AnalyzableToken sys (ast :: * -> *) where
-  AnTokenModedModality :: (SysAnalyzer sys) => AnalyzableToken sys (ModedModality sys)
-  AnTokenBinding :: (SysAnalyzer sys,
-          Analyzable sys (rhs sys),
-          Relation (rhs sys) ~ ModedDegree sys,
-          AnalyzerExtraInput (rhs sys) ~ U1
-         ) => AnalyzableToken sys (Binding Type rhs sys)
-  AnTokenUniHSConstructor :: (SysAnalyzer sys) => AnalyzableToken sys (UniHSConstructor sys)
-  AnTokenConstructorTerm :: SysAnalyzer sys => AnalyzableToken sys (ConstructorTerm sys)
-  AnTokenType :: SysAnalyzer sys => AnalyzableToken sys (Type sys)
-  AnTokenDependentEliminator :: SysAnalyzer sys => AnalyzableToken sys (DependentEliminator sys)
-  AnTokenEliminator :: SysAnalyzer sys => AnalyzableToken sys (Eliminator sys)
-  AnTokenTermNV :: SysAnalyzer sys => AnalyzableToken sys (TermNV sys)
-  AnTokenTerm :: SysAnalyzer sys => AnalyzableToken sys (Term sys)
-  AnTokenDeclaration :: (SysAnalyzer sys, Analyzable sys (rhs sys)) => AnalyzableToken sys (Declaration declSort rhs sys)
-  AnTokenTelescoped :: (SysAnalyzer sys,
-          Analyzable sys (rhs sys),
-          Classif (rhs sys) ~ U1,
-          AnalyzerExtraInput (rhs sys) ~ U1) => AnalyzableToken sys (Telescoped Type rhs sys)
-  AnTokenValRHS :: SysAnalyzer sys => AnalyzableToken sys (ValRHS sys)
-  AnTokenModuleRHS :: SysAnalyzer sys => AnalyzableToken sys (ModuleRHS sys)
-  AnTokenEntry :: SysAnalyzer sys => AnalyzableToken sys (Entry sys)
-  AnTokenU1 :: (SysAnalyzer sys) => AnalyzableToken sys U1
-  AnTokenPair1 :: (SysAnalyzer sys,
-          Analyzable sys f,
-          Analyzable sys g) => AnalyzableToken sys (f :*: g)
+  AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
+  AnTokenBinding :: AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
+  AnTokenUniHSConstructor :: AnalyzableToken sys (UniHSConstructor sys)
+  AnTokenConstructorTerm :: AnalyzableToken sys (ConstructorTerm sys)
+  AnTokenType :: AnalyzableToken sys (Type sys)
+  AnTokenDependentEliminator :: AnalyzableToken sys (DependentEliminator sys)
+  AnTokenEliminator :: AnalyzableToken sys (Eliminator sys)
+  AnTokenTermNV :: AnalyzableToken sys (TermNV sys)
+  AnTokenTerm :: AnalyzableToken sys (Term sys)
+  AnTokenDeclaration :: AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Declaration declSort rhs sys)
+  AnTokenTelescoped :: AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Telescoped Type rhs sys)
+  AnTokenValRHS :: AnalyzableToken sys (ValRHS sys)
+  AnTokenModuleRHS :: AnalyzableToken sys (ModuleRHS sys)
+  AnTokenEntry :: AnalyzableToken sys (Entry sys)
+  AnTokenU1 :: AnalyzableToken sys U1
+  AnTokenPair1 :: AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
 
 newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
