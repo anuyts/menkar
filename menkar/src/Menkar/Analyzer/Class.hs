@@ -116,6 +116,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   type AnalyzerExtraInput t :: * -> *
   type Classif t :: * -> *
   type Relation t :: * -> *
+  analyzableToken :: AnalyzableToken sys t
   analyze :: forall option lhs f v .
     (Applicative f, DeBruijnLevel v, Traversable (lhs sys)) =>
     AnalyzerToken option ->
