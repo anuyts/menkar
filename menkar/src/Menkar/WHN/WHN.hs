@@ -78,15 +78,16 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   UniHSConstructor sys v {-^ eliminee's type -} ->
   Eliminator sys v ->
   Type sys v {-^ type of the result -} ->
+  [Int] ->
   String ->
   whn (Term sys v)
 -- careful with glue/weld!
-whnormalizeElim parent gamma dmu eliminee tyEliminee e tyResult reason = do
+whnormalizeElim parent gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   -- WHNormalize the eliminee
-  (whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee (hs2type tyEliminee) reason
+  --(whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee (hs2type tyEliminee) reason
   let useDependentEta = tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason
-  case metas of
+  case metasEliminee of
     -- The eliminee is blocked: Try to rely on eta instead
     _:_ -> useDependentEta
       --return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
@@ -100,7 +101,7 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e tyResult reason = do
       (Expr2 (TermElim _ _ _ _)) -> useDependentEta
       (Expr2 (TermMeta MetaNeutral meta depcies alg)) -> useDependentEta
       -- Eliminee is system-specific: TODO
-      --(Expr2 (TermSys t)) -> _
+      (Expr2 (TermSys t)) -> todo
       -- Eliminee is a constructor:
       (Expr2 (TermCons t)) ->
         -- Just in case: wrap the elimination in a problem box.
@@ -205,15 +206,16 @@ whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [In
   Ctx Type sys v Void ->
   TermNV sys v ->
   Type sys v ->
+  [Int] ->
   String ->
   whn (Term sys v)
 -- Constructor: return it
-whnormalizeNV parent gamma t@(TermCons _) ty reason = return $ Expr2 $ t   -- Mind glue and weld!
+whnormalizeNV parent gamma t@(TermCons _) ty metas reason = return $ Expr2 $ t   -- Mind glue and weld!
 -- Eliminator: call whnormalizeElim
-whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) ty reason =
-  whnormalizeElim parent gamma dmu t tyEliminee e ty reason
+whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) ty metas reason =
+  whnormalizeElim parent gamma dmu t tyEliminee e ty metas reason
 -- Meta: return if unsolved, otherwise whnormalize solution.
-whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty reason = do
+whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty metas reason = do
   --solution <- fromMaybe (Expr2 t) <$> awaitMeta parent ty reason meta depcies
   maybeSolution <- awaitMeta parent reason meta depcies
   case maybeSolution of
@@ -227,21 +229,21 @@ whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty
     Nothing -> Expr2 t <$ tell [meta]
     Just solution -> whnormalize gamma solution-}
 -- Wildcard: unreachable
-whnormalizeNV parent gamma TermWildcard ty reason = unreachable
+whnormalizeNV parent gamma TermWildcard ty metas reason = unreachable
 -- QName: Extract the enclosed value, turn the telescope into box-constructors and lambdas, and return.
-whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) ty reason =
+whnormalizeNV parent gamma (TermQName qname leftDividedTelescopedVal) ty metas reason =
     let moduleMode = _leftDivided'originalMode leftDividedTelescopedVal
         telescopedVal = _leftDivided'content leftDividedTelescopedVal
         ModApplied _ quantifiedVal = telescoped2modalQuantified moduleMode telescopedVal
         quantifiedTerm = _val'term quantifiedVal
     in  whnormalize parent gamma quantifiedTerm ty reason
-whnormalizeNV parent gamma (TermAlreadyChecked t ty) ty' reason = whnormalize parent gamma t ty' reason
+whnormalizeNV parent gamma (TermAlreadyChecked t ty) ty' metas reason = whnormalize parent gamma t ty' reason
 -- Results annotated with an algorithm for solving them: whnormalize the result.
-whnormalizeNV parent gamma (TermAlgorithm alg result) ty reason = whnormalize parent gamma result ty reason
+whnormalizeNV parent gamma (TermAlgorithm alg result) ty metas reason = whnormalize parent gamma result ty reason
 -- System specific terms: call whnormalizeSys, a method of SysWHN.
-whnormalizeNV parent gamma (TermSys t) ty reason = whnormalizeSys parent gamma t ty reason
+whnormalizeNV parent gamma (TermSys t) ty metas reason = whnormalizeSys parent gamma t ty reason
 -- Bogus terms: return them.
-whnormalizeNV parent gamma t@(TermProblem _) ty reason = return $ Expr2 t
+whnormalizeNV parent gamma t@(TermProblem _) ty metas reason = return $ Expr2 t
 
 ---------------------------
 
@@ -306,9 +308,9 @@ whnormalize parent gamma (Var2 v) ty reason = return $ Var2 v
 -- Not a variable
 whnormalize parent gamma (Expr2 t) ty reason = do
   --perform all necessary recursive calls
-  prewhnT <- whnormalizeAST parent gamma t U1 ty reason
+  (prewhnT, metas) <- listen $ whnormalizeAST parent gamma t U1 ty reason
   --call whnormalizeNV
-  whnormalizeNV parent gamma t ty reason
+  whnormalizeNV parent gamma prewhnT ty metas reason
 
 whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
