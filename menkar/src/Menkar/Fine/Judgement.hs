@@ -4,6 +4,8 @@ import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw
+import Menkar.Analyzer.Class
+import Menkar.Analyzer.Syntax
 
 import Data.Void
 import Control.Exception.AssertFalse
@@ -28,31 +30,18 @@ data Judgement (sys :: KSys) where
     Judgement sys
   -}
 
-  -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
-  -- | Premises: @'JudCtx'@
-  JudType :: (DeBruijnLevel v) =>
+  Jud :: (DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
+    AnalyzableToken sys t ->
     Ctx Type sys v Void ->
-    Type sys v ->
+    t v ->
+    Classif t v ->
     Judgement sys
-  JudTypeRel :: (DeBruijnLevel v) =>
-    Degree sys v ->
+  JudRel :: (DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
+    AnalyzableToken sys t ->
+    Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
-    Twice2 Type sys v ->
-    Judgement sys
-    
-  -- | @'JudTerm' gamma t tyT@ means @gamma |- t : tyT@.
-  -- | Premises: @'JudCtx', 'JudType'@
-  JudTerm :: (DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
-    Term sys v ->
-    Type sys v ->
-    Judgement sys
-  JudTermRel :: (DeBruijnLevel v) =>
-    Eta ->
-    Degree sys v ->
-    Ctx (Twice2 Type) sys v Void ->
-    Twice2 Term sys v ->
-    Twice2 Type sys v ->
+    Twice1 t v ->
+    Twice1 (Classif t) v ->
     Judgement sys
     
   -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.
@@ -93,6 +82,7 @@ data Judgement (sys :: KSys) where
     Type sys v ->
     Judgement sys
 
+{-
   -- | Checking is immediately delegated to the system.
   JudMode :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
@@ -134,12 +124,14 @@ data Judgement (sys :: KSys) where
     ModedModality sys v ->
     Mode sys v ->
     Judgement sys
+-}
 
   -- | Checking is immediately delegated to the system.
   JudSys :: SysJudgement sys -> Judgement sys
 
   ------------------------------
 
+{-
   JudSegment :: (DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     Segment Type sys v ->
@@ -159,3 +151,35 @@ data Judgement (sys :: KSys) where
     Ctx Type sys v Void ->
     Entry sys v ->
     Judgement sys
+-}
+
+-- | @'JudType' gamma tyT@ means @gamma |- tyT type@
+-- | Premises: @'JudCtx'@
+{-JudType :: (DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Type sys v ->
+    Judgement sys-}
+pattern JudType gamma ty = Jud AnTokenType gamma ty U1
+{-JudTypeRel :: (DeBruijnLevel v) =>
+    Degree sys v ->
+    Ctx (Twice2 Type) sys v Void ->
+    Twice2 Type sys v ->
+    Judgement sys-}
+pattern JudTypeRel deg gamma tys
+  <- JudRel AnTokenType deg gamma (twice1to2 -> tys) (Twice1 U1 U1)
+  where JudTypeRel deg gamma (Twice2 ty1 ty2) = JudRel AnTokenType deg gamma (Twice1 ty1 ty2) (Twice1 U1 U1)
+    
+-- | @'JudTerm' gamma t tyT@ means @gamma |- t : tyT@.
+-- | Premises: @'JudCtx', 'JudType'@
+{-JudTerm :: (DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Term sys v ->
+    Type sys v ->
+    Judgement sys-}
+{-JudTermRel :: (DeBruijnLevel v) =>
+    Eta ->
+    Degree sys v ->
+    Ctx (Twice2 Type) sys v Void ->
+    Twice2 Term sys v ->
+    Twice2 Type sys v ->
+    Judgement sys-}

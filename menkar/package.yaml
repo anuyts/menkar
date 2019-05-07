@@ -91,3 +91,4 @@ default-extensions:
 - TypeInType
 - TypeFamilyDependencies
 - ApplicativeDo
+- ViewPatterns

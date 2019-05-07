@@ -20,9 +20,14 @@ import Data.Kind hiding (Type)
 
 -------------------
 
-data Twice2 t (a :: ka) (b :: kb) = Twice2 (t a b) (t a b)
+data Twice2 t (a :: ka) (b :: kb) = Twice2 {fstTwice2 :: t a b, sndTwice2 :: t a b}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Twice2 t sys)
+data Twice1 t (a :: ka) = Twice1 {fstTwice1 :: t a, sndTwice1 :: t a}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Twice1 t)
+twice1to2 :: Twice1 (t sys) v -> Twice2 t sys v
+twice1to2 (Twice1 a b) = Twice2 a b
   
 newtype Box2 t (a :: ka) (b :: kb) = Box2 {unbox2 :: t a b}
   deriving (Functor, Foldable, Traversable, Generic1)
