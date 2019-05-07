@@ -6,6 +6,7 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
 import Menkar.Monad.Monad
+import Menkar.Analyzer
 
 import Control.Exception.AssertFalse
 
@@ -268,4 +269,12 @@ whnormalizeType parent gamma (Type ty) reason = do
 
 ---------------------------
 
-whnormalizeAST :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [int] whn) => 
+whnormalizeAST :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [int] whn, Analyzable sys t) => 
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  t v ->
+  Classif t v ->
+  String ->
+  whn (t v)
+whnormalizeAST parent gamma ast classif reason = do
+  _

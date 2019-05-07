@@ -2,6 +2,7 @@ module Menkar.System.WHN where
 
 import Menkar.System.Fine
 import Menkar.System.Scoper
+import Menkar.System.Analyzer
 import Menkar.Fine
 import Menkar.Monad.Monad
 

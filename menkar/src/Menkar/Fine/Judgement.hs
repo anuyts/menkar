@@ -30,6 +30,7 @@ data Judgement (sys :: KSys) where
     Judgement sys
   -}
 
+  -- Quantified class constraints `SysAnalyzer sys => Analyzable sys t` would be more appropriate here.
   Jud :: (DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
     AnalyzableToken sys t ->
     Ctx Type sys v Void ->
