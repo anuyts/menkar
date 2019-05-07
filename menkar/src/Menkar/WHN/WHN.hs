@@ -35,10 +35,10 @@ tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason = do
       ElimSigma pairClause -> case tyEliminee of
         Sigma sigmaBinding -> do
           let dmuSigma = _segment'modty $ binding'segment sigmaBinding
-          allowsEta parent (crispModedModality dgamma' :\\ gamma) dmuSigma dgamma reason >>= \case
+          allowsEta parent (crispModedModality dgamma' :\\ gamma) dmuSigma reason >>= \case
             Just True -> do
-              let tmFst = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuSigma dgamma) whnEliminee tyEliminee Fst
-              let tmSnd = Expr2 $ TermElim (idModedModality                     dgamma) whnEliminee tyEliminee Snd
+              let tmFst = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuSigma) whnEliminee tyEliminee Fst
+              let tmSnd = Expr2 $ TermElim (idModedModality dgamma)              whnEliminee tyEliminee Snd
               let subst v = case v of
                     VarWkn (VarWkn w) -> Var2 w
                     VarWkn VarLast -> tmFst
@@ -49,9 +49,9 @@ tryDependentEta parent gamma dmu whnEliminee tyEliminee e tyResult reason = do
       ElimBox boxClause -> case tyEliminee of
         BoxType boxSeg -> do
           let dmuBox = _segment'modty boxSeg
-          allowsEta parent (crispModedModality dgamma' :\\ gamma) dmuBox dgamma reason >>= \case
+          allowsEta parent (crispModedModality dgamma' :\\ gamma) dmuBox reason >>= \case
             Just True -> do
-              let tmUnbox = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuBox dgamma) whnEliminee tyEliminee Unbox
+              let tmUnbox = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuBox) whnEliminee tyEliminee Unbox
               let subst v = case v of
                     VarWkn w -> Var2 w
                     VarLast -> tmUnbox
@@ -127,10 +127,10 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e tyResult reason = do
           -- Function extensionality over a lambda: WHNormalize the body.
           (Lam (Binding seg body), Funext) -> do
             let Pi piBinding = tyEliminee
-            whnBody <- whnormalize parent (gamma :.. VarFromCtx <$> seg) body (Type $ binding'body piBinding) reason
+            whnBody <- whnormalize parent (gamma :.. VarFromCtx <$> seg) body (binding'body piBinding) reason
             case whnBody of
               -- Body is refl: Elimination reduces to refl.
-              Expr2 (TermCons (ConsRefl)) -> return $ Expr2 $ TermCons $ ConsRefl
+              Expr2 (TermCons (ConsRefl t)) -> return $ Expr2 $ TermCons $ ConsRefl $ Expr2 $ TermCons $ Lam $ Binding seg t
               -- Body is blocked or neutral: Return elimination with whnormalized body.
               _ -> return $ Expr2 $ TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg whnBody) tyEliminee Funext
           -- Other eliminations of lambda: Bogus.
@@ -193,9 +193,9 @@ whnormalizeElim parent gamma dmu eliminee tyEliminee e tyResult reason = do
           -- IDENTITY TYPE
           ---------------
           -- Correct dependent elimination of refl.
-          (ConsRefl, ElimEq motive crefl) -> whnormalize parent gamma crefl tyResult reason
+          (ConsRefl t, ElimEq motive crefl) -> whnormalize parent gamma crefl tyResult reason
           -- Other elimination of refl: Bogus.
-          (ConsRefl, _) -> return termProblem
+          (ConsRefl _, _) -> return termProblem
       (Expr2 _) -> unreachable
 
 whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
@@ -265,3 +265,7 @@ whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
 whnormalizeType parent gamma (Type ty) reason = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
   Type <$> whnormalize parent gamma ty (hs2type $ UniHS dgamma) reason
+
+---------------------------
+
+whnormalizeAST :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [int] whn) => 

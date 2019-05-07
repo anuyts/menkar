@@ -66,7 +66,6 @@ instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper s
 
 class (
     Degrees sys,
-    SysAnalyzer sys,
     MonadScoper sys whn
   ) => MonadWHN sys whn | whn -> sys where
   {-| Returns the meta's solution if the meta has been solved.
@@ -150,7 +149,7 @@ addNewConstraint judgement parent reason = addConstraint =<< defConstraint judge
 -- | Not to be used by the Scoper.
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
-newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v) =>
+newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   Type sys v ->
@@ -174,7 +173,7 @@ newMetaTerm maybeParent gamma ty neutrality reason = do
 -- | Not to be used by the Scoper.
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
-newMetaType :: (MonadTC sys tc, DeBruijnLevel v) =>
+newMetaType :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   String ->
@@ -190,7 +189,7 @@ newMetaType maybeParent gamma reason = do
 -- | Not to be used by the Scoper.
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
-newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
+newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
   Maybe (Constraint sys) ->
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
