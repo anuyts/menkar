@@ -20,6 +20,7 @@ newMetaModedModalityNoCheck :: (SysScoper sys, MonadScoper sys sc, DeBruijnLevel
   String ->
   sc (ModedModality sys v)
 newMetaModedModalityNoCheck parent gamma reason = do
-  d <- newMetaModeNoCheck parent gamma reason
+  dom <- newMetaModeNoCheck parent gamma reason
+  cod <- newMetaModeNoCheck parent gamma reason
   mu <- newMetaModtyNoCheck parent gamma reason
-  return $ ModedModality d mu
+  return $ ModedModality dom cod mu

@@ -74,12 +74,12 @@ class SysScoper sys => SysWHN sys where
     Constraint sys ->
     Ctx Type sys v Void ->
     ModedModality sys v ->
-    Mode sys v {-^ the codomain -} ->
+    --Mode sys v {-^ the codomain -} ->
     String ->
     whn (Maybe Bool)
-  allowsEta parent gamma dmu@(ModedModality ddom mu) dcod reason = do
-    let dnu = modedApproxLeftAdjointProj dmu dcod
-    leqMod parent gamma (idMod dcod) (modality'mod $ compModedModality dmu dnu) dcod dcod reason
+  allowsEta parent gamma dmu@(ModedModality ddom dcod' mu) {-dcod-} reason = do
+    let dnu = modedApproxLeftAdjointProj dmu
+    leqMod parent gamma (idMod dcod') (modality'mod $ compModedModality dmu dnu) dcod' dcod' reason
 
   {- Use the inequality judgement instead!
   -- | True if @nu . mu <= id@, where nu is the @approxLeftAdjointProj@.
