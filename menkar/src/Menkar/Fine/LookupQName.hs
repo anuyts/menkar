@@ -21,26 +21,26 @@ telescoped2lambda :: Telescoped Type ValRHS sys v -> Term sys v
 telescoped2lambda (Telescoped valRHS) = _val'term valRHS
 telescoped2lambda (seg :|- telescopedValRHS) = Expr2 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedValRHS)
 telescoped2lambda (dmu :** telescopedValRHS) = Expr2 $ TermCons $ ConsBox
-  (Declaration (DeclNameSegment Nothing) dmu Explicit (Type $ telescoped2pi telescopedValRHS))
+  (Declaration (DeclNameSegment Nothing) dmu Explicit (telescoped2pi telescopedValRHS))
   (telescoped2lambda telescopedValRHS)
 
-telescoped2pi :: Telescoped Type ValRHS sys v -> Term sys v
-telescoped2pi (Telescoped valRHS) = case _val'type valRHS of Type ty -> ty
-telescoped2pi (seg :|- telescopedValRHS) = Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding seg (telescoped2pi telescopedValRHS)
-telescoped2pi (dmu :** telescopedValRHS) = Expr2 $ TermCons $ ConsUniHS $ BoxType $
-  Declaration (DeclNameSegment Nothing) dmu Explicit (Type $ telescoped2pi telescopedValRHS)
+telescoped2pi :: Telescoped Type ValRHS sys v -> Type sys v
+telescoped2pi (Telescoped valRHS) = _val'type valRHS
+telescoped2pi (seg :|- telescopedValRHS) = hs2type $ Pi $ Binding seg (telescoped2pi telescopedValRHS)
+telescoped2pi (dmu :** telescopedValRHS) = hs2type $ BoxType $
+  Declaration (DeclNameSegment Nothing) dmu Explicit (telescoped2pi telescopedValRHS)
 
 telescoped2quantified :: (SysTrav sys) =>
   Telescoped Type ValRHS sys v -> ValRHS sys v
 telescoped2quantified telescopedVal = ValRHS
   (telescoped2lambda $ telescopedVal)
-  (Type $ telescoped2pi $ telescopedVal)
+  (telescoped2pi $ telescopedVal)
 
 telescoped2modalQuantified :: (Multimode sys) =>
   Mode sys v {-^ Mode of the telescope -} -> Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v
-telescoped2modalQuantified d1 (d2mu@(ModedModality d2 mu) :** telescopedVal) =
-  let ModApplied d3mu' val = telescoped2modalQuantified d2 telescopedVal
-  in  ModApplied (compModedModality d2mu d3mu') val
+telescoped2modalQuantified cod (dmu@(ModedModality dom cod' mu) :** telescopedVal) =
+  let ModApplied dmu' val = telescoped2modalQuantified dom telescopedVal
+  in  ModApplied (compModedModality dmu dmu') val
 telescoped2modalQuantified d telescopedVal = ModApplied (idModedModality d) (telescoped2quantified telescopedVal)
 
 ----------------------------
@@ -237,7 +237,7 @@ lookupQName (seg :^^ gamma) qname = case _segment'name seg of
         d = ctx'mode $ seg :^^ gamma
 lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
   Just t -> LookupResultVal $ LeftDivided
-                     d (ModedModality d (idMod d))
+                     d (idModedModality d)
                      (wkn t)
   Nothing -> wkn $ lookupQName gamma qname
   where wkn :: (Functor f) => f (VarOpenCtx v' w) -> f (VarOpenCtx (VarInModule v') w)
@@ -247,11 +247,7 @@ lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
   LookupResultVar v -> LookupResultVar v
   LookupResultNothing -> LookupResultNothing
   LookupResultVal (LeftDivided dOrig dmu' seg) ->
-    let d = modality'dom dmu
-        mu = modality'mod dmu
-        d' = modality'dom dmu'
-        mu' = modality'mod dmu'
-    in LookupResultVal $ LeftDivided dOrig (ModedModality d (compMod mu' d' mu)) seg
+    LookupResultVal $ LeftDivided dOrig (compModedModality dmu' dmu) seg
 
 ------------------------
 
@@ -289,16 +285,12 @@ lookupVarType gamma v = unreachable
 lookupVar :: (Multimode sys) =>
   Ctx Type sys v w -> v -> LeftDivided (Segment Type) sys (VarOpenCtx v w)
 lookupVar (CtxEmpty d) v = absurd v
-lookupVar (gamma :.. seg) (VarLast) = LeftDivided d (ModedModality d (idMod d)) $ bimap VarWkn id <$> seg
+lookupVar (gamma :.. seg) (VarLast) = LeftDivided d (idModedModality d) $ bimap VarWkn id <$> seg
   where d = ctx'mode (gamma :.. seg)
 lookupVar (gamma :.. seg) (VarWkn v) = bimap VarWkn id <$> lookupVar gamma v
-lookupVar (seg :^^ gamma) (VarFirst) = LeftDivided d (ModedModality d (idMod d)) $ VarBeforeCtx <$> seg
+lookupVar (seg :^^ gamma) (VarFirst) = LeftDivided d (idModedModality d) $ VarBeforeCtx <$> seg
   where d = ctx'mode (seg :^^ gamma)
 lookupVar (seg :^^ gamma) (VarLeftWkn v) = varLeftEat <$> lookupVar gamma v
 lookupVar (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lookupVar gamma v
-lookupVar (dmu :\\ gamma) v = LeftDivided dOrig (ModedModality d (compMod mu' d' mu)) seg
+lookupVar (dmu :\\ gamma) v = LeftDivided dOrig (compModedModality dmu' dmu) seg
   where LeftDivided dOrig dmu' seg = lookupVar gamma v
-        d = modality'dom dmu
-        mu = modality'mod dmu
-        d' = modality'dom dmu'
-        mu' = modality'mod dmu'
