@@ -16,6 +16,7 @@ import Control.Monad.Writer
 import Data.Functor.Compose
 import Data.Monoid
 import Control.Monad.Writer.Class
+import GHC.Generics
 
 tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
@@ -245,7 +246,7 @@ whnormalizeNV parent gamma t@(TermProblem _) ty reason = return $ Expr2 t
      or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
      writes the indices of all metavariables that could (each in itself) unblock the situation.
 -}
-whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
+whnormalize' :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
   Term sys v ->
@@ -253,9 +254,63 @@ whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int]
   String ->
   whn (Term sys v)
 -- Variable: return it
-whnormalize parent gamma (Var2 v) ty reason = return $ Var2 v
+whnormalize' parent gamma (Var2 v) ty reason = return $ Var2 v
 -- Not a variable: call whnormalizeNV
-whnormalize parent gamma (Expr2 t) ty reason = whnormalizeNV parent gamma t ty reason
+whnormalize' parent gamma (Expr2 t) ty reason = whnormalizeNV parent gamma t ty reason
+
+---------------------------
+
+whnormalizeTopLevel ::
+  forall sys whn v t .
+  (SysWHN sys,
+   MonadWHN sys whn,
+   DeBruijnLevel v,
+   MonadWriter [Int] whn,
+   Analyzable sys t) => 
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  t v ->
+  Classif t v ->
+  String ->
+  whn (t v)
+whnormalizeTopLevel parent gamma t classifT reason = case (analyzableToken :: AnalyzableToken sys t, t) of
+  _ -> _whnormalizeTopLevel
+
+whnormalizeAST ::
+  (SysWHN sys,
+   MonadWHN sys whn,
+   DeBruijnLevel v,
+   MonadWriter [Int] whn,
+   Analyzable sys t) => 
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  t v ->
+  AnalyzerExtraInput t v ->
+  Classif t v ->
+  String ->
+  whn (t v)
+whnormalizeAST parent gamma t extraT classifT reason =
+  let attempt = subASTsTyped gamma (AnalyzerInput t extraT (ClassifWillBe classifT) IfRelateSubASTs) $
+        \ wkn gammadelta (AnalyzerInput s extraS maybeClassifS _) addressInfo ->
+        if _addressInfo'shouldWHN addressInfo
+        then whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
+        else return s
+  in case attempt of
+    Just op -> do
+      whnFocusT <- op
+      whnormalizeTopLevel parent gamma t classifT reason
+    Nothing -> whnormalizeTopLevel parent gamma t classifT reason
+
+---------------------------
+
+whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  Term sys v ->
+  Type sys v ->
+  String ->
+  whn (Term sys v)
+whnormalize parent gamma t ty reason = whnormalizeAST parent gamma t U1 ty reason
 
 whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
@@ -263,18 +318,4 @@ whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   Type sys v ->
   String ->
   whn (Type sys v)
-whnormalizeType parent gamma (Type ty) reason = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
-  Type <$> whnormalize parent gamma ty (hs2type $ UniHS dgamma) reason
-
----------------------------
-
-whnormalizeAST :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [int] whn, Analyzable sys t) => 
-  Constraint sys ->
-  Ctx Type sys v Void ->
-  t v ->
-  Classif t v ->
-  String ->
-  whn (t v)
-whnormalizeAST parent gamma ast classif reason = do
-  _
+whnormalizeType parent gamma ty reason = whnormalizeAST parent gamma ty U1 U1 reason

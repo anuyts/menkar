@@ -38,6 +38,16 @@ data AnalyzableToken sys (ast :: * -> *) where
   AnTokenU1 :: AnalyzableToken sys U1
   AnTokenPair1 :: AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
 
+data AnalyzerError sys =
+  AnErrorTermMeta |
+  AnErrorTermWildcard |
+  AnErrorTermQName |
+  AnErrorTermAlreadyChecked |
+  AnErrorTermAlgorithm |
+  AnErrorTermSys {- insert system error here -} |
+  AnErrorTermProblem |
+  AnErrorVar
+
 newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
 data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | ClassifUnknown
@@ -46,6 +56,10 @@ data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | ClassifUnknown
 classifMust2will :: ClassifInfo a -> ClassifInfo a
 classifMust2will (ClassifMustBe a) = ClassifWillBe a
 classifMust2will ca = ca
+fromClassifInfo :: a -> ClassifInfo a -> a
+fromClassifInfo a0 (ClassifMustBe a) = a
+fromClassifInfo a0 (ClassifWillBe a) = a
+fromClassifInfo a0 (ClassifUnknown) = a0
 
 data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
   _analyzerInput'get :: t v,
@@ -61,6 +75,7 @@ instance Omissible Boredom where
 data AddressInfo = AddressInfo {
   {-| Deepest last -}
   _addressInfo'address :: [String],
+  {-| If true, a classifier must be provided or at least propagated downward. -}
   _addressInfo'shouldWHN :: Bool,
   _addressInfo'boredom :: Boredom
   }
