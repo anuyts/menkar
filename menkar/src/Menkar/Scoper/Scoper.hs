@@ -163,7 +163,7 @@ buildPi ::
 buildPi gamma fineSeg fineCod = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
-  return $ Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding fineSeg fineCod
+  return $ Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding fineSeg (Type fineCod)
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma ::
@@ -175,7 +175,7 @@ buildSigma ::
 buildSigma gamma fineSeg fineCod = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
-  return $ Expr2 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg fineCod
+  return $ Expr2 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg (Type fineCod)
   
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda ::
@@ -351,6 +351,7 @@ buildDeclaration :: forall sys sc v rawDeclSort fineDeclSort content .
   sc [Declaration fineDeclSort (Telescoped Type content) sys v]
 buildDeclaration gamma generateContent partDecl = do
         let dgamma' = ctx'mode gamma
+            dgamma = unVarFromCtx <$> dgamma'
         -- allocate all implicits BEFORE name fork
         d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
@@ -379,7 +380,7 @@ buildDeclaration gamma generateContent partDecl = do
             --ListT . nameHandler $ _pdecl'names partDecl
         return $ names <&> \ name -> Declaration {
           _decl'name = name,
-          _decl'modty = ModedModality d mu,
+          _decl'modty = ModedModality d dgamma mu,
           _decl'plicity = plic,
           _decl'content = telescopedContent
           }

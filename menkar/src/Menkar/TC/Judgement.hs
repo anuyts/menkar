@@ -9,6 +9,7 @@ import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
+import Menkar.TC.AST
 --import Menkar.TC.Term
 --import Menkar.TC.SmartElim
 --import Menkar.TC.Rel
@@ -48,6 +49,11 @@ checkConstraint parent = case constraint'judgement parent of
     _ -> _checkJudCtx
   -} -- contexts start empty and grow only in well-typed ways.
 
+  Jud token gamma t classifT -> checkAST gamma t classifT
+
+  JudRel token rel gamma (Twice1 t1 t2) (Twice1 ct1 ct2) -> _checkASTRel gamma t1 t2 ct1 ct2
+
+  {-
   JudType gamma (Type ty) -> do
     {-lvl <- newMetaTerm
              (Just parent)
@@ -69,23 +75,25 @@ checkConstraint parent = case constraint'judgement parent of
   JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> do
     let dgamma = unVarFromCtx <$> ctx'mode gamma
     checkTermRel parent eta (ModedDegree dgamma deg) gamma t1 t2 ty1 ty2
+  -}
 
   JudEta gamma t tyT -> case t of
     Expr2 (TermMeta MetaBlocked meta (Compose depcies) maybeAlg) -> do
       maybeT <- awaitMeta parent "If it's solved, then I needn't bother." meta depcies
       case maybeT of
-        Nothing -> void $ checkEta parent gamma t tyT
+        Nothing -> void $ _checkEta parent gamma t tyT
         Just _ -> return () -- every known term is obviously equal to its eta-expansion.
     _ -> unreachable
 
   JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
-    checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
+    _checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
 
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
 
   JudResolve gamma t ty -> todo
 
+  {-
   JudMode gamma d -> checkMode parent gamma d
   
   JudModeRel gamma d1 d2 -> checkModeRel parent gamma d1 d2
@@ -101,9 +109,11 @@ checkConstraint parent = case constraint'judgement parent of
   JudModedModalityRel modrel gamma (ModedModality ddom1 mu1) (ModedModality ddom2 mu2) dcod -> do
     addNewConstraint (JudModeRel gamma ddom1 ddom2) (Just parent) "Relating modes."
     addNewConstraint (JudModalityRel modrel gamma mu1 mu2 ddom1 dcod) (Just parent) "Relating modalities."
+  -}
 
   JudSys jud -> checkSysJudgement parent jud
 
+  {-
   JudSegment gamma seg -> checkSegment parent gamma seg
 
   JudVal gamma val -> checkVal parent gamma val
@@ -111,5 +121,5 @@ checkConstraint parent = case constraint'judgement parent of
   JudModule gamma modul -> checkModule parent gamma modul
 
   JudEntry gamma entry -> checkEntry parent gamma entry
-  
+  -}
   --_ -> _checkConstraint

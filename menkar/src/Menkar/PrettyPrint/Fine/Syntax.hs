@@ -37,8 +37,8 @@ charYielding = '\x2198'
 instance (SysPretty sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
           Fine2Pretty sys (ModedModality sys) where
-  fine2pretty gamma (ModedModality d mu) opts = ribbonEmpty \\\ [
-                "d " ++| fine2pretty gamma d opts |++ " | ",
+  fine2pretty gamma (ModedModality dom cod mu) opts = ribbonEmpty \\\ [
+                "d " ++| fine2pretty gamma dom opts |++ " | ",
                 "m " ++| fine2pretty gamma mu opts |++ " | "
               ]
 instance (SysPretty sys,
@@ -113,7 +113,7 @@ instance (SysPretty sys,
       ]
   fine2pretty gamma (ConsZero) opts = ribbon "zero"
   fine2pretty gamma (ConsSuc t) opts = "suc .{" ++| fine2pretty gamma t opts |++ "}"
-  fine2pretty gamma ConsRefl opts = ribbon "refl"
+  fine2pretty gamma (ConsRefl t) opts = "refl .{" ++| fine2pretty gamma t opts |++ "}"
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ConstructorTerm sys Void) where
