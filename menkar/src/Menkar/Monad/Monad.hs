@@ -6,7 +6,8 @@ import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import Menkar.Fine.Context
-import qualified Menkar.Raw.Syntax as Raw 
+import qualified Menkar.Raw.Syntax as Raw
+import Menkar.System.Analyzer
 --import Menkar.Scoper.Monad
 
 import Data.Void
@@ -65,6 +66,7 @@ instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper s
 
 class (
     Degrees sys,
+    SysAnalyzer sys,
     MonadScoper sys whn
   ) => MonadWHN sys whn | whn -> sys where
   {-| Returns the meta's solution if the meta has been solved.
@@ -190,15 +192,15 @@ newMetaType maybeParent gamma reason = do
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
-  Degree sys v ->
+  ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Type sys v ->
   String ->
   tc (Type sys v)
-newMetaTypeRel maybeParent deg gamma ty2 reason = do
+newMetaTypeRel maybeParent ddeg gamma ty2 reason = do
   ty1 <- Type <$> newMetaTermNoCheck maybeParent (fstCtx gamma) MetaBlocked Nothing reason
   addNewConstraint
-    (JudTypeRel deg gamma (Twice2 ty1 ty2))
+    (JudTypeRel ddeg gamma (Twice2 ty1 ty2))
     maybeParent
     reason
   return ty1

@@ -176,6 +176,7 @@ pattern JudTypeRel deg gamma tys
     Term sys v ->
     Type sys v ->
     Judgement sys-}
+pattern JudTerm gamma t ty = Jud AnTokenTerm gamma t ty
 {-JudTermRel :: (DeBruijnLevel v) =>
     Eta ->
     Degree sys v ->
@@ -183,3 +184,6 @@ pattern JudTypeRel deg gamma tys
     Twice2 Term sys v ->
     Twice2 Type sys v ->
     Judgement sys-}
+pattern JudTermRel deg gamma ts tys
+  <- JudRel AnTokenTerm deg gamma (twice1to2 -> ts) (twice1to2 -> tys)
+  where JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) = JudRel AnTokenTerm deg gamma (Twice1 t1 t2) (Twice1 ty1 ty2)
