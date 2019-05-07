@@ -9,12 +9,12 @@ import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
-import Menkar.TC.Term
-import Menkar.TC.SmartElim
-import Menkar.TC.Rel
-import Menkar.TC.Entry
-import Menkar.TC.Segment
-import Menkar.TC.Solve
+--import Menkar.TC.Term
+--import Menkar.TC.SmartElim
+--import Menkar.TC.Rel
+--import Menkar.TC.Entry
+--import Menkar.TC.Segment
+--import Menkar.TC.Solve
 import Menkar.WHN
 
 import Data.Void
