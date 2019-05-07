@@ -210,7 +210,8 @@ whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [In
 -- Constructor: return it
 whnormalizeNV parent gamma t@(TermCons _) ty reason = return $ Expr2 $ t   -- Mind glue and weld!
 -- Eliminator: call whnormalizeElim
-whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) ty reason = whnormalizeElim parent gamma dmu t tyEliminee e ty reason
+whnormalizeNV parent gamma (TermElim dmu t tyEliminee e) ty reason =
+  whnormalizeElim parent gamma dmu t tyEliminee e ty reason
 -- Meta: return if unsolved, otherwise whnormalize solution.
 whnormalizeNV parent gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty reason = do
   --solution <- fromMaybe (Expr2 t) <$> awaitMeta parent ty reason meta depcies
@@ -242,41 +243,9 @@ whnormalizeNV parent gamma (TermSys t) ty reason = whnormalizeSys parent gamma t
 -- Bogus terms: return them.
 whnormalizeNV parent gamma t@(TermProblem _) ty reason = return $ Expr2 t
 
-{- | Either weak-head-normalizes the given term and writes nothing,
-     or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
-     writes the indices of all metavariables that could (each in itself) unblock the situation.
--}
-whnormalize' :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Constraint sys ->
-  Ctx Type sys v Void ->
-  Term sys v ->
-  Type sys v ->
-  String ->
-  whn (Term sys v)
--- Variable: return it
-whnormalize' parent gamma (Var2 v) ty reason = return $ Var2 v
--- Not a variable: call whnormalizeNV
-whnormalize' parent gamma (Expr2 t) ty reason = whnormalizeNV parent gamma t ty reason
-
 ---------------------------
 
-whnormalizeTopLevel ::
-  forall sys whn v t .
-  (SysWHN sys,
-   MonadWHN sys whn,
-   DeBruijnLevel v,
-   MonadWriter [Int] whn,
-   Analyzable sys t) => 
-  Constraint sys ->
-  Ctx Type sys v Void ->
-  t v ->
-  Classif t v ->
-  String ->
-  whn (t v)
-whnormalizeTopLevel parent gamma t classifT reason = case (analyzableToken :: AnalyzableToken sys t, t) of
-  _ -> _whnormalizeTopLevel
-
-whnormalizeAST ::
+whnormalizeAST :: forall sys whn v t .
   (SysWHN sys,
    MonadWHN sys whn,
    DeBruijnLevel v,
@@ -290,19 +259,41 @@ whnormalizeAST ::
   String ->
   whn (t v)
 whnormalizeAST parent gamma t extraT classifT reason =
-  let attempt = subASTsTyped gamma (AnalyzerInput t extraT (ClassifWillBe classifT) IfRelateSubASTs) $
-        \ wkn gammadelta (AnalyzerInput s extraS maybeClassifS _) addressInfo ->
-        if _addressInfo'shouldWHN addressInfo
-        then whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
-        else return s
-  in case attempt of
-    Just op -> do
-      whnFocusT <- op
-      whnormalizeTopLevel parent gamma t classifT reason
-    Nothing -> whnormalizeTopLevel parent gamma t classifT reason
+  let token = analyzableToken :: AnalyzableToken sys t
+  in case token of
+    AnTokenTerm -> whnormalize parent gamma t classifT reason
+    _ -> let attempt = subASTsTyped gamma (AnalyzerInput t extraT (ClassifWillBe classifT) IfRelateSubASTs) $
+               \ wkn gammadelta (AnalyzerInput s extraS maybeClassifS _) addressInfo ->
+                 if _addressInfo'shouldWHN addressInfo
+                 then whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
+                 else return s
+         in fromRight (return t) attempt
+      {-case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
+      (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> return t
+      (AnErrorTermMeta, _, _) -> unreachable
+      (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> return t
+      (AnErrorTermWildcard, _, _) -> unreachable
+      (AnErrorTermQName, AnTokenTermNV, TermQName qname ldivVal) -> return t --_qname
+      (AnErrorTermQName, _, _) -> unreachable
+      (AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked ty) -> return t
+        --whnormalize parent gamma tChecked ty reason
+      (AnErrorTermAlreadyChecked, _, _) -> unreachable
+      (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> return t
+        --whnormalize parent gamma tResult classifT reason
+      (AnErrorTermAlgorithm, _, _) -> unreachable
+      (AnErrorTermSys, AnTokenTermNV, TermSys syst) -> return t --_whnSys
+      (AnErrorTermSys, _, _) -> unreachable
+      (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> return t
+      (AnErrorTermProblem, _, _) -> unreachable
+      (AnErrorVar, AnTokenTerm, Var2 v) -> return t
+      (AnErrorVar, _, _) -> unreachable-}
 
 ---------------------------
 
+{- | Either weak-head-normalizes the given term and writes nothing,
+     or fails to weak-head-normalize the given term (but weak-head-normalizes as far as possible) and
+     writes the indices of all metavariables that could (each in itself) unblock the situation.
+-}
 whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
   Ctx Type sys v Void ->
@@ -310,7 +301,14 @@ whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int]
   Type sys v ->
   String ->
   whn (Term sys v)
-whnormalize parent gamma t ty reason = whnormalizeAST parent gamma t U1 ty reason
+-- Variable: return it
+whnormalize parent gamma (Var2 v) ty reason = return $ Var2 v
+-- Not a variable
+whnormalize parent gamma (Expr2 t) ty reason = do
+  --perform all necessary recursive calls
+  prewhnT <- whnormalizeAST parent gamma t U1 ty reason
+  --call whnormalizeNV
+  whnormalizeNV parent gamma t ty reason
 
 whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Constraint sys ->
