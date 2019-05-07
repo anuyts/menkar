@@ -149,7 +149,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
       (t v -> Maybe (s w)) ->
       f (AnalyzerResult option s w)
     ) ->
-    Maybe (f (AnalyzerResult option t v))
+    Either (AnalyzerError sys) (f (AnalyzerResult option t v))
 
 subASTsTyped :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
@@ -163,7 +163,7 @@ subASTsTyped :: forall sys f t v .
     AddressInfo ->
     f (s w)
   ) ->
-  Maybe (f (t v))
+  Either (AnalyzerError sys) (f (t v))
 subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs id gamma inputT $
   \ wkn gamma inputS addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo
   )
@@ -182,7 +182,7 @@ subASTs :: forall sys f t v .
     AddressInfo ->
     f (s w)
   ) ->
-  Maybe (f (t v))
+  Either (AnalyzerError sys) (f (t v))
 subASTs gamma t extraInputT h = subASTsTyped gamma (AnalyzerInput t extraInputT ClassifUnknown IfRelateSubASTs) $
   \ wkn gamma inputS addressInfo ->
      h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
@@ -200,7 +200,7 @@ typetrick :: forall sys lhs f t v .
     AddressInfo ->
     f (Classif s w)
   ) ->
-  Maybe (f (Classif t v))
+  Either (AnalyzerError sys) (f (Classif t v))
 typetrick fromType gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes fromType gamma inputT $
   \ wkn gamma inputS addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
   )
