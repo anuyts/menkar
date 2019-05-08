@@ -52,7 +52,7 @@ data AnalyzerError sys =
 
 newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
-data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | ClassifUnknown
+data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | {-| Not allowed for terms. -} ClassifUnknown
   deriving (Functor, Foldable, Traversable)
 
 classifMust2will :: ClassifInfo a -> ClassifInfo a
