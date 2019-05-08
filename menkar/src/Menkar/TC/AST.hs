@@ -65,7 +65,11 @@ checkAST' parent gamma t extraT maybeCT = do
     Right ctInferred -> do
       case maybeCT of
         ClassifMustBe ct -> addNewConstraint
-          (JudRel analyzableToken _eqDeg (duplicateCtx gamma) (Twice1 ctInferred ct) ClassifUnknown)
+          (JudRel analyzableToken
+            (convRel (analyzableToken :: AnalyzableToken sys t) $ unVarFromCtx <$> ctx'mode gamma)
+            (duplicateCtx gamma)
+            (Twice1 ctInferred ct)
+            ClassifUnknown)
           (Just parent)
           ("Checking whether actual classifier equals expected classifier.")
         _ -> return ()
