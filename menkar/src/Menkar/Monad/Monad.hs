@@ -58,6 +58,15 @@ newMetaTermNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
 newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
   (meta, depcies) <- newMetaID maybeParent gamma reason
   return $ Expr2 $ TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)
+  
+newMetaTypeNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
+    Maybe (Constraint sys)
+    -- -> Degree sys v {-^ Degree up to which it should be solved -}
+    -> Ctx Type sys v Void
+    -> String
+    -> sc (Type sys v)
+newMetaTypeNoCheck maybeParent gamma reason =
+  Type <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
   newMetaID maybeParent gamma reason =

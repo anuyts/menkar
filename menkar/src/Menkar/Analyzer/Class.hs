@@ -22,8 +22,10 @@ data AnalyzerToken (option :: AnalyzerOption) where
 
 data AnalyzableToken sys (ast :: * -> *) where
   AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
-  AnTokenBinding :: AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
-  AnTokenClassifBinding :: AnalyzableToken sys rhs -> AnalyzableToken sys (ClassifBinding Type rhs sys)
+  AnTokenBinding :: (Analyzable sys (rhs sys)) =>
+    AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
+  AnTokenClassifBinding :: (Analyzable sys rhs) =>
+    AnalyzableToken sys rhs -> AnalyzableToken sys (ClassifBinding Type rhs sys)
   AnTokenUniHSConstructor :: AnalyzableToken sys (UniHSConstructor sys)
   AnTokenConstructorTerm :: AnalyzableToken sys (ConstructorTerm sys)
   AnTokenType :: AnalyzableToken sys (Type sys)
@@ -31,13 +33,16 @@ data AnalyzableToken sys (ast :: * -> *) where
   AnTokenEliminator :: AnalyzableToken sys (Eliminator sys)
   AnTokenTermNV :: AnalyzableToken sys (TermNV sys)
   AnTokenTerm :: AnalyzableToken sys (Term sys)
-  AnTokenDeclaration :: AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Declaration declSort rhs sys)
-  AnTokenTelescoped :: AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Telescoped Type rhs sys)
+  AnTokenDeclaration :: (Analyzable sys (rhs sys)) =>
+    AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Declaration declSort rhs sys)
+  AnTokenTelescoped :: (Analyzable sys (rhs sys)) =>
+    AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Telescoped Type rhs sys)
   AnTokenValRHS :: AnalyzableToken sys (ValRHS sys)
   AnTokenModuleRHS :: AnalyzableToken sys (ModuleRHS sys)
   AnTokenEntry :: AnalyzableToken sys (Entry sys)
   AnTokenU1 :: AnalyzableToken sys U1
-  AnTokenPair1 :: AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
+  AnTokenPair1 :: (Analyzable sys f, Analyzable sys g) =>
+    AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
   --AnTokenCompose :: AnalyzableToken sys t -> AnalyzableToken sys (Compose f t)
 
 data AnalyzerError sys =

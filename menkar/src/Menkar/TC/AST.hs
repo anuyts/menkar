@@ -27,9 +27,10 @@ import GHC.Generics
 
 ----------------------------
 
+{-
 {-| Same as quickInfer, but with the precondition that the given AST admits analysis.
 -}
-quickInferUnsafe :: forall sys tc v t .
+quickInferNoCheckUnsafe :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
   Ctx Type sys v Void ->
@@ -37,10 +38,10 @@ quickInferUnsafe :: forall sys tc v t .
   AnalyzerExtraInput t v ->
   [String] -> 
   tc (Classif t v)
-quickInferUnsafe parent gamma t extraT address = do
+quickInferNoCheckUnsafe parent gamma t extraT address = do
     maybeCT <- sequenceA $ typetrick id gamma (AnalyzerInput t extraT ClassifUnknown IfRelateTypes) $
       \ wkn gammadelta (AnalyzerInput s extraS maybeCS _) addressInfo ->
-        quickInfer parent gammadelta s extraS (address ++ _addressInfo'address addressInfo)
+        quickInferNoCheck parent gammadelta s extraS (address ++ _addressInfo'address addressInfo)
     case maybeCT of
       Right ct -> return ct
       Left _ -> unreachable
@@ -48,6 +49,20 @@ quickInferUnsafe parent gamma t extraT address = do
 {-| Quickly generates a classifier for a given AST. If the AST is classifiable, then it will
     classifier-check under the returned classifier, which however can contain metas.
 -}
+quickInferNoCheck :: forall sys tc v t .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  t v ->
+  AnalyzerExtraInput t v ->
+  [String] -> 
+  tc (Classif t v)
+quickInferNoCheck parent gamma t extraT address = case (analyzableToken :: AnalyzableToken sys t) of
+  AnTokenTerm -> fmap Type $ newMetaTermNoCheck (Just parent) gamma MetaBlocked Nothing $ join $ (" > " ++) <$> address
+  AnTokenTermNV -> fmap Type $ newMetaTermNoCheck (Just parent) gamma MetaBlocked Nothing $ join $ (" > " ++) <$> address
+  -- TODO: dispatch system-specific tokens
+  _ -> quickInferNoCheckUnsafe parent gamma t extraT address
+
 quickInfer :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
@@ -56,11 +71,9 @@ quickInfer :: forall sys tc v t .
   AnalyzerExtraInput t v ->
   [String] -> 
   tc (Classif t v)
-quickInfer parent gamma t extraT address = case (analyzableToken :: AnalyzableToken sys t) of
-  AnTokenTerm -> newMetaType (Just parent) gamma $ join $ (" > " ++) <$> address
-  AnTokenTermNV -> newMetaType (Just parent) gamma $ join $ (" > " ++) <$> address
-  -- TODO: dispatch system-specific tokens
-  _ -> quickInferUnsafe parent gamma t extraT address
+quickInfer parent gamma t extraT address = do
+  ct <- quickInferNoCheck parent gamma t extraT address
+-}
 
 ----------------------------
 
@@ -74,6 +87,7 @@ checkSpecialAST :: forall sys tc v t .
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
 checkSpecialAST parent gamma anErr t extraT maybeCT = do
+  let ty = fromClassifInfo unreachable maybeCT
   case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
     (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> do
       maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
@@ -83,7 +97,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
           -- place to request eta-expansion.
           case neutrality of
             MetaBlocked -> addNewConstraint
-              (JudEta gamma (Expr2 t) (fromClassifInfo unreachable maybeCT))
+              (JudEta gamma (Expr2 t) ty)
               (Just parent)
               "Eta-expand meta if possible."
             MetaNeutral -> return ()
@@ -121,9 +135,31 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
         "Checking that variable is accessible."
       return $ _val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedValRHS
     (AnErrorTermQName, _, _) -> unreachable
-    --(AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked ty) -> _alreadyChecked
+    (AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked tyChecked) -> return tyChecked
     (AnErrorTermAlreadyChecked, _, _) -> unreachable
-    --(AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> _algorithm
+    (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> do
+      let dgamma = unVarFromCtx <$> ctx'mode gamma
+      let dmuElim = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+      tyEliminee <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-}
+                  (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
+      -----
+      addNewConstraint
+        (JudTerm (VarFromCtx <$> dmuElim :\\ gamma) eliminee tyEliminee)
+        (Just parent)
+        "Type-check the eliminee."
+      -----
+      tyResult <- newMetaType (Just parent) gamma "Infer type of result."
+      addNewConstraint
+        (JudTerm gamma result tyResult)
+        (Just parent)
+        "Type-check the result."
+      -----
+      addNewConstraint
+        (JudSmartElim gamma {-dmuElim-} eliminee tyEliminee eliminators result tyResult)
+        (Just parent)
+        "Smart elimination should reduce to its result."
+      return tyResult
+    
     (AnErrorTermAlgorithm, _, _) -> unreachable
     --(AnErrorTermSys, AnTokenTermNV, TermSys syst) -> _sys
     (AnErrorTermSys, _, _) -> unreachable
@@ -163,7 +199,7 @@ checkAST' parent gamma t extraT maybeCT = do
           ClassifMustBe cs -> return $ (cs, ClassifMustBe cs)
           -- if no type is given, write a meta in judgement (thus certifying it) and pass it back.
           ClassifUnknown -> do
-            cs <- quickInfer parent gammadelta s extraS $ _addressInfo'address addressInfo
+            cs <- _quickInfer parent gammadelta s extraS $ _addressInfo'address addressInfo
             return $ (cs, ClassifMustBe cs)
         addNewConstraint
           (Jud analyzableToken gammadelta s maybeCS)
