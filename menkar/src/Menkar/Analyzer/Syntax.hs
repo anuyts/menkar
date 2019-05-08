@@ -48,6 +48,7 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
 
 instance (SysAnalyzer sys,
           Analyzable sys (rhs sys),
+          Analyzable sys (Classif (rhs sys)),
           Relation (rhs sys) ~ ModedDegree sys,
           AnalyzerExtraInput (rhs sys) ~ U1
          ) => Analyzable sys (Binding Type rhs sys) where
@@ -73,6 +74,7 @@ instance (SysAnalyzer sys,
 
 instance (SysAnalyzer sys,
           Analyzable sys rhs,
+          Analyzable sys (Classif rhs),
           --Relation rhs ~ ModedDegree sys,
           AnalyzerExtraInput rhs ~ U1
          ) => Analyzable sys (ClassifBinding Type rhs sys) where
@@ -94,7 +96,7 @@ instance (SysAnalyzer sys,
 
 instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   
-  type Classif (UniHSConstructor sys) = Compose Maybe (Mode sys) -- a mode if you care
+  type Classif (UniHSConstructor sys) = Mode sys
   type Relation (UniHSConstructor sys) = ModedDegree sys
   type AnalyzerExtraInput (UniHSConstructor sys) = U1
   analyzableToken = AnTokenUniHSConstructor
@@ -116,7 +118,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           )
         return $ case token of
           TokenSubASTs -> Box1 $ UniHS (unbox1 rd)
-          TokenTypes -> BoxClassif $ Compose $ Just $ d
+          TokenTypes -> BoxClassif $ d
           TokenRelate -> Unit2
 
       Pi binding -> handleBinder Pi binding $ \case
@@ -140,7 +142,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           )
         return $ case token of
           TokenSubASTs -> Box1 $ BoxType $ unbox1 rsegment
-          TokenTypes -> BoxClassif $ Compose Nothing
+          TokenTypes -> BoxClassif $ dgamma
           TokenRelate -> Unit2
 
       NatType -> handleConstant
@@ -161,7 +163,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
                    _ -> Nothing
         return $ case token of
           TokenSubASTs -> Box1 $ EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
-          TokenTypes -> BoxClassif $ Compose Nothing
+          TokenTypes -> BoxClassif $ dgamma
           TokenRelate -> Unit2
 
       SysType systy -> do
@@ -190,12 +192,12 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               extractor
             return $ case token of
               TokenSubASTs -> Box1 $ binder $ unbox1 rbinding
-              TokenTypes -> BoxClassif $ Compose Nothing
+              TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
               TokenRelate -> Unit2
               
           handleConstant = pure $ case token of
             TokenSubASTs -> Box1 $ ty
-            TokenTypes -> BoxClassif $ Compose Nothing
+            TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
             TokenRelate -> Unit2
 
 -------------------------
@@ -220,7 +222,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
             _ -> Nothing
         return $ case token of
           TokenSubASTs -> Box1 $ ConsUniHS $ unbox1 rty
-          TokenTypes -> BoxClassif $ hs2type $ UniHS $ fromMaybe dgamma $ getCompose $ unboxClassif rty
+          TokenTypes -> BoxClassif $ hs2type $ UniHS $ unboxClassif rty
           TokenRelate -> Unit2
 
       Lam binding -> do
@@ -597,7 +599,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
           TermElim dmuElim eliminee tyEliminee eliminator -> Just eliminee
           _ -> Nothing
       rtyEliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
-        (AnalyzerInput tyEliminee U1 (ClassifMustBe $ Compose $ Just dgamma) (modedDivDeg dmuElim <$> maybeRel))
+        (AnalyzerInput tyEliminee U1 (ClassifMustBe $ dgamma) (modedDivDeg dmuElim <$> maybeRel))
         (AddressInfo ["type of eliminee"] False omit)
         $ \case
           TermElim dmuElim eliminee tyEliminee eliminator -> Just tyEliminee
@@ -848,7 +850,9 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
 
 instance (SysAnalyzer sys,
           Analyzable sys f,
-          Analyzable sys g) => Analyzable sys (f :*: g) where
+          Analyzable sys g,
+          Analyzable sys (Classif f),
+          Analyzable sys (Classif g)) => Analyzable sys (f :*: g) where
   type Classif (f :*: g) = Classif f :*: Classif g
   type Relation (f :*: g) = Relation f :*: Relation g
   type AnalyzerExtraInput (f :*: g) = AnalyzerExtraInput f :*: AnalyzerExtraInput g
@@ -880,6 +884,22 @@ instance (SysAnalyzer sys,
         TokenTypes -> BoxClassif $ unboxClassif rfv :*: unboxClassif rgv
         TokenRelate -> Unit2
     -}
+
+------------------------
+
+{-
+instance (SysAnalyzer sys,
+          Analyzable sys t,
+          Analyzable sys (Classif t),
+          Applicative f) => Analyzable sys (Compose f t) where
+  type Classif (Compose f t) = Classif t
+  type Relation (Compose f t) = Relation t
+  type AnalyzerExtraInput (Compose f t) = Compose f (AnalyzerExtraInput t)
+  analyzableToken = AnTokenCompose analyzableToken
+  analyze token fromType gamma (AnalyzerInput (Compose ftv) (Compose fextra) maybeClassifs maybeRel) h = Right $ do
+    return $ case token of
+      TokenSubASTs -> 
+-}
 
 ------------------------
 

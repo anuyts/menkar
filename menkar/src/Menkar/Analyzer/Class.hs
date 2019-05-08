@@ -11,6 +11,7 @@ import Control.Lens
 import Data.Kind hiding (Type)
 import Data.Void
 import Data.Functor.Identity
+import Data.Functor.Compose
 import GHC.Generics
 
 data AnalyzerOption = OptionSubASTs | OptionTypes | OptionRelate
@@ -37,6 +38,7 @@ data AnalyzableToken sys (ast :: * -> *) where
   AnTokenEntry :: AnalyzableToken sys (Entry sys)
   AnTokenU1 :: AnalyzableToken sys U1
   AnTokenPair1 :: AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
+  AnTokenCompose :: AnalyzableToken sys t -> AnalyzableToken sys (Compose f t)
 
 data AnalyzerError sys =
   AnErrorTermMeta |
@@ -134,14 +136,14 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   type Relation t :: * -> *
   analyzableToken :: AnalyzableToken sys t
   analyze :: forall option lhs f v .
-    (Applicative f, DeBruijnLevel v, Traversable (lhs sys)) =>
+    (Applicative f, DeBruijnLevel v, Traversable (lhs sys), Analyzable sys (Classif t)) =>
     AnalyzerToken option ->
     {-| For adding stuff to the context. -}
     (forall w . Type sys w -> lhs sys w) ->
     Ctx lhs sys v Void ->
     AnalyzerInput option t v ->
     (forall s w .
-      (Analyzable sys s, DeBruijnLevel w) =>
+      (Analyzable sys s, Analyzable sys (Classif s), DeBruijnLevel w) =>
       (v -> w) ->
       Ctx lhs sys w Void ->
       AnalyzerInput option s w ->
@@ -152,11 +154,11 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
     Either (AnalyzerError sys) (f (AnalyzerResult option t v))
 
 subASTsTyped :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Applicative f, Analyzable sys t, Analyzable sys (Classif t), DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
   AnalyzerInput OptionSubASTs t v ->
   (forall s w .
-    (Analyzable sys s, DeBruijnLevel w) =>
+    (Analyzable sys s, Analyzable sys (Classif s), DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
     AnalyzerInput OptionSubASTs s w ->
@@ -169,12 +171,12 @@ subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs id gamma inp
   )
   
 subASTs :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Applicative f, Analyzable sys t, Analyzable sys (Classif t), DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
   t v ->
   AnalyzerExtraInput t v ->
   (forall s w .
-    (Analyzable sys s, DeBruijnLevel w) =>
+    (Analyzable sys s, Analyzable sys (Classif s), DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
     s w ->
@@ -188,12 +190,12 @@ subASTs gamma t extraInputT h = subASTsTyped gamma (AnalyzerInput t extraInputT 
      h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
   
 typetrick :: forall sys lhs f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
+  (Applicative f, Analyzable sys t, Analyzable sys (Classif t), DeBruijnLevel v, Traversable (lhs sys)) =>
   (forall w . Type sys w -> lhs sys w) ->
   Ctx lhs sys v Void ->
   AnalyzerInput OptionTypes t v ->
   (forall s w .
-    (Analyzable sys s, DeBruijnLevel w) =>
+    (Analyzable sys s, Analyzable sys (Classif s), DeBruijnLevel w) =>
     (v -> w) ->
     Ctx lhs sys w Void ->
     AnalyzerInput OptionTypes s w ->
