@@ -26,6 +26,8 @@ import Control.Monad.Writer.Lazy
 
 ----------------------------
 
+{-| Same as quickInfer, but with the precondition that the given AST admits analysis.
+-}
 quickInferUnsafe :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
@@ -42,6 +44,9 @@ quickInferUnsafe parent gamma t extraT address = do
       Right ct -> return ct
       Left _ -> unreachable
 
+{-| Quickly generates a classifier for a given AST. If the AST is classifiable, then it will
+    classifier-check under the returned classifier, which however can contain metas.
+-}
 quickInfer :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
