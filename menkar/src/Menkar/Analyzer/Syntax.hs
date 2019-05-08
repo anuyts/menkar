@@ -43,6 +43,7 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
         TokenSubASTs -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rdcod) (unbox1 rmu)
         TokenTypes -> BoxClassif $ ddom :*: dcod
         TokenRelate -> Unit2
+  convRel token d = U1 :*: U1
 
 -------------------------
 
@@ -69,6 +70,7 @@ instance (SysAnalyzer sys,
       TokenSubASTs -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
       TokenTypes -> BoxClassif $ unboxClassif rseg :*: ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
+  convRel token d = U1 :*: Comp1 (convRel (analyzableToken :: AnalyzableToken sys (rhs sys)) (VarWkn <$> d))
 
 -------------------------
 
@@ -91,6 +93,7 @@ instance (SysAnalyzer sys,
       TokenSubASTs -> Box1 $ ClassifBinding seg (unbox1 rbody)
       TokenTypes -> BoxClassif $ ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
+  convRel token d = Comp1 $ convRel (analyzableToken :: AnalyzableToken sys rhs) (VarWkn <$> d)
 
 -------------------------
 
@@ -199,6 +202,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             TokenSubASTs -> Box1 $ ty
             TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
             TokenRelate -> Unit2
+  convRel token d = U1
 
 -------------------------
 
@@ -312,6 +316,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenTypes -> BoxClassif $ hs2type $ EqType (unboxClassif rt) t t
           TokenRelate -> Unit2
 
+  convRel token d = modedEqDeg d
+
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (Type sys) where
@@ -329,6 +335,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
       TokenSubASTs -> Box1 $ Type $ unbox1 rt
       TokenTypes -> BoxClassif U1
       TokenRelate -> Unit2
+  convRel token gamma = U1
 
 -------------------------
 
@@ -448,6 +455,8 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
       (_, ElimNat _ _) -> unreachable
+      
+  convRel token gamma = U1
 
 -------------------------
 
@@ -562,6 +571,8 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
            TokenRelate -> Unit2
       (_, ElimEq _ _) -> unreachable
 
+  convRel token d = modedEqDeg d
+
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
@@ -644,6 +655,8 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         TokenRelate -> Unit2
 
     TermProblem t -> Left AnErrorTermProblem
+    
+  convRel token d = modedEqDeg d
 
 -------------------------
 
@@ -666,6 +679,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
         TokenTypes -> BoxClassif $ unboxClassif $ rtnv
         TokenRelate -> Unit2
     Var2 v -> Left AnErrorVar
+  convRel token d = modedEqDeg d
 
 -------------------------
 
@@ -692,6 +706,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       TokenSubASTs -> Box1 $ Declaration name (unbox1 rdmu) plic (unbox1 rty)
       TokenTypes -> BoxClassif $ unboxClassif rty
       TokenRelate -> Unit2
+  convRel token d = convRel (analyzableToken :: AnalyzableToken sys (rhs sys)) d
 
 -------------------------
 
@@ -757,6 +772,8 @@ instance (SysAnalyzer sys,
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
 
+  convRel token d = U1
+
 -------------------------
 
 instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
@@ -771,6 +788,7 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
       TokenSubASTs -> Box1 $ ValRHS (unbox1 rt) (unbox1 rty)
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
+  convRel token d = U1
 
 -------------------------
 
@@ -789,6 +807,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
       TokenSubASTs -> Box1 $ ModuleRHS $ Compose $ unbox1 <$> rcontent
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
+  convRel token d = U1
 
 -------------------------
 
@@ -831,6 +850,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           TokenSubASTs -> Box1 $ EntryModule $ unbox1 rmodul
           TokenTypes -> BoxClassif $ U1
           TokenRelate -> Unit2
+  convRel token d = U1
 
 ------------------------
 ------------------------
@@ -845,6 +865,7 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
         TokenSubASTs -> Box1 $ U1
         TokenTypes -> BoxClassif $ U1
         TokenRelate -> Unit2
+  convRel token d = U1
 
 ------------------------
 
@@ -870,6 +891,8 @@ instance (SysAnalyzer sys,
       TokenSubASTs -> Box1 $ unbox1 rfv :*: unbox1 rgv
       TokenTypes -> BoxClassif $ unboxClassif rfv :*: unboxClassif rgv
       TokenRelate -> Unit2
+  convRel token d = convRel (analyzableToken :: AnalyzableToken sys f) d :*:
+                    convRel (analyzableToken :: AnalyzableToken sys g) d
       
     {-
     analyzeF <-

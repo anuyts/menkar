@@ -152,6 +152,9 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
       f (AnalyzerResult option s w)
     ) ->
     Either (AnalyzerError sys) (f (AnalyzerResult option t v))
+  -- | The conversion relation, used to compare expected and actual classifier.
+  -- | The token is only given to pass Haskell's ambiguity check.
+  convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
 
 subASTsTyped :: forall sys f t v .
   (Applicative f, Analyzable sys t, Analyzable sys (Classif t), DeBruijnLevel v, SysTrav sys) =>
