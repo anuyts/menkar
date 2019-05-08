@@ -1,7 +1,9 @@
 module Menkar.System.TC where
 
+import Menkar.System.Scoper
 import Menkar.System.Fine
 import Menkar.System.WHN
+import Menkar.Analyzer
 import Menkar.Fine
 import Menkar.Monad.Monad
 
@@ -129,3 +131,25 @@ class SysWHN sys => SysTC sys where
     Constraint sys ->
     SysJudgement sys ->
     tc ()
+
+newMetaClassif4ast :: forall sys tc t v .
+  (MonadTC sys tc,
+   DeBruijnLevel v,
+   SysTC sys,
+   SysAnalyzer sys,
+   Analyzable sys t,
+   Analyzable sys (Classif t),
+   Analyzable sys (Classif (Classif t))) =>
+  --AnalyzableToken sys t ->
+  Maybe (Constraint sys) ->
+  Ctx Type sys v Void ->
+  t v ->
+  String ->
+  tc (Classif t v)
+newMetaClassif4ast maybeParent gamma t reason = do
+  ct <- newMetaClassif4astNoCheck maybeParent gamma t reason
+  addNewConstraint
+    (Jud (analyzableToken :: AnalyzableToken sys (Classif t)) gamma ct _classifclassif)
+    maybeParent
+    reason
+  return ct
