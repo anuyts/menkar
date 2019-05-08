@@ -38,7 +38,7 @@ data AnalyzableToken sys (ast :: * -> *) where
   AnTokenEntry :: AnalyzableToken sys (Entry sys)
   AnTokenU1 :: AnalyzableToken sys U1
   AnTokenPair1 :: AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
-  AnTokenCompose :: AnalyzableToken sys t -> AnalyzableToken sys (Compose f t)
+  --AnTokenCompose :: AnalyzableToken sys t -> AnalyzableToken sys (Compose f t)
 
 data AnalyzerError sys =
   AnErrorTermMeta |

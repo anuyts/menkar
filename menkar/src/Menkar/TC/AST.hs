@@ -24,6 +24,40 @@ import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
 
+----------------------------
+
+quickInferUnsafe :: forall sys tc v t .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  t v ->
+  AnalyzerExtraInput t v ->
+  [String] -> 
+  tc (Classif t v)
+quickInferUnsafe parent gamma t extraT address = do
+    maybeCT <- sequenceA $ typetrick id gamma (AnalyzerInput t extraT ClassifUnknown IfRelateTypes) $
+      \ wkn gammadelta (AnalyzerInput s extraS maybeCS _) addressInfo ->
+        quickInfer parent gammadelta s extraS (address ++ _addressInfo'address addressInfo)
+    case maybeCT of
+      Right ct -> return ct
+      Left _ -> unreachable
+
+quickInfer :: forall sys tc v t .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  t v ->
+  AnalyzerExtraInput t v ->
+  [String] -> 
+  tc (Classif t v)
+quickInfer parent gamma t extraT address = case (analyzableToken :: AnalyzableToken sys t) of
+  AnTokenTerm -> newMetaType (Just parent) gamma $ join $ (" > " ++) <$> address
+  AnTokenTermNV -> newMetaType (Just parent) gamma $ join $ (" > " ++) <$> address
+  -- TODO: dispatch system-specific tokens
+  _ -> quickInferUnsafe parent gamma t extraT address
+
+----------------------------
+
 {-| Equality of expected and actual classifier is checked on the outside IF requested. -}
 checkAST' :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
@@ -54,7 +88,7 @@ checkAST' parent gamma t extraT maybeCT = do
           ClassifMustBe cs -> return $ (cs, ClassifMustBe cs)
           -- if no type is given, write a meta in judgement (thus certifying it) and pass it back.
           ClassifUnknown -> do
-            cs <- _newMetaClassif
+            cs <- quickInfer parent gammadelta s extraS $ _addressInfo'address addressInfo
             return $ (cs, ClassifMustBe cs)
         addNewConstraint
           (Jud analyzableToken gammadelta s maybeCS)
@@ -75,7 +109,7 @@ checkAST' parent gamma t extraT maybeCT = do
         _ -> return ()
       return ctInferred
     Left anErr -> case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
-      (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> _meta
+      {-(AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> _meta
       (AnErrorTermMeta, _, _) -> unreachable
       (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
       (AnErrorTermWildcard, _, _) -> unreachable
@@ -90,7 +124,8 @@ checkAST' parent gamma t extraT maybeCT = do
       (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> _problem
       (AnErrorTermProblem, _, _) -> unreachable
       (AnErrorVar, AnTokenTerm, Var2 v) -> _var
-      (AnErrorVar, _, _) -> unreachable
+      (AnErrorVar, _, _) -> unreachable-}
+      _ -> _
 
 checkAST :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
