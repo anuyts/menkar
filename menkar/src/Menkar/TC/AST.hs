@@ -175,9 +175,22 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
     (AnErrorTermSys, _, _) -> unreachable
     (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent $ "Erroneous term."
     (AnErrorTermProblem, _, _) -> unreachable
-    --(AnErrorVar, AnTokenTerm, Var2 v) -> _var
+    (AnErrorVar, AnTokenTerm, Var2 v) -> do
+      let ldivSeg = unVarFromCtx <$> lookupVar gamma v
+      addNewConstraint
+        (JudRel AnTokenModedModality (Const ModLeq)
+          (duplicateCtx gamma)
+          (Twice1
+            (_decl'modty . _leftDivided'content $ ldivSeg)
+            (_leftDivided'modality $ ldivSeg)
+          )
+          ClassifUnknown
+        )
+        (Just parent)
+        "Checking that variable is accessible."
+      return $ _decl'content . _leftDivided'content $ ldivSeg
     (AnErrorVar, _, _) -> unreachable
-    _ -> _ 
+    -- _ -> _ 
 
 {-| Equality of expected and actual classifier is checked on the outside IF requested. -}
 checkAST' :: forall sys tc v t .
