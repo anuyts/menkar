@@ -115,7 +115,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
         (Jud analyzableToken gamma t' maybeCT)
         (Just parent)
         "Look up meta."
-      checkAST' childConstraint gamma t' U1 maybeCT
+      checkAST childConstraint gamma t' U1 maybeCT
     (AnErrorTermMeta, _, _) -> unreachable
     (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
     (AnErrorTermWildcard, _, _) -> unreachable
@@ -193,7 +193,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
     -- _ -> _ 
 
 {-| Equality of expected and actual classifier is checked on the outside IF requested. -}
-checkAST' :: forall sys tc v t .
+checkAST :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
   Ctx Type sys v Void ->
@@ -201,20 +201,20 @@ checkAST' :: forall sys tc v t .
   AnalyzerExtraInput t v ->
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
-checkAST' parent gamma t extraT maybeCT = do
+checkAST parent gamma t extraT maybeCT = do
   maybeCTInferred <- sequenceA $ typetrick id gamma (AnalyzerInput t extraT maybeCT IfRelateTypes) $
     \ wkn gammadelta (AnalyzerInput (s :: s w) extraS maybeCS _) addressInfo ->
       haveClassif @sys @s $
       case _addressInfo'boredom addressInfo of
         -- entirely boring: pass on and return inferred and certified type. 
-        EntirelyBoring -> checkAST' parent gammadelta s extraS maybeCS
+        EntirelyBoring -> checkAST parent gammadelta s extraS maybeCS
         -- worth mentioning: pass on and return inferred and certified type.
         WorthMentioning -> do
           virtualConstraint <- defConstraint
             (Jud analyzableToken gammadelta s maybeCS)
             (Just parent)
             ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
-          checkAST' virtualConstraint gammadelta s extraS maybeCS
+          checkAST virtualConstraint gammadelta s extraS maybeCS
         -- worth scheduling: schedule.
         WorthScheduling -> do
           (cs, maybeCS) <- case maybeCS of
@@ -246,14 +246,3 @@ checkAST' parent gamma t extraT maybeCT = do
         _ -> return ()
       return ctInferred
     Left anErr -> checkSpecialAST parent gamma anErr t extraT maybeCT
-
-{-
-checkAST :: forall sys tc v t .
-  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
-  Constraint sys ->
-  Ctx Type sys v Void ->
-  t v ->
-  ClassifInfo (Classif t v) ->
-  tc ()
-checkAST parent gamma t maybeCT = _
--}
