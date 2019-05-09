@@ -8,6 +8,7 @@ import Menkar.Fine
 import Menkar.Monad.Monad
 
 import Data.Void
+import Data.Constraint.Witness
 
 class SysWHN sys => SysTC sys where
   checkTermSys :: forall tc v .
@@ -137,19 +138,21 @@ newMetaClassif4ast :: forall sys tc t v .
    DeBruijnLevel v,
    SysTC sys,
    SysAnalyzer sys,
-   Analyzable sys t,
-   Analyzable sys (Classif t),
-   Analyzable sys (Classif (Classif t))) =>
+   Analyzable sys t) =>
   --AnalyzableToken sys t ->
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   t v ->
   String ->
   tc (Classif t v)
-newMetaClassif4ast maybeParent gamma t reason = do
-  ct <- newMetaClassif4astNoCheck maybeParent gamma t reason
-  addNewConstraint
-    (Jud (analyzableToken :: AnalyzableToken sys (Classif t)) gamma ct _classifclassif)
-    maybeParent
-    reason
-  return ct
+newMetaClassif4ast maybeParent gamma t reason =
+  haveClassif @sys @t $
+  haveClassif @sys @(Classif t) $
+  do
+    ct <- newMetaClassif4astNoCheck maybeParent gamma t reason
+    cct <- newMetaClassif4astNoCheck maybeParent gamma ct reason
+    addNewConstraint
+      (Jud (analyzableToken @sys @(Classif t)) gamma ct (ClassifWillBe cct))
+      maybeParent
+      reason
+    return ct

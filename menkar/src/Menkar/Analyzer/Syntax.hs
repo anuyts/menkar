@@ -59,7 +59,7 @@ instance (SysAnalyzer sys,
   type Relation (Binding Type rhs sys) = ModedDegree sys
   type AnalyzerExtraInput (Binding Type rhs sys) = U1
   analyzableToken = AnTokenBinding analyzableToken
-  witClassif token = have (witClassif (analyzableToken :: AnalyzableToken sys (rhs sys))) $ Witness
+  witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token fromType gamma (AnalyzerInput (Binding seg body) U1 maybeCl maybeDDeg) h = Right $ do
     rseg <- h id gamma
       (AnalyzerInput seg U1 (fst1 <$> classifMust2will maybeCl) maybeDDeg)
@@ -73,7 +73,7 @@ instance (SysAnalyzer sys,
       TokenSubASTs -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
       TokenTypes -> BoxClassif $ unboxClassif rseg :*: ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
-  convRel token d = U1 :*: Comp1 (convRel (analyzableToken :: AnalyzableToken sys (rhs sys)) (VarWkn <$> d))
+  convRel token d = U1 :*: Comp1 (convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d))
 
 -------------------------
 
@@ -86,7 +86,7 @@ instance (SysAnalyzer sys,
   type Relation (ClassifBinding Type rhs sys) = Relation rhs :.: VarExt
   type AnalyzerExtraInput (ClassifBinding Type rhs sys) = AnalyzerExtraInput rhs :.: VarExt
   analyzableToken = AnTokenClassifBinding analyzableToken
-  witClassif token = have (witClassif (analyzableToken :: AnalyzableToken sys rhs)) $ Witness
+  witClassif token = haveClassif @sys @rhs Witness
   analyze token fromType gamma (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) maybeCl maybeDDeg) h = Right $ do
     rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
       (AnalyzerInput body extraBody (_classifBinding'body <$> classifMust2will maybeCl) (unComp1 <$> maybeDDeg))
@@ -96,7 +96,7 @@ instance (SysAnalyzer sys,
       TokenSubASTs -> Box1 $ ClassifBinding seg (unbox1 rbody)
       TokenTypes -> BoxClassif $ ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
-  convRel token d = Comp1 $ convRel (analyzableToken :: AnalyzableToken sys rhs) (VarWkn <$> d)
+  convRel token d = Comp1 $ convRel (analyzableToken @sys @rhs) (VarWkn <$> d)
 
 -------------------------
 
@@ -698,7 +698,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
   type Relation (Declaration declSort rhs sys) = Relation (rhs sys)
   type AnalyzerExtraInput (Declaration declSort rhs sys) = AnalyzerExtraInput (rhs sys)
   analyzableToken = AnTokenDeclaration analyzableToken
-  witClassif token = have (witClassif (analyzableToken :: AnalyzableToken sys (rhs sys))) $ Witness
+  witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token fromType gamma (AnalyzerInput seg@(Declaration name dmu plic ty) extra maybeTy maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -717,7 +717,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       TokenSubASTs -> Box1 $ Declaration name (unbox1 rdmu) plic (unbox1 rty)
       TokenTypes -> BoxClassif $ unboxClassif rty
       TokenRelate -> Unit2
-  convRel token d = convRel (analyzableToken :: AnalyzableToken sys (rhs sys)) d
+  convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
 
 -------------------------
 
@@ -893,8 +893,8 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (f :*: g) = AnalyzerExtraInput f :*: AnalyzerExtraInput g
   analyzableToken = AnTokenPair1 analyzableToken analyzableToken
   witClassif token = 
-    have (witClassif (analyzableToken :: AnalyzableToken sys f)) $
-    have (witClassif (analyzableToken :: AnalyzableToken sys g)) $Witness
+    haveClassif @sys @f $
+    haveClassif @sys @g $ Witness
   analyze token fromType gamma (AnalyzerInput (fv :*: gv) (extraF :*: extraG) maybeClassifs maybeRels) h = Right $ do
     rfv <- h id gamma
       (AnalyzerInput fv extraF (fst1 <$> maybeClassifs) (fst1 <$> maybeRels))
@@ -908,8 +908,8 @@ instance (SysAnalyzer sys,
       TokenSubASTs -> Box1 $ unbox1 rfv :*: unbox1 rgv
       TokenTypes -> BoxClassif $ unboxClassif rfv :*: unboxClassif rgv
       TokenRelate -> Unit2
-  convRel token d = convRel (analyzableToken :: AnalyzableToken sys f) d :*:
-                    convRel (analyzableToken :: AnalyzableToken sys g) d
+  convRel token d = convRel (analyzableToken @sys @f) d :*:
+                    convRel (analyzableToken @sys @g) d
       
     {-
     analyzeF <-
