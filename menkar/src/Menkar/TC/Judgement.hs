@@ -11,7 +11,7 @@ import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
 import Menkar.TC.AST
 --import Menkar.TC.Term
---import Menkar.TC.SmartElim
+import Menkar.TC.SmartElim
 --import Menkar.TC.Rel
 --import Menkar.TC.Entry
 --import Menkar.TC.Segment
@@ -86,7 +86,7 @@ checkConstraint parent = case constraint'judgement parent of
     _ -> unreachable
 
   JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
-    _checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
+    checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
 
   -- keep this until the end of time
   JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
