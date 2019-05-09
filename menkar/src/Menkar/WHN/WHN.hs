@@ -252,8 +252,7 @@ whnormalizeAST :: forall sys whn v t .
    MonadWHN sys whn,
    DeBruijnLevel v,
    MonadWriter [Int] whn,
-   Analyzable sys t,
-   Analyzable sys (Classif t)) => 
+   Analyzable sys t) => 
   Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
