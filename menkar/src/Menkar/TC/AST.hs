@@ -203,32 +203,35 @@ checkAST' :: forall sys tc v t .
   tc (Classif t v)
 checkAST' parent gamma t extraT maybeCT = do
   maybeCTInferred <- sequenceA $ typetrick id gamma (AnalyzerInput t extraT maybeCT IfRelateTypes) $
-    \ wkn gammadelta (AnalyzerInput s extraS maybeCS _) addressInfo -> case _addressInfo'boredom addressInfo of
-      -- entirely boring: pass on and return inferred and certified type. 
-      EntirelyBoring -> checkAST' parent gammadelta s extraS maybeCS
-      -- worth mentioning: pass on and return inferred and certified type.
-      WorthMentioning -> do
-        virtualConstraint <- defConstraint
-          (Jud analyzableToken gammadelta s maybeCS)
-          (Just parent)
-          ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
-        checkAST' virtualConstraint gammadelta s extraS maybeCS
-      -- worth scheduling: schedule.
-      WorthScheduling -> do
-        (cs, maybeCS) <- case maybeCS of
-          -- if a certified type is given, write it in judgement (it is still certified) and pass it back.
-          ClassifWillBe cs -> return $ (cs, ClassifWillBe cs)
-          -- if an expected type is given, write it in judgement (thus certifying it) and pass it back.
-          ClassifMustBe cs -> return $ (cs, ClassifMustBe cs)
-          -- if no type is given, write a meta in judgement (thus certifying it) and pass it back.
-          ClassifUnknown -> do
-            cs <- _quickInfer parent gammadelta s extraS $ _addressInfo'address addressInfo
-            return $ (cs, ClassifMustBe cs)
-        addNewConstraint
-          (Jud analyzableToken gammadelta s maybeCS)
-          (Just parent)
-          ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
-        return cs
+    \ wkn gammadelta (AnalyzerInput (s :: s w) extraS maybeCS _) addressInfo ->
+      haveClassif @sys @s $
+      case _addressInfo'boredom addressInfo of
+        -- entirely boring: pass on and return inferred and certified type. 
+        EntirelyBoring -> checkAST' parent gammadelta s extraS maybeCS
+        -- worth mentioning: pass on and return inferred and certified type.
+        WorthMentioning -> do
+          virtualConstraint <- defConstraint
+            (Jud analyzableToken gammadelta s maybeCS)
+            (Just parent)
+            ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
+          checkAST' virtualConstraint gammadelta s extraS maybeCS
+        -- worth scheduling: schedule.
+        WorthScheduling -> do
+          (cs, maybeCS) <- case maybeCS of
+            -- if a certified type is given, write it in judgement (it is still certified) and pass it back.
+            ClassifWillBe cs -> return $ (cs, ClassifWillBe cs)
+            -- if an expected type is given, write it in judgement (thus certifying it) and pass it back.
+            ClassifMustBe cs -> return $ (cs, ClassifMustBe cs)
+            -- if no type is given, write a meta in judgement (thus certifying it) and pass it back.
+            ClassifUnknown -> do
+              cs <- newMetaClassif4ast (Just parent) gammadelta s $
+                "Inferring classifier " ++ (join $ (" > " ++) <$> _addressInfo'address addressInfo)
+              return $ (cs, ClassifMustBe cs)
+          addNewConstraint
+            (Jud analyzableToken gammadelta s maybeCS)
+            (Just parent)
+            ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
+          return cs
   case maybeCTInferred of
     Right ctInferred -> do
       case maybeCT of
