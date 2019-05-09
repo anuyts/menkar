@@ -137,29 +137,39 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
     (AnErrorTermQName, _, _) -> unreachable
     (AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked tyChecked) -> return tyChecked
     (AnErrorTermAlreadyChecked, _, _) -> unreachable
-    (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> do
-      let dgamma = unVarFromCtx <$> ctx'mode gamma
-      let dmuElim = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
-      tyEliminee <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-}
+    (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> case alg of
+      AlgSmartElim eliminee (Compose eliminators) -> do
+        let dgamma = unVarFromCtx <$> ctx'mode gamma
+        let dmuElim = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+        tyEliminee <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-}
                   (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
-      -----
-      addNewConstraint
-        (JudTerm (VarFromCtx <$> dmuElim :\\ gamma) eliminee tyEliminee)
-        (Just parent)
-        "Type-check the eliminee."
-      -----
-      tyResult <- newMetaType (Just parent) gamma "Infer type of result."
-      addNewConstraint
-        (JudTerm gamma result tyResult)
-        (Just parent)
-        "Type-check the result."
-      -----
-      addNewConstraint
-        (JudSmartElim gamma {-dmuElim-} eliminee tyEliminee eliminators result tyResult)
-        (Just parent)
-        "Smart elimination should reduce to its result."
-      return tyResult
-    
+        -----
+        addNewConstraint
+          (JudTerm (VarFromCtx <$> dmuElim :\\ gamma) eliminee tyEliminee)
+          (Just parent)
+          "Type-check the eliminee."
+        -----
+        tyResult <- newMetaType (Just parent) gamma "Infer type of result."
+        addNewConstraint
+          (JudTerm gamma tResult tyResult)
+          (Just parent)
+          "Type-check the result."
+        -----
+        addNewConstraint
+          (JudSmartElim gamma {-dmuElim-} eliminee tyEliminee eliminators tResult tyResult)
+          (Just parent)
+          "Smart elimination should reduce to its result."
+        return tyResult
+      AlgGoal goalname depcies -> do
+        tyResult <- newMetaType (Just parent) gamma "Infer type of result."
+        -----
+        goalConstraint <- defConstraint
+          (JudGoal gamma goalname tResult tyResult)
+          (Just parent)
+          "Goal should take some value."
+        tcReport goalConstraint "This isn't my job; delegating to a human."
+        -----
+        return tyResult
     (AnErrorTermAlgorithm, _, _) -> unreachable
     --(AnErrorTermSys, AnTokenTermNV, TermSys syst) -> _sys
     (AnErrorTermSys, _, _) -> unreachable
