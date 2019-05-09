@@ -164,7 +164,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
-  --classifClassif :: Classif (Classif t) v
+  extraClassif :: AnalyzerExtraInput (Classif t) v
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a

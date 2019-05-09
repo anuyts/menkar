@@ -46,6 +46,7 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
         TokenTypes -> BoxClassif $ ddom :*: dcod
         TokenRelate -> Unit2
   convRel token d = U1 :*: U1
+  extraClassif = U1 :*: U1
 
 -------------------------
 
@@ -74,6 +75,7 @@ instance (SysAnalyzer sys,
       TokenTypes -> BoxClassif $ unboxClassif rseg :*: ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
   convRel token d = U1 :*: Comp1 (convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d))
+  extraClassif = U1 :*: Comp1 (extraClassif @sys @(rhs sys))
 
 -------------------------
 
@@ -97,6 +99,7 @@ instance (SysAnalyzer sys,
       TokenTypes -> BoxClassif $ ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
   convRel token d = Comp1 $ convRel (analyzableToken @sys @rhs) (VarWkn <$> d)
+  extraClassif = Comp1 $ extraClassif @sys @rhs
 
 -------------------------
 
@@ -207,6 +210,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
             TokenRelate -> Unit2
   convRel token d = U1
+  extraClassif = U1
 
 -------------------------
 
@@ -310,18 +314,24 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenTypes -> BoxClassif $ hs2type $ NatType
           TokenRelate -> Unit2
 
-      ConsRefl t -> do
+      ConsRefl tyAmbient t -> do
+        rtyAmbient <- h id gamma (AnalyzerInput tyAmbient U1 (ClassifWillBe U1) maybeRel)
+          (AddressInfo ["ambient type"] False omit)
+          $ \case
+            ConsRefl tyAmbient t -> Just tyAmbient
+            _ -> Nothing
         rt <- h id gamma (AnalyzerInput t U1 ClassifUnknown maybeRel)
           (AddressInfo ["self-equand"] False omit)
           $ \case
-            ConsRefl t -> Just t
+            ConsRefl tyAmbient t -> Just t
             _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ ConsRefl $ (unbox1 rt)
+          TokenSubASTs -> Box1 $ ConsRefl (unbox1 rtyAmbient) (unbox1 rt)
           TokenTypes -> BoxClassif $ hs2type $ EqType (unboxClassif rt) t t
           TokenRelate -> Unit2
 
   convRel token d = modedEqDeg d
+  extraClassif = U1
 
 -------------------------
 
@@ -342,6 +352,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
       TokenTypes -> BoxClassif U1
       TokenRelate -> Unit2
   convRel token gamma = U1
+  extraClassif = U1
 
 -------------------------
 
@@ -464,6 +475,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
       (_, ElimNat _ _) -> unreachable
       
   convRel token gamma = U1
+  extraClassif = U1
 
 -------------------------
 
@@ -567,7 +579,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                       $ \case
                         ElimEq (NamedBinding nameR (NamedBinding nameEq motive)) clauseRefl -> Just motive
                         _ -> Nothing
-         let tyReflClause = substLast2 tL $ substLast2 (Expr2 $ TermCons $ ConsRefl $ VarWkn <$> tL) $ motive
+         let tyReflClause = substLast2 tL $ substLast2 (Expr2 $ TermCons $ VarWkn <$> ConsRefl tyAmbient tL) $ motive
          rclauseRefl <- h id gamma (AnalyzerInput clauseRefl U1 (ClassifMustBe tyReflClause) maybeRel)
                           (AddressInfo ["refl clause"] False omit)
                           $ \case
@@ -580,6 +592,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
       (_, ElimEq _ _) -> unreachable
 
   convRel token d = modedEqDeg d
+  extraClassif = U1
 
 -------------------------
 
@@ -666,6 +679,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
     TermProblem t -> Left AnErrorTermProblem
     
   convRel token d = modedEqDeg d
+  extraClassif = U1
 
 -------------------------
 
@@ -690,6 +704,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
         TokenRelate -> Unit2
     Var2 v -> Left AnErrorVar
   convRel token d = modedEqDeg d
+  extraClassif = U1
 
 -------------------------
 
@@ -718,6 +733,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       TokenTypes -> BoxClassif $ unboxClassif rty
       TokenRelate -> Unit2
   convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
+  extraClassif = extraClassif @sys @(rhs sys)
 
 -------------------------
 
@@ -785,6 +801,7 @@ instance (SysAnalyzer sys,
           TokenRelate -> Unit2
 
   convRel token d = U1
+  extraClassif = U1
 
 -------------------------
 
@@ -802,6 +819,7 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
   convRel token d = U1
+  extraClassif = U1
 
 -------------------------
 
@@ -822,6 +840,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
   convRel token d = U1
+  extraClassif = U1
 
 -------------------------
 
@@ -866,6 +885,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           TokenTypes -> BoxClassif $ U1
           TokenRelate -> Unit2
   convRel token d = U1
+  extraClassif = U1
 
 ------------------------
 ------------------------
@@ -882,6 +902,7 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
         TokenTypes -> BoxClassif $ U1
         TokenRelate -> Unit2
   convRel token d = U1
+  extraClassif = U1
 
 ------------------------
 
@@ -910,6 +931,8 @@ instance (SysAnalyzer sys,
       TokenRelate -> Unit2
   convRel token d = convRel (analyzableToken @sys @f) d :*:
                     convRel (analyzableToken @sys @g) d
+  extraClassif = extraClassif @sys @f :*:
+                 extraClassif @sys @g
       
     {-
     analyzeF <-

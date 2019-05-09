@@ -112,7 +112,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
           -}
         Just t' -> return t'
       childConstraint <- defConstraint
-        (Jud analyzableToken gamma t' maybeCT)
+        (Jud analyzableToken gamma t' extraT maybeCT)
         (Just parent)
         "Look up meta."
       checkAST childConstraint gamma t' U1 maybeCT
@@ -211,7 +211,7 @@ checkAST parent gamma t extraT maybeCT = do
         -- worth mentioning: pass on and return inferred and certified type.
         WorthMentioning -> do
           virtualConstraint <- defConstraint
-            (Jud analyzableToken gammadelta s maybeCS)
+            (Jud analyzableToken gammadelta s extraS maybeCS)
             (Just parent)
             ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
           checkAST virtualConstraint gammadelta s extraS maybeCS
@@ -228,7 +228,7 @@ checkAST parent gamma t extraT maybeCT = do
                 "Inferring classifier " ++ (join $ (" > " ++) <$> _addressInfo'address addressInfo)
               return $ (cs, ClassifMustBe cs)
           addNewConstraint
-            (Jud analyzableToken gammadelta s maybeCS)
+            (Jud analyzableToken gammadelta s extraS maybeCS)
             (Just parent)
             ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
           return cs

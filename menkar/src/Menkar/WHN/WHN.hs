@@ -133,7 +133,10 @@ whnormalizeElim parent gamma dmu whnEliminee tyEliminee e tyResult metasEliminee
             whnBody <- whnormalize parent (gamma :.. VarFromCtx <$> seg) body (binding'body piBinding) reason
             case whnBody of
               -- Body is refl: Elimination reduces to refl.
-              Expr2 (TermCons (ConsRefl t)) -> return $ Expr2 $ TermCons $ ConsRefl $ Expr2 $ TermCons $ Lam $ Binding seg t
+              Expr2 (TermCons (ConsRefl tyAmbient t)) ->
+                return $ Expr2 $ TermCons $ ConsRefl
+                  (hs2type $ Pi $ Binding seg tyAmbient)
+                  (Expr2 $ TermCons $ Lam $ Binding seg t)
               -- Body is blocked or neutral: Return elimination with whnormalized body.
               _ -> return $ Expr2 $ TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg whnBody) tyEliminee Funext
           -- Other eliminations of lambda: Bogus.
@@ -196,9 +199,9 @@ whnormalizeElim parent gamma dmu whnEliminee tyEliminee e tyResult metasEliminee
           -- IDENTITY TYPE
           ---------------
           -- Correct dependent elimination of refl.
-          (ConsRefl t, ElimEq motive crefl) -> whnormalize parent gamma crefl tyResult reason
+          (ConsRefl tyAmbient t, ElimEq motive crefl) -> whnormalize parent gamma crefl tyResult reason
           -- Other elimination of refl: Bogus.
-          (ConsRefl _, _) -> return termProblem
+          (ConsRefl _ _, _) -> return termProblem
       (Expr2 _) -> unreachable
 
 whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>

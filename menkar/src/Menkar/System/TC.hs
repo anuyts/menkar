@@ -158,7 +158,7 @@ newMetaClassif4ast maybeParent gamma t reason =
     ct <- newMetaClassif4astNoCheck maybeParent gamma t reason
     cct <- newMetaClassif4astNoCheck maybeParent gamma ct reason
     addNewConstraint
-      (Jud (analyzableToken @sys @(Classif t)) gamma ct (ClassifWillBe cct))
+      (Jud (analyzableToken @sys @(Classif t)) gamma ct (extraClassif @sys @t) (ClassifWillBe cct))
       maybeParent
       reason
     return ct

@@ -35,6 +35,7 @@ data Judgement (sys :: KSys) where
     AnalyzableToken sys t ->
     Ctx Type sys v Void ->
     t v ->
+    AnalyzerExtraInput t v ->
     ClassifInfo (Classif t v) ->
     Judgement sys
   JudRel :: (DeBruijnLevel v, Analyzable sys t) =>
@@ -160,7 +161,7 @@ data Judgement (sys :: KSys) where
     Ctx Type sys v Void ->
     Type sys v ->
     Judgement sys-}
-pattern JudType gamma ty = Jud AnTokenType gamma ty (ClassifWillBe U1)
+pattern JudType gamma ty = Jud AnTokenType gamma ty U1 (ClassifWillBe U1)
 {-JudTypeRel :: (DeBruijnLevel v) =>
     Degree sys v ->
     Ctx (Twice2 Type) sys v Void ->
@@ -177,7 +178,7 @@ pattern JudTypeRel deg gamma tys
     Term sys v ->
     Type sys v ->
     Judgement sys-}
-pattern JudTerm gamma t ty = Jud AnTokenTerm gamma t (ClassifMustBe ty)
+pattern JudTerm gamma t ty = Jud AnTokenTerm gamma t U1 (ClassifMustBe ty)
 {-JudTermRel :: (DeBruijnLevel v) =>
     Eta ->
     Degree sys v ->

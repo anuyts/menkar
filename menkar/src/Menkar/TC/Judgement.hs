@@ -49,9 +49,9 @@ checkConstraint parent = case constraint'judgement parent of
     _ -> _checkJudCtx
   -} -- contexts start empty and grow only in well-typed ways.
 
-  Jud token gamma t classifT -> checkAST gamma t classifT
+  Jud token gamma t extraT classifT -> void $ checkAST parent gamma t extraT classifT
 
-  JudRel token rel gamma (Twice1 t1 t2) (Twice1 ct1 ct2) -> _checkASTRel gamma t1 t2 ct1 ct2
+  JudRel token rel gamma (Twice1 t1 t2) maybeCTs -> _checkASTRel gamma t1 t2 maybeCTs
 
   {-
   JudType gamma (Type ty) -> do
