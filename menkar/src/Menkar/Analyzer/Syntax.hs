@@ -49,9 +49,9 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
 
 instance (SysAnalyzer sys,
           Analyzable sys (rhs sys),
-          Analyzable sys (Classif (rhs sys)),
           Relation (rhs sys) ~ ModedDegree sys,
-          AnalyzerExtraInput (rhs sys) ~ U1
+          AnalyzerExtraInput (rhs sys) ~ U1,
+          AnalyzerExtraInput (Classif (rhs sys)) ~ U1
          ) => Analyzable sys (Binding Type rhs sys) where
   type Classif (Binding Type rhs sys) = Classif (Segment Type sys) :*: ClassifBinding Type (Classif (rhs sys)) sys
   type Relation (Binding Type rhs sys) = ModedDegree sys
@@ -76,7 +76,6 @@ instance (SysAnalyzer sys,
 
 instance (SysAnalyzer sys,
           Analyzable sys rhs,
-          Analyzable sys (Classif rhs),
           --Relation rhs ~ ModedDegree sys,
           AnalyzerExtraInput rhs ~ U1
          ) => Analyzable sys (ClassifBinding Type rhs sys) where
@@ -871,9 +870,7 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
 
 instance (SysAnalyzer sys,
           Analyzable sys f,
-          Analyzable sys g,
-          Analyzable sys (Classif f),
-          Analyzable sys (Classif g)) => Analyzable sys (f :*: g) where
+          Analyzable sys g) => Analyzable sys (f :*: g) where
   type Classif (f :*: g) = Classif f :*: Classif g
   type Relation (f :*: g) = Relation f :*: Relation g
   type AnalyzerExtraInput (f :*: g) = AnalyzerExtraInput f :*: AnalyzerExtraInput g
