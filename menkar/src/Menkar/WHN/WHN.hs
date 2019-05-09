@@ -100,8 +100,8 @@ whnormalizeElim parent gamma dmu whnEliminee tyEliminee e tyResult metasEliminee
       -- Eliminee is neutral: Try to rely on eta instead
       (Expr2 (TermElim _ _ _ _)) -> useDependentEta
       (Expr2 (TermMeta MetaNeutral meta depcies alg)) -> useDependentEta
-      -- Eliminee is system-specific: TODO
-      (Expr2 (TermSys t)) -> todo
+      -- Eliminee is system-specific: considered neutral, as there are no system-specific eliminators right now.
+      (Expr2 (TermSys t)) -> useDependentEta
       -- Eliminee is a constructor:
       (Expr2 (TermCons t)) ->
         -- Just in case: wrap the elimination in a problem box.
