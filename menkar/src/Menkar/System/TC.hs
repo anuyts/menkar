@@ -11,6 +11,12 @@ import Data.Void
 import Data.Constraint.Witness
 
 class SysWHN sys => SysTC sys where
+  inferTermSys :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    SysTerm sys v ->
+    tc (Type sys v)
   checkTermSys :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
