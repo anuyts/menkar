@@ -51,7 +51,7 @@ checkConstraint parent = case constraint'judgement parent of
 
   Jud token gamma t extraT classifT -> void $ checkAST parent gamma t extraT classifT
 
-  JudRel token rel gamma (Twice1 t1 t2) maybeCTs -> _checkASTRel gamma t1 t2 maybeCTs
+  JudRel token eta rel gamma (Twice1 t1 t2) maybeCTs -> _checkASTRel eta rel gamma t1 t2 maybeCTs
 
   {-
   JudType gamma (Type ty) -> do

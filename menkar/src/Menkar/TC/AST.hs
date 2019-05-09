@@ -123,7 +123,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
       let (LeftDivided d2 d1mu telescope) = ldivVal
       let ldivModAppliedValRHS = (leftDivided'content .~ telescoped2modalQuantified d2 telescope) ldivVal
       addNewConstraint
-        (JudRel AnTokenModedModality (Const ModLeq)
+        (JudRel AnTokenModedModality (Eta True) (Const ModLeq)
           (duplicateCtx gamma)
           (Twice1
             (_modApplied'modality . _leftDivided'content $ ldivModAppliedValRHS)
@@ -178,7 +178,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
     (AnErrorVar, AnTokenTerm, Var2 v) -> do
       let ldivSeg = unVarFromCtx <$> lookupVar gamma v
       addNewConstraint
-        (JudRel AnTokenModedModality (Const ModLeq)
+        (JudRel AnTokenModedModality (Eta True) (Const ModLeq)
           (duplicateCtx gamma)
           (Twice1
             (_decl'modty . _leftDivided'content $ ldivSeg)
@@ -236,7 +236,7 @@ checkAST parent gamma t extraT maybeCT = do
     Right ctInferred -> do
       case maybeCT of
         ClassifMustBe ct -> addNewConstraint
-          (JudRel analyzableToken
+          (JudRel analyzableToken (Eta True)
             (convRel (analyzableToken :: AnalyzableToken sys t) $ unVarFromCtx <$> ctx'mode gamma)
             (duplicateCtx gamma)
             (Twice1 ctInferred ct)

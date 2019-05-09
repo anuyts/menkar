@@ -40,6 +40,7 @@ data Judgement (sys :: KSys) where
     Judgement sys
   JudRel :: (DeBruijnLevel v, Analyzable sys t) =>
     AnalyzableToken sys t ->
+    Eta ->
     Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice1 t v ->
@@ -168,8 +169,9 @@ pattern JudType gamma ty = Jud AnTokenType gamma ty U1 (ClassifWillBe U1)
     Twice2 Type sys v ->
     Judgement sys-}
 pattern JudTypeRel deg gamma tys
-  <- JudRel AnTokenType deg gamma (twice1to2 -> tys) (ClassifWillBe (Twice1 U1 U1))
-  where JudTypeRel deg gamma (Twice2 ty1 ty2) = JudRel AnTokenType deg gamma (Twice1 ty1 ty2) (ClassifWillBe (Twice1 U1 U1))
+  <- JudRel AnTokenType _ deg gamma (twice1to2 -> tys) (ClassifWillBe (Twice1 U1 U1))
+  where JudTypeRel deg gamma (Twice2 ty1 ty2) =
+          JudRel AnTokenType (Eta False) deg gamma (Twice1 ty1 ty2) (ClassifWillBe (Twice1 U1 U1))
     
 -- | @'JudTerm' gamma t tyT@ means @gamma |- t : tyT@.
 -- | Premises: @'JudCtx', 'JudType'@
@@ -186,7 +188,7 @@ pattern JudTerm gamma t ty = Jud AnTokenTerm gamma t U1 (ClassifMustBe ty)
     Twice2 Term sys v ->
     Twice2 Type sys v ->
     Judgement sys-}
-pattern JudTermRel deg gamma ts tys
-  <- JudRel AnTokenTerm deg gamma (twice1to2 -> ts) (fmap twice1to2 -> ClassifMustBe tys)
-  where JudTermRel deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2)
-          = JudRel AnTokenTerm deg gamma (Twice1 t1 t2) (ClassifWillBe (Twice1 ty1 ty2))
+pattern JudTermRel eta deg gamma ts tys
+  <- JudRel AnTokenTerm eta deg gamma (twice1to2 -> ts) (fmap twice1to2 -> ClassifMustBe tys)
+  where JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2)
+          = JudRel AnTokenTerm eta deg gamma (Twice1 t1 t2) (ClassifWillBe (Twice1 ty1 ty2))
