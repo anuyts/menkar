@@ -173,7 +173,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
     (AnErrorTermAlgorithm, _, _) -> unreachable
     (AnErrorTermSys, AnTokenTermNV, TermSys syst) -> inferTermSys parent gamma syst
     (AnErrorTermSys, _, _) -> unreachable
-    --(AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> _problem
+    (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent $ "Erroneous term."
     (AnErrorTermProblem, _, _) -> unreachable
     --(AnErrorVar, AnTokenTerm, Var2 v) -> _var
     (AnErrorVar, _, _) -> unreachable
