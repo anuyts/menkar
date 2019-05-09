@@ -370,6 +370,7 @@ deriving instance (SysSyntax (Term sys) sys) =>
 ------------------------------------
 
 data MetaNeutrality = MetaNeutral | MetaBlocked
+  deriving Eq
 
 data TermNV (sys :: KSys) (v :: *) =
   TermCons (ConstructorTerm sys v) |

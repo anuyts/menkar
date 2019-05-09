@@ -88,7 +88,7 @@ checkSpecialAST :: forall sys tc v t .
   tc (Classif t v)
 checkSpecialAST parent gamma anErr t extraT maybeCT = do
   let ty = fromClassifInfo unreachable maybeCT
-  case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
+  case (anErr, analyzableToken @sys @t, t) of
     (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> do
       maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
       t' <- case maybeT of
