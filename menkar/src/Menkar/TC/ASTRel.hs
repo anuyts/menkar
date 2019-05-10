@@ -6,6 +6,7 @@ import Menkar.WHN
 import Menkar.System.TC
 import Menkar.Basic.Context
 import Menkar.Monad
+import Menkar.TC.QuickEq
 
 import Control.Exception.AssertFalse
 
@@ -76,10 +77,13 @@ checkASTRel :: forall sys tc t v .
   AnalyzerExtraInput t v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
-checkASTRel parent eta relT gamma ts extraT maybeCTs = case analyzableToken @sys @t of
-  AnTokenTerm -> checkTermRel parent eta relT gamma ts maybeCTs
-  -- also special case for AnTokenSys! (checkTermRelSysTermWHNTermNoEta)
-  _ -> checkASTRel' parent eta relT gamma ts extraT maybeCTs
+checkASTRel parent eta relT gamma ts@(Twice1 t1 t2) extraT maybeCTs =
+  if quickEq @sys t1 t2 extraT
+  then return ()
+  else case analyzableToken @sys @t of
+    AnTokenTerm -> checkTermRel parent eta relT gamma ts maybeCTs
+    -- also special case for AnTokenSys! (checkTermRelSysTermWHNTermNoEta)
+    _ -> checkASTRel' parent eta relT gamma ts extraT maybeCTs
 
 ---------------------------------------------------
 
