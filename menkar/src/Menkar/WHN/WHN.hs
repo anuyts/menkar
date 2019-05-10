@@ -285,8 +285,7 @@ whnormalizeAST :: forall sys whn v t .
   String ->
   whn (t v)
 whnormalizeAST parent gamma t extraT classifT reason =
-  let token = analyzableToken :: AnalyzableToken sys t
-  in case token of
+  case analyzableToken @sys @t of
     AnTokenTerm -> whnormalize parent gamma t classifT reason
     -- also special case for AnTokenSys!
     _ -> whnormalizeAST' parent gamma t extraT classifT reason

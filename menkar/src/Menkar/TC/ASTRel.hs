@@ -14,11 +14,30 @@ import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
+import GHC.Generics
+
+---------------------------------------------------
+  
+tryToSolveTerm :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  Eta ->
+  ModedDegree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v {-^ Blocked. -} ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
+  (String -> tc ()) ->
+  tc ()
+tryToSolveTerm = _tryToSolveTerm
 
 ---------------------------------------------------
 
-{-
-checkASTRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
+checkASTRel' :: forall sys tc t v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
   Constraint sys ->
   Eta ->
   Relation t v ->
@@ -27,17 +46,56 @@ checkASTRel :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
   AnalyzerExtraInput t v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
-checkASTRel parent eta relT gamma (Twice1 t t') extraT maybeCTs = do
-  let maybeCT  = fstTwice1 <$> maybeCTs
-  let maybeCT' = sndTwice1 <$> maybeCTs
+checkASTRel' parent eta relT gamma (Twice1 t1 t2) extraT maybeCTs = do
+  let maybeCT1 = fstTwice1 <$> maybeCTs
+  let maybeCT2 = sndTwice1 <$> maybeCTs
   attempt <- sequenceA $ analyze TokenRelate (\x -> Twice2 x x) gamma
-    (AnalyzerInput t extraT maybeCT (IfRelate relT))
-    $ \ wkn gammadelta (AnalyzerInput s extraS maybeCS (IfRelate relS)) addressInfo extract ->
-      _
+    (AnalyzerInput t1 extraT maybeCT1 (IfRelate relT))
+    $ \ wkn gammadelta (AnalyzerInput (s1 :: s w) extraS maybeCS1 (IfRelate relS)) addressInfo extract ->
+      case extract t2 of
+        Nothing -> tcFail parent "False"
+        Just s2 -> do
+          addNewConstraint
+            (JudRel (analyzableToken @sys @s) (Eta True) relS gammadelta
+              (Twice1 s1 s2)
+              -- WHAT ABOUT EXTRA?
+              _ -- WHAT ABOUT TYPES?
+            )
+            (Just parent)
+            ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
+          return Unit2
   _
--}
+
+checkASTRel :: forall sys tc t v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
+  Constraint sys ->
+  Eta ->
+  Relation t v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Twice1 t v ->
+  AnalyzerExtraInput t v ->
+  ClassifInfo (Twice1 (Classif t) v) ->
+  tc ()
+checkASTRel parent eta relT gamma ts extraT maybeCTs = case analyzableToken @sys @t of
+  AnTokenTerm -> checkTermRel parent eta relT gamma ts maybeCTs
+  -- also special case for AnTokenSys! (checkTermRelSysTermWHNTermNoEta)
+  _ -> checkASTRel' parent eta relT gamma ts extraT maybeCTs
 
 ---------------------------------------------------
+
+checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Constraint sys ->
+  ModedDegree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
+  [Int] ->
+  [Int] ->
+  tc ()
+checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 =
+  checkASTRel' parent (Eta False) deg gamma (Twice1 t1 t2) U1 (ClassifWillBe $ Twice1 ty1 ty2)
 
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -52,7 +110,15 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   [Int] ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = _checkTermRelNoEta
+checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
+  case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
+    -- Both are whnormal
+    (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2
+    -- Only one is whnormal: whsolve or block
+    (True , False) -> tryToSolveTerm parent (Eta False) deg          gamma  t1 t2 ty1 ty2 metasTy1 metasTy2 $ tcBlock parent
+    (False, True ) -> tryToSolveTerm parent (Eta False) deg (flipCtx gamma) t2 t1 ty2 ty1 metasTy2 metasTy1 $ tcBlock parent
+    -- Neither is whnormal: block
+    (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
 --------------------------------------------------------
 -- MAYBE ETA --
@@ -154,22 +220,12 @@ checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     (False, False) -> callEtaExpandIfApplicable
     (True , False) ->
-      _tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 (hs2type ty1) (hs2type ty2) [] []
+      tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 (hs2type ty1) (hs2type ty2) [] []
       $ const callEtaExpandIfApplicable
     (False, True ) ->
-      _tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 (hs2type ty2) (hs2type ty1) [] []
+      tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 (hs2type ty2) (hs2type ty1) [] []
       $ const callEtaExpandIfApplicable
     (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
-    {-
-    (True , False) -> case t1 of
-      Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
-        tryToSolveMetaMaybeEta parent deg          gamma  neutrality meta depcies t2 ty1 ty2
-      _ -> callEtaExpandIfApplicable
-    (False, True ) -> case t2 of
-      Expr2 (TermMeta neutrality meta (Compose depcies) alg) ->
-        tryToSolveMetaMaybeEta parent deg (flipCtx gamma) neutrality meta depcies t1 ty2 ty1
-      _ -> callEtaExpandIfApplicable
-    -}
 
 ---------------------------------------------------
 
