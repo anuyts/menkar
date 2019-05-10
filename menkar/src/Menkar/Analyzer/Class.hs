@@ -71,13 +71,11 @@ fromClassifInfo a0 (ClassifMustBe a) = a
 fromClassifInfo a0 (ClassifWillBe a) = a
 fromClassifInfo a0 (ClassifUnknown) = a0
 
-data AnalyzerInput (option :: AnalyzerOption) (arity :: * -> *) (t :: * -> *) (v :: *) = AnalyzerInput {
-  _analyzerInput'get :: arity (t v),
-  _analyzerInput'extra :: arity (AnalyzerExtraInput t v),
-  _analyzerInput'classifInfo :: ClassifInfo (arity (Classif t v)),
+data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
+  _analyzerInput'get :: t v,
+  _analyzerInput'extra :: AnalyzerExtraInput t v,
+  _analyzerInput'classifInfo :: ClassifInfo (Classif t v),
   _analyzerInput'relation :: IfRelate option (Relation t v)}
-pattern AnalyzerInput1 t extraT ct relT <- AnalyzerInput (Identity t) (Identity extraT) (fmap runIdentity -> ct) relT
-  where AnalyzerInput1 t extraT ct relT = AnalyzerInput (Identity t) (Identity extraT) (Identity <$> ct) relT
 
 data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
 
@@ -146,69 +144,45 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   type Relation t :: * -> *
   analyzableToken :: AnalyzableToken sys t
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
-  {-| @'arity'@ should be a commutative monad.
-  -}
-  analyze :: forall option lhs f arity v .
-    (Applicative f, DeBruijnLevel v, Traversable (lhs sys), Monad arity) =>
+  analyze :: forall option lhs f v .
+    (Applicative f, DeBruijnLevel v, Traversable (lhs sys)) =>
     AnalyzerToken option ->
     {-| For adding stuff to the context. -}
-    (forall w . arity (Type sys w) -> lhs sys w) ->
+    (forall w . Type sys w -> lhs sys w) ->
     Ctx lhs sys v Void ->
-    AnalyzerInput option arity t v ->
+    AnalyzerInput option t v ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
       Ctx lhs sys w Void ->
-      AnalyzerInput option arity s w ->
+      AnalyzerInput option s w ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
-      f (arity (AnalyzerResult option s w))
+      f (AnalyzerResult option s w)
     ) ->
-    Either (AnalyzerError sys) (f (arity (AnalyzerResult option t v)))
+    Either (AnalyzerError sys) (f (AnalyzerResult option t v))
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
   extraClassif :: AnalyzerExtraInput (Classif t) v
 
-analyze1 :: forall sys t option lhs f v .
-  (Analyzable sys t, Applicative f, DeBruijnLevel v, Traversable (lhs sys)) =>
-  AnalyzerToken option ->
-  {-| For adding stuff to the context. -}
-  (forall w . Type sys w -> lhs sys w) ->
-  Ctx lhs sys v Void ->
-  AnalyzerInput option Identity t v ->
-  (forall s w .
-    (Analyzable sys s, DeBruijnLevel w) =>
-    (v -> w) ->
-    Ctx lhs sys w Void ->
-    AnalyzerInput option Identity s w ->
-    AddressInfo ->
-    (t v -> Maybe (s w)) ->
-    f (AnalyzerResult option s w)
-  ) ->
-  Either (AnalyzerError sys) (f (AnalyzerResult option t v))
-analyze1 token fromType gamma inputT h = fmap runIdentity <$> (
-    analyze token (fromType . runIdentity) gamma inputT
-    $ \ wkn gammadelta inputS addressInfo extract -> Identity <$> h wkn gammadelta inputS addressInfo extract
-  )
-  
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
 
 subASTsTyped :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
-  AnalyzerInput OptionSubASTs Identity t v ->
+  AnalyzerInput OptionSubASTs t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
-    AnalyzerInput OptionSubASTs Identity s w ->
+    AnalyzerInput OptionSubASTs s w ->
     AddressInfo ->
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze1 TokenSubASTs id gamma inputT $
+subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs id gamma inputT $
   \ wkn gamma inputS addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo
   )
   
@@ -227,24 +201,24 @@ subASTs :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTs gamma t extraInputT h = subASTsTyped gamma (AnalyzerInput1 t extraInputT ClassifUnknown IfRelateSubASTs) $
+subASTs gamma t extraInputT h = subASTsTyped gamma (AnalyzerInput t extraInputT ClassifUnknown IfRelateSubASTs) $
   \ wkn gamma inputS addressInfo ->
-     h wkn gamma (runIdentity $ _analyzerInput'get inputS) (runIdentity $ _analyzerInput'extra inputS) addressInfo
+     h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
   
 typetrick :: forall sys lhs f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
   (forall w . Type sys w -> lhs sys w) ->
   Ctx lhs sys v Void ->
-  AnalyzerInput OptionTypes Identity t v ->
+  AnalyzerInput OptionTypes t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx lhs sys w Void ->
-    AnalyzerInput OptionTypes Identity s w ->
+    AnalyzerInput OptionTypes s w ->
     AddressInfo ->
     f (Classif s w)
   ) ->
   Either (AnalyzerError sys) (f (Classif t v))
-typetrick fromType gamma inputT h = fmap unboxClassif <$> (analyze1 TokenTypes fromType gamma inputT $
+typetrick fromType gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes fromType gamma inputT $
   \ wkn gamma inputS addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
   )
