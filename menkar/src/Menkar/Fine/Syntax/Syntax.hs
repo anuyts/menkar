@@ -413,6 +413,11 @@ deriving instance (SysSyntax (Term sys) sys) =>
 
 type Term = Expr2 TermNV
 
+isBlockedOrMeta :: Term sys v -> [Int] -> Bool
+isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
+isBlockedOrMeta _ (_:_) = True
+isBlockedOrMeta _ [] = False
+
 ------------------------------------
 
 --data SegmentInfo = SegmentInfo {name :: String}

@@ -288,6 +288,7 @@ whnormalizeAST parent gamma t extraT classifT reason =
   let token = analyzableToken :: AnalyzableToken sys t
   in case token of
     AnTokenTerm -> whnormalize parent gamma t classifT reason
+    -- also special case for AnTokenSys!
     _ -> whnormalizeAST' parent gamma t extraT classifT reason
       {-case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
       (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> return t

@@ -42,11 +42,6 @@ forceSovleMeta parent deg gammaOrig gamma subst partialInv meta tyMeta t = do
     
 -}
 
-isBlockedOrMeta :: Term sys v -> [Int] -> Bool
-isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
-isBlockedOrMeta _ (_:_) = True
-isBlockedOrMeta _ [] = False
-
 --------------------------
 
 newRelatedMetaModedModality :: forall sys tc v vOrig .
