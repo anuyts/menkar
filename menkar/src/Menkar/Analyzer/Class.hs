@@ -152,7 +152,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
     (Applicative f, DeBruijnLevel v, Traversable (lhs sys), Monad arity) =>
     AnalyzerToken option ->
     {-| For adding stuff to the context. -}
-    (forall w . arity (Segment Type sys w) -> Segment lhs sys w) ->
+    (forall w . arity (Type sys w) -> lhs sys w) ->
     Ctx lhs sys v Void ->
     AnalyzerInput option arity t v ->
     (forall s w .
@@ -188,7 +188,7 @@ analyze1 :: forall sys t option lhs f v .
   ) ->
   Either (AnalyzerError sys) (f (AnalyzerResult option t v))
 analyze1 token fromType gamma inputT h = fmap runIdentity <$> (
-    analyze token ((decl'content %~ fromType) . runIdentity) gamma inputT
+    analyze token (fromType . runIdentity) gamma inputT
     $ \ wkn gammadelta inputS addressInfo extract -> Identity <$> h wkn gammadelta inputS addressInfo extract
   )
   
