@@ -9,6 +9,8 @@ import Menkar.Fine.Context
 import Data.Functor.Coerce
 import Data.Omissible
 import Data.Constraint.Witness
+import Data.Constraint.Conditional
+import Control.Exception.AssertFalse
 
 import Control.Lens
 import Data.Kind hiding (Type)
@@ -95,17 +97,35 @@ type instance AnalyzerResult OptionSubASTs = Box1
 type instance AnalyzerResult OptionTypes = BoxClassif
 type instance AnalyzerResult OptionRelate = Unit2
 
+type family VarClassif (option :: AnalyzerOption) :: KSys -> * -> *
+type instance VarClassif OptionSubASTs = Type
+type instance VarClassif OptionTypes = Type
+type instance VarClassif OptionRelate = Twice2 Type
+
+type IfRelate option = Conditional (option ~ OptionRelate)
+
+notRelateButTypes :: IfRelate OptionTypes a
+notRelateButTypes = Conditional unreachable
+
+notRelateButSubASTs :: IfRelate OptionSubASTs a
+notRelateButSubASTs = Conditional unreachable
+
+{-
 data IfRelate (option :: AnalyzerOption) a where
   IfRelateSubASTs :: IfRelate OptionSubASTs a
   IfRelateTypes :: IfRelate OptionTypes a
   IfRelate :: a -> IfRelate OptionRelate a
 
 deriving instance Functor (IfRelate option)
+-}
 
 toIfRelate :: AnalyzerToken option -> a -> IfRelate option a
+toIfRelate option = return
+{-
 toIfRelate TokenSubASTs a = IfRelateSubASTs
 toIfRelate TokenTypes a = IfRelateTypes
 toIfRelate TokenRelate a = IfRelate a
+-}
 
 {-| A supercombinator for type-checking, relatedness-checking, weak-head-normalization, normalization,
     weak-head-meta-resolution and more.
@@ -201,7 +221,7 @@ subASTs :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTs gamma t extraInputT h = subASTsTyped gamma (AnalyzerInput t extraInputT ClassifUnknown IfRelateSubASTs) $
+subASTs gamma t extraInputT h = subASTsTyped gamma (AnalyzerInput t extraInputT ClassifUnknown notRelateButSubASTs) $
   \ wkn gamma inputS addressInfo ->
      h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
   
