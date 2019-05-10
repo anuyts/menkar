@@ -12,6 +12,7 @@ import Data.Functor.Functor1
 import Data.Omissible
 import Control.Exception.AssertFalse
 import Data.Constraint.Witness
+import Data.Constraint.Conditional
 
 import GHC.Generics
 import Data.Functor.Const
@@ -34,16 +35,26 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type AnalyzerExtraInput (ModedModality sys) = U1
   analyzableToken = AnTokenModedModality
   witClassif token = Witness
-  analyze token fromType gamma (AnalyzerInput (ModedModality ddom dcod mu) U1 _ maybeRel) h = Right $ do
-    rddom <- h id gamma (AnalyzerInput ddom U1 (ClassifWillBe U1) (toIfRelate token U1)) (AddressInfo ["domain"] True omit)
+  analyze token extractionFail gamma (AnalyzerInput (ModedModality dom cod mu) condDMu2 U1 condU1 _ maybeRel) h = Right $ do
+    let condDom2 = modality'dom <$> condDMu2
+    let condCod2 = modality'cod <$> condDMu2
+    let condMu2  = modality'mod <$> condDMu2
+    rdom <- h id gamma
+               (AnalyzerInput dom condDom2 U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
+               (AddressInfo ["domain"] True omit)
                (Just . modality'dom)
-    rdcod <- h id gamma (AnalyzerInput dcod U1 (ClassifWillBe U1) (toIfRelate token U1)) (AddressInfo ["codomain"] True omit)
+    rcod <- h id gamma
+               (AnalyzerInput cod condCod2 U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
+               (AddressInfo ["codomain"] True omit)
                (Just . modality'cod)
-    rmu   <- h id gamma (AnalyzerInput mu U1 (ClassifMustBe $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True omit)
+    rmu  <- h id gamma
+               (AnalyzerInput mu  condMu2  U1 (pure U1) (ClassifMustBe (dom :*: cod,
+                                                     (:*:) <$> condDom2 <*> condCod2)) maybeRel)
+               (AddressInfo ["modality"] True omit)
                (Just . modality'mod)
     return $ case token of
-        TokenSubASTs -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rdcod) (unbox1 rmu)
-        TokenTypes -> BoxClassif $ ddom :*: dcod
+        TokenSubASTs -> Box1 $ ModedModality (unbox1 rdom) (unbox1 rcod) (unbox1 rmu)
+        TokenTypes -> BoxClassif $ dom :*: cod
         TokenRelate -> Unit2
   convRel token d = U1 :*: U1
   extraClassif = U1 :*: U1
@@ -61,13 +72,18 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (Binding Type rhs sys) = U1
   analyzableToken = AnTokenBinding analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
-  analyze token fromType gamma (AnalyzerInput (Binding seg body) U1 maybeCl maybeDDeg) h = Right $ do
+  analyze token extractionFail gamma
+    (AnalyzerInput (Binding seg body) condBinding2 U1 condU1 maybeCls maybeDDeg) h = Right $ do
+    let condSeg2  = binding'segment <$> condBinding2
+    let condBody2 = binding'body    <$> condBinding2
+    let condTy2   = _decl'content <$> condSeg2
     rseg <- h id gamma
-      (AnalyzerInput seg U1 (fst1 <$> classifMust2will maybeCl) maybeDDeg)
+      (AnalyzerInput seg condSeg2 U1 (pure U1) (mapMaybeClassifs fst1 $ classifMust2will maybeCls) maybeDDeg)
       (AddressInfo ["segment"] False omit)
       (Just . binding'segment)
-    rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
-      (AnalyzerInput body U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl) (fmap VarWkn <$> maybeDDeg))
+    rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ \ ty1 -> toVarClassif token ty1 condTy2) seg)
+      (AnalyzerInput body condBody2 U1 (pure U1)
+        (mapMaybeClassifs (_classifBinding'body . snd1) $ classifMust2will maybeCls) (fmap VarWkn <$> maybeDDeg))
       (AddressInfo ["body"] False omit)
       (Just . binding'body)
     return $ case token of
@@ -89,9 +105,15 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (ClassifBinding Type rhs sys) = AnalyzerExtraInput rhs :.: VarExt
   analyzableToken = AnTokenClassifBinding analyzableToken
   witClassif token = haveClassif @sys @rhs Witness
-  analyze token fromType gamma (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) maybeCl maybeDDeg) h = Right $ do
-    rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
-      (AnalyzerInput body extraBody (_classifBinding'body <$> classifMust2will maybeCl) (unComp1 <$> maybeDDeg))
+  analyze token extractionFail gamma
+    (AnalyzerInput (ClassifBinding seg body) condBinding2 (Comp1 extraBody) condExtra2 maybeCls maybeDDeg) h = Right $ do
+    let condSeg2  = _classifBinding'segment <$> condBinding2
+    let condBody2 = _classifBinding'body    <$> condBinding2
+    let condTy2   = _decl'content <$> condSeg2
+    let condExtraBody2 = unComp1 <$> condExtra2
+    rbody <- h VarWkn (gamma :.. VarFromCtx <$> (decl'content %~ \ ty1 -> toVarClassif token ty1 condTy2) seg)
+      (AnalyzerInput body condBody2 extraBody condExtraBody2
+        (mapMaybeClassifs _classifBinding'body $ classifMust2will maybeCls) (unComp1 <$> maybeDDeg))
       (AddressInfo ["body"] False EntirelyBoring)
       (Just . _classifBinding'body)
     return $ case token of
@@ -110,8 +132,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   type AnalyzerExtraInput (UniHSConstructor sys) = U1
   analyzableToken = AnTokenUniHSConstructor
   witClassif token = Witness
-  analyze (token :: AnalyzerToken option) fromType
-    (gamma :: Ctx lhs sys v Void) (AnalyzerInput ty U1 maybeMaybeD maybeDDeg) h = Right $ do
+  analyze (token :: AnalyzerToken option) extractionFail
+    (gamma :: Ctx lhs sys v Void) (AnalyzerInput ty condTy2 U1 condU1 maybeMaybeDs maybeDDeg) h = Right $ do
     
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -119,13 +141,13 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
     case ty of
       
       UniHS d -> do
+        let extract :: UniHSConstructor sys v -> Maybe (Mode sys v)
+            extract (UniHS d) = Just d
+            extract _ = Nothing
         rd <- h id (crispModedModality dgamma' :\\ gamma)
-          (AnalyzerInput d U1 (ClassifWillBe U1) (toIfRelate token U1))
+          (AnalyzerInput d _ U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
           (AddressInfo ["mode"] False omit)
-          (\ case
-              UniHS d -> Just d
-              _ -> Nothing
-          )
+          extract
         return $ case token of
           TokenSubASTs -> Box1 $ UniHS (unbox1 rd)
           TokenTypes -> BoxClassif $ d
