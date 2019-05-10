@@ -54,7 +54,9 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   tc ()
 checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = _checkTermRelNoEta
 
----------------------------------------------------
+--------------------------------------------------------
+-- MAYBE ETA --
+--------------------------------------------------------
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
@@ -84,6 +86,43 @@ etaExpandIfApplicable parent ddeg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
                      Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding2) app2)
     (Pi _, _) -> tcFail parent "Types are presumed to be related."
     (_, Pi _) -> tcFail parent "Types are presumed to be related."
+    -- Sigma types: eta expand if allowed
+    (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
+      let dmu = _segment'modty $ binding'segment $ sigmaBinding1
+      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu
+        "Need to know if eta is allowed."
+      case etaAllowed of
+        Just True -> do
+          let fst1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t1 (Sigma sigmaBinding1) Fst
+          let fst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t2 (Sigma sigmaBinding2) Fst
+          let snd1 = Expr2 $ TermElim (idModedModality dgamma) t1 (Sigma sigmaBinding1) Snd
+          let snd2 = Expr2 $ TermElim (idModedModality dgamma) t2 (Sigma sigmaBinding2) Snd
+          return $ Just (Expr2 $ TermCons $ Pair sigmaBinding1 fst1 snd1,
+                         Expr2 $ TermCons $ Pair sigmaBinding2 fst2 snd2)
+        Just False -> Nothing <$ giveUp
+        Nothing -> tcBlock parent $ "Need to know if sigma-type has eta."
+    (Sigma _, _) -> tcFail parent "Types are presumed to be related."
+    (_, Sigma _) -> tcFail parent "Types are presumed to be related."
+    -- Unit type: eta-expand
+    (UnitType, UnitType) -> return $ Just (Expr2 $ TermCons $ ConsUnit,
+                                           Expr2 $ TermCons $ ConsUnit)
+    (UnitType, _) -> tcFail parent "Types are presumed to be related."
+    (_, UnitType) -> tcFail parent "Types are presumed to be related."
+    -- Box type: eta-expand
+    (BoxType boxSeg1, BoxType boxSeg2) -> do
+      let dmu = _segment'modty $ boxSeg1
+      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu
+        "Need to know if eta is allowed."
+      case etaAllowed of
+        Just True -> do
+          let unbox1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t1 (BoxType boxSeg1) Unbox
+          let unbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t2 (BoxType boxSeg2) Unbox
+          return $ Just $ (Expr2 $ TermCons $ ConsBox boxSeg1 unbox1,
+                           Expr2 $ TermCons $ ConsBox boxSeg2 unbox2)
+        Just False -> Nothing <$ giveUp
+        Nothing -> tcBlock parent $ "Need to know if sigma-type has eta."
+    (BoxType _, _) -> tcFail parent "Types are presumed to be related."
+    (_, BoxType _) -> tcFail parent "Types are presumed to be related."
     (_, _) -> Nothing <$ giveUp
   case maybeExpansions of
     Just (expandT1, expandT2) ->
@@ -98,108 +137,6 @@ etaExpandIfApplicable parent ddeg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
         (Just parent)
         "Eta-expand."
     Nothing -> return ()
-
-  {-
-  case (ty1, ty2) of
-    -- Pi-types: eta-expand
-    (Pi piBinding1, Pi piBinding2) ->  do
-      let seg1 = binding'segment piBinding1
-      let dom2 = _segment'content $ binding'segment piBinding2
-      let seg = over decl'content (\ dom1 -> Twice2 dom1 dom2) seg1
-      let app1 = Expr2 $ TermElim
-            (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-            (VarWkn <$> t1) (VarWkn <$> Pi piBinding1) (App $ Var2 VarLast)
-      let app2 = Expr2 $ TermElim
-            (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma)
-            (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
-      addNewConstraint
-        (JudTermRel
-          (Eta True)
-          (VarWkn <$> (_degree'deg deg))
-          (gamma :.. VarFromCtx <$> seg)
-          (Twice2 app1 app2)
-          (Twice2
-            (Type $ binding'body piBinding1)
-            (Type $ binding'body piBinding2)
-          )
-        )
-        (Just parent)
-        "Eta: Relating function bodies."
-    (Pi _, _) -> tcFail parent "Types are presumed to be related."
-    (_, Pi _) -> tcFail parent "Types are presumed to be related."
-    -- Sigma types: eta expand if allowed
-    (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
-      let dmu = _segment'modty $ binding'segment $ sigmaBinding1
-      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu dgamma
-        "Need to know if eta is allowed."
-      case etaAllowed of
-        Just True -> do
-          let fst1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t1 (Sigma sigmaBinding1) Fst
-          let fst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t2 (Sigma sigmaBinding2) Fst
-          let snd1 = Expr2 $ TermElim (idModedModality dgamma) t1 (Sigma sigmaBinding1) Snd
-          let snd2 = Expr2 $ TermElim (idModedModality dgamma) t2 (Sigma sigmaBinding2) Snd
-          addNewConstraint
-            (JudTermRel
-              (Eta True)
-              (divDeg dmu deg)
-              (VarFromCtx <$> dmu :\\ gamma)
-              (Twice2 fst1 fst2)
-              (Twice2
-                (_segment'content $ binding'segment sigmaBinding1)
-                (_segment'content $ binding'segment sigmaBinding2)
-              )
-            )
-            (Just parent)
-            "Eta: Relating first projections."
-          addNewConstraint
-            (JudTermRel
-              (Eta True)
-              (_degree'deg deg)
-              gamma
-              (Twice2 snd1 snd2)
-              (Twice2
-                (Type $ substLast2 fst1 $ binding'body sigmaBinding1)
-                (Type $ substLast2 fst2 $ binding'body sigmaBinding2)
-              )
-            )
-            (Just parent)
-            "Eta: relating second projections"
-        Just False -> giveUp
-        Nothing -> tcBlock parent $ "Need to know if sigma-type has eta."
-    (Sigma _, _) -> tcFail parent "Types are presumed to be related."
-    (_, Sigma _) -> tcFail parent "Types are presumed to be related."
-    -- Unit type: eta-expand
-    (UnitType, UnitType) -> return ()
-    (UnitType, _) -> tcFail parent "Types are presumed to be related."
-    (_, UnitType) -> tcFail parent "Types are presumed to be related."
-    -- Box type: eta-expand
-    (BoxType boxSeg1, BoxType boxSeg2) -> do
-      let dmu = _segment'modty $ boxSeg1
-      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu dgamma
-        "Need to know if eta is allowed."
-      case etaAllowed of
-        Just True -> do
-          let unbox1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t1 (BoxType boxSeg1) Unbox
-          let unbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu dgamma) t2 (BoxType boxSeg2) Unbox
-          addNewConstraint
-            (JudTermRel
-              (Eta True)
-              (divDeg dmu deg)
-              (VarFromCtx <$> dmu :\\ gamma)
-              (Twice2 unbox1 unbox2)
-              (Twice2
-                (_segment'content boxSeg1)
-                (_segment'content boxSeg2)
-              )
-            )
-            (Just parent)
-            "Eta: Relating box contents."
-        Just False -> giveUp
-        Nothing -> tcBlock parent $ "Need to know if sigma-type has eta."
-    (BoxType _, _) -> tcFail parent "Types are presumed to be related."
-    (_, BoxType _) -> tcFail parent "Types are presumed to be related."
-    (_, _) -> giveUp
--}
 
 checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
