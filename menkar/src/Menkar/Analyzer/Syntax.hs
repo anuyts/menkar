@@ -34,30 +34,19 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type AnalyzerExtraInput (ModedModality sys) = U1
   analyzableToken = AnTokenModedModality
   witClassif token = Witness
-  analyze token fromType gamma (AnalyzerInput dmus aryU1 _ maybeRel) h = Right $ do
-    let doms = modality'dom <$> dmus
-    let cods = modality'cod <$> dmus
-    let mus  = modality'mod <$> dmus
-    rdoms <- h id gamma
-               (AnalyzerInput doms (return U1) (ClassifWillBe $ return U1) (toIfRelate token U1))
-               (AddressInfo ["domain"] True omit)
+  analyze token fromType gamma (AnalyzerInput (ModedModality ddom dcod mu) U1 _ maybeRel) h = Right $ do
+    rddom <- h id gamma (AnalyzerInput ddom U1 (ClassifWillBe U1) (toIfRelate token U1)) (AddressInfo ["domain"] True omit)
                (Just . modality'dom)
-    rcods <- h id gamma
-               (AnalyzerInput cods (return U1) (ClassifWillBe $ return U1) (toIfRelate token U1))
-               (AddressInfo ["codomain"] True omit)
+    rdcod <- h id gamma (AnalyzerInput dcod U1 (ClassifWillBe U1) (toIfRelate token U1)) (AddressInfo ["codomain"] True omit)
                (Just . modality'cod)
-    rmus  <- h id gamma
-               (AnalyzerInput mus (return U1) (ClassifMustBe $ (:*:) <$> doms <*> cods) maybeRel)
-               (AddressInfo ["modality"] True omit)
+    rmu   <- h id gamma (AnalyzerInput mu U1 (ClassifMustBe $ ddom :*: dcod) maybeRel) (AddressInfo ["modality"] True omit)
                (Just . modality'mod)
     return $ case token of
-        TokenSubASTs -> Box1 <$> (ModedModality <$> (unbox1 <$> rdoms) <*> (unbox1 <$> rcods) <*> (unbox1 <$> rmus))
-        TokenTypes -> BoxClassif <$> ((:*:) <$> doms <*> cods)
-        TokenRelate -> return Unit2
+        TokenSubASTs -> Box1 $ ModedModality (unbox1 rddom) (unbox1 rdcod) (unbox1 rmu)
+        TokenTypes -> BoxClassif $ ddom :*: dcod
+        TokenRelate -> Unit2
   convRel token d = U1 :*: U1
   extraClassif = U1 :*: U1
-
-  {-
 
 -------------------------
 
@@ -998,5 +987,3 @@ instance (SysAnalyzer sys,
 ------------------------
         
 -- INSTEAD OF USING :.:, USE ClassifBinding, WHICH DOES NOT COMPARE SEGMENTS
-
--}
