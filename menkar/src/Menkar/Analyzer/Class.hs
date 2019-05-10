@@ -74,9 +74,11 @@ fromClassifInfo a0 (ClassifWillBe a) = a
 fromClassifInfo a0 (ClassifUnknown) = a0
 
 data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
-  _analyzerInput'get :: t v,
-  _analyzerInput'extra :: AnalyzerExtraInput t v,
-  _analyzerInput'classifInfo :: ClassifInfo (Classif t v),
+  _analyzerInput'get1 :: t v,
+  _analyzerInput'get2 :: IfRelate option (t v),
+  _analyzerInput'extra1 :: AnalyzerExtraInput t v,
+  _analyzerInput'extra2 :: IfRelate option (AnalyzerExtraInput t v),
+  _analyzerInput'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
   _analyzerInput'relation :: IfRelate option (Relation t v)}
 
 data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
@@ -102,13 +104,25 @@ type instance VarClassif OptionSubASTs = Type
 type instance VarClassif OptionTypes = Type
 type instance VarClassif OptionRelate = Twice2 Type
 
+type family CheckRelate (option :: AnalyzerOption) :: Bool
+type instance CheckRelate OptionSubASTs = False
+type instance CheckRelate OptionTypes = False
+type instance CheckRelate OptionRelate = True
+
+mkVarClassif :: forall option sys v .
+  AnalyzerToken option ->
+  Type sys v ->
+  IfRelate option (Type sys v) ->
+  VarClassif option sys v
+mkVarClassif option ty1 (Conditional ty2) = case option of
+  TokenSubASTs -> ty1
+  TokenTypes -> ty1
+  TokenRelate -> Twice2 ty1 ty2
+
 type IfRelate option = Conditional (option ~ OptionRelate)
 
-notRelateButTypes :: IfRelate OptionTypes a
-notRelateButTypes = Conditional unreachable
-
-notRelateButSubASTs :: IfRelate OptionSubASTs a
-notRelateButSubASTs = Conditional unreachable
+notRelate :: (CheckRelate option ~ False) => IfRelate option a
+notRelate = Conditional unreachable
 
 {-
 data IfRelate (option :: AnalyzerOption) a where
@@ -164,17 +178,16 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   type Relation t :: * -> *
   analyzableToken :: AnalyzableToken sys t
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
-  analyze :: forall option lhs f v .
-    (Applicative f, DeBruijnLevel v, Traversable (lhs sys)) =>
+  analyze :: forall option f v .
+    (Applicative f, DeBruijnLevel v) =>
     AnalyzerToken option ->
     {-| For adding stuff to the context. -}
-    (forall w . Type sys w -> lhs sys w) ->
-    Ctx lhs sys v Void ->
+    Ctx (VarClassif option) sys v Void ->
     AnalyzerInput option t v ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
-      Ctx lhs sys w Void ->
+      Ctx (VarClassif option) sys w Void ->
       AnalyzerInput option s w ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
@@ -202,7 +215,7 @@ subASTsTyped :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs id gamma inputT $
+subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs gamma inputT $
   \ wkn gamma inputS addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo
   )
   
@@ -221,24 +234,24 @@ subASTs :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTs gamma t extraInputT h = subASTsTyped gamma (AnalyzerInput t extraInputT ClassifUnknown notRelateButSubASTs) $
+subASTs gamma t extraInputT h = subASTsTyped gamma
+  (AnalyzerInput t notRelate extraInputT notRelate ClassifUnknown notRelate) $
   \ wkn gamma inputS addressInfo ->
-     h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
+     h wkn gamma (_analyzerInput'get1 inputS) (_analyzerInput'extra1 inputS) addressInfo
   
-typetrick :: forall sys lhs f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v, Traversable (lhs sys)) =>
-  (forall w . Type sys w -> lhs sys w) ->
-  Ctx lhs sys v Void ->
+typetrick :: forall sys f t v .
+  (Applicative f, Analyzable sys t, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
   AnalyzerInput OptionTypes t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
-    Ctx lhs sys w Void ->
+    Ctx Type sys w Void ->
     AnalyzerInput OptionTypes s w ->
     AddressInfo ->
     f (Classif s w)
   ) ->
   Either (AnalyzerError sys) (f (Classif t v))
-typetrick fromType gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes fromType gamma inputT $
+typetrick gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes gamma inputT $
   \ wkn gamma inputS addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
   )
