@@ -32,6 +32,9 @@ class (SysSyntax (Term sys) sys,
        AnalyzerExtraInput (SysTerm sys) ~ U1,
        AnalyzerExtraInput (SysUniHSConstructor sys) ~ U1
       ) => SysAnalyzer sys where
+  quickEqSys :: forall v .
+    (DeBruijnLevel v) =>
+    SysTerm sys v -> SysTerm sys v -> Bool
 
 --type instance Classif (Mode sys) = U1
 --type instance Classif (Modality sys) = Mode sys :*: Mode sys
