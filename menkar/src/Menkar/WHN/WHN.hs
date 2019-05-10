@@ -250,6 +250,27 @@ whnormalizeNV parent gamma t@(TermProblem _) ty metas reason = return $ Expr2 t
 
 ---------------------------
 
+whnormalizeAST' :: forall sys whn v t .
+  (SysWHN sys,
+   MonadWHN sys whn,
+   DeBruijnLevel v,
+   MonadWriter [Int] whn,
+   Analyzable sys t) => 
+  Constraint sys ->
+  Ctx Type sys v Void ->
+  t v ->
+  AnalyzerExtraInput t v ->
+  Classif t v ->
+  String ->
+  whn (t v)
+whnormalizeAST' parent gamma t extraT classifT reason =
+         let attempt = subASTsTyped gamma (AnalyzerInput t extraT (ClassifWillBe classifT) IfRelateSubASTs) $
+               \ wkn gammadelta (AnalyzerInput s extraS maybeClassifS _) addressInfo ->
+                 if _addressInfo'shouldWHN addressInfo
+                 then whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
+                 else return s
+         in fromRight (return t) attempt
+
 whnormalizeAST :: forall sys whn v t .
   (SysWHN sys,
    MonadWHN sys whn,
@@ -267,12 +288,7 @@ whnormalizeAST parent gamma t extraT classifT reason =
   let token = analyzableToken :: AnalyzableToken sys t
   in case token of
     AnTokenTerm -> whnormalize parent gamma t classifT reason
-    _ -> let attempt = subASTsTyped gamma (AnalyzerInput t extraT (ClassifWillBe classifT) IfRelateSubASTs) $
-               \ wkn gammadelta (AnalyzerInput s extraS maybeClassifS _) addressInfo ->
-                 if _addressInfo'shouldWHN addressInfo
-                 then whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
-                 else return s
-         in fromRight (return t) attempt
+    _ -> whnormalizeAST' parent gamma t extraT classifT reason
       {-case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
       (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> return t
       (AnErrorTermMeta, _, _) -> unreachable
@@ -311,7 +327,7 @@ whnormalize parent gamma (Var2 v) ty reason = return $ Var2 v
 -- Not a variable
 whnormalize parent gamma (Expr2 t) ty reason = do
   --perform all necessary recursive calls
-  (prewhnT, metas) <- listen $ whnormalizeAST parent gamma t U1 ty reason
+  (prewhnT, metas) <- listen $ whnormalizeAST' parent gamma t U1 ty reason
   --call whnormalizeNV
   whnormalizeNV parent gamma prewhnT ty metas reason
 
