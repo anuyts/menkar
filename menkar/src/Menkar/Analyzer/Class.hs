@@ -1,4 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances #-}
 
 module Menkar.Analyzer.Class where
 
@@ -20,6 +20,7 @@ import Data.Functor.Compose
 import GHC.Generics
 
 data AnalyzerOption = OptionSubASTs | OptionTypes | OptionRelate
+
 data AnalyzerToken (option :: AnalyzerOption) where
   TokenSubASTs :: AnalyzerToken OptionSubASTs
   TokenTypes :: AnalyzerToken OptionTypes
@@ -81,6 +82,12 @@ data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerI
   _analyzerInput'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
   _analyzerInput'relation :: IfRelate option (Relation t v)}
 
+mapMaybeClassifs :: forall option s t w v .
+  (s w -> t v) ->
+  ClassifInfo (s w, IfRelate option (s w)) ->
+  ClassifInfo (t v, IfRelate option (t v))
+mapMaybeClassifs f = fmap (bimap f $ fmap f)
+
 data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
 
 instance Omissible Boredom where
@@ -109,20 +116,25 @@ type instance CheckRelate OptionSubASTs = False
 type instance CheckRelate OptionTypes = False
 type instance CheckRelate OptionRelate = True
 
-mkVarClassif :: forall option sys v .
+class (Functor (VarClassif option sys)) => IsAnalyzerOption option sys where
+instance (SysTrav sys) => IsAnalyzerOption OptionSubASTs sys where
+instance (SysTrav sys) => IsAnalyzerOption OptionTypes sys where
+instance (SysTrav sys) => IsAnalyzerOption OptionRelate sys where
+
+toVarClassif :: forall option sys v .
   AnalyzerToken option ->
   Type sys v ->
   IfRelate option (Type sys v) ->
   VarClassif option sys v
-mkVarClassif option ty1 (Conditional ty2) = case option of
+toVarClassif option ty1 (Conditional ty2) = case option of
   TokenSubASTs -> ty1
   TokenTypes -> ty1
   TokenRelate -> Twice2 ty1 ty2
 
 type IfRelate option = Conditional (option ~ OptionRelate)
 
-notRelate :: (CheckRelate option ~ False) => IfRelate option a
-notRelate = Conditional unreachable
+absurdRelate :: (CheckRelate option ~ False) => IfRelate option a
+absurdRelate = Conditional unreachable
 
 {-
 data IfRelate (option :: AnalyzerOption) a where
@@ -179,8 +191,10 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   analyzableToken :: AnalyzableToken sys t
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
   analyze :: forall option f v .
-    (Applicative f, DeBruijnLevel v) =>
+    (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
+    {-| When AST-nodes do not have the same head. -}
+    (forall a . IfRelate option (f a)) ->
     {-| For adding stuff to the context. -}
     Ctx (VarClassif option) sys v Void ->
     AnalyzerInput option t v ->
@@ -215,7 +229,7 @@ subASTsTyped :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs gamma inputT $
+subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs absurdRelate gamma inputT $
   \ wkn gamma inputS addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo
   )
   
@@ -235,12 +249,12 @@ subASTs :: forall sys f t v .
   ) ->
   Either (AnalyzerError sys) (f (t v))
 subASTs gamma t extraInputT h = subASTsTyped gamma
-  (AnalyzerInput t notRelate extraInputT notRelate ClassifUnknown notRelate) $
+  (AnalyzerInput t absurdRelate extraInputT absurdRelate ClassifUnknown absurdRelate) $
   \ wkn gamma inputS addressInfo ->
      h wkn gamma (_analyzerInput'get1 inputS) (_analyzerInput'extra1 inputS) addressInfo
   
 typetrick :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v) =>
+  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
   AnalyzerInput OptionTypes t v ->
   (forall s w .
@@ -252,6 +266,6 @@ typetrick :: forall sys f t v .
     f (Classif s w)
   ) ->
   Either (AnalyzerError sys) (f (Classif t v))
-typetrick gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes gamma inputT $
+typetrick gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes absurdRelate gamma inputT $
   \ wkn gamma inputS addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
   )
