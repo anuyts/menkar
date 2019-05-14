@@ -42,7 +42,7 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
     let condCod2 = modality'cod <$> condDMu2
     let condMu2  = modality'mod <$> condDMu2
     rdom <- h id gamma
-      (AnalyzerInput dom condDom2 U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
+      (AnalyzerInput dom (Just <$> condDom2) U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
       (AddressInfo ["domain"] True omit)
       (Just . modality'dom)
     rcod <- h id gamma
