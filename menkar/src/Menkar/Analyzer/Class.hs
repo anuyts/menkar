@@ -165,6 +165,50 @@ toIfRelate TokenTypes a = IfRelateTypes
 toIfRelate TokenRelate a = IfRelate a
 -}
 
+class (Functor t, Functor (Relation t)) => Analyzable sys t where
+  type AnalyzerExtraInput t :: * -> *
+  type Classif t :: * -> *
+  type Relation t :: * -> *
+  analyzableToken :: AnalyzableToken sys t
+  witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
+  analyze :: forall option f v .
+    (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+    Ctx (VarClassif option) sys v Void ->
+    AnalyzerInput option t v ->
+    (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v)) =>
+      (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
+      (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
+        AnalyzerInput option t u ->
+        Maybe (AnalyzerInput option s (ext u))
+      ) ->
+      (forall u option' . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
+        Ctx (VarClassif option') sys u Void ->
+        AnalyzerInput option t u ->
+        IfRelate option' (AnalyzerInput option t u) ->
+        Maybe (Ctx (VarClassif option') sys (ext u) Void)
+      ) ->
+      (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>
+        Relation t u -> Relation s (ext u)
+      ) ->
+      (forall u w . (DeBruijnLevel u, DeBruijnLevel (ext u),
+                     DeBruijnLevel w, DeBruijnLevel (ext w)) =>
+        Traversal (ext u) (ext w) u w
+      ) ->
+      AddressInfo ->
+      f (AnalyzerResult option s (ext v))
+    ) ->
+    Either (AnalyzerError sys) (f (AnalyzerResult option t v))
+  -- | The conversion relation, used to compare expected and actual classifier.
+  -- | The token is only given to pass Haskell's ambiguity check.
+  convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
+  extraClassif :: AnalyzerExtraInput (Classif t) v
+
+haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
+haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
+
+makeLenses ''AnalyzerInput
+
+
 {-| A supercombinator for type-checking, relatedness-checking, weak-head-normalization, normalization,
     weak-head-meta-resolution and more.
 
@@ -196,44 +240,6 @@ toIfRelate TokenRelate a = IfRelate a
     - Since you cannot allocate metas, you should pass down either a complete classifier or no classifier.
       Hence, if you know something about a subAST's classifier, please know all about it.
 -}
-class (Functor t, Functor (Relation t)) => Analyzable sys t where
-  type AnalyzerExtraInput t :: * -> *
-  type Classif t :: * -> *
-  type Relation t :: * -> *
-  analyzableToken :: AnalyzableToken sys t
-  witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
-  analyze :: forall option f v .
-    (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
-    Ctx (VarClassif option) sys v Void ->
-    AnalyzerInput option t v ->
-    (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v)) =>
-      (forall u . u -> ext u) ->
-      (forall u .
-        AnalyzerInput option t u ->
-        Maybe (AnalyzerInput option s (ext u))
-      ) ->
-      (forall u option' .
-        Ctx (VarClassif option') sys u Void ->
-        AnalyzerInput option t u ->
-        IfRelate option' (AnalyzerInput option t u) ->
-        Maybe (Ctx (VarClassif option') sys (ext u) Void)
-      ) ->
-      (forall u . Relation t u -> Relation s (ext u)) ->
-      (forall u w . Traversal (ext u) (ext w) u w) ->
-      AddressInfo ->
-      f (AnalyzerResult option s (ext v))
-    ) ->
-    Either (AnalyzerError sys) (f (AnalyzerResult option t v))
-  -- | The conversion relation, used to compare expected and actual classifier.
-  -- | The token is only given to pass Haskell's ambiguity check.
-  convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
-  extraClassif :: AnalyzerExtraInput (Classif t) v
-
-haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
-haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
-
-makeLenses ''AnalyzerInput
-
 analyzeOld :: forall sys t option f v .
     (Analyzable sys t, Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
