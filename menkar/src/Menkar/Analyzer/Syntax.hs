@@ -35,23 +35,33 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type AnalyzerExtraInput (ModedModality sys) = U1
   analyzableToken = AnTokenModedModality
   witClassif token = Witness
-  analyze token gamma
-    (AnalyzerInput (ModedModality dom cod mu) U1 condU1 _ maybeRel) condDMu2 h = Right $ do
+  analyze token gamma (AnalyzerInput (ModedModality dom cod mu) U1 _) condInputDMu2 maybeRel h = Right $ do
+    let condDMu2 = _analyzerInput'get <$> condInputDMu2
     let condDom2 = modality'dom <$> condDMu2
     let condCod2 = modality'cod <$> condDMu2
     let condMu2  = modality'mod <$> condDMu2
     rdom <- h id gamma
-      (AnalyzerInput dom U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
+      (AnalyzerInput dom U1 (ClassifWillBe U1))
+      (condInputDMu2 <&> \ (AnalyzerInput (ModedModality dom2 cod2 mu2) U1 _) ->
+        Just $ AnalyzerInput dom2 U1 (ClassifWillBe U1)
+      )
+      (pure U1)
       (AddressInfo ["domain"] True omit)
       (Just . modality'dom)
     rcod <- h id gamma
-      (AnalyzerInput cod U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
+      (AnalyzerInput cod U1 (ClassifWillBe U1))
+      (condInputDMu2 <&> \ (AnalyzerInput (ModedModality dom2 cod2 mu2) U1 _) ->
+        Just $ AnalyzerInput cod2 U1 (ClassifWillBe U1)
+      )
+      (pure U1)
       (AddressInfo ["codomain"] True omit)
       (Just . modality'cod)
     rmu  <- h id gamma
-      (AnalyzerInput mu  U1 (pure U1)
-        (ClassifMustBe (dom :*: cod, (:*:) <$> condDom2 <*> condCod2))
-        maybeRel)
+      (AnalyzerInput mu U1 (ClassifMustBe $ dom :*: cod))
+      (condInputDMu2 <&> \ (AnalyzerInput (ModedModality dom2 cod2 mu2) U1 _) ->
+        Just $ AnalyzerInput mu2 U1 (ClassifWillBe $ dom2 :*: cod2)
+      )
+      maybeRel
       (AddressInfo ["modality"] True omit)
       (Just . modality'mod)
     return $ case token of

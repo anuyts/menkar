@@ -1,6 +1,7 @@
 module Data.Constraint.Conditional where
 
 import Data.Functor.Identity
+--import Control.Monad.Morph
 
 data ConditionalT c m a = ConditionalT {runConditionalT :: c => m a}
 type Conditional c = ConditionalT c Identity
@@ -21,7 +22,13 @@ instance Monad m => Monad (ConditionalT c m) where
   return = pure
   ConditionalT mx >>= f = ConditionalT $ mx >>= (runConditionalT . f)
 
-    --runConditionalT $ mx >>= f
+mmapConditionalT :: (forall x . m x -> n x) -> ConditionalT c m a -> ConditionalT c n a
+mmapConditionalT f (ConditionalT ma) = ConditionalT $ f ma
+
+{-
+instance MFunctor (ConditionalT c) where
+  mmap f (ConditionalT mx) = ConditionalT $ f mx
+-}
 
 {-
 data Conditional c a = Conditional {runConditional :: c => a}

@@ -216,8 +216,8 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
       (v -> w) ->
       Ctx (VarClassif option) sys w Void ->
       AnalyzerInput option s w ->
-      IfRelateT option Maybe (AnalyzerInput option t v) ->
-      IfRelate option (Relation t v) ->
+      IfRelate option (Maybe (AnalyzerInput option s w)) ->
+      IfRelate option (Relation s w) ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
       f (AnalyzerResult option s w)

@@ -33,6 +33,8 @@ dependencies:
 - containers == 0.5.7.1
 - terminal-size == 0.3.2.1
 - ghc == 8.0.2
+- bifunctors == 5.4.2
+# - hs-functors == 0.1.3.0
 
 library:
   source-dirs: src
