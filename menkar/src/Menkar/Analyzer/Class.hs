@@ -74,6 +74,7 @@ fromClassifInfo a0 (ClassifMustBe a) = a
 fromClassifInfo a0 (ClassifWillBe a) = a
 fromClassifInfo a0 (ClassifUnknown) = a0
 
+{-
 data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
   _analyzerInput'get1 :: t v,
   -- -- | Needs to be present when calling @'analyze'@.
@@ -82,6 +83,12 @@ data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerI
   _analyzerInput'extra2 :: IfRelate option (AnalyzerExtraInput t v),
   _analyzerInput'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
   _analyzerInput'relation :: IfRelate option (Relation t v)}
+-}
+
+data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
+  _analyzerInput'get :: t v,
+  _analyzerInput'extra :: AnalyzerExtraInput t v,
+  _analyzerInput'classifInfo :: ClassifInfo (Classif t v)}
 
 mapMaybeClassifs :: forall option s t w v .
   (s w -> t v) ->
@@ -127,15 +134,18 @@ toVarClassif :: forall option sys v .
   Type sys v ->
   IfRelate option (Type sys v) ->
   VarClassif option sys v
-toVarClassif option ty1 (Conditional ty2) = case option of
+toVarClassif option ty1 (ConditionalT identityTy2) = case option of
   TokenSubASTs -> ty1
   TokenTypes -> ty1
-  TokenRelate -> Twice2 ty1 ty2
+  TokenRelate -> Twice2 ty1 (runIdentity identityTy2)
 
-type IfRelate option = Conditional (option ~ OptionRelate)
+type IfRelateT option m = ConditionalT (option ~ OptionRelate) m
+type IfRelate option = IfRelateT option Identity
 
+absurdRelateT :: (CheckRelate option ~ False) => IfRelateT option m a
+absurdRelateT = ConditionalT $ return unreachable
 absurdRelate :: (CheckRelate option ~ False) => IfRelate option a
-absurdRelate = Conditional unreachable
+absurdRelate = absurdRelateT -- conditional unreachable
 
 {-
 data IfRelate (option :: AnalyzerOption) a where
@@ -199,12 +209,15 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
     {-| For adding stuff to the context. -}
     Ctx (VarClassif option) sys v Void ->
     AnalyzerInput option t v ->
-    IfRelate option (t v) ->
+    IfRelate option (AnalyzerInput option t v) ->
+    IfRelate option (Relation t v) ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
       Ctx (VarClassif option) sys w Void ->
       AnalyzerInput option s w ->
+      IfRelateT option Maybe (AnalyzerInput option t v) ->
+      IfRelate option (Relation t v) ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
       f (AnalyzerResult option s w)
@@ -231,8 +244,9 @@ subASTsTyped :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs gamma inputT absurdRelate $
-  \ wkn gamma inputS addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo
+subASTsTyped gamma inputT h = fmap unbox1 <$>
+  (analyze TokenSubASTs gamma inputT absurdRelate absurdRelate $
+    \ wkn gamma inputS _ _ addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo
   )
   
 subASTs :: forall sys f t v .
@@ -251,9 +265,9 @@ subASTs :: forall sys f t v .
   ) ->
   Either (AnalyzerError sys) (f (t v))
 subASTs gamma t extraInputT h = subASTsTyped gamma
-  (AnalyzerInput t extraInputT absurdRelate ClassifUnknown absurdRelate) $
+  (AnalyzerInput t extraInputT ClassifUnknown) $
   \ wkn gamma inputS addressInfo ->
-     h wkn gamma (_analyzerInput'get1 inputS) (_analyzerInput'extra1 inputS) addressInfo
+     h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
   
 typetrick :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
@@ -268,6 +282,7 @@ typetrick :: forall sys f t v .
     f (Classif s w)
   ) ->
   Either (AnalyzerError sys) (f (Classif t v))
-typetrick gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes gamma inputT absurdRelate $
-  \ wkn gamma inputS addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
+typetrick gamma inputT h = fmap unboxClassif <$>
+  (analyze TokenTypes gamma inputT absurdRelate absurdRelate $
+    \ wkn gamma inputS _ _ addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
   )

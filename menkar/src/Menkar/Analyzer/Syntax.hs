@@ -173,7 +173,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       UnitType -> handleConstant
 
       BoxType segment -> do
-        rsegment <- h id gamma (AnalyzerInput segment U1 (ClassifWillBe U1) maybeDDeg)
+        rsegment <- h id gamma
+          (AnalyzerInput segment U1 (pure U1) (ClassifWillBe (U1, pure U1)) maybeDDeg)
           (AddressInfo ["segment"] False EntirelyBoring)
           (\ case
               BoxType segment -> Just segment
@@ -188,11 +189,15 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 
       EqType tyAmbient tL tR -> do
         rtyAmbient <-
-               h id gamma (AnalyzerInput tyAmbient U1 (ClassifWillBe U1) maybeDDeg) (AddressInfo ["ambient type"] False omit)
+               h id gamma
+                 (AnalyzerInput tyAmbient U1 (pure U1) (ClassifWillBe (U1, pure U1)) maybeDDeg)
+                 (AddressInfo ["ambient type"] False omit)
                  $ \case
                    EqType tyAmbient tL tR -> Just tyAmbient
                    _ -> Nothing
-        rtL <- h id gamma (AnalyzerInput tL U1 (ClassifMustBe tyAmbient) maybeDDeg) (AddressInfo ["left equand"] False omit)
+        rtL <- h id gamma
+                 (AnalyzerInput tL U1 (pure U1) (ClassifMustBe (tyAmbient, _)) maybeDDeg)
+                 (AddressInfo ["left equand"] False omit)
                  $ \case
                    EqType tyAmbient tL tR -> Just tL
                    _ -> Nothing
