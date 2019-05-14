@@ -92,3 +92,4 @@ default-extensions:
 - TypeFamilyDependencies
 - ApplicativeDo
 - ViewPatterns
+- ConstraintKinds
