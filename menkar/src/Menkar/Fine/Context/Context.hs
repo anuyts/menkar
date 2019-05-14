@@ -12,6 +12,7 @@ import Data.Bifunctor
 import Data.Maybe
 import GHC.Generics
 import Data.Functor.Identity
+import Data.Functor.Compose
 import Control.Lens
 import Data.Proxy
 import Data.Kind
@@ -56,6 +57,9 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) (w :: *) where
   (:<...>) :: Ctx t sys v w -> ModuleRHS sys (VarOpenCtx v w) -> Ctx t sys (VarInModule v) w
   {-| Context divided by a modality. -}
   (:\\) :: ModedModality sys (VarOpenCtx v w) -> Ctx t sys v w -> Ctx t sys v w
+  {-| Pleasing GHC -}
+  CtxId :: Ctx t sys v w -> Ctx t sys (Identity v) w
+  CtxComp :: Ctx t sys (f (g v)) w -> Ctx t sys (Compose f g v) w
 infixr 3 :\\
 infixl 3 :.., :^^, :<...>
 deriving instance (SysTrav sys, Functor (t sys)) => Functor (Ctx t sys v)
@@ -72,6 +76,8 @@ instance (
   swallow (seg :^^ gamma) = swallow seg :^^ swallow (fmap sequenceA gamma)
   swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
   swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
+  swallow (CtxId gamma) = CtxId $ swallow gamma
+  swallow (CtxComp gamma) = CtxComp $ swallow gamma
 
 ctx'mode :: Multimode sys => Ctx ty sys v w -> Mode sys (VarOpenCtx v w)
 ctx'mode (CtxEmpty d) = VarBeforeCtx <$> d
@@ -79,6 +85,8 @@ ctx'mode (gamma :.. seg) = bimap VarWkn id <$> ctx'mode gamma
 ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
 ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
 ctx'mode (dmu :\\ gamma) = modality'dom dmu
+ctx'mode (CtxId gamma) = bimap Identity id <$> ctx'mode gamma
+ctx'mode (CtxComp gamma) = bimap Compose id <$> ctx'mode gamma
 
 haveDB :: Ctx ty sys v w -> ((DeBruijnLevel v) => t) -> t
 haveDB (CtxEmpty d) t = t
@@ -86,6 +94,8 @@ haveDB (gamma :.. seg) t = haveDB gamma t
 haveDB (seg :^^ gamma) t = todo
 haveDB (gamma :<...> modul) t = haveDB gamma t
 haveDB (dmu :\\ gamma) t = haveDB gamma t
+haveDB (CtxId gamma) t = haveDB gamma t
+haveDB (CtxComp gamma) t = haveDB gamma t
 
 mapSegment :: (
     SysTrav sys,
@@ -112,6 +122,8 @@ mapCtx f (gamma :.. seg) = mapCtx f gamma :.. mapSegment f seg
 mapCtx f (seg :^^ gamma) = mapSegment f seg :^^ mapCtx f gamma
 mapCtx f (gamma :<...> modul) = mapCtx f gamma :<...> modul
 mapCtx f (dmu :\\ gamma) = dmu :\\ mapCtx f gamma
+mapCtx f (CtxId gamma) = CtxId $ mapCtx f gamma
+mapCtx f (CtxComp gamma) = CtxComp $ mapCtx f gamma
 
 duplicateCtx :: (
     SysTrav sys,
@@ -149,6 +161,8 @@ externalizeCtx (seg :^^ gamma) = todo
 externalizeCtx (gamma :<...> modul) =
   VarInModule <$> externalizeCtx gamma :<...> VarBeforeCtx . VarInModule . unVarFromCtx <$> modul
 externalizeCtx (dmu :\\ gamma) = externalizeVar <$> dmu :\\ externalizeCtx gamma
+externalizeCtx (CtxId gamma) = CtxId $ Identity <$> externalizeCtx gamma
+externalizeCtx (CtxComp gamma) = CtxComp $ Compose <$> externalizeCtx gamma
 
 {-
 -- TODO: you need a left division here!
