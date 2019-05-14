@@ -76,7 +76,8 @@ fromClassifInfo a0 (ClassifUnknown) = a0
 
 data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
   _analyzerInput'get1 :: t v,
-  _analyzerInput'get2 :: IfRelate option (t v),
+  -- | Needs to be present when calling @'analyze'@.
+  _analyzerInput'get2 :: IfRelate option (Maybe (t v)),
   _analyzerInput'extra1 :: AnalyzerExtraInput t v,
   _analyzerInput'extra2 :: IfRelate option (AnalyzerExtraInput t v),
   _analyzerInput'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
@@ -193,8 +194,8 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   analyze :: forall option f v .
     (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
-    {-| When AST-nodes do not have the same head. -}
-    (forall a . IfRelate option (f a)) ->
+    --{-| When AST-nodes do not have the same head. -}
+    --(forall a . IfRelate option (f a)) ->
     {-| For adding stuff to the context. -}
     Ctx (VarClassif option) sys v Void ->
     AnalyzerInput option t v ->
@@ -229,7 +230,7 @@ subASTsTyped :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs absurdRelate gamma inputT $
+subASTsTyped gamma inputT h = fmap unbox1 <$> (analyze TokenSubASTs gamma inputT $
   \ wkn gamma inputS addressInfo _ -> Box1 <$> h wkn gamma inputS addressInfo
   )
   
@@ -266,6 +267,6 @@ typetrick :: forall sys f t v .
     f (Classif s w)
   ) ->
   Either (AnalyzerError sys) (f (Classif t v))
-typetrick gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes absurdRelate gamma inputT $
+typetrick gamma inputT h = fmap unboxClassif <$> (analyze TokenTypes gamma inputT $
   \ wkn gamma inputS addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
   )
