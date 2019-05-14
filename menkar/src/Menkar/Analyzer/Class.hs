@@ -203,6 +203,28 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
   analyze :: forall option f v .
     (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+    Ctx (VarClassif option) sys v Void ->
+    AnalyzerInput option t v ->
+    (forall s ext v' . (ext v v') =>
+      (forall u u' . ext u u' => u -> u') ->
+      (forall u u' . ext u u' =>
+        AnalyzerInput option t u ->
+        Maybe (AnalyzerInput option t u')
+      ) ->
+      (forall u u' option' . ext u u' =>
+        Ctx (VarClassif option') sys u Void ->
+        AnalyzerInput option t u ->
+        IfRelate option' (AnalyzerInput option t u) ->
+        Maybe (Ctx (VarClassif option') sys u' Void)
+      ) ->
+      (forall u u' . ext u u' => Relation t u -> Relation s u') ->
+      (forall u u' w w' . (ext u u', ext w w') => Traversal u' w' u w) ->
+      f (AnalyzerResult option s v')
+    ) ->
+    f (AnalyzerResult option t v)
+  {-
+  analyze :: forall option f v .
+    (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
     --{-| When AST-nodes do not have the same head. -}
     --(forall a . IfRelate option (f a)) ->
@@ -223,6 +245,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
       f (AnalyzerResult option s w)
     ) ->
     Either (AnalyzerError sys) (f (AnalyzerResult option t v))
+-}
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
@@ -231,6 +254,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
 
+{-
 subASTsTyped :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
@@ -286,3 +310,4 @@ typetrick gamma inputT h = fmap unboxClassif <$>
   (analyze TokenTypes gamma inputT absurdRelate absurdRelate $
     \ wkn gamma inputS _ _ addressInfo _ -> BoxClassif <$> h wkn gamma inputS addressInfo
   )
+-}
