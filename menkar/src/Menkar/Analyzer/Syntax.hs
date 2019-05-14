@@ -36,10 +36,10 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   analyzableToken = AnTokenModedModality
   witClassif token = Witness
   analyze token gamma (AnalyzerInput (ModedModality dom cod mu) U1 _) condInputDMu2 maybeRel h = Right $ do
-    let condDMu2 = _analyzerInput'get <$> condInputDMu2
+    {-let condDMu2 = _analyzerInput'get <$> condInputDMu2
     let condDom2 = modality'dom <$> condDMu2
     let condCod2 = modality'cod <$> condDMu2
-    let condMu2  = modality'mod <$> condDMu2
+    let condMu2  = modality'mod <$> condDMu2-}
     rdom <- h id gamma
       (AnalyzerInput dom U1 (ClassifWillBe U1))
       (condInputDMu2 <&> \ (AnalyzerInput (ModedModality dom2 cod2 mu2) U1 _) ->
@@ -85,19 +85,27 @@ instance (SysAnalyzer sys,
   analyzableToken = AnTokenBinding analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token gamma
-    (AnalyzerInput (Binding seg body) U1 condU1 maybeCls maybeDDeg) condBinding2 h = Right $ do
+    (AnalyzerInput (Binding seg body) U1 maybeCl)
+    condInput2 maybeDDeg h = Right $ do
+    let condBinding2 = _analyzerInput'get <$> condInput2
     let condSeg2  = binding'segment <$> condBinding2
     let condBody2 = binding'body    <$> condBinding2
     let condTy2   = _decl'content <$> condSeg2
     rseg <- h id gamma
-      (AnalyzerInput seg U1 (pure U1) (mapMaybeClassifs fst1 $ classifMust2will maybeCls) maybeDDeg)
+      (AnalyzerInput seg U1 (fst1 <$> classifMust2will maybeCl))
+      (condInput2 <&> \ (AnalyzerInput (Binding seg2 body2) U1 maybeCl2) ->
+        Just $ AnalyzerInput seg2 U1 (fst1 <$> classifMust2will maybeCl2)
+      )
+      maybeDDeg
       (AddressInfo ["segment"] False omit)
       (Just . binding'segment)
     rbody <- h VarWkn
       (gamma :.. VarFromCtx <$> (decl'content %~ \ ty1 -> toVarClassif token ty1 condTy2) seg)
-      (AnalyzerInput body U1 (pure U1)
-        (mapMaybeClassifs (_classifBinding'body . snd1) $ classifMust2will maybeCls)
-        (fmap VarWkn <$> maybeDDeg))
+      (AnalyzerInput body U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl))
+      (condInput2 <&> \ (AnalyzerInput (Binding seg2 body2) U1 maybeCl2) ->
+        Just $ AnalyzerInput body2 U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl2)
+      )
+      (fmap VarWkn <$> maybeDDeg)
       (AddressInfo ["body"] False omit)
       (Just . binding'body)
     return $ case token of
