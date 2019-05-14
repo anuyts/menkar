@@ -13,6 +13,7 @@ import Data.Omissible
 import Control.Exception.AssertFalse
 import Data.Constraint.Witness
 import Data.Constraint.Conditional
+import Data.Functor.Coerce
 
 import GHC.Generics
 import Data.Functor.Const
@@ -35,37 +36,31 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type AnalyzerExtraInput (ModedModality sys) = U1
   analyzableToken = AnTokenModedModality
   witClassif token = Witness
-  analyze token gamma (AnalyzerInput (ModedModality dom cod mu) U1 _) condInputDMu2 maybeRel h = Right $ do
-    {-let condDMu2 = _analyzerInput'get <$> condInputDMu2
-    let condDom2 = modality'dom <$> condDMu2
-    let condCod2 = modality'cod <$> condDMu2
-    let condMu2  = modality'mod <$> condDMu2-}
-    rdom <- h id gamma
-      (AnalyzerInput dom U1 (ClassifWillBe U1))
-      (condInputDMu2 <&> \ (AnalyzerInput (ModedModality dom2 cod2 mu2) U1 _) ->
-        Just $ AnalyzerInput dom2 U1 (ClassifWillBe U1)
-      )
-      (pure U1)
+  analyze token gamma (AnalyzerInput (ModedModality dom cod mu) U1 _) h = Right $ do
+    rdom <- h Identity
+      (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
+         Just $ Identity !<$> AnalyzerInput dom' U1 (ClassifWillBe U1))
+      extCtxId
+      (const U1)
+      _Wrapped
       (AddressInfo ["domain"] True omit)
-      (Just . modality'dom)
-    rcod <- h id gamma
-      (AnalyzerInput cod U1 (ClassifWillBe U1))
-      (condInputDMu2 <&> \ (AnalyzerInput (ModedModality dom2 cod2 mu2) U1 _) ->
-        Just $ AnalyzerInput cod2 U1 (ClassifWillBe U1)
-      )
-      (pure U1)
+    rcod <- h Identity
+      (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
+         Just $ Identity !<$> AnalyzerInput cod' U1 (ClassifWillBe U1))
+      extCtxId
+      (const U1)
+      _Wrapped
       (AddressInfo ["codomain"] True omit)
-      (Just . modality'cod)
-    rmu  <- h id gamma
-      (AnalyzerInput mu U1 (ClassifMustBe $ dom :*: cod))
-      (condInputDMu2 <&> \ (AnalyzerInput (ModedModality dom2 cod2 mu2) U1 _) ->
-        Just $ AnalyzerInput mu2 U1 (ClassifWillBe $ dom2 :*: cod2)
-      )
-      maybeRel
+    rmu <- h Identity
+      (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
+         Just $ Identity !<$> AnalyzerInput mu' U1 (ClassifWillBe $ dom' :*: cod'))
+      extCtxId
+      (fmap Identity)
+      _Wrapped
       (AddressInfo ["modality"] True omit)
-      (Just . modality'mod)
     return $ case token of
-        TokenSubASTs -> Box1 $ ModedModality (unbox1 rdom) (unbox1 rcod) (unbox1 rmu)
+        TokenSubASTs ->
+          Box1 $ runIdentity !<$> ModedModality (unbox1 rdom) (unbox1 rcod) (unbox1 rmu)
         TokenTypes -> BoxClassif $ dom :*: cod
         TokenRelate -> Unit2
   convRel token d = U1 :*: U1

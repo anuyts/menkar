@@ -7,6 +7,8 @@ import Menkar.Basic.Context
 import Control.Exception.AssertFalse
 import qualified Menkar.Raw.Syntax as Raw
 
+import Data.Functor.Coerce
+
 import Data.Void
 import Data.Bifunctor
 import Data.Maybe
@@ -161,8 +163,8 @@ externalizeCtx (seg :^^ gamma) = todo
 externalizeCtx (gamma :<...> modul) =
   VarInModule <$> externalizeCtx gamma :<...> VarBeforeCtx . VarInModule . unVarFromCtx <$> modul
 externalizeCtx (dmu :\\ gamma) = externalizeVar <$> dmu :\\ externalizeCtx gamma
-externalizeCtx (CtxId gamma) = CtxId $ Identity <$> externalizeCtx gamma
-externalizeCtx (CtxComp gamma) = CtxComp $ Compose <$> externalizeCtx gamma
+externalizeCtx (CtxId gamma) = CtxId $ Identity !<$> externalizeCtx gamma
+externalizeCtx (CtxComp gamma) = CtxComp $ Compose !<$> externalizeCtx gamma
 
 {-
 -- TODO: you need a left division here!

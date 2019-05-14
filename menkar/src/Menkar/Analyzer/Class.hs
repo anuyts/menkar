@@ -90,6 +90,10 @@ data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerI
   _analyzerInput'get :: t v,
   _analyzerInput'extra :: AnalyzerExtraInput t v,
   _analyzerInput'classifInfo :: ClassifInfo (Classif t v)}
+deriving instance (Functor t,
+                   Functor (AnalyzerExtraInput t),
+                   Functor (Classif t))
+  => Functor (AnalyzerInput option t)
 
 mapMaybeClassifs :: forall option s t w v .
   (s w -> t v) ->
@@ -165,7 +169,10 @@ toIfRelate TokenTypes a = IfRelateTypes
 toIfRelate TokenRelate a = IfRelate a
 -}
 
-class (Functor t, Functor (Relation t)) => Analyzable sys t where
+class (Functor t,
+       Functor (AnalyzerExtraInput t),
+       Functor (Classif t),
+       Functor (Relation t)) => Analyzable sys t where
   type AnalyzerExtraInput t :: * -> *
   type Classif t :: * -> *
   type Relation t :: * -> *
@@ -173,6 +180,7 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
   analyze :: forall option f v .
     (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+    AnalyzerToken option ->
     Ctx (VarClassif option) sys v Void ->
     AnalyzerInput option t v ->
     (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v)) =>
@@ -202,6 +210,13 @@ class (Functor t, Functor (Relation t)) => Analyzable sys t where
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
   extraClassif :: AnalyzerExtraInput (Classif t) v
+
+extCtxId :: forall sys t option u option' . (DeBruijnLevel u) => 
+        Ctx (VarClassif option') sys u Void ->
+        AnalyzerInput option t u ->
+        IfRelate option' (AnalyzerInput option t u) ->
+        Maybe (Ctx (VarClassif option') sys (Identity u) Void)
+extCtxId gamma _ _ = Just $ CtxId gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
@@ -263,7 +278,7 @@ analyzeOld :: forall sys t option f v .
     ) ->
     Either (AnalyzerError sys) (f (AnalyzerResult option t v))
 analyzeOld token gamma inputT1 condInputT2 condRel h =
-  analyze gamma inputT1 $ \ wkn extractT extendCtx extractRel wknSubst info ->
+  analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel wknSubst info ->
   h wkn
     (extendCtx gamma inputT1 condInputT2)
     (fromMaybe unreachable $ extractT inputT1)
