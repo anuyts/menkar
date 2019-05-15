@@ -232,52 +232,21 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             Box1 $ runIdentity !<$> EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
           TokenTypes -> BoxClassif $ dgamma
           TokenRelate -> Unit2
-      
-      
-  {-
-  analyze (token :: AnalyzerToken option)
-    (gamma :: Ctx lhs sys v Void)
-    (AnalyzerInput ty U1 condU1 maybeMaybeDs maybeDDeg) condTy2 h = Right $ do
-    
-    let dgamma' = ctx'mode gamma
-    let dgamma = unVarFromCtx <$> dgamma'
-
-    case ty of
 
       SysType systy -> do
-        rsysty <- h id gamma (AnalyzerInput systy U1 (classifMust2will maybeMaybeD) maybeDDeg)
+        rsysty <- h Identity
+          (\ case
+              AnalyzerInput (SysType systy') U1 maybeD' ->
+                Just $ Identity !<$> AnalyzerInput systy' U1 (classifMust2will maybeD')
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["system-specific type"] False EntirelyBoring)
-          $ \ case
-            SysType systy -> Just systy
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ SysType $ unbox1 rsysty
-          TokenTypes -> BoxClassif $ unboxClassif $ rsysty
+          TokenSubASTs -> Box1 $ SysType $ runIdentity !<$> unbox1 rsysty
+          TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rsysty
           TokenRelate -> Unit2
-
-    where handleBinder ::
-            (Binding Type Type sys v -> UniHSConstructor sys v) -> Binding Type Type sys v ->
-            (UniHSConstructor sys v -> Maybe (Binding Type Type sys v)) ->
-            _ (AnalyzerResult option (UniHSConstructor sys) v)
-          handleBinder binder binding extractor = do
-            --let bindingClassif = case maybeMaybeD of
-            --      Nothing -> Nothing
-            --      Just (Compose Nothing) -> Nothing
-            --      Just (Compose (Just d)) -> Just $ U1 :*: Comp1 (hs2type $ UniHS $ VarWkn <$> d)
-            rbinding <- h id gamma
-              (AnalyzerInput binding U1 (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment binding) U1) maybeDDeg)
-              (AddressInfo ["binding"] False EntirelyBoring)
-              extractor
-            return $ case token of
-              TokenSubASTs -> Box1 $ binder $ unbox1 rbinding
-              TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
-              TokenRelate -> Unit2
-              
-          handleConstant = pure $ case token of
-            TokenSubASTs -> Box1 $ ty
-            TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
-            TokenRelate -> Unit2
-  -}
         
     where handleBinder ::
             (forall w . Binding Type Type sys w -> UniHSConstructor sys w) ->
