@@ -560,32 +560,38 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           TokenSubASTs -> Box1 $ ElimSigma $ runIdentity !<$> unbox1 rboundBoundPairClause
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
-    
-  {-
 
-      (BoxType seg, ElimBox (NamedBinding nameUnbox boxClause)) -> do
-        let segUnbox = Declaration
-                 (DeclNameSegment nameUnbox)
-                 (compModedModality dmuElim (_segment'modty $ seg))
-                 Explicit
-                 (_segment'content seg)
-        let subst VarLast = Expr2 $ TermCons $ ConsBox (VarWkn <$> seg) (Var2 VarLast)
-            subst (VarWkn v) = Var2 $ VarWkn v
-        rboxClause <- h VarWkn
-                         (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segUnbox)
-                         (AnalyzerInput boxClause U1
-                           (ClassifMustBe $ swallow $ subst <$> motive)
-                           (fmap VarWkn <$> maybeRel)
-                         )
-                         (AddressInfo ["box clause"] False omit)
-                         $ \case
-                           ElimBox (NamedBinding nameUnbox boxClause) -> Just boxClause
-                           _ -> Nothing
+      (BoxType seg, ElimBox boundBoxClause) -> do
+        rboundBoxClause <- h Identity
+          (\ (gamma' :: Ctx _ _ u Void)
+             (AnalyzerInput clauses'
+               (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
+               maybeU1'
+             ) -> case (tyEliminee', clauses') of
+               (BoxType seg', ElimBox boundBoxClause') ->
+                 let segUnbox' = Declaration
+                       (DeclNameSegment Nothing)
+                       (compModedModality dmuElim' (_segment'modty $ seg'))
+                       Explicit
+                       (_segment'content seg')
+                     subst VarLast = Expr2 $ TermCons $ ConsBox (VarWkn <$> seg') (Var2 VarLast)
+                     subst (VarWkn v) = Var2 $ VarWkn v
+                 in  Just $ Identity !<$> AnalyzerInput
+                       boundBoxClause'
+                       (segUnbox' :*: Comp1 U1)
+                       (ClassifMustBe $ ClassifBinding segUnbox' $
+                         swallow $ subst <$> motive'
+                       )
+               otherwise -> Nothing
+          )
+          extCtxId
+          (Comp1 . fmap (VarWkn . Identity))
+          (AddressInfo ["box clause"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ ElimBox $ NamedBinding nameUnbox $ unbox1 rboxClause
+          TokenSubASTs -> Box1 $ ElimBox $ runIdentity !<$> unbox1 rboundBoxClause
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
-      (_, ElimBox _) -> unreachable
+  {-
 
       (EmptyType, ElimEmpty) -> pure $ case token of
         TokenSubASTs -> Box1 ElimEmpty
