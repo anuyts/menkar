@@ -42,21 +42,18 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
          Just $ Identity !<$> AnalyzerInput dom' U1 (ClassifWillBe U1))
       extCtxId
       (const U1)
-      _Wrapped
       (AddressInfo ["domain"] True omit)
     rcod <- h Identity
       (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> AnalyzerInput cod' U1 (ClassifWillBe U1))
       extCtxId
       (const U1)
-      _Wrapped
       (AddressInfo ["codomain"] True omit)
     rmu <- h Identity
       (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> AnalyzerInput mu' U1 (ClassifWillBe $ dom' :*: cod'))
       extCtxId
       (fmap Identity)
-      _Wrapped
       (AddressInfo ["modality"] True omit)
     return $ case token of
         TokenSubASTs ->
@@ -79,33 +76,30 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (Binding Type rhs sys) = U1
   analyzableToken = AnTokenBinding analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
-  analyze token gamma
-    (AnalyzerInput (Binding seg body) U1 maybeCl)
-    condInput2 maybeDDeg h = Right $ do
-    let condBinding2 = _analyzerInput'get <$> condInput2
-    let condSeg2  = binding'segment <$> condBinding2
-    let condBody2 = binding'body    <$> condBinding2
-    let condTy2   = _decl'content <$> condSeg2
-    rseg <- h id gamma
-      (AnalyzerInput seg U1 (fst1 <$> classifMust2will maybeCl))
-      (condInput2 <&> \ (AnalyzerInput (Binding seg2 body2) U1 maybeCl2) ->
-        Just $ AnalyzerInput seg2 U1 (fst1 <$> classifMust2will maybeCl2)
-      )
-      maybeDDeg
+  analyze token gamma (AnalyzerInput (Binding seg body) U1 maybeCl) h = Right $ do
+    rseg <- h Identity
+      (\ (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
+         Just $ Identity !<$> AnalyzerInput seg' U1 (fst1 <$> classifMust2will maybeCl'))
+      extCtxId
+      (fmap Identity)
       (AddressInfo ["segment"] False omit)
-      (Just . binding'segment)
     rbody <- h VarWkn
-      (gamma :.. VarFromCtx <$> (decl'content %~ \ ty1 -> toVarClassif token ty1 condTy2) seg)
-      (AnalyzerInput body U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl))
-      (condInput2 <&> \ (AnalyzerInput (Binding seg2 body2) U1 maybeCl2) ->
-        Just $ AnalyzerInput body2 U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl2)
+      (\ (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
+         Just $ AnalyzerInput body' U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl'))
+      (\ gamma (AnalyzerInput (Binding seg1 body1) U1 maybeCl1) condInput2 ->
+         Just $ gamma :..
+           (decl'content %~ \ ty1 ->
+             toVarClassif token ty1 $
+             fmap VarFromCtx . _decl'content . binding'segment . _analyzerInput'get <$> condInput2
+           )
+           (VarFromCtx <$> seg1)
       )
-      (fmap VarWkn <$> maybeDDeg)
+      (fmap VarWkn)
       (AddressInfo ["body"] False omit)
-      (Just . binding'body)
     return $ case token of
-      TokenSubASTs -> Box1 $ Binding (unbox1 rseg) (unbox1 rbody)
-      TokenTypes -> BoxClassif $ unboxClassif rseg :*: ClassifBinding seg (unboxClassif rbody)
+      TokenSubASTs -> Box1 $ Binding (runIdentity !<$> unbox1 rseg) (unbox1 rbody)
+      TokenTypes -> BoxClassif $
+        (runIdentity !<$> unboxClassif rseg) :*: ClassifBinding seg (unboxClassif rbody)
       TokenRelate -> Unit2
   convRel token d = U1 :*: Comp1 (convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d))
   extraClassif = U1 :*: Comp1 (extraClassif @sys @(rhs sys))
@@ -122,6 +116,8 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (ClassifBinding Type rhs sys) = AnalyzerExtraInput rhs :.: VarExt
   analyzableToken = AnTokenClassifBinding analyzableToken
   witClassif token = haveClassif @sys @rhs Witness
+  --analyze token gamma
+  --  (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) maybeCl)
   analyze token gamma
     (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) condExtra2 maybeCls maybeDDeg)
     condBinding2 h = Right $ do

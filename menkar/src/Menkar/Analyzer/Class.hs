@@ -183,24 +183,20 @@ class (Functor t,
     AnalyzerToken option ->
     Ctx (VarClassif option) sys v Void ->
     AnalyzerInput option t v ->
-    (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v)) =>
+    (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v), Traversable ext) =>
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
         AnalyzerInput option t u ->
         Maybe (AnalyzerInput option s (ext u))
       ) ->
-      (forall u option' . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
-        Ctx (VarClassif option') sys u Void ->
+      (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>
+        Ctx (VarClassif option) sys u Void ->
         AnalyzerInput option t u ->
-        IfRelate option' (AnalyzerInput option t u) ->
-        Maybe (Ctx (VarClassif option') sys (ext u) Void)
+        IfRelate option (AnalyzerInput option t u) ->
+        Maybe (Ctx (VarClassif option) sys (ext u) Void)
       ) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>
         Relation t u -> Relation s (ext u)
-      ) ->
-      (forall u w . (DeBruijnLevel u, DeBruijnLevel (ext u),
-                     DeBruijnLevel w, DeBruijnLevel (ext w)) =>
-        Traversal (ext u) (ext w) u w
       ) ->
       AddressInfo ->
       f (AnalyzerResult option s (ext v))
@@ -278,7 +274,7 @@ analyzeOld :: forall sys t option f v .
     ) ->
     Either (AnalyzerError sys) (f (AnalyzerResult option t v))
 analyzeOld token gamma inputT1 condInputT2 condRel h =
-  analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel wknSubst info ->
+  analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel info ->
   h wkn
     (extendCtx gamma inputT1 condInputT2)
     (fromMaybe unreachable $ extractT inputT1)
