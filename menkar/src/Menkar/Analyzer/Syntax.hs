@@ -283,6 +283,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
   type AnalyzerExtraInput (ConstructorTerm sys) = U1
   analyzableToken = AnTokenConstructorTerm
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput t U1 _ maybeRel) h = Right $  do
     
     let dgamma' = ctx'mode gamma
@@ -392,6 +393,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenSubASTs -> Box1 $ ConsRefl (unbox1 rtyAmbient) (unbox1 rt)
           TokenTypes -> BoxClassif $ hs2type $ EqType (unboxClassif rt) t t
           TokenRelate -> Unit2
+-}
 
   convRel token d = modedEqDeg d
   extraClassif = U1
@@ -404,6 +406,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type AnalyzerExtraInput (Type sys) = U1
   analyzableToken = AnTokenType
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput (Type t) U1 _ maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -414,6 +417,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
       TokenSubASTs -> Box1 $ Type $ unbox1 rt
       TokenTypes -> BoxClassif U1
       TokenRelate -> Unit2
+-}
   convRel token gamma = U1
   extraClassif = U1
 
@@ -426,6 +430,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
     ModedModality sys :*: Term sys :*: UniHSConstructor sys :*: (Type sys :.: VarExt)
   analyzableToken = AnTokenDependentEliminator
   witClassif token = Witness
+  {-
   analyze token fromType gamma
     (AnalyzerInput clauses (dmuElim :*: eliminee :*: tyEliminee :*: Comp1 (motive :: Type sys (VarExt v))) _ maybeRel)
     h
@@ -536,7 +541,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
       (_, ElimNat _ _) -> unreachable
-      
+      -}
   convRel token gamma = U1
   extraClassif = U1
 
@@ -548,6 +553,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
   type AnalyzerExtraInput (Eliminator sys) = ModedModality sys :*: Term sys :*: UniHSConstructor sys
   analyzableToken = AnTokenEliminator
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _ maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -653,6 +659,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
            TokenTypes -> BoxClassif $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $ motive
            TokenRelate -> Unit2
       (_, ElimEq _ _) -> unreachable
+-}
 
   convRel token d = modedEqDeg d
   extraClassif = U1
@@ -665,6 +672,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
   type AnalyzerExtraInput (TermNV sys) = U1
   analyzableToken = AnTokenTermNV
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput t U1 maybeTy maybeRel) h = case t of
 
     TermCons c -> Right $ do
@@ -740,7 +748,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         TokenRelate -> Unit2
 
     TermProblem t -> Left AnErrorTermProblem
-    
+    -}
   convRel token d = modedEqDeg d
   extraClassif = U1
 
@@ -752,6 +760,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
   type AnalyzerExtraInput (Term sys) = U1
   analyzableToken = AnTokenTerm
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput t U1 maybeTy maybeRel) h = case t of
     Expr2 tnv -> Right $ do
       --analyze token formType h gamma (AnalyzerInput tnv U1 maybeTy maybeRel)
@@ -766,6 +775,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
         TokenTypes -> BoxClassif $ unboxClassif $ rtnv
         TokenRelate -> Unit2
     Var2 v -> Left AnErrorVar
+-}
   convRel token d = modedEqDeg d
   extraClassif = U1
 
@@ -777,6 +787,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
   type AnalyzerExtraInput (Declaration declSort rhs sys) = AnalyzerExtraInput (rhs sys)
   analyzableToken = AnTokenDeclaration analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
+  {-
   analyze token fromType gamma (AnalyzerInput seg@(Declaration name dmu plic ty) extra maybeTy maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -795,6 +806,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       TokenSubASTs -> Box1 $ Declaration name (unbox1 rdmu) plic (unbox1 rty)
       TokenTypes -> BoxClassif $ unboxClassif rty
       TokenRelate -> Unit2
+-}
   convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
   extraClassif = extraClassif @sys @(rhs sys)
 
@@ -809,6 +821,7 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (Telescoped Type rhs sys) = U1
   analyzableToken = AnTokenTelescoped analyzableToken
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput telescopedRHS U1 maybeU1 maybeRels) h = Right $ do
 
     let dgamma' = ctx'mode gamma
@@ -862,7 +875,7 @@ instance (SysAnalyzer sys,
           TokenSubASTs -> Box1 $ unbox1 rdmu :** unbox1 rtelescopedRHS
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
-
+-}
   convRel token d = U1
   extraClassif = U1
 
@@ -874,6 +887,7 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
   type AnalyzerExtraInput (ValRHS sys) = U1
   analyzableToken = AnTokenValRHS
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput valRHS@(ValRHS t ty) U1 maybeU1 maybeRel) h = Right $ do
     rt <- h id gamma (AnalyzerInput t U1 (ClassifMustBe ty) maybeRel) (AddressInfo ["RHS"] True omit) (Just . _val'term)
     rty <- h id gamma (AnalyzerInput ty U1 (ClassifWillBe U1) maybeRel) (AddressInfo ["type"] True omit) (Just . _val'type)
@@ -881,6 +895,7 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
       TokenSubASTs -> Box1 $ ValRHS (unbox1 rt) (unbox1 rty)
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
+-}
   convRel token d = U1
   extraClassif = U1
 
@@ -892,6 +907,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
   type AnalyzerExtraInput (ModuleRHS sys) = U1
   analyzableToken = AnTokenModuleRHS
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput moduleRHS@(ModuleRHS (Compose revEntries)) U1 maybeU1 maybeRel) h = Right $ do
     rcontent <- sequenceA $ zip (reverse revEntries) (reverse $ tails revEntries) <&> \ (entry, revPrevEntries) ->
       h VarInModule (gamma :<...> VarFromCtx <$> ModuleRHS (Compose $ revPrevEntries))
@@ -902,6 +918,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
       TokenSubASTs -> Box1 $ ModuleRHS $ Compose $ unbox1 <$> rcontent
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
+-}
   convRel token d = U1
   extraClassif = U1
 
@@ -923,6 +940,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
   type AnalyzerExtraInput (Entry sys) = U1
   analyzableToken = AnTokenEntry
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput entry U1 maybeU1 maybeRel) h = Right $ do
     case entry of
       EntryVal val -> do
@@ -947,6 +965,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           TokenSubASTs -> Box1 $ EntryModule $ unbox1 rmodul
           TokenTypes -> BoxClassif $ U1
           TokenRelate -> Unit2
+-}
   convRel token d = U1
   extraClassif = U1
 
@@ -959,11 +978,13 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
   type AnalyzerExtraInput U1 = U1
   analyzableToken = AnTokenU1
   witClassif token = Witness
+  {-
   analyze token fromType gamma (AnalyzerInput U1 U1 _ _) h =
     Right $ pure $ case token of
         TokenSubASTs -> Box1 $ U1
         TokenTypes -> BoxClassif $ U1
         TokenRelate -> Unit2
+-}
   convRel token d = U1
   extraClassif = U1
 
@@ -979,6 +1000,7 @@ instance (SysAnalyzer sys,
   witClassif token = 
     haveClassif @sys @f $
     haveClassif @sys @g $ Witness
+    {-
   analyze token fromType gamma (AnalyzerInput (fv :*: gv) (extraF :*: extraG) maybeClassifs maybeRels) h = Right $ do
     rfv <- h id gamma
       (AnalyzerInput fv extraF (fst1 <$> maybeClassifs) (fst1 <$> maybeRels))
@@ -992,6 +1014,7 @@ instance (SysAnalyzer sys,
       TokenSubASTs -> Box1 $ unbox1 rfv :*: unbox1 rgv
       TokenTypes -> BoxClassif $ unboxClassif rfv :*: unboxClassif rgv
       TokenRelate -> Unit2
+-}
   convRel token d = convRel (analyzableToken @sys @f) d :*:
                     convRel (analyzableToken @sys @g) d
   extraClassif = extraClassif @sys @f :*:
