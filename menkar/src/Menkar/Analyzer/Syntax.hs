@@ -510,7 +510,6 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
   analyzableToken = AnTokenDependentEliminator
   witClassif token = Witness
 
-{-
   analyze token gamma
     (AnalyzerInput clauses
       (dmuElim :*: eliminee :*: tyEliminee :*: Comp1 (motive :: Type sys (VarExt v)))
@@ -522,81 +521,47 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
     let dgamma = unVarFromCtx <$> dgamma'
 
     case (tyEliminee, clauses) of
-
-      (Sigma binding, ElimSigma (NamedBinding nameFst (NamedBinding nameSnd pairClause))) -> do
-        _ -- instantiate Analyzable for NamedBinding
-        {-
-        rpairClause <- h (Compose . VarWkn . VarWkn)
-          (\ (gamma' :: Ctx _ _ u Void) -> \ case
-              AnalyzerInput
-                (ElimSigma (NamedBinding nameFst' (NamedBinding nameSnd' pairClause')))
-                (dmuElim' :*: eliminee' :*: Sigma binding' :*: Comp1 (motive :: Type sys (VarExt u)))
-                maybeU1' ->
-                let subst VarLast = Expr2 $ TermCons $ Pair
-                                      (VarWkn . VarWkn <$> binding')
-                                      (Var2 $ VarWkn VarLast)
-                                      (Var2 VarLast)
-                    subst (VarWkn v) = Var2 $ VarWkn $ VarWkn v
-                in  Just $ Compose !<$> AnalyzerInput
-                      pairClause'
-                      U1
-                      (ClassifMustBe $ swallow $ subst <$> motive)
-              otherwise -> Nothing
-          )
-          (\ gamma' input1 condInput2 -> do
-             binding1 <- case _analyzerInput'extra input1 of
-               Sigma binding1 -> Just binding1
+      
+      (Sigma binding, ElimSigma boundBoundPairClause) -> do
+        rboundBoundPairClause <- h Identity
+          (\ (gamma' :: Ctx _ _ u Void)
+             (AnalyzerInput clauses'
+               (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
+               maybeU1'
+             ) -> case (tyEliminee', clauses') of
+               (Sigma binding', ElimSigma boundBoundPairClause') ->
+                 let segFst' = Declaration
+                       (DeclNameSegment Nothing)
+                       (compModedModality dmuElim' (_segment'modty $ binding'segment $ binding'))
+                       Explicit
+                       (_segment'content $ binding'segment $ binding')
+                     segSnd' = Declaration
+                       (DeclNameSegment Nothing)
+                       (VarWkn <$> dmuElim')
+                       Explicit
+                       (binding'body binding')
+                     subst VarLast = Expr2 $ TermCons $ Pair
+                       (VarWkn . VarWkn <$> binding')
+                       (Var2 $ VarWkn VarLast)
+                       (Var2 VarLast)
+                     subst (VarWkn v) = Var2 $ VarWkn $ VarWkn v
+                 in  Just $ Identity !<$> AnalyzerInput
+                       boundBoundPairClause'
+                       (segFst' :*: Comp1 (segSnd' :*: Comp1 U1))
+                       (ClassifMustBe $ ClassifBinding segFst' $ ClassifBinding segSnd' $
+                         swallow $ subst <$> motive'
+                       )
                otherwise -> Nothing
-             
-             let 
-                 segFst = Declaration
-                      (DeclNameSegment nameFst')
-                      (compModedModality dmuElim' (_segment'modty $ binding'segment $ binding'))
-                      Explicit
-                      (_segment'content $ binding'segment $ binding')
-                 segSnd = Declaration
-                      (DeclNameSegment nameSnd')
-                      (VarWkn <$> dmuElim')
-                      Explicit
-                      (binding'body binding')
-             in  CtxComp $ gamma :.. VarFromCtx <$> segFst :.. VarFromCtx <$> segSnd)
-          _
+          )
+          extCtxId
+          (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["pair clause"] False omit)
-        return $ _
--}
--}
-    
-  {-
-
-      (Sigma binding, ElimSigma (NamedBinding nameFst (NamedBinding nameSnd pairClause))) -> do
-        let segFst = Declaration
-                 (DeclNameSegment nameFst)
-                 (compModedModality dmuElim (_segment'modty $ binding'segment $ binding))
-                 Explicit
-                 (_segment'content $ binding'segment $ binding)
-        let segSnd = Declaration
-                 (DeclNameSegment nameSnd)
-                 (VarWkn <$> dmuElim)
-                 Explicit
-                 (binding'body binding)
-        let subst VarLast = Expr2 $ TermCons $ Pair (VarWkn . VarWkn <$> binding) (Var2 $ VarWkn VarLast) (Var2 VarLast)
-            subst (VarWkn v) = Var2 $ VarWkn $ VarWkn v
-        rpairClause <- h (VarWkn . VarWkn)
-                         (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segFst
-                                :.. VarFromCtx <$> (decl'content %~ fromType) segSnd)
-                         (AnalyzerInput pairClause U1
-                           (ClassifMustBe $ swallow $ subst <$> motive)
-                           (fmap (VarWkn . VarWkn) <$> maybeRel)
-                         )
-                         (AddressInfo ["pair clause"] False omit)
-                         $ \case
-                           ElimSigma (NamedBinding nameFst (NamedBinding nameSnd pairClause)) -> Just pairClause
-                           _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ ElimSigma $ NamedBinding nameFst $ NamedBinding nameSnd $ unbox1 rpairClause
+          TokenSubASTs -> Box1 $ ElimSigma $ runIdentity !<$> unbox1 rboundBoundPairClause
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
-      (_, ElimSigma _) -> unreachable
+    
+  {-
 
       (BoxType seg, ElimBox (NamedBinding nameUnbox boxClause)) -> do
         let segUnbox = Declaration
