@@ -765,6 +765,48 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
             Box1 $ runIdentity !<$> ElimDep (unbox1 rboundMotive) (unbox1 rclauses)
           TokenTypes -> BoxClassif $ substLast2 eliminee motive
           TokenRelate -> Unit2
+          
+      (EqType tyAmbient tL tR, ElimEq boundBoundMotive clauseRefl) -> do
+        rboundBoundMotive <- h Identity
+          (\ gamma' (AnalyzerInput eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
+             case (tyEliminee', eliminator') of
+               (EqType tyAmbient' tL' tR', ElimEq boundBoundMotive' clauseRefl') ->
+                 let segR' = Declaration (DeclNameSegment Nothing) dmuElim' Explicit tyAmbient'
+                     segEq' = Declaration
+                       (DeclNameSegment Nothing)
+                       (VarWkn <$> dmuElim')
+                       Explicit
+                       (hs2type $ EqType (VarWkn <$> tyAmbient') (VarWkn <$> tL') (Var2 VarLast))
+                 in  Just $ Identity !<$> AnalyzerInput boundBoundMotive'
+                       (segR' :*: Comp1 (segEq' :*: Comp1 U1))
+                       (ClassifWillBe $ ClassifBinding segR' $ ClassifBinding segEq' $ U1)
+               otherwise -> Nothing
+          )
+          extCtxId
+          (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
+          (AddressInfo ["motive"] False omit)
+        rclauseRefl <- h Identity
+          (\ gamma' (AnalyzerInput eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
+             case (tyEliminee', eliminator') of
+               (EqType tyAmbient' tL' tR', ElimEq boundBoundMotive' clauseRefl') ->
+                 Just $ Identity !<$> AnalyzerInput clauseRefl' U1
+                   (ClassifMustBe $
+                     substLast2 tL' $
+                     substLast2 (Expr2 $ TermCons $ VarWkn <$> ConsRefl tyAmbient' tL') $
+                     _namedBinding'body $ _namedBinding'body $ boundBoundMotive'
+                   )
+               otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
+          (AddressInfo ["refl clause"] False omit)
+        return $ case token of
+           TokenSubASTs ->
+             Box1 $ runIdentity !<$> ElimEq (unbox1 rboundBoundMotive) (unbox1 rclauseRefl)
+           TokenTypes -> BoxClassif $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $
+             _namedBinding'body $ _namedBinding'body $ boundBoundMotive
+           TokenRelate -> Unit2
+      (_, ElimEq _ _) -> unreachable
     
   {-
   analyze token fromType gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _ maybeRel) h = Right $ do
@@ -772,30 +814,6 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
     let dgamma = unVarFromCtx <$> dgamma'
 
     case (tyEliminee, eliminator) of
-
-      (_, ElimDep namedMotive@(NamedBinding name motive) clauses) -> do
-        let seg = Declaration (DeclNameSegment name) dmuElim Explicit (hs2type tyEliminee)
-        rmotive <- h VarWkn
-                     (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
-                     (AnalyzerInput motive U1 (ClassifWillBe U1) (fmap VarWkn <$> maybeRel))
-                     (AddressInfo ["motive"] False omit)
-                     $ \case
-                       ElimDep (NamedBinding name motive) clauses -> Just motive
-                       _ -> Nothing
-        rclauses <- h id gamma
-                      (AnalyzerInput clauses
-                        (dmuElim :*: eliminee :*: tyEliminee :*: Comp1 motive)
-                        (ClassifWillBe U1)
-                        maybeRel
-                      )
-                      (AddressInfo ["clauses"] False EntirelyBoring)
-                      $ \case
-                        ElimDep (NamedBinding name motive) clauses -> Just clauses
-                        _ -> Nothing
-        return $ case token of
-          TokenSubASTs -> Box1 $ ElimDep (NamedBinding name $ unbox1 rmotive) (unbox1 rclauses)
-          TokenTypes -> BoxClassif $ substLast2 eliminee motive
-          TokenRelate -> Unit2
 
       (EqType tyAmbient tL tR, ElimEq (NamedBinding nameR (NamedBinding nameEq motive)) clauseRefl) -> do
          let segR = Declaration (DeclNameSegment nameR) dmuElim Explicit tyAmbient
@@ -822,7 +840,6 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
            TokenSubASTs -> Box1 $ ElimEq (NamedBinding nameR (NamedBinding nameEq $ unbox1 rmotive)) (unbox1 rclauseRefl)
            TokenTypes -> BoxClassif $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $ motive
            TokenRelate -> Unit2
-      (_, ElimEq _ _) -> unreachable
 -}
 
   convRel token d = modedEqDeg d
