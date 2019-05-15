@@ -53,7 +53,7 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
       (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> AnalyzerInput mu' U1 (ClassifWillBe $ dom' :*: cod'))
       extCtxId
-      (fmap Identity)
+      (fmapCoe Identity)
       (AddressInfo ["modality"] True omit)
     return $ case token of
         TokenSubASTs ->
@@ -81,7 +81,7 @@ instance (SysAnalyzer sys,
       (\ (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
          Just $ Identity !<$> AnalyzerInput seg' U1 (fst1 <$> classifMust2will maybeCl'))
       extCtxId
-      (fmap Identity)
+      (fmapCoe Identity)
       (AddressInfo ["segment"] False omit)
     rbody <- h VarWkn
       (\ (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
@@ -148,25 +148,26 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   type AnalyzerExtraInput (UniHSConstructor sys) = U1
   analyzableToken = AnTokenUniHSConstructor
   witClassif token = Witness
-  analyze (token :: AnalyzerToken option)
-    (gamma :: Ctx lhs sys v Void)
-    (AnalyzerInput ty U1 condU1 maybeMaybeDs maybeDDeg) condTy2 h = Right $ do
+  analyze (token :: AnalyzerToken option) gamma
+    (AnalyzerInput (ty :: UniHSConstructor sys v) U1 maybeD) h = Right $ do
     
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
 
     case ty of
-      
+
       UniHS d -> do
-        let extract :: UniHSConstructor sys v -> Maybe (Mode sys v)
-            extract (UniHS d) = Just d
-            extract _ = Nothing
-        rd <- h id (crispModedModality dgamma' :\\ gamma)
-          (AnalyzerInput d U1 (pure U1) (ClassifWillBe (U1, pure U1)) (pure U1))
+        rd <- h Identity
+          (\ case
+              (AnalyzerInput (UniHS d') U1 maybeD') ->
+                Just $ Identity !<$> AnalyzerInput d' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (const U1)
           (AddressInfo ["mode"] False omit)
-          extract
         return $ case token of
-          TokenSubASTs -> Box1 $ UniHS (unbox1 rd)
+          TokenSubASTs -> Box1 $ runIdentity !<$> UniHS (unbox1 rd)
           TokenTypes -> BoxClassif $ d
           TokenRelate -> Unit2
 
@@ -177,6 +178,36 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       Sigma binding -> handleBinder Sigma binding $ \case
         Sigma binding -> Just binding
         _ -> Nothing
+        
+    where handleBinder ::
+            (forall w . Binding Type Type sys w -> UniHSConstructor sys w) ->
+            Binding Type Type sys v ->
+            (forall w . UniHSConstructor sys w -> Maybe (Binding Type Type sys w)) ->
+            _ (AnalyzerResult option (UniHSConstructor sys) v)
+          handleBinder binder binding extract = do
+            rbinding <- h Identity
+              (\ (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ binding' ->
+                  Identity !<$> AnalyzerInput binding' U1
+                    (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment binding') U1)
+              )
+              extCtxId
+              (fmapCoe Identity)
+              (AddressInfo ["binding"] False EntirelyBoring)
+            return $ case token of
+              TokenSubASTs -> Box1 $ binder $ runIdentity !<$> unbox1 rbinding
+              TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
+              TokenRelate -> Unit2
+      
+      
+  {-
+  analyze (token :: AnalyzerToken option)
+    (gamma :: Ctx lhs sys v Void)
+    (AnalyzerInput ty U1 condU1 maybeMaybeDs maybeDDeg) condTy2 h = Right $ do
+    
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
+
+    case ty of
 
       EmptyType -> handleConstant
 
@@ -253,6 +284,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             TokenSubASTs -> Box1 $ ty
             TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
             TokenRelate -> Unit2
+  -}
   convRel token d = U1
   extraClassif = U1
 
