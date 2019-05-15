@@ -131,7 +131,7 @@ instance (SysAnalyzer sys,
            (VarFromCtx <$> seg1)
       )
       unComp1
-      (AddressInfo ["body"] False omit)
+      (AddressInfo ["body"] False EntirelyBoring)
     return $ case token of
       TokenSubASTs -> Box1 $ ClassifBinding seg (unbox1 rbody)
       TokenTypes -> BoxClassif $ ClassifBinding seg (unboxClassif rbody)
@@ -150,7 +150,31 @@ instance (SysAnalyzer sys,
     Segment Type sys :*: (AnalyzerExtraInput (rhs sys) :.: VarExt)
   analyzableToken = AnTokenNamedBinding analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
-
+  analyze token gamma
+    (AnalyzerInput (NamedBinding name body) (seg :*: Comp1 extraBody) maybeCl) h = Right $ do
+    rbody <- h VarWkn
+      (\ gamma' (AnalyzerInput (NamedBinding name' body') (seg' :*: Comp1 extraBody') maybeCl') ->
+         Just $ AnalyzerInput body' extraBody' (_classifBinding'body <$> classifMust2will maybeCl'))
+      (\ gamma'
+         (AnalyzerInput (NamedBinding name1 body1) (seg1 :*: Comp1 extraBody1) maybeCl1)
+         condInput2 ->
+         Just $ gamma' :.. VarFromCtx <$> (Declaration
+           (DeclNameSegment name1)
+           (_decl'modty seg1)
+           (_decl'plicity seg1)
+           (toVarClassif token
+             (_decl'content seg1)
+             (_decl'content . fst1 . _analyzerInput'extra <$> condInput2)
+           )
+         )
+      )
+      unComp1
+      (AddressInfo ["body"] False EntirelyBoring)
+    return $ case token of
+      TokenSubASTs -> Box1 $ NamedBinding name $ unbox1 rbody
+      TokenTypes -> BoxClassif $
+        ClassifBinding ((decl'name .~ DeclNameSegment name) seg) (unboxClassif rbody)
+      TokenRelate -> Unit2
   convRel token d = Comp1 $ convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d)
   extraClassif = Comp1 $ extraClassif @sys @(rhs sys)
 
