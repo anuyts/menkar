@@ -178,25 +178,60 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       Sigma binding -> handleBinder Sigma binding $ \case
         Sigma binding -> Just binding
         _ -> Nothing
-        
-    where handleBinder ::
-            (forall w . Binding Type Type sys w -> UniHSConstructor sys w) ->
-            Binding Type Type sys v ->
-            (forall w . UniHSConstructor sys w -> Maybe (Binding Type Type sys w)) ->
-            _ (AnalyzerResult option (UniHSConstructor sys) v)
-          handleBinder binder binding extract = do
-            rbinding <- h Identity
-              (\ (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ binding' ->
-                  Identity !<$> AnalyzerInput binding' U1
-                    (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment binding') U1)
-              )
+
+      EmptyType -> handleConstant
+
+      UnitType -> handleConstant
+
+      BoxType segment -> do
+        let extract (BoxType segment) = Just segment
+            extract _ = Nothing
+        rsegment <- h Identity
+              (\ (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ segment' ->
+                  Identity !<$> AnalyzerInput segment' U1 (ClassifWillBe $ U1))
               extCtxId
               (fmapCoe Identity)
-              (AddressInfo ["binding"] False EntirelyBoring)
-            return $ case token of
-              TokenSubASTs -> Box1 $ binder $ runIdentity !<$> unbox1 rbinding
-              TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
-              TokenRelate -> Unit2
+              (AddressInfo ["segment"] False EntirelyBoring)
+        return $ case token of
+          TokenSubASTs -> Box1 $ BoxType $ runIdentity !<$> unbox1 rsegment
+          TokenTypes -> BoxClassif $ dgamma
+          TokenRelate -> Unit2
+
+      NatType -> handleConstant
+
+      EqType tyAmbient tL tR -> do
+        rtyAmbient <- h Identity
+          (\ case
+              AnalyzerInput (EqType tyAmbient' tL' tR') U1 maybeD' ->
+                Just $ Identity !<$> AnalyzerInput tyAmbient' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
+          (AddressInfo ["ambient type"] False omit)
+        rtL <- h Identity
+          (\ case
+              AnalyzerInput (EqType tyAmbient' tL' tR') U1 maybeD' ->
+                Just $ Identity !<$> AnalyzerInput tL' U1 (ClassifMustBe tyAmbient')
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
+          (AddressInfo ["left equand"] False omit)
+        rtR <- h Identity
+          (\ case
+              AnalyzerInput (EqType tyAmbient' tL' tR') U1 maybeD' ->
+                Just $ Identity !<$> AnalyzerInput tR' U1 (ClassifMustBe tyAmbient')
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
+          (AddressInfo ["right equand"] False omit)
+        return $ case token of
+          TokenSubASTs ->
+            Box1 $ runIdentity !<$> EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
+          TokenTypes -> BoxClassif $ dgamma
+          TokenRelate -> Unit2
       
       
   {-
@@ -208,48 +243,6 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
     let dgamma = unVarFromCtx <$> dgamma'
 
     case ty of
-
-      EmptyType -> handleConstant
-
-      UnitType -> handleConstant
-
-      BoxType segment -> do
-        rsegment <- h id gamma
-          (AnalyzerInput segment U1 (pure U1) (ClassifWillBe (U1, pure U1)) maybeDDeg)
-          (AddressInfo ["segment"] False EntirelyBoring)
-          (\ case
-              BoxType segment -> Just segment
-              _ -> Nothing
-          )
-        return $ case token of
-          TokenSubASTs -> Box1 $ BoxType $ unbox1 rsegment
-          TokenTypes -> BoxClassif $ dgamma
-          TokenRelate -> Unit2
-
-      NatType -> handleConstant
-
-      EqType tyAmbient tL tR -> do
-        rtyAmbient <-
-               h id gamma
-                 (AnalyzerInput tyAmbient U1 (pure U1) (ClassifWillBe (U1, pure U1)) maybeDDeg)
-                 (AddressInfo ["ambient type"] False omit)
-                 $ \case
-                   EqType tyAmbient tL tR -> Just tyAmbient
-                   _ -> Nothing
-        rtL <- h id gamma
-                 (AnalyzerInput tL U1 (pure U1) (ClassifMustBe (tyAmbient, _)) maybeDDeg)
-                 (AddressInfo ["left equand"] False omit)
-                 $ \case
-                   EqType tyAmbient tL tR -> Just tL
-                   _ -> Nothing
-        rtR <- h id gamma (AnalyzerInput tR U1 (ClassifMustBe tyAmbient) maybeDDeg) (AddressInfo ["right equand"] False omit)
-                 $ \case
-                   EqType tyAmbient tL tR -> Just tR
-                   _ -> Nothing
-        return $ case token of
-          TokenSubASTs -> Box1 $ EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
-          TokenTypes -> BoxClassif $ dgamma
-          TokenRelate -> Unit2
 
       SysType systy -> do
         rsysty <- h id gamma (AnalyzerInput systy U1 (classifMust2will maybeMaybeD) maybeDDeg)
@@ -285,6 +278,31 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
             TokenRelate -> Unit2
   -}
+        
+    where handleBinder ::
+            (forall w . Binding Type Type sys w -> UniHSConstructor sys w) ->
+            Binding Type Type sys v ->
+            (forall w . UniHSConstructor sys w -> Maybe (Binding Type Type sys w)) ->
+            _ (AnalyzerResult option (UniHSConstructor sys) v)
+          handleBinder binder binding extract = do
+            rbinding <- h Identity
+              (\ (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ binding' ->
+                  Identity !<$> AnalyzerInput binding' U1
+                    (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment binding') U1)
+              )
+              extCtxId
+              (fmapCoe Identity)
+              (AddressInfo ["binding"] False EntirelyBoring)
+            return $ case token of
+              TokenSubASTs -> Box1 $ binder $ runIdentity !<$> unbox1 rbinding
+              TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
+              TokenRelate -> Unit2
+              
+          handleConstant = pure $ case token of
+            TokenSubASTs -> Box1 $ ty
+            TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
+            TokenRelate -> Unit2
+            
   convRel token d = U1
   extraClassif = U1
 
