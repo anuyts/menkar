@@ -116,21 +116,22 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (ClassifBinding Type rhs sys) = AnalyzerExtraInput rhs :.: VarExt
   analyzableToken = AnTokenClassifBinding analyzableToken
   witClassif token = haveClassif @sys @rhs Witness
-  --analyze token gamma
-  --  (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) maybeCl)
   analyze token gamma
-    (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) condExtra2 maybeCls maybeDDeg)
-    condBinding2 h = Right $ do
-    let condSeg2  = _classifBinding'segment <$> condBinding2
-    let condBody2 = _classifBinding'body    <$> condBinding2
-    let condTy2   = _decl'content <$> condSeg2
-    let condExtraBody2 = unComp1 <$> condExtra2
+    (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) maybeCl) h = Right $ do
     rbody <- h VarWkn
-      (gamma :.. VarFromCtx <$> (decl'content %~ \ ty1 -> toVarClassif token ty1 condTy2) seg)
-      (AnalyzerInput body extraBody condExtraBody2
-        (mapMaybeClassifs _classifBinding'body $ classifMust2will maybeCls) (unComp1 <$> maybeDDeg))
-      (AddressInfo ["body"] False EntirelyBoring)
-      (Just . _classifBinding'body)
+      (\ (AnalyzerInput (ClassifBinding seg' body') (Comp1 extraBody') maybeCl') ->
+         Just $ AnalyzerInput body' extraBody' (_classifBinding'body <$> classifMust2will maybeCl'))
+      (\ gamma (AnalyzerInput (ClassifBinding seg1 body1) (Comp1 extraBody1) maybeCl1) condInput2 ->
+         Just $ gamma :..
+           (decl'content %~ \ ty1 ->
+             toVarClassif token ty1 $
+             fmap VarFromCtx . _decl'content . _classifBinding'segment . _analyzerInput'get <$>
+             condInput2
+           )
+           (VarFromCtx <$> seg1)
+      )
+      unComp1
+      (AddressInfo ["body"] False omit)
     return $ case token of
       TokenSubASTs -> Box1 $ ClassifBinding seg (unbox1 rbody)
       TokenTypes -> BoxClassif $ ClassifBinding seg (unboxClassif rbody)
