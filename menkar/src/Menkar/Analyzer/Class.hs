@@ -186,6 +186,7 @@ class (Functor t,
     (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v), Traversable ext) =>
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
+        Ctx (VarClassif option) sys u Void ->
         AnalyzerInput option t u ->
         Maybe (AnalyzerInput option s (ext u))
       ) ->
@@ -277,11 +278,11 @@ analyzeOld token gamma inputT1 condInputT2 condRel h =
   analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel info ->
   h wkn
     (extendCtx gamma inputT1 condInputT2)
-    (fromMaybe unreachable $ extractT inputT1)
-    (extractT <$> condInputT2)
+    (fromMaybe unreachable $ extractT gamma inputT1)
+    (extractT gamma <$> condInputT2)
     (extractRel <$> condRel)
     info
-    (\ t1' -> _analyzerInput'get <$> extractT (analyzerInput'get .~ t1' $ inputT1))
+    (\ t1' -> _analyzerInput'get <$> extractT gamma (analyzerInput'get .~ t1' $ inputT1))
 
 subASTsTyped :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>

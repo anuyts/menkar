@@ -38,19 +38,19 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   witClassif token = Witness
   analyze token gamma (AnalyzerInput (ModedModality dom cod mu) U1 _) h = Right $ do
     rdom <- h Identity
-      (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
+      (\ gamma' (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> AnalyzerInput dom' U1 (ClassifWillBe U1))
       extCtxId
       (const U1)
       (AddressInfo ["domain"] True omit)
     rcod <- h Identity
-      (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
+      (\ gamma' (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> AnalyzerInput cod' U1 (ClassifWillBe U1))
       extCtxId
       (const U1)
       (AddressInfo ["codomain"] True omit)
     rmu <- h Identity
-      (\ (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
+      (\ gamma' (AnalyzerInput (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> AnalyzerInput mu' U1 (ClassifWillBe $ dom' :*: cod'))
       extCtxId
       (fmapCoe Identity)
@@ -78,13 +78,13 @@ instance (SysAnalyzer sys,
   witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token gamma (AnalyzerInput (Binding seg body) U1 maybeCl) h = Right $ do
     rseg <- h Identity
-      (\ (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
+      (\ gamma' (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
          Just $ Identity !<$> AnalyzerInput seg' U1 (fst1 <$> classifMust2will maybeCl'))
       extCtxId
       (fmapCoe Identity)
       (AddressInfo ["segment"] False omit)
     rbody <- h VarWkn
-      (\ (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
+      (\ gamma' (AnalyzerInput (Binding seg' body') U1 maybeCl') ->
          Just $ AnalyzerInput body' U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl'))
       (\ gamma (AnalyzerInput (Binding seg1 body1) U1 maybeCl1) condInput2 ->
          Just $ gamma :..
@@ -119,7 +119,7 @@ instance (SysAnalyzer sys,
   analyze token gamma
     (AnalyzerInput (ClassifBinding seg body) (Comp1 extraBody) maybeCl) h = Right $ do
     rbody <- h VarWkn
-      (\ (AnalyzerInput (ClassifBinding seg' body') (Comp1 extraBody') maybeCl') ->
+      (\ gamma' (AnalyzerInput (ClassifBinding seg' body') (Comp1 extraBody') maybeCl') ->
          Just $ AnalyzerInput body' extraBody' (_classifBinding'body <$> classifMust2will maybeCl'))
       (\ gamma (AnalyzerInput (ClassifBinding seg1 body1) (Comp1 extraBody1) maybeCl1) condInput2 ->
          Just $ gamma :..
@@ -158,7 +158,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 
       UniHS d -> do
         rd <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               (AnalyzerInput (UniHS d') U1 maybeD') ->
                 Just $ Identity !<$> AnalyzerInput d' U1 (ClassifWillBe U1)
               otherwise -> Nothing
@@ -187,7 +187,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
         let extract (BoxType segment) = Just segment
             extract _ = Nothing
         rsegment <- h Identity
-              (\ (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ segment' ->
+              (\ gamma' (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ segment' ->
                   Identity !<$> AnalyzerInput segment' U1 (ClassifWillBe $ U1))
               extCtxId
               (fmapCoe Identity)
@@ -201,7 +201,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 
       EqType tyAmbient tL tR -> do
         rtyAmbient <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (EqType tyAmbient' tL' tR') U1 maybeD' ->
                 Just $ Identity !<$> AnalyzerInput tyAmbient' U1 (ClassifWillBe U1)
               otherwise -> Nothing
@@ -210,7 +210,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (fmapCoe Identity)
           (AddressInfo ["ambient type"] False omit)
         rtL <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (EqType tyAmbient' tL' tR') U1 maybeD' ->
                 Just $ Identity !<$> AnalyzerInput tL' U1 (ClassifMustBe tyAmbient')
               otherwise -> Nothing
@@ -219,7 +219,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (fmapCoe Identity)
           (AddressInfo ["left equand"] False omit)
         rtR <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (EqType tyAmbient' tL' tR') U1 maybeD' ->
                 Just $ Identity !<$> AnalyzerInput tR' U1 (ClassifMustBe tyAmbient')
               otherwise -> Nothing
@@ -235,7 +235,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 
       SysType systy -> do
         rsysty <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (SysType systy') U1 maybeD' ->
                 Just $ Identity !<$> AnalyzerInput systy' U1 (classifMust2will maybeD')
               otherwise -> Nothing
@@ -255,7 +255,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             _ (AnalyzerResult option (UniHSConstructor sys) v)
           handleBinder binder binding extract = do
             rbinding <- h Identity
-              (\ (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ binding' ->
+              (\ gamma' (AnalyzerInput ty' U1 maybeD') -> extract ty' <&> \ binding' ->
                   Identity !<$> AnalyzerInput binding' U1
                     (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment binding') U1)
               )
@@ -292,7 +292,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 
       ConsUniHS ty -> do
         rty <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (ConsUniHS ty') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput ty' U1 ClassifUnknown
               otherwise -> Nothing
@@ -307,7 +307,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 
       Lam binding -> do
         rbinding <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (Lam binding') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput binding' U1 ClassifUnknown
               otherwise -> Nothing
@@ -325,7 +325,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 
       Pair sigmaBinding tFst tSnd -> do
         rsigmaBinding <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (Pair sigmaBinding' tFst' tSnd') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput sigmaBinding' U1
                   (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment sigmaBinding') U1)
@@ -335,7 +335,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["Sigma-type annotation"] False omit)
         rtFst <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (Pair sigmaBinding' tFst' tSnd') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput tFst' U1
                   (ClassifMustBe $ _segment'content $ binding'segment $ sigmaBinding')
@@ -345,7 +345,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["first component"] False omit)
         rtSnd <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (Pair sigmaBinding' tFst' tSnd') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput tSnd' U1
                   (ClassifMustBe $ substLast2 tFst' $ binding'body sigmaBinding')
@@ -367,7 +367,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 
       ConsBox boxSeg tUnbox -> do
         rboxSeg <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (ConsBox boxSeg' tUnbox') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput boxSeg' U1 (ClassifWillBe $ U1)
               otherwise -> Nothing
@@ -376,7 +376,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["Box-type annotation"] False omit)
         rtUnbox <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (ConsBox boxSeg' tUnbox') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput tUnbox' U1
                   (ClassifMustBe $ _segment'content boxSeg')
@@ -397,7 +397,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 
       ConsSuc t -> do
         rt <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (ConsSuc t') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput t' U1 (ClassifMustBe $ hs2type NatType)
               otherwise -> Nothing
@@ -412,7 +412,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 
       ConsRefl tyAmbient t -> do
         rtyAmbient <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (ConsRefl tyAmbient' t') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput tyAmbient' U1 (ClassifWillBe U1)
               otherwise -> Nothing
@@ -421,7 +421,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["ambient type"] False omit)
         rt <- h Identity
-          (\ case
+          (\ gamma' -> \ case
               AnalyzerInput (ConsRefl tyAmbient' t') U1 _ ->
                 Just $ Identity !<$> AnalyzerInput t' U1 ClassifUnknown
               otherwise -> Nothing
@@ -445,18 +445,19 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type AnalyzerExtraInput (Type sys) = U1
   analyzableToken = AnTokenType
   witClassif token = Witness
-  {-
-  analyze token fromType gamma (AnalyzerInput (Type t) U1 _ maybeRel) h = Right $ do
-    let dgamma' = ctx'mode gamma
-    let dgamma = unVarFromCtx <$> dgamma'
-    rt <- h id gamma (AnalyzerInput t U1 (ClassifMustBe $ hs2type $ UniHS dgamma) maybeRel)
+  analyze token gamma (AnalyzerInput (Type t) U1 maybeU1) h = Right $ do
+    rt <- h Identity
+      (\ gamma' (AnalyzerInput (Type t') U1 maybeU1') ->
+         Just $ Identity !<$> AnalyzerInput t' U1
+           (ClassifMustBe $ hs2type $ UniHS $ unVarFromCtx <$> ctx'mode gamma'))
+      extCtxId
+      (fmapCoe Identity)
       (AddressInfo ["code"] True WorthMentioning)
-      (Just . unType)
     return $ case token of
-      TokenSubASTs -> Box1 $ Type $ unbox1 rt
+      TokenSubASTs -> Box1 $ Type $ runIdentity !<$> unbox1 rt
       TokenTypes -> BoxClassif U1
       TokenRelate -> Unit2
--}
+    
   convRel token gamma = U1
   extraClassif = U1
 
