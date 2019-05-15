@@ -283,8 +283,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
   type AnalyzerExtraInput (ConstructorTerm sys) = U1
   analyzableToken = AnTokenConstructorTerm
   witClassif token = Witness
-  {-
-  analyze token fromType gamma (AnalyzerInput t U1 _ maybeRel) h = Right $  do
+  analyze token gamma (AnalyzerInput t U1 _) h = Right $ do
     
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
@@ -292,51 +291,72 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
     case t of
 
       ConsUniHS ty -> do
-        rty <- h id gamma (AnalyzerInput ty U1 ClassifUnknown maybeRel)
+        rty <- h Identity
+          (\ case
+              AnalyzerInput (ConsUniHS ty') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput ty' U1 ClassifUnknown
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["UniHS-constructor"] False EntirelyBoring)
-          $ \case
-            ConsUniHS ty -> Just ty
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ ConsUniHS $ unbox1 rty
-          TokenTypes -> BoxClassif $ hs2type $ UniHS $ unboxClassif rty
+          TokenSubASTs -> Box1 $ ConsUniHS $ runIdentity !<$> unbox1 rty
+          TokenTypes -> BoxClassif $ hs2type $ UniHS $ runIdentity !<$> unboxClassif rty
           TokenRelate -> Unit2
 
       Lam binding -> do
-        rbinding <- h id gamma (AnalyzerInput binding U1 ClassifUnknown maybeRel)
+        rbinding <- h Identity
+          (\ case
+              AnalyzerInput (Lam binding') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput binding' U1 ClassifUnknown
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["binding"] False EntirelyBoring)
-          $ \case
-            Lam binding -> Just binding
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ Lam $ unbox1 rbinding
+          TokenSubASTs -> Box1 $ Lam $ runIdentity !<$> unbox1 rbinding
           TokenTypes -> BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) $
-            _classifBinding'body $ snd1 $ unboxClassif $ rbinding
+            _classifBinding'body $ snd1 $ runIdentity !<$> unboxClassif rbinding
             --let (U1 :*: Comp1 ty) = unboxClassif rbinding
             --in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) ty
           TokenRelate -> Unit2
 
       Pair sigmaBinding tFst tSnd -> do
-        let sigmaBindingClassif = U1 :*: ClassifBinding (binding'segment sigmaBinding) U1
-        rsigmaBinding <- h id gamma (AnalyzerInput sigmaBinding U1 (ClassifWillBe sigmaBindingClassif) maybeRel)
+        rsigmaBinding <- h Identity
+          (\ case
+              AnalyzerInput (Pair sigmaBinding' tFst' tSnd') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput sigmaBinding' U1
+                  (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment sigmaBinding') U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["Sigma-type annotation"] False omit)
-          $ \case
-            Pair sigmaBinding tFst tSnd -> Just sigmaBinding
-            _ -> Nothing
-        let tyFst = _segment'content $ binding'segment $ sigmaBinding
-        let tySnd = substLast2 tFst $ binding'body sigmaBinding
-        rtFst <- h id gamma (AnalyzerInput tFst U1 (ClassifMustBe tyFst) maybeRel)
+        rtFst <- h Identity
+          (\ case
+              AnalyzerInput (Pair sigmaBinding' tFst' tSnd') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput tFst' U1
+                  (ClassifMustBe $ _segment'content $ binding'segment $ sigmaBinding')
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["first component"] False omit)
-          $ \case
-            Pair sigmaBinding tFst tSnd -> Just tFst
-            _ -> Nothing
-        rtSnd <- h id gamma (AnalyzerInput tSnd U1 (ClassifMustBe tySnd) maybeRel)
+        rtSnd <- h Identity
+          (\ case
+              AnalyzerInput (Pair sigmaBinding' tFst' tSnd') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput tSnd' U1
+                  (ClassifMustBe $ substLast2 tFst' $ binding'body sigmaBinding')
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["second component"] False omit)
-          $ \case
-            Pair sigmaBinding tFst tSnd -> Just tSnd
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ Pair (unbox1 rsigmaBinding) (unbox1 rtFst) (unbox1 rtSnd)
+          TokenSubASTs ->
+            Box1 $ runIdentity !<$> Pair (unbox1 rsigmaBinding) (unbox1 rtFst) (unbox1 rtSnd)
           TokenTypes -> BoxClassif $ hs2type $ Sigma sigmaBinding
           TokenRelate -> Unit2
 
@@ -346,19 +366,27 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         TokenRelate -> Unit2
 
       ConsBox boxSeg tUnbox -> do
-        rboxSeg <- h id gamma (AnalyzerInput boxSeg U1 (ClassifWillBe U1) maybeRel)
+        rboxSeg <- h Identity
+          (\ case
+              AnalyzerInput (ConsBox boxSeg' tUnbox') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput boxSeg' U1 (ClassifWillBe $ U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["Box-type annotation"] False omit)
-          $ \case
-            ConsBox boxSeg tUnbox -> Just boxSeg
-            _ -> Nothing
-        let tyUnbox = _segment'content boxSeg
-        rtUnbox <- h id gamma (AnalyzerInput tUnbox U1 (ClassifMustBe tyUnbox) maybeRel)
+        rtUnbox <- h Identity
+          (\ case
+              AnalyzerInput (ConsBox boxSeg' tUnbox') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput tUnbox' U1
+                  (ClassifMustBe $ _segment'content boxSeg')
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["box content"] False omit)
-          $ \case
-            ConsBox boxSeg tUnbox -> Just tUnbox
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ ConsBox (unbox1 rboxSeg) (unbox1 rtUnbox)
+          TokenSubASTs -> Box1 $ runIdentity !<$> ConsBox (unbox1 rboxSeg) (unbox1 rtUnbox)
           TokenTypes -> BoxClassif $ hs2type $ BoxType boxSeg
           TokenRelate -> Unit2
 
@@ -368,32 +396,43 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         TokenRelate -> Unit2
 
       ConsSuc t -> do
-        rt <- h id gamma (AnalyzerInput t U1 (ClassifMustBe $ hs2type NatType) maybeRel)
+        rt <- h Identity
+          (\ case
+              AnalyzerInput (ConsSuc t') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput t' U1 (ClassifMustBe $ hs2type NatType)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["predecessor"] False omit)
-          $ \case
-            ConsSuc t -> Just t
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ ConsSuc $ (unbox1 rt)
+          TokenSubASTs -> Box1 $ ConsSuc $ runIdentity !<$> (unbox1 rt)
           TokenTypes -> BoxClassif $ hs2type $ NatType
           TokenRelate -> Unit2
 
       ConsRefl tyAmbient t -> do
-        rtyAmbient <- h id gamma (AnalyzerInput tyAmbient U1 (ClassifWillBe U1) maybeRel)
+        rtyAmbient <- h Identity
+          (\ case
+              AnalyzerInput (ConsRefl tyAmbient' t') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput tyAmbient' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["ambient type"] False omit)
-          $ \case
-            ConsRefl tyAmbient t -> Just tyAmbient
-            _ -> Nothing
-        rt <- h id gamma (AnalyzerInput t U1 ClassifUnknown maybeRel)
+        rt <- h Identity
+          (\ case
+              AnalyzerInput (ConsRefl tyAmbient' t') U1 _ ->
+                Just $ Identity !<$> AnalyzerInput t' U1 ClassifUnknown
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["self-equand"] False omit)
-          $ \case
-            ConsRefl tyAmbient t -> Just t
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ ConsRefl (unbox1 rtyAmbient) (unbox1 rt)
-          TokenTypes -> BoxClassif $ hs2type $ EqType (unboxClassif rt) t t
+          TokenSubASTs -> Box1 $ runIdentity !<$> ConsRefl (unbox1 rtyAmbient) (unbox1 rt)
+          TokenTypes -> BoxClassif $ hs2type $ EqType (runIdentity !<$> unboxClassif rt) t t
           TokenRelate -> Unit2
--}
 
   convRel token d = modedEqDeg d
   extraClassif = U1
