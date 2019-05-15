@@ -470,9 +470,12 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
     ModedModality sys :*: Term sys :*: UniHSConstructor sys :*: (Type sys :.: VarExt)
   analyzableToken = AnTokenDependentEliminator
   witClassif token = Witness
-  {-
-  analyze token fromType gamma
-    (AnalyzerInput clauses (dmuElim :*: eliminee :*: tyEliminee :*: Comp1 (motive :: Type sys (VarExt v))) _ maybeRel)
+
+{-
+  analyze token gamma
+    (AnalyzerInput clauses
+      (dmuElim :*: eliminee :*: tyEliminee :*: Comp1 (motive :: Type sys (VarExt v)))
+      maybeU1)
     h
     = Right $ do
 
@@ -480,6 +483,51 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
     let dgamma = unVarFromCtx <$> dgamma'
 
     case (tyEliminee, clauses) of
+
+      (Sigma binding, ElimSigma (NamedBinding nameFst (NamedBinding nameSnd pairClause))) -> do
+        _ -- instantiate Analyzable for NamedBinding
+        {-
+        rpairClause <- h (Compose . VarWkn . VarWkn)
+          (\ (gamma' :: Ctx _ _ u Void) -> \ case
+              AnalyzerInput
+                (ElimSigma (NamedBinding nameFst' (NamedBinding nameSnd' pairClause')))
+                (dmuElim' :*: eliminee' :*: Sigma binding' :*: Comp1 (motive :: Type sys (VarExt u)))
+                maybeU1' ->
+                let subst VarLast = Expr2 $ TermCons $ Pair
+                                      (VarWkn . VarWkn <$> binding')
+                                      (Var2 $ VarWkn VarLast)
+                                      (Var2 VarLast)
+                    subst (VarWkn v) = Var2 $ VarWkn $ VarWkn v
+                in  Just $ Compose !<$> AnalyzerInput
+                      pairClause'
+                      U1
+                      (ClassifMustBe $ swallow $ subst <$> motive)
+              otherwise -> Nothing
+          )
+          (\ gamma' input1 condInput2 -> do
+             binding1 <- case _analyzerInput'extra input1 of
+               Sigma binding1 -> Just binding1
+               otherwise -> Nothing
+             
+             let 
+                 segFst = Declaration
+                      (DeclNameSegment nameFst')
+                      (compModedModality dmuElim' (_segment'modty $ binding'segment $ binding'))
+                      Explicit
+                      (_segment'content $ binding'segment $ binding')
+                 segSnd = Declaration
+                      (DeclNameSegment nameSnd')
+                      (VarWkn <$> dmuElim')
+                      Explicit
+                      (binding'body binding')
+             in  CtxComp $ gamma :.. VarFromCtx <$> segFst :.. VarFromCtx <$> segSnd)
+          _
+          (AddressInfo ["pair clause"] False omit)
+        return $ _
+-}
+-}
+    
+  {-
 
       (Sigma binding, ElimSigma (NamedBinding nameFst (NamedBinding nameSnd pairClause))) -> do
         let segFst = Declaration
