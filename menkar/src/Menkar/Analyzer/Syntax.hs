@@ -560,6 +560,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           TokenSubASTs -> Box1 $ ElimSigma $ runIdentity !<$> unbox1 rboundBoundPairClause
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
+      (_, ElimSigma _) -> unreachable
 
       (BoxType seg, ElimBox boundBoxClause) -> do
         rboundBoxClause <- h Identity
@@ -591,55 +592,67 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           TokenSubASTs -> Box1 $ ElimBox $ runIdentity !<$> unbox1 rboundBoxClause
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
-  {-
+      (_, ElimBox _) -> unreachable
 
       (EmptyType, ElimEmpty) -> pure $ case token of
         TokenSubASTs -> Box1 ElimEmpty
         TokenTypes -> BoxClassif U1
         TokenRelate -> Unit2
       (_, ElimEmpty) -> unreachable
-
-      (NatType, ElimNat (zeroClause :: Term sys v) (NamedBinding namePred (NamedBinding nameHyp sucClause))) -> do
-        
-        rzeroClause <- h id gamma
-          (AnalyzerInput zeroClause U1
-            (ClassifMustBe $ substLast2 (Expr2 $ TermCons $ ConsZero :: Term sys v) $ motive)
-            maybeRel
+      
+      (NatType, ElimNat (zeroClause :: Term sys v) boundBoundSucClause) -> do
+        rzeroClause <- h Identity
+          (\ (gamma' :: Ctx _ _ u Void)
+             (AnalyzerInput clauses'
+               (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
+               maybeU1'
+             ) -> case (tyEliminee', clauses') of
+               (NatType, ElimNat zeroClause' boundBoundSucClause') ->
+                 Just $ Identity !<$> AnalyzerInput zeroClause' U1
+                 (ClassifMustBe $ substLast2 (Expr2 $ TermCons $ ConsZero :: Term sys u) $ motive')
+               otherwise -> Nothing
           )
+          extCtxId
+          (fmapCoe Identity)
           (AddressInfo ["zero clause"] False omit)
-          $ \case
-            ElimNat zeroClause _ -> Just zeroClause
-            _ -> Nothing
-
-        let segPred = Declaration
-                  (DeclNameSegment $ namePred)
-                  dmuElim
-                  Explicit
-                  (hs2type $ NatType)
-        let segHyp = Declaration
-                  (DeclNameSegment $ nameHyp)
-                  (idModedModality $ VarWkn <$> dgamma)
-                  Explicit
-                  motive
-        let substS :: VarExt v -> Term sys (VarExt (VarExt v))
-            substS VarLast = Expr2 $ TermCons $ ConsSuc $ Var2 $ VarWkn VarLast
-            substS (VarWkn v) = Var2 $ VarWkn $ VarWkn v
-        rsucClause <- h (VarWkn . VarWkn)
-          (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segPred
-                 :.. VarFromCtx <$> (decl'content %~ fromType) segHyp)
-          (AnalyzerInput sucClause U1 (ClassifMustBe $ swallow $ substS <$> motive) (fmap (VarWkn . VarWkn) <$> maybeRel))
+        rboundBoundSucClause <- h Identity
+          (\ (gamma' :: Ctx _ _ u Void)
+             (AnalyzerInput clauses'
+               (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
+               maybeU1'
+             ) -> case (tyEliminee', clauses') of
+               (NatType, ElimNat zeroClause' boundBoundSucClause') ->
+                 let segPred' = Declaration
+                       (DeclNameSegment $ Nothing)
+                       dmuElim'
+                       Explicit
+                       (hs2type $ NatType)
+                     segHyp' = Declaration
+                       (DeclNameSegment $ Nothing)
+                       (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma')
+                       Explicit
+                       motive'
+                     substS :: VarExt u -> Term sys (VarExt (VarExt u))
+                     substS VarLast = Expr2 $ TermCons $ ConsSuc $ Var2 $ VarWkn VarLast
+                     substS (VarWkn v) = Var2 $ VarWkn $ VarWkn v
+                 in  Just $ Identity !<$> AnalyzerInput
+                       boundBoundSucClause'
+                       (segPred' :*: Comp1 (segHyp' :*: Comp1 U1))
+                       (ClassifMustBe $ ClassifBinding segPred' $ ClassifBinding segHyp' $
+                         swallow $ substS <$> motive'
+                       )
+               otherwise -> Nothing
+          )
+          extCtxId
+          (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["successor clause"] False omit)
-          $ \case
-            ElimNat _ (NamedBinding namePred (NamedBinding nameHyp sucClause)) -> Just sucClause
-            _ -> Nothing
-            
         return $ case token of
           TokenSubASTs ->
-            Box1 $ ElimNat (unbox1 rzeroClause) $ NamedBinding namePred $ NamedBinding nameHyp $ unbox1 rsucClause
+            Box1 $ runIdentity !<$> ElimNat (unbox1 rzeroClause) (unbox1 rboundBoundSucClause)
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
       (_, ElimNat _ _) -> unreachable
-      -}
+
   convRel token gamma = U1
   extraClassif = U1
 
