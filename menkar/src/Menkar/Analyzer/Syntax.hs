@@ -695,25 +695,6 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           TokenTypes -> BoxClassif $ substLast2 arg $ binding'body binding
           TokenRelate -> Unit2
       (_, App arg) -> unreachable
-    
-  {-
-  analyze token fromType gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _ maybeRel) h = Right $ do
-    let dgamma' = ctx'mode gamma
-    let dgamma = unVarFromCtx <$> dgamma'
-
-    case (tyEliminee, eliminator) of
-
-      (Pi binding, App arg) -> do
-        rarg <- h id gamma (AnalyzerInput arg U1 (ClassifMustBe $ _segment'content $ binding'segment binding) maybeRel)
-          (AddressInfo ["argument"] False omit)
-          $ \case
-            App arg -> Just arg
-            _ -> Nothing
-        return $ case token of
-          TokenSubASTs -> Box1 $ App $ unbox1 rarg
-          TokenTypes -> BoxClassif $ substLast2 arg $ binding'body binding
-          TokenRelate -> Unit2
-      (_, App arg) -> unreachable
 
       (Sigma binding, Fst) -> pure $ case token of
           TokenSubASTs -> Box1 $ Fst
@@ -751,6 +732,13 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           _ -> unreachable
         TokenRelate -> Unit2
       (_, Funext) -> unreachable
+    
+  {-
+  analyze token fromType gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _ maybeRel) h = Right $ do
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
+
+    case (tyEliminee, eliminator) of
 
       (_, ElimDep namedMotive@(NamedBinding name motive) clauses) -> do
         let seg = Declaration (DeclNameSegment name) dmuElim Explicit (hs2type tyEliminee)
