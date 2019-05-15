@@ -33,6 +33,8 @@ data AnalyzableToken sys (ast :: * -> *) where
     AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
   AnTokenClassifBinding :: (Analyzable sys rhs) =>
     AnalyzableToken sys rhs -> AnalyzableToken sys (ClassifBinding Type rhs sys)
+  AnTokenNamedBinding :: (Analyzable sys (rhs sys)) =>
+    AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (NamedBinding rhs sys)
   AnTokenUniHSConstructor :: AnalyzableToken sys (UniHSConstructor sys)
   AnTokenConstructorTerm :: AnalyzableToken sys (ConstructorTerm sys)
   AnTokenType :: AnalyzableToken sys (Type sys)

@@ -141,6 +141,21 @@ instance (SysAnalyzer sys,
 
 -------------------------
 
+instance (SysAnalyzer sys,
+          Analyzable sys (rhs sys)
+         ) => Analyzable sys (NamedBinding rhs sys) where
+  type Classif (NamedBinding rhs sys) = ClassifBinding Type (Classif (rhs sys)) sys
+  type Relation (NamedBinding rhs sys) = Relation (rhs sys) :.: VarExt
+  type AnalyzerExtraInput (NamedBinding rhs sys) =
+    Segment Type sys :*: (AnalyzerExtraInput (rhs sys) :.: VarExt)
+  analyzableToken = AnTokenNamedBinding analyzableToken
+  witClassif token = haveClassif @sys @(rhs sys) Witness
+
+  convRel token d = Comp1 $ convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d)
+  extraClassif = Comp1 $ extraClassif @sys @(rhs sys)
+
+-------------------------
+
 instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   
   type Classif (UniHSConstructor sys) = Mode sys
