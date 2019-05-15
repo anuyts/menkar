@@ -664,6 +664,38 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
   type AnalyzerExtraInput (Eliminator sys) = ModedModality sys :*: Term sys :*: UniHSConstructor sys
   analyzableToken = AnTokenEliminator
   witClassif token = Witness
+
+  analyze token gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _) h =
+    Right $ do
+
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
+
+    case (tyEliminee, eliminator) of
+
+      (Pi binding, App arg) -> do
+        rarg <- h Identity
+          (\ gamma' (AnalyzerInput eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
+             case (tyEliminee', eliminator') of
+               (Pi binding', App arg') ->
+                 Just $ Identity !<$> AnalyzerInput arg' U1
+                 (ClassifMustBe $ _segment'content $ binding'segment binding')
+               otherwise -> Nothing
+          )
+          (\ gamma' (AnalyzerInput eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) _ ->
+             case (tyEliminee', eliminator') of
+               (Pi binding', App arg') ->
+                 Just $ CtxId $ VarFromCtx <$> _segment'modty (binding'segment binding') :\\ gamma'
+               otherwise -> Nothing
+          )
+          (fmapCoe Identity . modedDivDeg (_segment'modty $ binding'segment binding))
+          (AddressInfo ["argument"] False omit)
+        return $ case token of
+          TokenSubASTs -> Box1 $ App $ runIdentity !<$> unbox1 rarg
+          TokenTypes -> BoxClassif $ substLast2 arg $ binding'body binding
+          TokenRelate -> Unit2
+      (_, App arg) -> unreachable
+    
   {-
   analyze token fromType gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _ maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma

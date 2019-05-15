@@ -198,8 +198,8 @@ class (Functor t,
         IfRelate option (AnalyzerInput option t u) ->
         Maybe (Ctx (VarClassif option) sys (ext u) Void)
       ) ->
-      (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>
-        Relation t u -> Relation s (ext u)
+      ({-forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>-}
+        Relation t v -> Relation s (ext v)
       ) ->
       AddressInfo ->
       f (AnalyzerResult option s (ext v))
