@@ -1157,18 +1157,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
       TokenSubASTs -> Box1 $ ModuleRHS $ Compose $ unbox1 <$> rrevEntries
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
-  {-
-  analyze token fromType gamma (AnalyzerInput moduleRHS@(ModuleRHS (Compose revEntries)) U1 maybeU1 maybeRel) h = Right $ do
-    rcontent <- sequenceA $ zip (reverse revEntries) (reverse $ tails revEntries) <&> \ (entry, revPrevEntries) ->
-      h VarInModule (gamma :<...> VarFromCtx <$> ModuleRHS (Compose $ revPrevEntries))
-        (AnalyzerInput entry U1 (ClassifWillBe U1) (fmap VarInModule <$> maybeRel))
-        (AddressInfo ["an entry"] True omit)
-        (const Nothing) -- Relatedness of modules is never of interest.
-    return $ case token of
-      TokenSubASTs -> Box1 $ ModuleRHS $ Compose $ unbox1 <$> rcontent
-      TokenTypes -> BoxClassif $ U1
-      TokenRelate -> Unit2
--}
+      
   convRel token d = U1
   extraClassif = U1
 
@@ -1190,6 +1179,38 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
   type AnalyzerExtraInput (Entry sys) = U1
   analyzableToken = AnTokenEntry
   witClassif token = Witness
+  analyze token gamma (AnalyzerInput entry U1 maybeU1) h = Right $ do
+    case entry of
+      EntryVal val -> do
+        rval <- h Identity
+          (\ gamma' -> \ case
+              (AnalyzerInput (EntryVal val') U1 maybeU1') ->
+                Just $ Identity !<$> AnalyzerInput val' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          ((\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
+          (AddressInfo ["val"] True EntirelyBoring)
+        return $ case token of
+          TokenSubASTs -> Box1 $ EntryVal $ runIdentity !<$> unbox1 rval
+          TokenTypes -> BoxClassif $ U1
+          TokenRelate -> Unit2
+      EntryModule modul -> do
+        rmodul <- h Identity
+          (\ gamma' -> \ case
+              (AnalyzerInput (EntryModule modul') U1 maybeU1') ->
+                Just $ Identity !<$> AnalyzerInput modul' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          ((\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
+          (AddressInfo ["module"] True EntirelyBoring)
+        return $ case token of
+          TokenSubASTs -> Box1 $ EntryModule $ runIdentity !<$> unbox1 rmodul
+          TokenTypes -> BoxClassif $ U1
+          TokenRelate -> Unit2
+        
+          
   {-
   analyze token fromType gamma (AnalyzerInput entry U1 maybeU1 maybeRel) h = Right $ do
     case entry of
