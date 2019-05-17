@@ -935,22 +935,22 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
   type AnalyzerExtraInput (Term sys) = U1
   analyzableToken = AnTokenTerm
   witClassif token = Witness
-  {-
-  analyze token fromType gamma (AnalyzerInput t U1 maybeTy maybeRel) h = case t of
+  analyze token gamma (AnalyzerInput t U1 maybeTy) h = case t of
     Expr2 tnv -> Right $ do
-      --analyze token formType h gamma (AnalyzerInput tnv U1 maybeTy maybeRel)
-      rtnv <- h id gamma
-        (AnalyzerInput tnv U1 (classifMust2will maybeTy) maybeRel)
+      rtnv <- h Identity
+        (\ gamma' -> \ case
+            (AnalyzerInput (Expr2 tnv') U1 maybeTy') ->
+              Just $ Identity !<$> AnalyzerInput tnv' U1 (classifMust2will maybeTy')
+            otherwise -> Nothing
+        )
+        extCtxId
+        (fmapCoe Identity)
         (AddressInfo ["non-variable"] True EntirelyBoring)
-        $ \case
-          Expr2 tnv -> Just tnv
-          _ -> Nothing
       return $ case token of
-        TokenSubASTs -> Box1 $ Expr2 $ unbox1 rtnv
-        TokenTypes -> BoxClassif $ unboxClassif $ rtnv
+        TokenSubASTs -> Box1 $ Expr2 $ runIdentity !<$> unbox1 rtnv
+        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rtnv
         TokenRelate -> Unit2
     Var2 v -> Left AnErrorVar
--}
   convRel token d = modedEqDeg d
   extraClassif = U1
 
