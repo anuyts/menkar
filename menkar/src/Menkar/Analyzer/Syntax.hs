@@ -1112,15 +1112,23 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
   type AnalyzerExtraInput (ValRHS sys) = U1
   analyzableToken = AnTokenValRHS
   witClassif token = Witness
-  {-
-  analyze token fromType gamma (AnalyzerInput valRHS@(ValRHS t ty) U1 maybeU1 maybeRel) h = Right $ do
-    rt <- h id gamma (AnalyzerInput t U1 (ClassifMustBe ty) maybeRel) (AddressInfo ["RHS"] True omit) (Just . _val'term)
-    rty <- h id gamma (AnalyzerInput ty U1 (ClassifWillBe U1) maybeRel) (AddressInfo ["type"] True omit) (Just . _val'type)
+  analyze token gamma (AnalyzerInput valRHS@(ValRHS t ty) U1 maybeU1) h = Right $ do
+    rty <- h Identity
+      (\ gamma' (AnalyzerInput valRHS@(ValRHS t' ty') U1 maybeU1') ->
+         Just $ Identity !<$> AnalyzerInput ty' U1 (ClassifWillBe U1))
+      extCtxId
+      (fmapCoe Identity)
+      (AddressInfo ["type"] True omit)
+    rt <- h Identity
+      (\ gamma' (AnalyzerInput valRHS@(ValRHS t' ty') U1 maybeU1') ->
+         Just $ Identity !<$> AnalyzerInput t' U1 (ClassifMustBe ty'))
+      extCtxId
+      (fmapCoe Identity)
+      (AddressInfo ["RHS"] True omit)
     return $ case token of
-      TokenSubASTs -> Box1 $ ValRHS (unbox1 rt) (unbox1 rty)
+      TokenSubASTs -> Box1 $ runIdentity !<$> ValRHS (unbox1 rt) (unbox1 rty)
       TokenTypes -> BoxClassif $ U1
       TokenRelate -> Unit2
--}
   convRel token d = U1
   extraClassif = U1
 
