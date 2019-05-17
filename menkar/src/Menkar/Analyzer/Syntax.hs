@@ -807,40 +807,6 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
              _namedBinding'body $ _namedBinding'body $ boundBoundMotive
            TokenRelate -> Unit2
       (_, ElimEq _ _) -> unreachable
-    
-  {-
-  analyze token fromType gamma (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) _ maybeRel) h = Right $ do
-    let dgamma' = ctx'mode gamma
-    let dgamma = unVarFromCtx <$> dgamma'
-
-    case (tyEliminee, eliminator) of
-
-      (EqType tyAmbient tL tR, ElimEq (NamedBinding nameR (NamedBinding nameEq motive)) clauseRefl) -> do
-         let segR = Declaration (DeclNameSegment nameR) dmuElim Explicit tyAmbient
-         let segEq = Declaration
-               (DeclNameSegment nameEq)
-               (VarWkn <$> dmuElim)
-               Explicit
-               (hs2type $ EqType (VarWkn <$> tyAmbient) (VarWkn <$> tL) (Var2 VarLast))
-         rmotive <- h (VarWkn . VarWkn)
-                      (gamma :.. VarFromCtx <$> (decl'content %~ fromType) segR
-                             :.. VarFromCtx <$> (decl'content %~ fromType) segEq)
-                      (AnalyzerInput motive U1 (ClassifWillBe U1) (fmap (VarWkn . VarWkn) <$> maybeRel))
-                      (AddressInfo ["motive"] False omit)
-                      $ \case
-                        ElimEq (NamedBinding nameR (NamedBinding nameEq motive)) clauseRefl -> Just motive
-                        _ -> Nothing
-         let tyReflClause = substLast2 tL $ substLast2 (Expr2 $ TermCons $ VarWkn <$> ConsRefl tyAmbient tL) $ motive
-         rclauseRefl <- h id gamma (AnalyzerInput clauseRefl U1 (ClassifMustBe tyReflClause) maybeRel)
-                          (AddressInfo ["refl clause"] False omit)
-                          $ \case
-                            ElimEq _ clauseRefl -> Just clauseRefl
-                            _ -> Nothing
-         return $ case token of
-           TokenSubASTs -> Box1 $ ElimEq (NamedBinding nameR (NamedBinding nameEq $ unbox1 rmotive)) (unbox1 rclauseRefl)
-           TokenTypes -> BoxClassif $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $ motive
-           TokenRelate -> Unit2
--}
 
   convRel token d = modedEqDeg d
   extraClassif = U1
@@ -853,6 +819,23 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
   type AnalyzerExtraInput (TermNV sys) = U1
   analyzableToken = AnTokenTermNV
   witClassif token = Witness
+
+  analyze token gamma (AnalyzerInput t U1 maybeTy) h = case t of
+
+    TermCons c -> Right $ do
+      rc <- h Identity
+        (\ gamma -> \ case
+            (AnalyzerInput (TermCons c') U1 maybeTy') ->
+              Just $ Identity !<$> AnalyzerInput c' U1 (classifMust2will maybeTy')
+            otherwise -> Nothing
+        )
+        extCtxId
+        (fmapCoe Identity)
+        (AddressInfo ["underlying constructor"] False EntirelyBoring)
+      return $ case token of
+        TokenSubASTs -> Box1 $ TermCons $ runIdentity !<$> unbox1 rc
+        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rc
+        TokenRelate -> Unit2
   {-
   analyze token fromType gamma (AnalyzerInput t U1 maybeTy maybeRel) h = case t of
 
