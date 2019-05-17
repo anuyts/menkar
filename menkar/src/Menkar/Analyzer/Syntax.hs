@@ -892,9 +892,6 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif reliminator
         TokenRelate -> Unit2
 
-    
-  {-
-
     TermMeta _ _ _ _ -> Left AnErrorTermMeta
 
     TermWildcard -> Left AnErrorTermWildcard
@@ -911,19 +908,22 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
     TermAlgorithm _ _ -> Left AnErrorTermAlgorithm
 
     TermSys syst -> Right $ do
-      rsyst <- h id gamma
-        (AnalyzerInput syst U1 (classifMust2will maybeTy) maybeRel)
+      rsyst <- h Identity
+        (\ gamma' -> \ case
+            (AnalyzerInput (TermSys syst') U1 maybeTy') ->
+              Just $ Identity !<$> AnalyzerInput syst' U1 (classifMust2will maybeTy')
+            otherwise -> Nothing
+        )
+        extCtxId
+        (fmapCoe Identity)
         (AddressInfo ["system-specific term"] True EntirelyBoring)
-        $ \case
-          TermSys syst -> Just syst
-          _ -> Nothing
       return $ case token of
-        TokenSubASTs -> Box1 $ TermSys $ unbox1 rsyst
-        TokenTypes -> BoxClassif $ unboxClassif rsyst
+        TokenSubASTs -> Box1 $ TermSys $ runIdentity !<$> unbox1 rsyst
+        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rsyst
         TokenRelate -> Unit2
 
     TermProblem t -> Left AnErrorTermProblem
-    -}
+    
   convRel token d = modedEqDeg d
   extraClassif = U1
 
