@@ -824,7 +824,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
 
     TermCons c -> Right $ do
       rc <- h Identity
-        (\ gamma -> \ case
+        (\ gamma' -> \ case
             (AnalyzerInput (TermCons c') U1 maybeTy') ->
               Just $ Identity !<$> AnalyzerInput c' U1 (classifMust2will maybeTy')
             otherwise -> Nothing
@@ -836,53 +836,64 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         TokenSubASTs -> Box1 $ TermCons $ runIdentity !<$> unbox1 rc
         TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rc
         TokenRelate -> Unit2
-  {-
-  analyze token fromType gamma (AnalyzerInput t U1 maybeTy maybeRel) h = case t of
-
-    TermCons c -> Right $ do
-      rc <- h id gamma (AnalyzerInput c U1 (classifMust2will maybeTy) maybeRel)
-        (AddressInfo ["underlying constructor"] False EntirelyBoring)
-        $ \case
-          TermCons c -> Just c
-          _ -> Nothing
-      return $ case token of
-        TokenSubASTs -> Box1 $ TermCons $ unbox1 rc
-        TokenTypes -> BoxClassif $ unboxClassif rc
-        TokenRelate -> Unit2
 
     TermElim dmuElim eliminee tyEliminee eliminator -> Right $ do
-      let dgamma' = ctx'mode gamma
-      let dgamma = unVarFromCtx <$> dgamma'
-      
-      rdmuElim <- h id (crispModedModality dgamma' :\\ gamma)
-        (AnalyzerInput dmuElim U1 (ClassifMustBe $ modality'dom dmuElim :*: dgamma) (toIfRelate token (Const ModEq)))
+      rdmuElim <- h Identity
+        (\ gamma' -> \ case
+            (AnalyzerInput (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ Identity !<$> AnalyzerInput dmuElim' U1
+                (ClassifMustBe $ modality'dom dmuElim' :*: (unVarFromCtx <$> ctx'mode gamma'))
+            otherwise -> Nothing
+        )
+        extCtxId
+        (const $ Const ModEq)
         (AddressInfo ["modality of elimination"] False omit)
-        $ \case
-          TermElim dmuElim eliminee tyEliminee eliminator -> Just dmuElim
-          _ -> Nothing
-      reliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
-        (AnalyzerInput eliminee U1 (ClassifMustBe $ hs2type tyEliminee) (modedDivDeg dmuElim <$> maybeRel))
+      reliminee <- h Identity
+        (\ gamma' -> \ case
+            (AnalyzerInput (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ Identity !<$> AnalyzerInput eliminee' U1 (ClassifMustBe $ hs2type tyEliminee')
+            otherwise -> Nothing
+        )
+        (\ gamma' input1 condInput2 -> case input1 of
+            (AnalyzerInput (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
+            otherwise -> Nothing
+        )
+        (fmapCoe Identity . modedDivDeg dmuElim)
         (AddressInfo ["eliminee"] True omit)
-        $ \case
-          TermElim dmuElim eliminee tyEliminee eliminator -> Just eliminee
-          _ -> Nothing
-      rtyEliminee <- h id (VarFromCtx <$> dmuElim :\\ gamma)
-        (AnalyzerInput tyEliminee U1 (ClassifMustBe $ dgamma) (modedDivDeg dmuElim <$> maybeRel))
+      rtyEliminee <- h Identity
+        (\ gamma' -> \ case
+            (AnalyzerInput (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ Identity !<$> AnalyzerInput tyEliminee' U1 (ClassifMustBe $ unVarFromCtx <$> ctx'mode gamma')
+            otherwise -> Nothing
+        )
+        (\ gamma' input1 condInput2 -> case input1 of
+            (AnalyzerInput (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
+            otherwise -> Nothing
+        )
+        (fmapCoe Identity . modedDivDeg dmuElim)
         (AddressInfo ["type of eliminee"] False omit)
-        $ \case
-          TermElim dmuElim eliminee tyEliminee eliminator -> Just tyEliminee
-          _ -> Nothing
-      reliminator <- h id gamma
-        (AnalyzerInput eliminator (dmuElim :*: eliminee :*: tyEliminee) ClassifUnknown maybeRel)
+      reliminator <- h Identity
+        (\ gamma' -> \ case
+            (AnalyzerInput (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ Identity !<$> AnalyzerInput
+                eliminator'
+                (dmuElim' :*: eliminee' :*: tyEliminee')
+                ClassifUnknown
+            otherwise -> Nothing
+        )
+        extCtxId
+        (fmapCoe Identity)
         (AddressInfo ["eliminator"] False EntirelyBoring)
-        $ \case
-          TermElim dmuElim eliminee tyEliminee eliminator -> Just eliminator
-          _ -> Nothing
-        
       return $ case token of
-        TokenSubASTs -> Box1 $ TermElim (unbox1 rdmuElim) (unbox1 reliminee) (unbox1 rtyEliminee) (unbox1 reliminator)
-        TokenTypes -> BoxClassif $ unboxClassif $ reliminator
+        TokenSubASTs ->
+          Box1 $ runIdentity !<$> TermElim (unbox1 rdmuElim) (unbox1 reliminee) (unbox1 rtyEliminee) (unbox1 reliminator)
+        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif reliminator
         TokenRelate -> Unit2
+
+    
+  {-
 
     TermMeta _ _ _ _ -> Left AnErrorTermMeta
 
