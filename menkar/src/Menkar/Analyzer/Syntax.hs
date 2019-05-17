@@ -1011,7 +1011,8 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
 instance (SysAnalyzer sys,
           Analyzable sys (rhs sys),
           Classif (rhs sys) ~ U1,
-          AnalyzerExtraInput (rhs sys) ~ U1) => Analyzable sys (Telescoped Type rhs sys) where
+          AnalyzerExtraInput (rhs sys) ~ U1,
+          Relation (rhs sys) ~ ModedDegree sys) => Analyzable sys (Telescoped Type rhs sys) where
   type Classif (Telescoped Type rhs sys) = U1
   type Relation (Telescoped Type rhs sys) = Relation (Type sys) :*: Relation (rhs sys)
   type AnalyzerExtraInput (Telescoped Type rhs sys) = U1
@@ -1093,7 +1094,7 @@ instance (SysAnalyzer sys,
                 Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
               otherwise -> Nothing
           )
-          (fmapCoe Identity . (\ (ddeg :*: relRHS) -> modedDivDeg dmu ddeg :*: _))
+          (fmapCoe Identity . (\ (ddegSeg :*: ddegRHS) -> modedDivDeg dmu ddegSeg :*: modedDivDeg dmu ddegRHS))
           (AddressInfo ["tail"] True EntirelyBoring)
         return $ case token of
           TokenSubASTs -> Box1 $ runIdentity !<$> unbox1 rdmu :** unbox1 rtelescopedRHS
