@@ -5,10 +5,13 @@ import Menkar.Fine.Context
 import Menkar.System.Fine
 import qualified Menkar.Raw.Syntax as Raw
 
+import Data.Functor.Coerce
+
 import Data.Bifunctor
 import Data.Maybe
 import Control.Lens
 import Data.Functor.Identity
+import Data.Functor.Compose
 import Control.Exception.AssertFalse
 import Data.Void
 import Data.Kind hiding (Type)
@@ -248,6 +251,8 @@ lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
   LookupResultNothing -> LookupResultNothing
   LookupResultVal (LeftDivided dOrig dmu' seg) ->
     LookupResultVal $ LeftDivided dOrig (compModedModality dmu' dmu) seg
+lookupQName (CtxId gamma) qname = bimap Identity id !<$> lookupQName gamma qname
+lookupQName (CtxComp gamma) qname = bimap Compose id !<$> lookupQName gamma qname
 
 ------------------------
 
@@ -294,3 +299,6 @@ lookupVar (seg :^^ gamma) (VarLeftWkn v) = varLeftEat <$> lookupVar gamma v
 lookupVar (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lookupVar gamma v
 lookupVar (dmu :\\ gamma) v = LeftDivided dOrig (compModedModality dmu' dmu) seg
   where LeftDivided dOrig dmu' seg = lookupVar gamma v
+lookupVar (CtxId gamma) (Identity v) = bimap Identity id !<$> lookupVar gamma v
+lookupVar (CtxComp gamma) (Compose v) = bimap Compose id !<$> lookupVar gamma v
+
