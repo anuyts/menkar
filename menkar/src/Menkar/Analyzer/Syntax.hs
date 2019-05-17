@@ -1140,6 +1140,23 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
   type AnalyzerExtraInput (ModuleRHS sys) = U1
   analyzableToken = AnTokenModuleRHS
   witClassif token = Witness
+
+  analyze token gamma (AnalyzerInput moduleRHS@(ModuleRHS (Compose revEntries)) U1 maybeU1) h = Right $ do
+    let n = length revEntries
+    rrevEntries <- fmap reverse . sequenceA $
+      zip4 (reverse revEntries) (reverse $ tails revEntries) [n-1, n-2..] [0..] <&>
+      \ (entry, revPrevEntries, indexRev, index) ->
+      h VarInModule
+        (\ gamma' (AnalyzerInput moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') ->
+           Just $ AnalyzerInput (revEntries' !! indexRev) U1 (ClassifWillBe U1))
+        (\ gamma' (AnalyzerInput moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') _ ->
+           Just $ gamma' :<...> VarFromCtx <$> ModuleRHS (Compose $ tails revEntries' !! indexRev))
+        (fmapCoe VarInModule)
+        (AddressInfo [show (index + 1) ++ "th entry"] True omit)
+    return $ case token of
+      TokenSubASTs -> Box1 $ ModuleRHS $ Compose $ unbox1 <$> rrevEntries
+      TokenTypes -> BoxClassif $ U1
+      TokenRelate -> Unit2
   {-
   analyze token fromType gamma (AnalyzerInput moduleRHS@(ModuleRHS (Compose revEntries)) U1 maybeU1 maybeRel) h = Right $ do
     rcontent <- sequenceA $ zip (reverse revEntries) (reverse $ tails revEntries) <&> \ (entry, revPrevEntries) ->
