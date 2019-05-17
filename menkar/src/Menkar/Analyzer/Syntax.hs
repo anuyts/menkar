@@ -1210,33 +1210,6 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           TokenTypes -> BoxClassif $ U1
           TokenRelate -> Unit2
         
-          
-  {-
-  analyze token fromType gamma (AnalyzerInput entry U1 maybeU1 maybeRel) h = Right $ do
-    case entry of
-      EntryVal val -> do
-        rval <- h id gamma
-          (AnalyzerInput val U1 (ClassifWillBe U1) ((\ x -> x :*: x) <$> maybeRel))
-          (AddressInfo ["val"] True EntirelyBoring)
-          $ \case
-            EntryVal val -> Just val
-            EntryModule modul -> Nothing
-        return $ case token of
-          TokenSubASTs -> Box1 $ EntryVal $ unbox1 rval
-          TokenTypes -> BoxClassif $ U1
-          TokenRelate -> Unit2
-      EntryModule modul -> do
-        rmodul <- h id gamma
-          (AnalyzerInput modul U1 (ClassifWillBe U1) ((\ x -> x :*: x) <$> maybeRel))
-          (AddressInfo ["module"] True EntirelyBoring)
-          $ \case
-            EntryVal val -> Nothing
-            EntryModule modul -> Just modul
-        return $ case token of
-          TokenSubASTs -> Box1 $ EntryModule $ unbox1 rmodul
-          TokenTypes -> BoxClassif $ U1
-          TokenRelate -> Unit2
--}
   convRel token d = U1
   extraClassif = U1
 
@@ -1249,13 +1222,11 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
   type AnalyzerExtraInput U1 = U1
   analyzableToken = AnTokenU1
   witClassif token = Witness
-  {-
-  analyze token fromType gamma (AnalyzerInput U1 U1 _ _) h =
+  analyze token gamma (AnalyzerInput U1 U1 _) h =
     Right $ pure $ case token of
         TokenSubASTs -> Box1 $ U1
         TokenTypes -> BoxClassif $ U1
         TokenRelate -> Unit2
--}
   convRel token d = U1
   extraClassif = U1
 
@@ -1271,39 +1242,28 @@ instance (SysAnalyzer sys,
   witClassif token = 
     haveClassif @sys @f $
     haveClassif @sys @g $ Witness
-    {-
-  analyze token fromType gamma (AnalyzerInput (fv :*: gv) (extraF :*: extraG) maybeClassifs maybeRels) h = Right $ do
-    rfv <- h id gamma
-      (AnalyzerInput fv extraF (fst1 <$> maybeClassifs) (fst1 <$> maybeRels))
+
+  analyze token gamma (AnalyzerInput (fv :*: gv) (extraF :*: extraG) maybeClassifs) h = Right $ do
+    rfv <- h Identity
+      (\ gamma' (AnalyzerInput (fv' :*: gv') (extraF' :*: extraG') maybeClassifs') ->
+         Just $ Identity !<$> AnalyzerInput fv' extraF' (fst1 <$> maybeClassifs'))
+      extCtxId
+      (fmapCoe Identity . fst1)
       (AddressInfo ["first component"] True omit)
-      (Just . fst1)
-    rgv <- h id gamma
-      (AnalyzerInput gv extraG (snd1 <$> maybeClassifs) (snd1 <$> maybeRels))
+    rgv <- h Identity
+      (\ gamma' (AnalyzerInput (fv' :*: gv') (extraF' :*: extraG') maybeClassifs') ->
+         Just $ Identity !<$> AnalyzerInput gv' extraG' (snd1 <$> maybeClassifs'))
+      extCtxId
+      (fmapCoe Identity . snd1)
       (AddressInfo ["second component"] True omit)
-      (Just . snd1)
     return $ case token of
-      TokenSubASTs -> Box1 $ unbox1 rfv :*: unbox1 rgv
-      TokenTypes -> BoxClassif $ unboxClassif rfv :*: unboxClassif rgv
+      TokenSubASTs -> Box1 $ runIdentity !<$> unbox1 rfv :*: unbox1 rgv
+      TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rfv :*: unboxClassif rgv
       TokenRelate -> Unit2
--}
   convRel token d = convRel (analyzableToken @sys @f) d :*:
                     convRel (analyzableToken @sys @g) d
   extraClassif = extraClassif @sys @f :*:
                  extraClassif @sys @g
-      
-    {-
-    analyzeF <-
-      analyze token fromType h gamma (AnalyzerInput fv extraF (fst1 <$> classifMust2will maybeClassifs) (fst1 <$> maybeRels))
-    analyzeG <-
-      analyze token fromType h gamma (AnalyzerInput gv extraG (snd1 <$> classifMust2will maybeClassifs) (snd1 <$> maybeRels))
-    return $ do
-      rfv <- analyzeF
-      rgv <- analyzeG
-      return $ case token of
-        TokenSubASTs -> Box1 $ unbox1 rfv :*: unbox1 rgv
-        TokenTypes -> BoxClassif $ unboxClassif rfv :*: unboxClassif rgv
-        TokenRelate -> Unit2
-    -}
 
 ------------------------
 
@@ -1342,5 +1302,3 @@ instance (SysAnalyzer sys,
 -}
 
 ------------------------
-        
--- INSTEAD OF USING :.:, USE ClassifBinding, WHICH DOES NOT COMPARE SEGMENTS
