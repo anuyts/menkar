@@ -5,6 +5,7 @@ module Menkar.Analyzer.Class where
 import Menkar.Basic.Context
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
+import Menkar.System.Fine
 
 import Data.Functor.Coerce
 import Data.Omissible
@@ -216,6 +217,12 @@ extCtxId :: forall sys t option u option' . (DeBruijnLevel u) =>
         IfRelate option' (AnalyzerInput option t u) ->
         Maybe (Ctx (VarClassif option') sys (Identity u) Void)
 extCtxId gamma _ _ = Just $ CtxId gamma
+crispExtCtxId :: forall sys t option u option' . (DeBruijnLevel u, Multimode sys) => 
+        Ctx (VarClassif option') sys u Void ->
+        AnalyzerInput option t u ->
+        IfRelate option' (AnalyzerInput option t u) ->
+        Maybe (Ctx (VarClassif option') sys (Identity u) Void)
+crispExtCtxId gamma _ _ = Just $ CtxId $ crispModedModality (ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a

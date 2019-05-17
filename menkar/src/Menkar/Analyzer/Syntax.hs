@@ -845,7 +845,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
                 (ClassifMustBe $ modality'dom dmuElim' :*: (unVarFromCtx <$> ctx'mode gamma'))
             otherwise -> Nothing
         )
-        extCtxId
+        crispExtCtxId
         (const $ Const ModEq)
         (AddressInfo ["modality of elimination"] False omit)
       reliminee <- h Identity
@@ -962,6 +962,27 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
   type AnalyzerExtraInput (Declaration declSort rhs sys) = AnalyzerExtraInput (rhs sys)
   analyzableToken = AnTokenDeclaration analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
+  analyze token gamma (AnalyzerInput decl@(Declaration name dmu plic content) extraContent maybeTyContent) h = Right $ do
+    rdmu <- h Identity
+      (\ gamma' (AnalyzerInput decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
+         Just $ Identity !<$>
+         AnalyzerInput dmu' U1 (ClassifMustBe $ modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma')))
+      crispExtCtxId
+      (const $ Const $ ModEq)
+      (AddressInfo ["modality"] True omit)
+    rcontent <- h Identity
+      (\ gamma' (AnalyzerInput decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
+         Just $ Identity !<$>
+         AnalyzerInput content' extraContent' (classifMust2will maybeTyContent'))
+      (\ gamma' (AnalyzerInput decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') _ ->
+         Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
+      )
+      (fmapCoe Identity)
+      (AddressInfo ["type"] True omit)
+    return $ case token of
+      TokenSubASTs -> Box1 $ runIdentity !<$> Declaration name (unbox1 rdmu) (Identity !<$> plic) (unbox1 rcontent)
+      TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rcontent
+      TokenRelate -> Unit2
   {-
   analyze token fromType gamma (AnalyzerInput seg@(Declaration name dmu plic ty) extra maybeTy maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma
