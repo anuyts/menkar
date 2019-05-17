@@ -1017,61 +1017,89 @@ instance (SysAnalyzer sys,
   type AnalyzerExtraInput (Telescoped Type rhs sys) = U1
   analyzableToken = AnTokenTelescoped analyzableToken
   witClassif token = Witness
-  {-
-  analyze token fromType gamma (AnalyzerInput telescopedRHS U1 maybeU1 maybeRels) h = Right $ do
-
-    let dgamma' = ctx'mode gamma
-    let dgamma = unVarFromCtx <$> dgamma'
-
+  
+  analyze token gamma (AnalyzerInput telescopedRHS U1 maybeU1) h = Right $ do
     case telescopedRHS of
+      
       Telescoped rhs -> do
-        rrhs <- h id gamma (AnalyzerInput rhs U1 (ClassifWillBe U1) (snd1 <$> maybeRels))
+        rrhs <- h Identity
+          (\ gamma -> \ case
+              (AnalyzerInput (Telescoped rhs') U1 maybeU1') ->
+                Just $ Identity !<$> AnalyzerInput rhs' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity . snd1)
           (AddressInfo ["rhs"] True omit)
-          $ \case
-            Telescoped rhs -> Just rhs
-            _ -> Nothing
         return $ case token of
-          TokenSubASTs -> Box1 $ Telescoped $ unbox1 rrhs
+          TokenSubASTs -> Box1 $ Telescoped $ runIdentity !<$> unbox1 rrhs
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
-      seg :|- telescopedRHS -> do
-        rseg <- h id gamma (AnalyzerInput seg U1 (ClassifWillBe U1) (fst1 <$> maybeRels))
+          
+      (seg :|- telescopedRHS) -> do
+        rseg <- h Identity
+          (\ gamma -> \ case
+              (AnalyzerInput (seg' :|- telescopedRHS') U1 maybeU1') ->
+                Just $ Identity !<$> AnalyzerInput seg' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          extCtxId
+          (fmapCoe Identity . fst1)
           (AddressInfo ["a segment"] True omit)
-          $ \case
-            seg :|- telescopedRHS -> Just seg
-            _ -> Nothing
-        rtelescopedRHS <- fromRight unreachable $
-          analyze token fromType
-            (gamma :.. VarFromCtx <$> (decl'content %~ fromType) seg)
-            (AnalyzerInput telescopedRHS U1 (ClassifWillBe U1) (fmap VarWkn <$> maybeRels))
-            (\ wkn gammadelta input info extract -> h (wkn . VarWkn) gammadelta input info $ \case
-                seg :|- telescopedRHS -> extract telescopedRHS
-                _ -> Nothing
-            )
+        rtelescopedRHS <- h VarWkn
+          (\ gamma' -> \ case
+              (AnalyzerInput (seg' :|- telescopedRHS') U1 maybeU1') ->
+                Just $ AnalyzerInput telescopedRHS' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          (\ gamma' input1 condInput2 -> case input1 of
+              (AnalyzerInput (seg' :|- telescopedRHS') U1 maybeU1') -> case token of
+                TokenSubASTs -> Just $ gamma' :.. VarFromCtx <$> seg'
+                TokenTypes   -> Just $ gamma' :.. VarFromCtx <$> seg'
+                TokenRelate  -> runConditional condInput2 & \ case
+                  (AnalyzerInput (seg2 :|- telescopedRHS2) U1 maybeU12) ->
+                    Just $ gamma' :.. VarFromCtx <$> (seg' & decl'content %~
+                      \ ty1 -> Twice2 ty1 $ _decl'content seg2
+                    )
+                  otherwise -> Nothing
+              otherwise -> Nothing
+          )
+          (fmap VarWkn)
+          (AddressInfo ["tail"] True EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ unbox1 rseg :|- unbox1 rtelescopedRHS
+          TokenSubASTs -> Box1 $ runIdentity !<$> unbox1 rseg :|- unbox1 rtelescopedRHS
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
-      dmu :** telescopedRHS -> do
-        rdmu <- h id (crispModedModality dgamma' :\\ gamma)
-          (AnalyzerInput dmu U1 (ClassifMustBe $ modality'dom dmu :*: dgamma) (toIfRelate token $ Const ModEq))
+
+      (dmu :** telescopedRHS) -> do
+        rdmu <- h Identity
+          (\ gamma' -> \ case
+              (AnalyzerInput (dmu' :** telescopedRHS') U1 maybeU1') ->
+                Just $ Identity !<$> AnalyzerInput dmu' U1
+                  (ClassifMustBe $ modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma'))
+              otherwise -> Nothing
+          )
+          crispExtCtxId
+          (const $ Const ModEq)
           (AddressInfo ["applied modality"] True omit)
-          $ \case
-            dmu :** telescopedRHS -> Just dmu
-            _ -> Nothing
-        rtelescopedRHS <- fromRight unreachable $
-          analyze token fromType
-            (VarFromCtx <$> dmu :\\ gamma)
-            (AnalyzerInput telescopedRHS U1 (ClassifWillBe U1) maybeRels)
-            (\ wkn gammadelta input info extract -> h wkn gammadelta input info $ \case
-                dmu :** telescopedRHS -> extract telescopedRHS
-                _ -> Nothing
-            )
+        rtelescopedRHS <- h Identity
+          (\ gamma' -> \ case
+              (AnalyzerInput (dmu' :** telescopedRHS') U1 maybeU1') ->
+                Just $ Identity !<$> AnalyzerInput telescopedRHS' U1 (ClassifWillBe U1)
+              otherwise -> Nothing
+          )
+          (\ gamma' input1 condInput2 -> case input1 of
+              (AnalyzerInput (dmu' :** telescopedRHS') U1 maybeU1') ->
+                Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
+              otherwise -> Nothing
+          )
+          (fmapCoe Identity . (\ (ddeg :*: relRHS) -> modedDivDeg dmu ddeg :*: _))
+          (AddressInfo ["tail"] True EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ unbox1 rdmu :** unbox1 rtelescopedRHS
+          TokenSubASTs -> Box1 $ runIdentity !<$> unbox1 rdmu :** unbox1 rtelescopedRHS
           TokenTypes -> BoxClassif U1
           TokenRelate -> Unit2
--}
+
   convRel token d = U1
   extraClassif = U1
 

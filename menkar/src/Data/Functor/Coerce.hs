@@ -6,5 +6,7 @@ import Data.Coerce
 (!<$>) :: forall f a b . (Functor f, Coercible a b) => (a -> b) -> f a -> f b
 h !<$> fa = h <$> fa
 
+infixl 4 !<$>
+
 fmapCoe :: forall f a b . (Functor f, Coercible a b) => (a -> b) -> f a -> f b
 fmapCoe = (!<$>)
