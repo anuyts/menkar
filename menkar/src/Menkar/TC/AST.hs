@@ -202,8 +202,8 @@ checkAST :: forall sys tc v t .
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
 checkAST parent gamma t extraT maybeCT = do
-  maybeCTInferred <- sequenceA $ typetrick id gamma (AnalyzerInput t extraT maybeCT IfRelateTypes) $
-    \ wkn gammadelta (AnalyzerInput (s :: s w) extraS maybeCS _) addressInfo ->
+  maybeCTInferred <- sequenceA $ typetrick gamma (AnalyzerInput t extraT maybeCT) $
+    \ wkn gammadelta (AnalyzerInput (s :: s w) extraS maybeCS) addressInfo ->
       haveClassif @sys @s $
       case _addressInfo'boredom addressInfo of
         -- entirely boring: pass on and return inferred and certified type. 
@@ -224,7 +224,7 @@ checkAST parent gamma t extraT maybeCT = do
             ClassifMustBe cs -> return $ (cs, ClassifMustBe cs)
             -- if no type is given, write a meta in judgement (thus certifying it) and pass it back.
             ClassifUnknown -> do
-              cs <- newMetaClassif4ast (Just parent) gammadelta s $
+              cs <- newMetaClassif4ast (Just parent) gammadelta s extraS $
                 "Inferring classifier " ++ (join $ (" > " ++) <$> _addressInfo'address addressInfo)
               return $ (cs, ClassifMustBe cs)
           addNewConstraint
