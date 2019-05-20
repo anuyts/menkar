@@ -30,7 +30,7 @@ data AnalyzerToken (option :: AnalyzerOption) where
 
 data AnalyzableToken sys (ast :: * -> *) where
   AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
-  AnTokenBinding :: (Analyzable sys (rhs sys)) =>
+  AnTokenBinding :: (Analyzable sys (rhs sys), AnalyzerExtraInput (rhs sys) ~ U1) =>
     AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
   AnTokenClassifBinding :: (Analyzable sys rhs) =>
     AnalyzableToken sys rhs -> AnalyzableToken sys (ClassifBinding Type rhs sys)

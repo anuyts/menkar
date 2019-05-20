@@ -5,6 +5,8 @@ import Menkar.Monad
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Analyzer
 
+import Data.Functor.Functor1
+
 import Data.Void
 import GHC.Generics
 
@@ -33,19 +35,28 @@ newMetaClassif4astNoCheck :: forall sys sc t v .
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   t v ->
+  AnalyzerExtraInput t v ->
   String ->
   sc (Classif t v)
-newMetaClassif4astNoCheck maybeParent gamma t reason = do
+newMetaClassif4astNoCheck maybeParent gamma t extraT reason = do
   case (analyzableToken :: AnalyzableToken sys t, t) of
     (AnTokenModedModality, _) -> do
       dom <- newMetaModeNoCheck maybeParent gamma reason
       cod <- newMetaModeNoCheck maybeParent gamma reason
       return $ dom :*: cod
     (AnTokenBinding tokenRHS, Binding seg rhs) -> do
-      crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. VarFromCtx <$> seg) rhs reason
+      crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. VarFromCtx <$> seg) rhs U1 reason
       return $ U1 :*: ClassifBinding seg crhs
     (AnTokenClassifBinding tokenRHS, ClassifBinding seg rhs) -> do
-      crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. VarFromCtx <$> seg) rhs reason
+      let Comp1 extraRHS = extraT
+      crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. VarFromCtx <$> seg) rhs extraRHS reason
+      return $ ClassifBinding seg crhs
+    (AnTokenNamedBinding tokenRHS, NamedBinding maybeName (rhs :: rhs sys (VarExt v))) -> do
+      --let seg = fst1 extraT
+      --let extraRHS = unComp1 $ snd1 extraT
+      let seg :*: Comp1 extraRHS = extraT
+      crhs <- newMetaClassif4astNoCheck @sys @sc @(rhs sys) @(VarExt v)
+        maybeParent (gamma :.. VarFromCtx <$> seg) rhs extraRHS reason
       return $ ClassifBinding seg crhs
     (AnTokenUniHSConstructor, _) -> newMetaModeNoCheck maybeParent gamma reason
     (AnTokenConstructorTerm, _) -> newMetaTypeNoCheck maybeParent gamma reason
@@ -54,13 +65,14 @@ newMetaClassif4astNoCheck maybeParent gamma t reason = do
     (AnTokenEliminator, _) -> newMetaTypeNoCheck maybeParent gamma reason
     (AnTokenTermNV, _) -> newMetaTypeNoCheck maybeParent gamma reason
     (AnTokenTerm, _) -> newMetaTypeNoCheck maybeParent gamma reason
-    (AnTokenDeclaration tokenRHS, decl) -> newMetaClassif4astNoCheck maybeParent gamma (_decl'content decl) reason
+    (AnTokenDeclaration tokenRHS, decl) -> do
+      newMetaClassif4astNoCheck maybeParent gamma (_decl'content decl) extraT reason
     (AnTokenTelescoped tokenRHS, _) -> return U1
     (AnTokenValRHS, _) -> return U1
     (AnTokenModuleRHS, _) -> return U1
     (AnTokenEntry, _) -> return U1
     (AnTokenU1, _) -> return U1
     (AnTokenPair1 tokenF tokenG, fv :*: gv) ->
-      (:*:) <$> newMetaClassif4astNoCheck maybeParent gamma fv reason
-            <*> newMetaClassif4astNoCheck maybeParent gamma gv reason
+      (:*:) <$> newMetaClassif4astNoCheck maybeParent gamma fv (fst1 extraT) reason
+            <*> newMetaClassif4astNoCheck maybeParent gamma gv (snd1 extraT) reason
     --_ -> _newMetaClassifNoCheck
