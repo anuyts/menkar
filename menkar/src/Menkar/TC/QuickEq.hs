@@ -17,14 +17,21 @@ import GHC.Generics
 
 quickEq :: forall sys t v .
   (SysAnalyzer sys, Analyzable sys t, DeBruijnLevel v) =>
-  t v -> t v -> AnalyzerExtraInput t v -> Bool
-quickEq t t' extraT =
-  let result = fmap getConst $ analyze @sys @t TokenRelate id unreachable
-        (AnalyzerInput t extraT ClassifUnknown (IfRelate $ unreachable))
-        $ \ wkn _ (AnalyzerInput s extraS _ _) addressInfo extract ->
-          case extract t' of
-            Nothing -> Const $ All False
-            Just s' -> Const $ All $ quickEq @sys s s' extraS
+  t v ->
+  t v ->
+  AnalyzerExtraInput t v ->
+  AnalyzerExtraInput t v ->
+  Bool
+quickEq t t' extraT extraT' =
+  let result = fmap getConst $ analyze @sys @t TokenRelate unreachable
+        (AnalyzerInput t extraT ClassifUnknown)
+        $ \ wkn extract extCtx extractRel addressInfo ->
+          case (extract unreachable (AnalyzerInput t  extraT  ClassifUnknown),
+                extract unreachable (AnalyzerInput t' extraT' ClassifUnknown)) of
+            (Nothing, _) -> unreachable
+            (Just _, Nothing) -> Const $ All False
+            (Just (AnalyzerInput s  extraS  _),
+             Just (AnalyzerInput s' extraS' _)) -> Const $ All $ quickEq @sys s s' extraS extraS'
   in case result of
        Right (All b) -> b
        Left anErr -> case (anErr, analyzableToken @sys @t, t) of
@@ -33,7 +40,7 @@ quickEq t t' extraT =
              (neutrality == neutrality')
              && meta == meta'
              && length depcies == length depcies'
-             && and (zip depcies depcies' <&> \ (depcy, depcy') -> quickEq @sys depcy depcy' U1)
+             && and (zip depcies depcies' <&> \ (depcy, depcy') -> quickEq @sys depcy depcy' U1 U1)
            _ -> False
          (AnErrorTermMeta, _, _) -> unreachable
          (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
@@ -44,15 +51,15 @@ quickEq t t' extraT =
              && quickEq @sys
                (_leftDivided'content $ ldivVal)
                (_leftDivided'content $ ldivVal')
-               U1
+               U1 U1
            _ -> False
          (AnErrorTermQName, _, _) -> unreachable
          (AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked tyChecked) -> case t' of
-           (TermAlreadyChecked tChecked' tyChecked') -> quickEq @sys tChecked tChecked' U1
+           (TermAlreadyChecked tChecked' tyChecked') -> quickEq @sys tChecked tChecked' U1 U1
            _ -> False
          (AnErrorTermAlreadyChecked, _, _) -> unreachable
          (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> case t' of
-           (TermAlgorithm alg' tResult') -> quickEq @sys tResult tResult' U1
+           (TermAlgorithm alg' tResult') -> quickEq @sys tResult tResult' U1 U1
            _ -> False
          (AnErrorTermAlgorithm, _, _) -> unreachable
          (AnErrorTermSys, AnTokenTermNV, TermSys syst) -> case t' of
