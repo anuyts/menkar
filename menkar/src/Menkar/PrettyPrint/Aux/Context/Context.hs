@@ -7,11 +7,14 @@ import Menkar.Fine.Syntax
 import qualified Menkar.Raw.Syntax as Raw
 
 import Control.Exception.AssertFalse
+import Data.Functor.Coerce
 
 import GHC.Generics
 import Data.Void
 import Data.Kind
 import Data.Proxy
+import Data.Functor.Identity
+import Data.Functor.Compose
 
 -------------------------------------------------------------
 
@@ -44,6 +47,8 @@ data ScCtx (sys :: KSys) (v :: *) (w :: *) where
   (::^^) :: ScSegment sys w -> ScCtx sys v (VarExt w) -> ScCtx sys (VarLeftExt v) w
   (::<...>) :: ScCtx sys v w -> ModuleRHS sys (VarOpenCtx v w) -> ScCtx sys (VarInModule v) w
   (::\\) :: () -> ScCtx sys v w -> ScCtx sys v w
+  ScCtxId :: ScCtx sys v w -> ScCtx sys (Identity v) w
+  ScCtxComp :: ScCtx sys (f (g v)) w -> ScCtx sys (Compose f g v) w
 deriving instance (SysTrav sys) => Functor (ScCtx sys v)
 deriving instance (SysTrav sys) => Foldable (ScCtx sys v)
 deriving instance (SysTrav sys) => Traversable (ScCtx sys v)
@@ -54,6 +59,8 @@ instance (SysSyntax (Term sys) sys) =>
   swallow (seg ::^^ gamma) = swallow seg ::^^ swallow (fmap sequenceA gamma)
   swallow (gamma ::<...> modul) = swallow gamma ::<...> swallow (fmap sequenceA modul)
   swallow (() ::\\ gamma) = () ::\\ swallow gamma
+  swallow (ScCtxId gamma) = ScCtxId $ swallow gamma
+  swallow (ScCtxComp gamma) = ScCtxComp $ swallow gamma
 infixl 3 ::.., ::^^, ::<...>, ::\\
 ctx2scCtx :: Ctx ty sys v w -> ScCtx sys v w
 ctx2scCtx (CtxEmpty d) = ScCtxEmpty
@@ -61,6 +68,8 @@ ctx2scCtx (gamma :.. seg) = ctx2scCtx gamma ::.. segment2scSegment seg
 ctx2scCtx (seg :^^ gamma) = segment2scSegment seg ::^^ ctx2scCtx gamma
 ctx2scCtx (gamma :<...> modul) = ctx2scCtx gamma ::<...> modul
 ctx2scCtx (dmu :\\ gamma) = () ::\\ ctx2scCtx gamma
+ctx2scCtx (CtxId   gamma) = ScCtxId   $ ctx2scCtx gamma
+ctx2scCtx (CtxComp gamma) = ScCtxComp $ ctx2scCtx gamma
 
 scGetName :: ScCtx sys v w -> v -> Maybe Raw.Name
 scGetName ScCtxEmpty v = absurd v
@@ -70,6 +79,8 @@ scGetName (seg ::^^ gamma) (VarLeftWkn v) = scGetName gamma v
 scGetName (seg ::^^ gamma) (VarFirst) = scSegment'name seg
 scGetName (gamma ::<...> modul) (VarInModule v) = scGetName gamma v
 scGetName (() ::\\ gamma) v = scGetName gamma v
+scGetName (ScCtxId gamma) (Identity v) = scGetName gamma v
+scGetName (ScCtxComp gamma) (Compose v) = scGetName gamma v
 
 scListVariablesRev :: ScCtx sys v w -> [v]
 scListVariablesRev ScCtxEmpty = []
@@ -77,6 +88,8 @@ scListVariablesRev (gamma ::.. _) = VarLast : (VarWkn <$> scListVariablesRev gam
 scListVariablesRev (_ ::^^ gamma) = (VarLeftWkn <$> scListVariablesRev gamma) ++ [VarFirst]
 scListVariablesRev (gamma ::<...> _) = VarInModule <$> scListVariablesRev gamma
 scListVariablesRev (() ::\\ gamma) = scListVariablesRev gamma
+scListVariablesRev (ScCtxId gamma) = Identity !<$> scListVariablesRev gamma
+scListVariablesRev (ScCtxComp gamma) = Compose !<$> scListVariablesRev gamma
 scListVariables :: ScCtx sys v w -> [v]
 scListVariables = reverse . scListVariablesRev
 
@@ -105,6 +118,8 @@ haveScDB (gamma ::.. _) t = haveScDB gamma t
 haveScDB (_ ::^^ gamma) t = todo
 haveScDB (gamma ::<...> _) t = haveScDB gamma t
 haveScDB (_ ::\\ gamma) t = haveScDB gamma t
+haveScDB (ScCtxId gamma) t = haveScDB gamma t
+haveScDB (ScCtxComp gamma) t = haveScDB gamma t
 
 _scCtx'sizeProxy :: ScCtx sys v w -> Proxy v
 _scCtx'sizeProxy gamma = Proxy
