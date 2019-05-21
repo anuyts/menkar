@@ -9,6 +9,7 @@ import Menkar.Monad
 import Menkar.TC.QuickEq
 
 import Control.Exception.AssertFalse
+import Data.Constraint.Conditional
 
 import Data.Void
 import Control.Lens
@@ -16,6 +17,7 @@ import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import GHC.Generics
+import Data.Maybe
 
 ---------------------------------------------------
   
@@ -44,23 +46,29 @@ checkASTRel' :: forall sys tc t v .
   Relation t v ->
   Ctx (Twice2 Type) sys v Void ->
   Twice1 t v ->
-  AnalyzerExtraInput t v ->
+  Twice1 (AnalyzerExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
-checkASTRel' parent eta relT gamma (Twice1 t1 t2) extraT maybeCTs = do
+checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = do
   let maybeCT1 = fstTwice1 <$> maybeCTs
   let maybeCT2 = sndTwice1 <$> maybeCTs
-  attempt <- sequenceA $ analyze TokenRelate (\x -> Twice2 x x) gamma
-    (AnalyzerInput t1 extraT maybeCT1 (IfRelate relT))
-    $ \ wkn gammadelta (AnalyzerInput (s1 :: s w) extraS maybeCS1 (IfRelate relS)) addressInfo extract ->
-      case extract t2 of
-        Nothing -> tcFail parent "False"
-        Just s2 -> do
+  let inputT1 = (AnalyzerInput t1 extraT1 maybeCT1)
+  let inputT2 = (AnalyzerInput t2 extraT2 maybeCT2)
+  attempt <- sequenceA $ analyze TokenRelate gamma inputT1
+    $ \ wkn extract extCtx extractRel addressInfo ->
+      case (extract gamma inputT1, extract gamma inputT2) of
+        (Nothing, _) -> unreachable
+        (Just _, Nothing) -> tcFail parent "False"
+        (Just (AnalyzerInput (s1 :: s _) extraS1 maybeCS1),
+         Just (AnalyzerInput (s2 :: s _) extraS2 maybeCS2)) -> do
+          let relS = extractRel relT
+          let gammadelta = fromMaybe unreachable $ extCtx gamma inputT1 (conditional inputT2)
+              -- Cannot fail because we already know that the shapes of t1 and t2 match.
           addNewConstraint
             (JudRel (analyzableToken @sys @s) (Eta True) relS gammadelta
               (Twice1 s1 s2)
-              -- WHAT ABOUT EXTRA?
-              _ -- WHAT ABOUT TYPES?
+              --_
+              _
             )
             (Just parent)
             ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
@@ -74,16 +82,16 @@ checkASTRel :: forall sys tc t v .
   Relation t v ->
   Ctx (Twice2 Type) sys v Void ->
   Twice1 t v ->
-  AnalyzerExtraInput t v ->
+  Twice1 (AnalyzerExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
-checkASTRel parent eta relT gamma ts@(Twice1 t1 t2) extraT maybeCTs =
-  if quickEq @sys t1 t2 extraT
+checkASTRel parent eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs =
+  if quickEq @sys t1 t2 extraT1 extraT2
   then return ()
   else case analyzableToken @sys @t of
     AnTokenTerm -> checkTermRel parent eta relT gamma ts maybeCTs
     -- also special case for AnTokenSys! (checkTermRelSysTermWHNTermNoEta)
-    _ -> checkASTRel' parent eta relT gamma ts extraT maybeCTs
+    _ -> checkASTRel' parent eta relT gamma ts extraTs maybeCTs
 
 ---------------------------------------------------
 
@@ -99,7 +107,7 @@ checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   tc ()
 checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 =
-  checkASTRel' parent (Eta False) deg gamma (Twice1 t1 t2) U1 (ClassifWillBe $ Twice1 ty1 ty2)
+  checkASTRel' parent (Eta False) deg gamma (Twice1 t1 t2) (Twice1 U1 U1) (ClassifWillBe $ Twice1 ty1 ty2)
 
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
