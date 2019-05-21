@@ -127,7 +127,7 @@ whnormalizeElim parent gamma dmu whnEliminee tyEliminee e tyResult metasEliminee
                   VarWkn w -> Var2 w
                   VarLast -> arg
             in whnormalize parent gamma (join $ subst <$> binding'body binding) tyResult reason
-          -- Function extensionality over a lambda: WHNormalize the body.
+          -- Function extensionality over a lambda: WHNormalize the body. (The analyzer doesn't do that!)
           (Lam (Binding seg body), Funext) -> do
             let Pi piBinding = tyEliminee
             whnBody <- whnormalize parent (gamma :.. VarFromCtx <$> seg) body (binding'body piBinding) reason

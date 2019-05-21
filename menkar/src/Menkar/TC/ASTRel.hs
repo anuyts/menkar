@@ -8,6 +8,7 @@ import Menkar.System.TC
 import Menkar.Basic.Context
 import Menkar.Monad
 import Menkar.TC.QuickEq
+import Menkar.TC.ASTSolve
 
 import Control.Exception.AssertFalse
 import Data.Constraint.Conditional
@@ -163,6 +164,7 @@ checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 metasTy1 metasT
 -- MAYBE ETA --
 --------------------------------------------------------
 
+-- | This should preferrably be implemented using TC.ASTSolve.etaExpand
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Constraint sys ->
   ModedDegree sys v ->

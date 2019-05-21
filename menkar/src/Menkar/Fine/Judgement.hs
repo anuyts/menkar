@@ -45,7 +45,7 @@ data Judgement (sys :: KSys) where
     Ctx (Twice2 Type) sys v Void ->
     Twice1 t v ->
     Twice1 (AnalyzerExtraInput t) v ->
-    ClassifInfo (Twice1 (Classif t) v) {-^ Will or unknown; not must. -} ->
+    ClassifInfo (Twice1 (Classif t) v) {-^ Will or unknown; not must. If unknown, we can't do eta. -} ->
     Judgement sys
     
   -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.

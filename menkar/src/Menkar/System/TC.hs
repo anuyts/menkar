@@ -164,6 +164,24 @@ class SysWHN sys => SysTC sys where
     SysJudgement sys ->
     tc ()
 
+  -- | See Menkar.TC.ASTRel.newRelatedAST
+  newRelatedSysAST :: forall tc t v vOrig .
+    (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
+    SysAnalyzableToken sys t ->
+    Constraint sys ->
+    Eta ->
+    Relation t v ->
+    Ctx Type sys vOrig Void ->
+    Ctx (Twice2 Type) sys v Void ->
+    (vOrig -> v) ->
+    (v -> Maybe vOrig) ->
+    t v ->
+    Twice1 (AnalyzerExtraInput t) v ->
+    ClassifInfo (Twice1 (Classif t) v) ->
+    (String -> tc ()) ->
+    String ->
+    tc (Maybe (t vOrig))
+
 newMetaClassif4ast :: forall sys tc t v .
   (MonadTC sys tc,
    DeBruijnLevel v,

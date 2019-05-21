@@ -947,18 +947,30 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 
             let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
             itIsEqDeg <- isEqDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
               "Need to know if I'm checking for equality"
+            -- If we're checking equality, we can take a shortcut.
             solution <- case itIsEqDeg of
+              -- We're certainly checking equality: solve the meta immediately.
               Just True ->
                    solveMetaImmediately parent
                      gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
-              _ -> if unEta eta
+              -- We may not be checking equality. Blocking makes no sense, because by the time we unblock, the meta
+              -- we're solving may have been solved already.
+              _ -> -- Check if eta is allowed.
+                   if unEta eta
                    then do --Nothing <$ alternative "Let's try eta-expansion."
+                     -- t1 is the meta-term
                      let t1 = Expr2 $ TermMeta neutrality1 meta1 (Compose depcies1) (Compose maybeAlg1)
+                     -- If the type has eta, this statement equates the meta t1 to its eta-expansion and returns True.
+                     -- Otherwise, it does nothing and returns false.
                      etaHolds <- checkEta parent (fstCtx gamma) t1 ty1
+                     -- Check if the type has eta.
                      if etaHolds
+                       -- If so, then above we have equated the meta to its expansion, so we can just come back later on.
                        then Nothing <$ addConstraint parent
+                       -- Otherwise, solve against the WHNF.
                        else solveMetaAgainstWHNF parent deg
                           gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 $ tcBlock parent
+                   -- Otherwise, solve against the WHNF.
                    else solveMetaAgainstWHNF parent deg
                           gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 $ alternative
             case neutrality1 of
