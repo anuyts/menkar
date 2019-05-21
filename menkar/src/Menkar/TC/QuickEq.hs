@@ -62,10 +62,10 @@ quickEq t t' extraT extraT' =
            (TermAlgorithm alg' tResult') -> quickEq @sys tResult tResult' U1 U1
            _ -> False
          (AnErrorTermAlgorithm, _, _) -> unreachable
-         (AnErrorTermSys, AnTokenTermNV, TermSys syst) -> case t' of
-           TermSys syst' -> quickEqSys syst syst'
+         (AnErrorTermSys sysError, AnTokenTermNV, TermSys syst) -> case t' of
+           TermSys syst' -> quickEqSysUnanalyzable sysError syst syst'
            _ -> False
-         (AnErrorTermSys, _, _) -> unreachable
+         (AnErrorTermSys sysError, _, _) -> unreachable
          (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> False
          (AnErrorTermProblem, _, _) -> unreachable
          (AnErrorVar, AnTokenTerm, Var2 v) -> case t' of

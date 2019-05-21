@@ -39,9 +39,10 @@ class SysWHN sys => SysTC sys where
     (String -> tc ()) ->
     tc (Maybe (Term sys vOrig))
   -- see Menkar.TC.Rel
-  checkTermRelSysTermWHNTermNoEta :: forall tc v .
+  checkTermRelSysTermWHNTerm :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
+    Eta ->
     ModedDegree sys v ->
     Ctx (Twice2 Type) sys v Void ->
     SysTerm sys v ->
@@ -50,6 +51,17 @@ class SysWHN sys => SysTC sys where
     Type sys v ->
     [Int] ->
     [Int] ->
+    tc ()
+  checkUnanalyzableWHNSysTermRel :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    SysAnalyzerError sys ->
+    Constraint sys ->
+    Eta ->
+    ModedDegree sys v ->
+    Ctx (Twice2 Type) sys v Void ->
+    SysTerm sys v ->
+    SysTerm sys v ->
+    ClassifInfo (Twice1 (Type sys) v) ->
     tc ()
   -- | see Menkar.TC.Solve.checkEta.
   -- | This will generally yield false (true?), unless a system introduces types with eta via SysTerm.

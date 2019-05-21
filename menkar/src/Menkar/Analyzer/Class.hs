@@ -61,7 +61,7 @@ data AnalyzerError sys =
   AnErrorTermQName |
   AnErrorTermAlreadyChecked |
   AnErrorTermAlgorithm |
-  AnErrorTermSys {- insert system error here -} |
+  AnErrorTermSys (SysAnalyzerError sys) |
   AnErrorTermProblem |
   AnErrorVar
 

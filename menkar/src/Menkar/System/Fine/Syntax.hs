@@ -28,6 +28,8 @@ type family SysUniHSConstructor (sys :: KSys) = (sysUniHSConstructor :: * -> *) 
 
 type family SysJudgement (sys :: KSys) = (sysJudgement :: *) | sysJudgement -> sys
 
+type family SysAnalyzerError (sys :: KSys) = (sysAnalyzer :: *) | sysAnalyzer -> sys
+
 class (Traversable (Mode sys),
        Traversable (Modality sys),
        Traversable (Degree sys),
