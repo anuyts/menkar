@@ -54,16 +54,16 @@ class SysWHN sys => SysTC sys where
     [Int] ->
     tc ()
   -}
-  checkUnanalyzableWHNSysTermRel :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
+  checkUnanalyzableSysASTRel :: forall tc t v .
+    (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzerError sys ->
     Constraint sys ->
     Eta ->
-    ModedDegree sys v ->
+    Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
-    SysTerm sys v ->
-    SysTerm sys v ->
-    ClassifInfo (Twice1 (Type sys) v) ->
+    t v ->
+    t v ->
+    ClassifInfo (Twice1 (Classif t) v) ->
     tc ()
   checkSysASTRel :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>

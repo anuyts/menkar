@@ -91,10 +91,8 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
          (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> 
            unreachable -- terms are neutral at this point
          (AnErrorTermAlgorithm, _, _) -> unreachable
-         (AnErrorTermSys sysErr, AnTokenTermNV, TermSys syst1) -> case t2 of
-           TermSys syst2 -> checkUnanalyzableWHNSysTermRel sysErr parent eta relT gamma syst1 syst2 maybeCTs
-           _ -> tcFail parent "False"
-         (AnErrorTermSys sysErr, _, _) -> unreachable
+         (AnErrorTermSys sysErr, _, _) ->
+           checkUnanalyzableSysASTRel sysErr parent eta relT gamma t1 t2 maybeCTs
          (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent "False"
          (AnErrorTermProblem, _, _) -> unreachable
          (AnErrorVar, AnTokenTerm, Var2 v1) -> case t2 of
