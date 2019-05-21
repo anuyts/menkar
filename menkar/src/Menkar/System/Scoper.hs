@@ -17,6 +17,15 @@ class SysSyntax (Term sys) sys => SysScoper sys where
     Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Mode sys v)
   newMetaModtyNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>
     Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Modality sys v)
+  newMetaClassif4sysASTNoCheck :: forall sc t v .
+    (MonadScoper sys sc, DeBruijnLevel v, SysAnalyzer sys, Analyzable sys t) =>
+    SysAnalyzableToken sys t ->
+    Maybe (Constraint sys) ->
+    Ctx Type sys v Void ->
+    t v ->
+    AnalyzerExtraInput t v ->
+    String ->
+    sc (Classif t v)
 
 newMetaModedModalityNoCheck :: (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Maybe (Constraint sys) ->
@@ -75,4 +84,5 @@ newMetaClassif4astNoCheck maybeParent gamma t extraT reason = do
     (AnTokenPair1 tokenF tokenG, fv :*: gv) ->
       (:*:) <$> newMetaClassif4astNoCheck maybeParent gamma fv (fst1 extraT) reason
             <*> newMetaClassif4astNoCheck maybeParent gamma gv (snd1 extraT) reason
+    (AnTokenSys sysToken, _) -> newMetaClassif4sysASTNoCheck sysToken maybeParent gamma t extraT reason
     --_ -> _newMetaClassifNoCheck

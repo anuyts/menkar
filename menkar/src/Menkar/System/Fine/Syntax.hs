@@ -30,6 +30,8 @@ type family SysJudgement (sys :: KSys) = (sysJudgement :: *) | sysJudgement -> s
 
 type family SysAnalyzerError (sys :: KSys) = (sysAnalyzer :: *) | sysAnalyzer -> sys
 
+type family SysAnalyzableToken (sys :: KSys) = (sysToken :: (* -> *) -> *) | sysToken -> sys
+
 class (Traversable (Mode sys),
        Traversable (Modality sys),
        Traversable (Degree sys),

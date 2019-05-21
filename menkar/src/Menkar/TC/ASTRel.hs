@@ -119,7 +119,7 @@ checkASTRel parent eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extr
   then return ()
   else case analyzableToken @sys @t of
     AnTokenTerm -> checkTermRel parent eta relT gamma ts maybeCTs
-    -- also special case for AnTokenSys! (checkTermRelSysTermWHNTermNoEta)
+    AnTokenSys sysToken -> checkSysASTRel sysToken parent eta relT gamma ts extraTs maybeCTs
     _ -> checkASTRel' parent eta relT gamma ts extraTs maybeCTs
 
 ---------------------------------------------------
