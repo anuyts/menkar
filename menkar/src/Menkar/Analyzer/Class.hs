@@ -69,6 +69,14 @@ newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
 data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | {-| Not allowed for terms. -} ClassifUnknown
   deriving (Functor, Foldable, Traversable)
+instance Applicative ClassifInfo where
+  pure a = ClassifWillBe a
+  ClassifMustBe f <*> ClassifMustBe a = ClassifMustBe $ f a
+  ClassifMustBe f <*> ClassifWillBe a = ClassifMustBe $ f a
+  ClassifWillBe f <*> ClassifMustBe a = ClassifMustBe $ f a
+  ClassifWillBe f <*> ClassifWillBe a = ClassifWillBe $ f a
+  ClassifUnknown <*> _ = ClassifUnknown
+  _ <*> ClassifUnknown = ClassifUnknown
 
 classifMust2will :: ClassifInfo a -> ClassifInfo a
 classifMust2will (ClassifMustBe a) = ClassifWillBe a

@@ -67,13 +67,41 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
           addNewConstraint
             (JudRel (analyzableToken @sys @s) (Eta True) relS gammadelta
               (Twice1 s1 s2)
-              --_
-              _
+              (Twice1 extraS1 extraS2)
+              (Twice1 <$> maybeCS1 <*> maybeCS2)
             )
             (Just parent)
             ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
           return Unit2
-  _
+  case attempt of
+    Right Unit2 -> return ()
+    Left anErr -> case (anErr, analyzableToken :: AnalyzableToken sys t, t1) of
+         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) ->
+           unreachable -- terms are neutral at this point
+         (AnErrorTermMeta, _, _) -> unreachable
+         (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
+         (AnErrorTermWildcard, _, _) -> unreachable
+         (AnErrorTermQName, AnTokenTermNV, TermQName qname ldivVal) ->
+           unreachable -- terms are neutral at this point
+         (AnErrorTermQName, _, _) -> unreachable
+         (AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked tyChecked) ->
+           unreachable -- terms are neutral at this point
+         (AnErrorTermAlreadyChecked, _, _) -> unreachable
+         (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> 
+           unreachable -- terms are neutral at this point
+         (AnErrorTermAlgorithm, _, _) -> unreachable
+         (AnErrorTermSys, AnTokenTermNV, TermSys syst1) -> case t2 of
+           TermSys syst2 -> _checkUnanalyzableWHNSysTermRelNoEta parent relT gamma syst1 syst2 maybeCTs
+           _ -> tcFail parent "False"
+         (AnErrorTermSys, _, _) -> unreachable
+         (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent "False"
+         (AnErrorTermProblem, _, _) -> unreachable
+         (AnErrorVar, AnTokenTerm, Var2 v1) -> case t2 of
+           (Var2 v2) -> if v1 == v2
+             then return ()
+             else tcFail parent "Cannot relate different variables."
+           _ -> tcFail parent "False"
+         (AnErrorVar, _, _) -> unreachable
 
 checkASTRel :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
