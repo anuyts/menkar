@@ -462,7 +462,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         rt <- h Identity
           (\ gamma' -> \ case
               AnalyzerInput (ConsRefl tyAmbient' t') U1 _ ->
-                Just $ Identity !<$> AnalyzerInput t' U1 ClassifUnknown
+                Just $ Identity !<$> AnalyzerInput t' U1 (ClassifMustBe tyAmbient')
               otherwise -> Nothing
           )
           extCtxId
@@ -470,7 +470,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (AddressInfo ["self-equand"] False omit)
         return $ case token of
           TokenSubASTs -> Box1 $ runIdentity !<$> ConsRefl (unbox1 rtyAmbient) (unbox1 rt)
-          TokenTypes -> BoxClassif $ hs2type $ EqType (runIdentity !<$> unboxClassif rt) t t
+          TokenTypes -> BoxClassif $ hs2type $ EqType tyAmbient t t
           TokenRelate -> Unit2
 
   convRel token d = modedEqDeg d
