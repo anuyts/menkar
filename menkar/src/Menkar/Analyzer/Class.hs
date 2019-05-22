@@ -189,12 +189,14 @@ toTypeForOption option ty1 (ConditionalT identityTy2) = case option of
   TokenRel -> Twice2 ty1 (runIdentity identityTy2)
   TokenSolve -> Twice2 ty1 (runIdentity identityTy2)
 
-type IfDoubledT option m = ConditionalT (CheckDoubled option ~ True) m
-type IfDoubled option = IfDoubledT option Identity
+type IfTrueT cond m = ConditionalT (cond ~ True) m
+type IfTrue cond = Conditional (cond ~ True)
+type IfDoubledT option m = IfTrueT (CheckDoubled option) m
+type IfDoubled option = IfTrue (CheckDoubled option)
 
-typesArentDoubledT :: forall doubled m a . (doubled ~ False) => ConditionalT (doubled ~ True) m a
+typesArentDoubledT :: forall m a . IfTrueT False m a
 typesArentDoubledT = ConditionalT $ return unreachable
-typesArentDoubled :: forall doubled a . (doubled ~ False) => Conditional (doubled ~ True) a
+typesArentDoubled :: forall a . IfTrue False a
 typesArentDoubled = typesArentDoubledT -- conditional unreachable
 
 {-

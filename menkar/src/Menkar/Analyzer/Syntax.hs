@@ -56,10 +56,10 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
       (fmapCoe Identity)
       (AddressInfo ["modality"] True omit)
     return $ case token of
-        TokenSubASTs ->
-          Box1 $ runIdentity !<$> ModedModality (unbox1 rdom) (unbox1 rcod) (unbox1 rmu)
-        TokenTypes -> BoxClassif $ dom :*: cod
-        TokenRelate -> Unit2
+        TokenTrav ->
+          AnalysisTrav $ runIdentity !<$> ModedModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rmu)
+        TokenTC -> AnalysisTC $ dom :*: cod
+        TokenRel -> AnalysisRel
   convRel token d = U1 :*: U1
   extraClassif = U1 :*: U1
 
@@ -97,10 +97,10 @@ instance (SysAnalyzer sys,
       (fmap VarWkn)
       (AddressInfo ["body"] False omit)
     return $ case token of
-      TokenSubASTs -> Box1 $ Binding (runIdentity !<$> unbox1 rseg) (unbox1 rbody)
-      TokenTypes -> BoxClassif $
-        (runIdentity !<$> unboxClassif rseg) :*: ClassifBinding seg (unboxClassif rbody)
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ Binding (runIdentity !<$> getAnalysisTrav rseg) (getAnalysisTrav rbody)
+      TokenTC -> AnalysisTC $
+        (runIdentity !<$> getAnalysisTC rseg) :*: ClassifBinding seg (getAnalysisTC rbody)
+      TokenRel -> AnalysisRel
   convRel token d = U1 :*: Comp1 (convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d))
   extraClassif = U1 :*: Comp1 (extraClassif @sys @(rhs sys))
 
@@ -133,9 +133,9 @@ instance (SysAnalyzer sys,
       unComp1
       (AddressInfo ["body"] False EntirelyBoring)
     return $ case token of
-      TokenSubASTs -> Box1 $ ClassifBinding seg (unbox1 rbody)
-      TokenTypes -> BoxClassif $ ClassifBinding seg (unboxClassif rbody)
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ ClassifBinding seg (getAnalysisTrav rbody)
+      TokenTC -> AnalysisTC $ ClassifBinding seg (getAnalysisTC rbody)
+      TokenRel -> AnalysisRel
   convRel token d = Comp1 $ convRel (analyzableToken @sys @rhs) (VarWkn <$> d)
   extraClassif = Comp1 $ extraClassif @sys @rhs
 
@@ -171,10 +171,10 @@ instance (SysAnalyzer sys,
       unComp1
       (AddressInfo ["body"] False EntirelyBoring)
     return $ case token of
-      TokenSubASTs -> Box1 $ NamedBinding name $ unbox1 rbody
-      TokenTypes -> BoxClassif $
-        ClassifBinding ((decl'name .~ DeclNameSegment name) seg) (unboxClassif rbody)
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ NamedBinding name $ getAnalysisTrav rbody
+      TokenTC -> AnalysisTC $
+        ClassifBinding ((decl'name .~ DeclNameSegment name) seg) (getAnalysisTC rbody)
+      TokenRel -> AnalysisRel
   convRel token d = Comp1 $ convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d)
   extraClassif = Comp1 $ extraClassif @sys @(rhs sys)
 
@@ -206,9 +206,9 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (const U1)
           (AddressInfo ["mode"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ runIdentity !<$> UniHS (unbox1 rd)
-          TokenTypes -> BoxClassif $ d
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ runIdentity !<$> UniHS (getAnalysisTrav rd)
+          TokenTC -> AnalysisTC $ d
+          TokenRel -> AnalysisRel
 
       Pi binding -> handleBinder Pi binding $ \case
         Pi binding -> Just binding
@@ -232,9 +232,9 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (fmapCoe Identity)
               (AddressInfo ["segment"] False EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ BoxType $ runIdentity !<$> unbox1 rsegment
-          TokenTypes -> BoxClassif $ dgamma
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ BoxType $ runIdentity !<$> getAnalysisTrav rsegment
+          TokenTC -> AnalysisTC $ dgamma
+          TokenRel -> AnalysisRel
 
       NatType -> handleConstant
 
@@ -267,10 +267,10 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (fmapCoe Identity)
           (AddressInfo ["right equand"] False omit)
         return $ case token of
-          TokenSubASTs ->
-            Box1 $ runIdentity !<$> EqType (unbox1 rtyAmbient) (unbox1 rtL) (unbox1 rtR)
-          TokenTypes -> BoxClassif $ dgamma
-          TokenRelate -> Unit2
+          TokenTrav ->
+            AnalysisTrav $ runIdentity !<$> EqType (getAnalysisTrav rtyAmbient) (getAnalysisTrav rtL) (getAnalysisTrav rtR)
+          TokenTC -> AnalysisTC $ dgamma
+          TokenRel -> AnalysisRel
 
       SysType systy -> do
         rsysty <- h Identity
@@ -283,15 +283,15 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (fmapCoe Identity)
           (AddressInfo ["system-specific type"] False EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ SysType $ runIdentity !<$> unbox1 rsysty
-          TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rsysty
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ SysType $ runIdentity !<$> getAnalysisTrav rsysty
+          TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rsysty
+          TokenRel -> AnalysisRel
         
     where handleBinder ::
             (forall w . Binding Type Type sys w -> UniHSConstructor sys w) ->
             Binding Type Type sys v ->
             (forall w . UniHSConstructor sys w -> Maybe (Binding Type Type sys w)) ->
-            _ (AnalyzerResult option (UniHSConstructor sys) v)
+            _ (Analysis option (UniHSConstructor sys) _ v)
           handleBinder binder binding extract = do
             rbinding <- h Identity
               (\ gamma' (Classification ty' U1 maybeD') -> extract ty' <&> \ binding' ->
@@ -302,14 +302,14 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (fmapCoe Identity)
               (AddressInfo ["binding"] False EntirelyBoring)
             return $ case token of
-              TokenSubASTs -> Box1 $ binder $ runIdentity !<$> unbox1 rbinding
-              TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
-              TokenRelate -> Unit2
+              TokenTrav -> AnalysisTrav $ binder $ runIdentity !<$> getAnalysisTrav rbinding
+              TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+              TokenRel -> AnalysisRel
               
           handleConstant = pure $ case token of
-            TokenSubASTs -> Box1 $ ty
-            TokenTypes -> BoxClassif $ unVarFromCtx <$> ctx'mode gamma
-            TokenRelate -> Unit2
+            TokenTrav -> AnalysisTrav $ ty
+            TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+            TokenRel -> AnalysisRel
             
   convRel token d = U1
   extraClassif = U1
@@ -340,9 +340,9 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["UniHS-constructor"] False EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ ConsUniHS $ runIdentity !<$> unbox1 rty
-          TokenTypes -> BoxClassif $ hs2type $ UniHS $ runIdentity !<$> unboxClassif rty
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ ConsUniHS $ runIdentity !<$> getAnalysisTrav rty
+          TokenTC -> AnalysisTC $ hs2type $ UniHS $ runIdentity !<$> getAnalysisTC rty
+          TokenRel -> AnalysisRel
 
       Lam binding -> do
         rbinding <- h Identity
@@ -355,12 +355,12 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["binding"] False EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ Lam $ runIdentity !<$> unbox1 rbinding
-          TokenTypes -> BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) $
-            _classifBinding'body $ snd1 $ runIdentity !<$> unboxClassif rbinding
-            --let (U1 :*: Comp1 ty) = unboxClassif rbinding
-            --in  BoxClassif $ hs2type $ Pi $ Binding (binding'segment binding) ty
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ Lam $ runIdentity !<$> getAnalysisTrav rbinding
+          TokenTC -> AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) $
+            _classifBinding'body $ snd1 $ runIdentity !<$> getAnalysisTC rbinding
+            --let (U1 :*: Comp1 ty) = getAnalysisTC rbinding
+            --in  AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) ty
+          TokenRel -> AnalysisRel
 
       Pair sigmaBinding tFst tSnd -> do
         rsigmaBinding <- h Identity
@@ -394,15 +394,15 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["second component"] False omit)
         return $ case token of
-          TokenSubASTs ->
-            Box1 $ runIdentity !<$> Pair (unbox1 rsigmaBinding) (unbox1 rtFst) (unbox1 rtSnd)
-          TokenTypes -> BoxClassif $ hs2type $ Sigma sigmaBinding
-          TokenRelate -> Unit2
+          TokenTrav ->
+            AnalysisTrav $ runIdentity !<$> Pair (getAnalysisTrav rsigmaBinding) (getAnalysisTrav rtFst) (getAnalysisTrav rtSnd)
+          TokenTC -> AnalysisTC $ hs2type $ Sigma sigmaBinding
+          TokenRel -> AnalysisRel
 
       ConsUnit -> pure $ case token of
-        TokenSubASTs -> Box1 $ ConsUnit
-        TokenTypes -> BoxClassif $ hs2type $ UnitType
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ ConsUnit
+        TokenTC -> AnalysisTC $ hs2type $ UnitType
+        TokenRel -> AnalysisRel
 
       ConsBox boxSeg tUnbox -> do
         rboxSeg <- h Identity
@@ -425,14 +425,14 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["box content"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ runIdentity !<$> ConsBox (unbox1 rboxSeg) (unbox1 rtUnbox)
-          TokenTypes -> BoxClassif $ hs2type $ BoxType boxSeg
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ runIdentity !<$> ConsBox (getAnalysisTrav rboxSeg) (getAnalysisTrav rtUnbox)
+          TokenTC -> AnalysisTC $ hs2type $ BoxType boxSeg
+          TokenRel -> AnalysisRel
 
       ConsZero -> pure $ case token of
-        TokenSubASTs -> Box1 $ ConsZero
-        TokenTypes -> BoxClassif $ hs2type $ NatType
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ ConsZero
+        TokenTC -> AnalysisTC $ hs2type $ NatType
+        TokenRel -> AnalysisRel
 
       ConsSuc t -> do
         rt <- h Identity
@@ -445,9 +445,9 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["predecessor"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ ConsSuc $ runIdentity !<$> (unbox1 rt)
-          TokenTypes -> BoxClassif $ hs2type $ NatType
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ ConsSuc $ runIdentity !<$> (getAnalysisTrav rt)
+          TokenTC -> AnalysisTC $ hs2type $ NatType
+          TokenRel -> AnalysisRel
 
       ConsRefl tyAmbient t -> do
         rtyAmbient <- h Identity
@@ -469,9 +469,9 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["self-equand"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ runIdentity !<$> ConsRefl (unbox1 rtyAmbient) (unbox1 rt)
-          TokenTypes -> BoxClassif $ hs2type $ EqType tyAmbient t t
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ runIdentity !<$> ConsRefl (getAnalysisTrav rtyAmbient) (getAnalysisTrav rt)
+          TokenTC -> AnalysisTC $ hs2type $ EqType tyAmbient t t
+          TokenRel -> AnalysisRel
 
   convRel token d = modedEqDeg d
   extraClassif = U1
@@ -493,9 +493,9 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
       (fmapCoe Identity)
       (AddressInfo ["code"] True WorthMentioning)
     return $ case token of
-      TokenSubASTs -> Box1 $ Type $ runIdentity !<$> unbox1 rt
-      TokenTypes -> BoxClassif U1
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ Type $ runIdentity !<$> getAnalysisTrav rt
+      TokenTC -> AnalysisTC U1
+      TokenRel -> AnalysisRel
     
   convRel token gamma = U1
   extraClassif = U1
@@ -557,9 +557,9 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["pair clause"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ ElimSigma $ runIdentity !<$> unbox1 rboundBoundPairClause
-          TokenTypes -> BoxClassif U1
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ ElimSigma $ runIdentity !<$> getAnalysisTrav rboundBoundPairClause
+          TokenTC -> AnalysisTC U1
+          TokenRel -> AnalysisRel
       (_, ElimSigma _) -> unreachable
 
       (BoxType seg, ElimBox boundBoxClause) -> do
@@ -589,15 +589,15 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           (Comp1 . fmap (VarWkn . Identity))
           (AddressInfo ["box clause"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ ElimBox $ runIdentity !<$> unbox1 rboundBoxClause
-          TokenTypes -> BoxClassif U1
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ ElimBox $ runIdentity !<$> getAnalysisTrav rboundBoxClause
+          TokenTC -> AnalysisTC U1
+          TokenRel -> AnalysisRel
       (_, ElimBox _) -> unreachable
 
       (EmptyType, ElimEmpty) -> pure $ case token of
-        TokenSubASTs -> Box1 ElimEmpty
-        TokenTypes -> BoxClassif U1
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav ElimEmpty
+        TokenTC -> AnalysisTC U1
+        TokenRel -> AnalysisRel
       (_, ElimEmpty) -> unreachable
       
       (NatType, ElimNat (zeroClause :: Term sys v) boundBoundSucClause) -> do
@@ -647,10 +647,10 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["successor clause"] False omit)
         return $ case token of
-          TokenSubASTs ->
-            Box1 $ runIdentity !<$> ElimNat (unbox1 rzeroClause) (unbox1 rboundBoundSucClause)
-          TokenTypes -> BoxClassif U1
-          TokenRelate -> Unit2
+          TokenTrav ->
+            AnalysisTrav $ runIdentity !<$> ElimNat (getAnalysisTrav rzeroClause) (getAnalysisTrav rboundBoundSucClause)
+          TokenTC -> AnalysisTC U1
+          TokenRel -> AnalysisRel
       (_, ElimNat _ _) -> unreachable
 
   convRel token gamma = U1
@@ -691,20 +691,20 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           (fmapCoe Identity . modedDivDeg (_segment'modty $ binding'segment binding))
           (AddressInfo ["argument"] False omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ App $ runIdentity !<$> unbox1 rarg
-          TokenTypes -> BoxClassif $ substLast2 arg $ binding'body binding
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ App $ runIdentity !<$> getAnalysisTrav rarg
+          TokenTC -> AnalysisTC $ substLast2 arg $ binding'body binding
+          TokenRel -> AnalysisRel
       (_, App arg) -> unreachable
 
       (Sigma binding, Fst) -> pure $ case token of
-          TokenSubASTs -> Box1 $ Fst
-          TokenTypes -> BoxClassif $ _segment'content $ binding'segment binding
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ Fst
+          TokenTC -> AnalysisTC $ _segment'content $ binding'segment binding
+          TokenRel -> AnalysisRel
       (_, Fst) -> unreachable
 
       (Sigma binding, Snd) -> pure $ case token of
-        TokenSubASTs -> Box1 $ Snd
-        TokenTypes -> BoxClassif $
+        TokenTrav -> AnalysisTrav $ Snd
+        TokenTC -> AnalysisTC $
           substLast2 (Expr2 $
             TermElim
               (modedApproxLeftAdjointProj $ _segment'modty $ binding'segment binding)
@@ -713,24 +713,24 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
               Fst
             ) $
           binding'body binding
-        TokenRelate -> Unit2
+        TokenRel -> AnalysisRel
       (_, Snd) -> unreachable
 
       (BoxType seg, Unbox) -> pure $ case token of
-        TokenSubASTs -> Box1 $ Unbox
-        TokenTypes -> BoxClassif $ _segment'content seg
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ Unbox
+        TokenTC -> AnalysisTC $ _segment'content seg
+        TokenRel -> AnalysisRel
       (_, Unbox) -> unreachable
 
       (Pi binding, Funext) -> pure $ case token of
-        TokenSubASTs -> Box1 $ Funext
-        TokenTypes -> case binding'body binding of
-          TypeHS (EqType tyAmbient tL tR) -> BoxClassif $ hs2type $ EqType
+        TokenTrav -> AnalysisTrav $ Funext
+        TokenTC -> case binding'body binding of
+          TypeHS (EqType tyAmbient tL tR) -> AnalysisTC $ hs2type $ EqType
             (hs2type $ Pi $           Binding (binding'segment binding) tyAmbient)
             (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) tL)
             (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) tR)
           _ -> unreachable
-        TokenRelate -> Unit2
+        TokenRel -> AnalysisRel
       (_, Funext) -> unreachable
 
       (_, ElimDep boundMotive@(NamedBinding name motive) clauses) -> do
@@ -761,10 +761,10 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           (fmapCoe Identity)
           (AddressInfo ["clauses"] False EntirelyBoring)
         return $ case token of
-          TokenSubASTs ->
-            Box1 $ runIdentity !<$> ElimDep (unbox1 rboundMotive) (unbox1 rclauses)
-          TokenTypes -> BoxClassif $ substLast2 eliminee motive
-          TokenRelate -> Unit2
+          TokenTrav ->
+            AnalysisTrav $ runIdentity !<$> ElimDep (getAnalysisTrav rboundMotive) (getAnalysisTrav rclauses)
+          TokenTC -> AnalysisTC $ substLast2 eliminee motive
+          TokenRel -> AnalysisRel
           
       (EqType tyAmbient tL tR, ElimEq boundBoundMotive clauseRefl) -> do
         rboundBoundMotive <- h Identity
@@ -801,11 +801,11 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           (fmapCoe Identity)
           (AddressInfo ["refl clause"] False omit)
         return $ case token of
-           TokenSubASTs ->
-             Box1 $ runIdentity !<$> ElimEq (unbox1 rboundBoundMotive) (unbox1 rclauseRefl)
-           TokenTypes -> BoxClassif $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $
+           TokenTrav ->
+             AnalysisTrav $ runIdentity !<$> ElimEq (getAnalysisTrav rboundBoundMotive) (getAnalysisTrav rclauseRefl)
+           TokenTC -> AnalysisTC $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $
              _namedBinding'body $ _namedBinding'body $ boundBoundMotive
-           TokenRelate -> Unit2
+           TokenRel -> AnalysisRel
       (_, ElimEq _ _) -> unreachable
 
   convRel token d = modedEqDeg d
@@ -833,9 +833,9 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (fmapCoe Identity)
         (AddressInfo ["underlying constructor"] False EntirelyBoring)
       return $ case token of
-        TokenSubASTs -> Box1 $ TermCons $ runIdentity !<$> unbox1 rc
-        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rc
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ TermCons $ runIdentity !<$> getAnalysisTrav rc
+        TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rc
+        TokenRel -> AnalysisRel
 
     TermElim dmuElim eliminee tyEliminee eliminator -> Right $ do
       rdmuElim <- h Identity
@@ -887,10 +887,10 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (fmapCoe Identity)
         (AddressInfo ["eliminator"] False EntirelyBoring)
       return $ case token of
-        TokenSubASTs ->
-          Box1 $ runIdentity !<$> TermElim (unbox1 rdmuElim) (unbox1 reliminee) (unbox1 rtyEliminee) (unbox1 reliminator)
-        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif reliminator
-        TokenRelate -> Unit2
+        TokenTrav ->
+          AnalysisTrav $ runIdentity !<$> TermElim (getAnalysisTrav rdmuElim) (getAnalysisTrav reliminee) (getAnalysisTrav rtyEliminee) (getAnalysisTrav reliminator)
+        TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC reliminator
+        TokenRel -> AnalysisRel
 
     TermMeta _ _ _ _ -> Left AnErrorTermMeta
 
@@ -903,7 +903,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
       rt <- h id gamma (Classification t U1 (Just ty) maybeRel)
       rty <- h id gamma (Classification ty U1 (Just U1) maybeRel)
       return $ case token of
-        TokenSubASTs -> Box1 $ -}
+        TokenTrav -> AnalysisTrav $ -}
 
     TermAlgorithm _ _ -> Left AnErrorTermAlgorithm
 
@@ -918,9 +918,9 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (fmapCoe Identity)
         (AddressInfo ["system-specific term"] True EntirelyBoring)
       return $ case token of
-        TokenSubASTs -> Box1 $ TermSys $ runIdentity !<$> unbox1 rsyst
-        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rsyst
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ TermSys $ runIdentity !<$> getAnalysisTrav rsyst
+        TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rsyst
+        TokenRel -> AnalysisRel
 
     TermProblem t -> Left AnErrorTermProblem
     
@@ -947,9 +947,9 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
         (fmapCoe Identity)
         (AddressInfo ["non-variable"] True EntirelyBoring)
       return $ case token of
-        TokenSubASTs -> Box1 $ Expr2 $ runIdentity !<$> unbox1 rtnv
-        TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rtnv
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ Expr2 $ runIdentity !<$> getAnalysisTrav rtnv
+        TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rtnv
+        TokenRel -> AnalysisRel
     Var2 v -> Left AnErrorVar
   convRel token d = modedEqDeg d
   extraClassif = U1
@@ -980,16 +980,16 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       (fmapCoe Identity)
       (AddressInfo ["type"] True omit)
     return $ case token of
-      TokenSubASTs -> Box1 $ runIdentity !<$> Declaration name (unbox1 rdmu) (Identity !<$> plic) (unbox1 rcontent)
-      TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rcontent
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ runIdentity !<$> Declaration name (getAnalysisTrav rdmu) (Identity !<$> plic) (getAnalysisTrav rcontent)
+      TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rcontent
+      TokenRel -> AnalysisRel
   {-
   analyze token fromType gamma (Classification seg@(Declaration name dmu plic ty) extra maybeTy maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma
     let dgamma = unVarFromCtx <$> dgamma'
     
     rdmu <- h id (crispModedModality dgamma' :\\ gamma)
-      (Classification dmu U1 (ClassifMustBe $ modality'dom dmu :*: dgamma) (toIfRelate token $ Const ModEq))
+      (Classification dmu U1 (ClassifMustBe $ modality'dom dmu :*: dgamma) (toIfRel token $ Const ModEq))
       (AddressInfo ["modality"] True omit)
       (Just . _decl'modty)
     -- TODO plic
@@ -999,9 +999,9 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       (Just . _decl'content)
 
     return $ case token of
-      TokenSubASTs -> Box1 $ Declaration name (unbox1 rdmu) plic (unbox1 rty)
-      TokenTypes -> BoxClassif $ unboxClassif rty
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ Declaration name (getAnalysisTrav rdmu) plic (getAnalysisTrav rty)
+      TokenTC -> AnalysisTC $ getAnalysisTC rty
+      TokenRel -> AnalysisRel
 -}
   convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
   extraClassif = extraClassif @sys @(rhs sys)
@@ -1033,9 +1033,9 @@ instance (SysAnalyzer sys,
           (fmapCoe Identity . snd1)
           (AddressInfo ["rhs"] True omit)
         return $ case token of
-          TokenSubASTs -> Box1 $ Telescoped $ runIdentity !<$> unbox1 rrhs
-          TokenTypes -> BoxClassif U1
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ Telescoped $ runIdentity !<$> getAnalysisTrav rrhs
+          TokenTC -> AnalysisTC U1
+          TokenRel -> AnalysisRel
           
       (seg :|- telescopedRHS) -> do
         rseg <- h Identity
@@ -1055,9 +1055,9 @@ instance (SysAnalyzer sys,
           )
           (\ gamma' input1 condInput2 -> case input1 of
               (Classification (seg' :|- telescopedRHS') U1 maybeU1') -> case token of
-                TokenSubASTs -> Just $ gamma' :.. VarFromCtx <$> seg'
-                TokenTypes   -> Just $ gamma' :.. VarFromCtx <$> seg'
-                TokenRelate  -> runConditional condInput2 & \ case
+                TokenTrav -> Just $ gamma' :.. VarFromCtx <$> seg'
+                TokenTC   -> Just $ gamma' :.. VarFromCtx <$> seg'
+                TokenRel  -> runConditional condInput2 & \ case
                   (Classification (seg2 :|- telescopedRHS2) U1 maybeU12) ->
                     Just $ gamma' :.. VarFromCtx <$> (seg' & decl'content %~
                       \ ty1 -> Twice2 ty1 $ _decl'content seg2
@@ -1068,9 +1068,9 @@ instance (SysAnalyzer sys,
           (fmap VarWkn)
           (AddressInfo ["tail"] True EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ runIdentity !<$> unbox1 rseg :|- unbox1 rtelescopedRHS
-          TokenTypes -> BoxClassif U1
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ runIdentity !<$> getAnalysisTrav rseg :|- getAnalysisTrav rtelescopedRHS
+          TokenTC -> AnalysisTC U1
+          TokenRel -> AnalysisRel
 
       (dmu :** telescopedRHS) -> do
         rdmu <- h Identity
@@ -1097,9 +1097,9 @@ instance (SysAnalyzer sys,
           (fmapCoe Identity . (\ (ddegSeg :*: ddegRHS) -> modedDivDeg dmu ddegSeg :*: modedDivDeg dmu ddegRHS))
           (AddressInfo ["tail"] True EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ runIdentity !<$> unbox1 rdmu :** unbox1 rtelescopedRHS
-          TokenTypes -> BoxClassif U1
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ runIdentity !<$> getAnalysisTrav rdmu :** getAnalysisTrav rtelescopedRHS
+          TokenTC -> AnalysisTC U1
+          TokenRel -> AnalysisRel
 
   convRel token d = U1
   extraClassif = U1
@@ -1126,9 +1126,9 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
       (fmapCoe Identity)
       (AddressInfo ["RHS"] True omit)
     return $ case token of
-      TokenSubASTs -> Box1 $ runIdentity !<$> ValRHS (unbox1 rt) (unbox1 rty)
-      TokenTypes -> BoxClassif $ U1
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ runIdentity !<$> ValRHS (getAnalysisTrav rt) (getAnalysisTrav rty)
+      TokenTC -> AnalysisTC $ U1
+      TokenRel -> AnalysisRel
   convRel token d = U1
   extraClassif = U1
 
@@ -1154,9 +1154,9 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
         (fmapCoe VarInModule)
         (AddressInfo [show (index + 1) ++ "th entry"] True omit)
     return $ case token of
-      TokenSubASTs -> Box1 $ ModuleRHS $ Compose $ unbox1 <$> rrevEntries
-      TokenTypes -> BoxClassif $ U1
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ ModuleRHS $ Compose $ getAnalysisTrav <$> rrevEntries
+      TokenTC -> AnalysisTC $ U1
+      TokenRel -> AnalysisRel
       
   convRel token d = U1
   extraClassif = U1
@@ -1192,9 +1192,9 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           ((\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
           (AddressInfo ["val"] True EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ EntryVal $ runIdentity !<$> unbox1 rval
-          TokenTypes -> BoxClassif $ U1
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ EntryVal $ runIdentity !<$> getAnalysisTrav rval
+          TokenTC -> AnalysisTC $ U1
+          TokenRel -> AnalysisRel
       EntryModule modul -> do
         rmodul <- h Identity
           (\ gamma' -> \ case
@@ -1206,9 +1206,9 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           ((\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
           (AddressInfo ["module"] True EntirelyBoring)
         return $ case token of
-          TokenSubASTs -> Box1 $ EntryModule $ runIdentity !<$> unbox1 rmodul
-          TokenTypes -> BoxClassif $ U1
-          TokenRelate -> Unit2
+          TokenTrav -> AnalysisTrav $ EntryModule $ runIdentity !<$> getAnalysisTrav rmodul
+          TokenTC -> AnalysisTC $ U1
+          TokenRel -> AnalysisRel
         
   convRel token d = U1
   extraClassif = U1
@@ -1224,9 +1224,9 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
   witClassif token = Witness
   analyze token gamma (Classification U1 U1 _) h =
     Right $ pure $ case token of
-        TokenSubASTs -> Box1 $ U1
-        TokenTypes -> BoxClassif $ U1
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ U1
+        TokenTC -> AnalysisTC $ U1
+        TokenRel -> AnalysisRel
   convRel token d = U1
   extraClassif = U1
 
@@ -1257,9 +1257,9 @@ instance (SysAnalyzer sys,
       (fmapCoe Identity . snd1)
       (AddressInfo ["second component"] True omit)
     return $ case token of
-      TokenSubASTs -> Box1 $ runIdentity !<$> unbox1 rfv :*: unbox1 rgv
-      TokenTypes -> BoxClassif $ runIdentity !<$> unboxClassif rfv :*: unboxClassif rgv
-      TokenRelate -> Unit2
+      TokenTrav -> AnalysisTrav $ runIdentity !<$> getAnalysisTrav rfv :*: getAnalysisTrav rgv
+      TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rfv :*: getAnalysisTC rgv
+      TokenRel -> AnalysisRel
   convRel token d = convRel (analyzableToken @sys @f) d :*:
                     convRel (analyzableToken @sys @g) d
   extraClassif = extraClassif @sys @f :*:
@@ -1278,7 +1278,7 @@ instance (SysAnalyzer sys,
   analyzableToken = AnTokenCompose analyzableToken
   analyze token fromType gamma (Classification (Compose ftv) (Compose fextra) maybeClassifs maybeRel) h = Right $ do
     return $ case token of
-      TokenSubASTs -> 
+      TokenTrav -> 
 -}
 
 ------------------------
@@ -1296,9 +1296,9 @@ instance (SysAnalyzer sys,
     return $ do
       rfgv <- analyze
       return $ case token of
-        TokenSubASTs -> Box1 $ Comp1 $ unbox1 rfgv
-        TokenTypes -> BoxClassif $ Comp1 $ unboxClassif rfgv
-        TokenRelate -> Unit2
+        TokenTrav -> AnalysisTrav $ Comp1 $ getAnalysisTrav rfgv
+        TokenTC -> AnalysisTC $ Comp1 $ getAnalysisTC rfgv
+        TokenRel -> AnalysisRel
 -}
 
 ------------------------
