@@ -89,7 +89,7 @@ instance (SysAnalyzer sys,
       (\ gamma (Classification (Binding seg1 body1) U1 maybeCl1) condInput2 ->
          Just $ gamma :..
            (decl'content %~ \ ty1 ->
-             toVarClassif token ty1 $
+             toTypeForOption token ty1 $
              fmap VarFromCtx . _decl'content . binding'segment . _classification'get <$> condInput2
            )
            (VarFromCtx <$> seg1)
@@ -124,7 +124,7 @@ instance (SysAnalyzer sys,
       (\ gamma (Classification (ClassifBinding seg1 body1) (Comp1 extraBody1) maybeCl1) condInput2 ->
          Just $ gamma :..
            (decl'content %~ \ ty1 ->
-             toVarClassif token ty1 $
+             toTypeForOption token ty1 $
              fmap VarFromCtx . _decl'content . _classifBinding'segment . _classification'get <$>
              condInput2
            )
@@ -162,7 +162,7 @@ instance (SysAnalyzer sys,
            (DeclNameSegment name1)
            (_decl'modty seg1)
            (_decl'plicity seg1)
-           (toVarClassif token
+           (toTypeForOption token
              (_decl'content seg1)
              (_decl'content . fst1 . _classification'extra <$> condInput2)
            )
