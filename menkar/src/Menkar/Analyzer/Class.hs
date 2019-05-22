@@ -21,12 +21,13 @@ import Data.Functor.Compose
 import GHC.Generics
 import Data.Maybe
 
-data AnalyzerOption = OptionSubASTs | OptionTypes | OptionRelate
+data AnalyzerOption = OptionTrav | OptionTC | OptionRel | OptionSolve
 
 data AnalyzerToken (option :: AnalyzerOption) where
-  TokenSubASTs :: AnalyzerToken OptionSubASTs
-  TokenTypes :: AnalyzerToken OptionTypes
-  TokenRelate :: AnalyzerToken OptionRelate
+  TokenTrav :: AnalyzerToken OptionTrav
+  TokenTC :: AnalyzerToken OptionTC
+  TokenRel :: AnalyzerToken OptionRel
+  TokenSolve :: AnalyzerToken OptionSolve
 
 data AnalyzableToken sys (ast :: * -> *) where
   AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
@@ -66,7 +67,7 @@ data AnalyzerError sys =
   AnErrorTermProblem |
   AnErrorVar
 
-newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
+--newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
 data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | {-| Not allowed for terms. -} ClassifUnknown
   deriving (Functor, Foldable, Traversable)
@@ -91,11 +92,11 @@ fromClassifInfo a0 (ClassifUnknown) = a0
 data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
   _classification'get1 :: t v,
   -- -- | Needs to be present when calling @'analyze'@.
-  --_classification'get2 :: IfRelate option (Maybe (t v)),
+  --_classification'get2 :: IfDoubled option (Maybe (t v)),
   _classification'extra1 :: ClassifExtraInput t v,
-  _classification'extra2 :: IfRelate option (ClassifExtraInput t v),
-  _classification'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
-  _classification'relation :: IfRelate option (Relation t v)}
+  _classification'extra2 :: IfDoubled option (ClassifExtraInput t v),
+  _classification'classifInfo :: ClassifInfo (Classif t v, IfDoubled option (Classif t v)),
+  _classification'relation :: IfDoubled option (Relation t v)}
 -}
 
 data Classification (t :: * -> *) (v :: *) = Classification {
@@ -109,8 +110,8 @@ deriving instance (Functor t,
 
 mapMaybeClassifs :: forall option s t w v .
   (s w -> t v) ->
-  ClassifInfo (s w, IfRelate option (s w)) ->
-  ClassifInfo (t v, IfRelate option (t v))
+  ClassifInfo (s w, IfDoubled option (s w)) ->
+  ClassifInfo (t v, IfDoubled option (t v))
 mapMaybeClassifs f = fmap (bimap f $ fmap f)
 
 data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
@@ -126,59 +127,91 @@ data AddressInfo = AddressInfo {
   _addressInfo'boredom :: Boredom
   }
 
-type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> * -> *) | result -> option
-type instance AnalyzerResult OptionSubASTs = Box1
-type instance AnalyzerResult OptionTypes = BoxClassif
-type instance AnalyzerResult OptionRelate = Unit2
-
-type family VarClassif (option :: AnalyzerOption) :: KSys -> * -> *
-type instance VarClassif OptionSubASTs = Type
-type instance VarClassif OptionTypes = Type
-type instance VarClassif OptionRelate = Twice2 Type
-
-type family CheckRelate (option :: AnalyzerOption) :: Bool
-type instance CheckRelate OptionSubASTs = False
-type instance CheckRelate OptionTypes = False
-type instance CheckRelate OptionRelate = True
-
-class (Functor (VarClassif option sys)) => IsAnalyzerOption option sys where
-instance (SysTrav sys) => IsAnalyzerOption OptionSubASTs sys where
-instance (SysTrav sys) => IsAnalyzerOption OptionTypes sys where
-instance (SysTrav sys) => IsAnalyzerOption OptionRelate sys where
-
-toVarClassif :: forall option sys v .
-  AnalyzerToken option ->
-  Type sys v ->
-  IfRelate option (Type sys v) ->
-  VarClassif option sys v
-toVarClassif option ty1 (ConditionalT identityTy2) = case option of
-  TokenSubASTs -> ty1
-  TokenTypes -> ty1
-  TokenRelate -> Twice2 ty1 (runIdentity identityTy2)
-
-type IfRelateT option m = ConditionalT (option ~ OptionRelate) m
-type IfRelate option = IfRelateT option Identity
-
-absurdRelateT :: (CheckRelate option ~ False) => IfRelateT option m a
-absurdRelateT = ConditionalT $ return unreachable
-absurdRelate :: (CheckRelate option ~ False) => IfRelate option a
-absurdRelate = absurdRelateT -- conditional unreachable
-
 {-
-data IfRelate (option :: AnalyzerOption) a where
-  IfRelateSubASTs :: IfRelate OptionSubASTs a
-  IfRelateTypes :: IfRelate OptionTypes a
-  IfRelate :: a -> IfRelate OptionRelate a
-
-deriving instance Functor (IfRelate option)
+type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> * -> *) | result -> option
+type instance AnalyzerResult OptionTrav = Box1
+type instance AnalyzerResult OptionTC = BoxClassif
+type instance AnalyzerResult OptionRel = Unit2
 -}
 
-toIfRelate :: AnalyzerToken option -> a -> IfRelate option a
-toIfRelate option = return
+data Analysis (option :: AnalyzerOption) (t :: * -> *) (vOrig :: *) (v :: *) where
+  AnalysisTrav :: forall t vOrig v . t v -> Analysis OptionTrav t vOrig v
+  AnalysisTC :: forall t vOrig v . Classif t v -> Analysis OptionTC t vOrig v
+  AnalysisRel :: Analysis OptionRel t vOrig v
+  AnalysisSolve :: forall t vOrig v . t vOrig -> Analysis OptionSolve t vOrig v
+
+getAnalysisTrav :: forall t vOrig v . Analysis OptionTrav t vOrig v -> t v
+getAnalysisTrav (AnalysisTrav t) = t
+getAnalysisTC :: forall t vOrig v . Analysis OptionTC t vOrig v -> Classif t v
+getAnalysisTC (AnalysisTC ct) = ct
+getAnalysisSolve :: forall t vOrig v . Analysis OptionSolve t vOrig v -> t vOrig
+getAnalysisSolve (AnalysisSolve tOrig) = tOrig
+
+instance (Functor t, Functor (Classif t)) => Bifunctor (Analysis option t) where
+  bimap fOrig f (AnalysisTrav t) = AnalysisTrav $ f <$> t
+  bimap fOrig f (AnalysisTC ct) = AnalysisTC $ f <$> ct
+  bimap fOrig f AnalysisRel = AnalysisRel
+  bimap fOrig f (AnalysisSolve t) = AnalysisSolve $ fOrig <$> t
+instance (Functor t, Functor (Classif t)) => Functor (Analysis option t vOrig) where
+  fmap f analysis = bimap id f analysis
+
 {-
-toIfRelate TokenSubASTs a = IfRelateSubASTs
-toIfRelate TokenTypes a = IfRelateTypes
-toIfRelate TokenRelate a = IfRelate a
+type family TypeForOption (option :: AnalyzerOption) :: KSys -> * -> *
+type instance TypeForOption OptionTrav = Type
+type instance TypeForOption OptionTC = Type
+type instance TypeForOption OptionRel = Twice2 Type
+-}
+
+type family TypeMaybeTwice (doubled :: Bool) :: KSys -> * -> *
+type instance TypeMaybeTwice False = Type
+type instance TypeMaybeTwice True = Twice2 Type
+type TypeForOption (option :: AnalyzerOption) = TypeMaybeTwice (CheckDoubled option)
+
+type family CheckDoubled (option :: AnalyzerOption) :: Bool
+type instance CheckDoubled OptionTrav = False
+type instance CheckDoubled OptionTC = False
+type instance CheckDoubled OptionRel = True
+type instance CheckDoubled OptionSolve = True
+
+class (Functor (TypeForOption option sys)) => IsAnalyzerOption option sys where
+instance (SysTrav sys) => IsAnalyzerOption OptionTrav sys where
+instance (SysTrav sys) => IsAnalyzerOption OptionTC sys where
+instance (SysTrav sys) => IsAnalyzerOption OptionRel sys where
+
+toTypeForOption :: forall option sys v .
+  AnalyzerToken option ->
+  Type sys v ->
+  IfDoubled option (Type sys v) ->
+  TypeForOption option sys v
+toTypeForOption option ty1 (ConditionalT identityTy2) = case option of
+  TokenTrav -> ty1
+  TokenTC -> ty1
+  TokenRel -> Twice2 ty1 (runIdentity identityTy2)
+  TokenSolve -> Twice2 ty1 (runIdentity identityTy2)
+
+type IfDoubledT option m = ConditionalT (CheckDoubled option ~ True) m
+type IfDoubled option = IfDoubledT option Identity
+
+typesArentDoubledT :: forall doubled m a . (doubled ~ False) => ConditionalT (doubled ~ True) m a
+typesArentDoubledT = ConditionalT $ return unreachable
+typesArentDoubled :: forall doubled a . (doubled ~ False) => Conditional (doubled ~ True) a
+typesArentDoubled = typesArentDoubledT -- conditional unreachable
+
+{-
+data IfDoubled (option :: AnalyzerOption) a where
+  IfDoubledTrav :: IfDoubled OptionTrav a
+  IfDoubledTC :: IfDoubled OptionTC a
+  IfDoubled :: a -> IfDoubled OptionRel a
+
+deriving instance Functor (IfDoubled option)
+-}
+
+toIfDoubled :: AnalyzerToken option -> a -> IfDoubled option a
+toIfDoubled option = return
+{-
+toIfDoubled TokenTrav a = IfDoubledTrav
+toIfDoubled TokenTC a   = IfDoubledTC
+toIfDoubled TokenRel a  = IfDoubled a
 -}
 
 class (Functor t,
@@ -190,47 +223,48 @@ class (Functor t,
   type Relation t :: * -> *
   analyzableToken :: AnalyzableToken sys t
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
-  analyze :: forall option f v .
-    (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+  analyze :: forall option f vOrig v .
+    (Applicative f, DeBruijnLevel vOrig, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
-    Ctx (VarClassif option) sys v Void ->
+    Ctx (TypeForOption option) sys v Void ->
     Classification t v ->
-    (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v), Traversable ext) =>
+    (forall s ext .
+      (Analyzable sys s, DeBruijnLevel (ext vOrig), DeBruijnLevel (ext v), Traversable ext) =>
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
-        Ctx (VarClassif option) sys u Void ->
+        Ctx (TypeForOption option) sys u Void ->
         Classification t u ->
         Maybe (Classification s (ext u))
       ) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>
-        Ctx (VarClassif option) sys u Void ->
+        Ctx (TypeForOption option) sys u Void ->
         Classification t u ->
-        IfRelate option (Classification t u) ->
-        Maybe (Ctx (VarClassif option) sys (ext u) Void)
+        IfDoubled option (Classification t u) ->
+        Maybe (Ctx (TypeForOption option) sys (ext u) Void)
       ) ->
       ({-forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>-}
         Relation t v -> Relation s (ext v)
       ) ->
       AddressInfo ->
-      f (AnalyzerResult option s (ext v))
+      f (Analysis option s (ext vOrig) (ext v))
     ) ->
-    Either (AnalyzerError sys) (f (AnalyzerResult option t v))
+    Either (AnalyzerError sys) (f (Analysis option t vOrig v))
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
   extraClassif :: ClassifExtraInput (Classif t) v
 
 extCtxId :: forall sys t option u option' . (DeBruijnLevel u) => 
-        Ctx (VarClassif option') sys u Void ->
+        Ctx (TypeForOption option') sys u Void ->
         Classification t u ->
-        IfRelate option' (Classification t u) ->
-        Maybe (Ctx (VarClassif option') sys (Identity u) Void)
+        IfDoubled option' (Classification t u) ->
+        Maybe (Ctx (TypeForOption option') sys (Identity u) Void)
 extCtxId gamma _ _ = Just $ CtxId gamma
 crispExtCtxId :: forall sys t option u option' . (DeBruijnLevel u, Multimode sys) => 
-        Ctx (VarClassif option') sys u Void ->
+        Ctx (TypeForOption option') sys u Void ->
         Classification t u ->
-        IfRelate option' (Classification t u) ->
-        Maybe (Ctx (VarClassif option') sys (Identity u) Void)
+        IfDoubled option' (Classification t u) ->
+        Maybe (Ctx (TypeForOption option') sys (Identity u) Void)
 crispExtCtxId gamma _ _ = Just $ CtxId $ crispModedModality (ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
@@ -270,28 +304,28 @@ makeLenses ''Classification
     - Since you cannot allocate metas, you should pass down either a complete classifier or no classifier.
       Hence, if you know something about a subAST's classifier, please know all about it.
 -}
-analyzeOld :: forall sys t option f v .
-    (Analyzable sys t, Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+analyzeOld :: forall sys t option f vOrig v .
+    (Analyzable sys t, Applicative f, DeBruijnLevel vOrig, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
     --{-| When AST-nodes do not have the same head. -}
-    --(forall a . IfRelate option (f a)) ->
+    --(forall a . IfDoubled option (f a)) ->
     {-| For adding stuff to the context. -}
-    Ctx (VarClassif option) sys v Void ->
+    Ctx (TypeForOption option) sys v Void ->
     Classification t v ->
-    IfRelate option (Classification t v) ->
-    IfRelate option (Relation t v) ->
-    (forall s w .
-      (Analyzable sys s, DeBruijnLevel w) =>
+    IfDoubled option (Classification t v) ->
+    IfDoubled option (Relation t v) ->
+    (forall s wOrig w .
+      (Analyzable sys s, DeBruijnLevel wOrig, DeBruijnLevel w) =>
       (v -> w) ->
-      Maybe (Ctx (VarClassif option) sys w Void) ->
+      Maybe (Ctx (TypeForOption option) sys w Void) ->
       Classification s w ->
-      IfRelate option (Maybe (Classification s w)) ->
-      IfRelate option (Relation s w) ->
+      IfDoubled option (Maybe (Classification s w)) ->
+      IfDoubled option (Relation s w) ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
-      f (AnalyzerResult option s w)
+      f (Analysis option s wOrig w)
     ) ->
-    Either (AnalyzerError sys) (f (AnalyzerResult option t v))
+    Either (AnalyzerError sys) (f (Analysis option t vOrig v))
 analyzeOld token gamma inputT1 condInputT2 condRel h =
   analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel info ->
   h wkn
@@ -315,10 +349,10 @@ subASTsTyped :: forall sys f t v .
     f (s w)
   ) ->
   Either (AnalyzerError sys) (f (t v))
-subASTsTyped gamma inputT h = fmap unbox1 <$>
-  (analyzeOld TokenSubASTs gamma inputT absurdRelate absurdRelate $
+subASTsTyped gamma inputT h = fmap getAnalysisTrav <$>
+  (analyzeOld @sys @t @OptionTrav @f @v @v TokenTrav gamma inputT typesArentDoubled typesArentDoubled $
     \ wkn maybeGamma inputS _ _ addressInfo _ ->
-      Box1 <$> h wkn (fromMaybe unreachable maybeGamma) inputS addressInfo
+      AnalysisTrav <$> h wkn (fromMaybe unreachable maybeGamma) inputS addressInfo
   )
  
 subASTs :: forall sys f t v .
@@ -354,8 +388,8 @@ typetrick :: forall sys f t v .
     f (Classif s w)
   ) ->
   Either (AnalyzerError sys) (f (Classif t v))
-typetrick gamma inputT h = fmap unboxClassif <$>
-  (analyzeOld TokenTypes gamma inputT absurdRelate absurdRelate $
+typetrick gamma inputT h = fmap getAnalysisTC <$>
+  (analyzeOld @sys @t @OptionTC @f @v @v TokenTC gamma inputT typesArentDoubled typesArentDoubled $
     \ wkn maybeGamma inputS _ _ addressInfo _ ->
-      BoxClassif <$> h wkn (fromMaybe unreachable maybeGamma) inputS addressInfo
+      AnalysisTC <$> h wkn (fromMaybe unreachable maybeGamma) inputS addressInfo
   )
