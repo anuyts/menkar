@@ -134,26 +134,30 @@ type instance AnalyzerResult OptionTC = BoxClassif
 type instance AnalyzerResult OptionRel = Unit2
 -}
 
-data Analysis (option :: AnalyzerOption) (t :: * -> *) (vOrig :: *) (v :: *) where
-  AnalysisTrav :: forall t vOrig v . t v -> Analysis OptionTrav t vOrig v
-  AnalysisTC :: forall t vOrig v . Classif t v -> Analysis OptionTC t vOrig v
-  AnalysisRel :: Analysis OptionRel t vOrig v
-  AnalysisSolve :: forall t vOrig v . t vOrig -> Analysis OptionSolve t vOrig v
+data Analysis (option :: AnalyzerOption) (t :: * -> *) (v :: *) where
+  AnalysisTrav :: forall t v . t v -> Analysis OptionTrav t v
+  AnalysisTC :: forall t v . Classif t v -> Analysis OptionTC t v
+  AnalysisRel :: Analysis OptionRel t v
+  --AnalysisSolve :: forall t vOut v . t vOut -> Analysis OptionSolve t v
 
-getAnalysisTrav :: forall t vOrig v . Analysis OptionTrav t vOrig v -> t v
+getAnalysisTrav :: forall t v . Analysis OptionTrav t v -> t v
 getAnalysisTrav (AnalysisTrav t) = t
-getAnalysisTC :: forall t vOrig v . Analysis OptionTC t vOrig v -> Classif t v
+getAnalysisTC :: forall t v . Analysis OptionTC t v -> Classif t v
 getAnalysisTC (AnalysisTC ct) = ct
-getAnalysisSolve :: forall t vOrig v . Analysis OptionSolve t vOrig v -> t vOrig
-getAnalysisSolve (AnalysisSolve tOrig) = tOrig
+--getAnalysisSolve :: forall t vOut v . Analysis OptionSolve t vOut v -> t vOut
+--getAnalysisSolve (AnalysisSolve tOrig) = tOrig
 
-instance (Functor t, Functor (Classif t)) => Bifunctor (Analysis option t) where
+{-instance (Functor t, Functor (Classif t)) => Bifunctor (Analysis option t) where
   bimap fOrig f (AnalysisTrav t) = AnalysisTrav $ f <$> t
   bimap fOrig f (AnalysisTC ct) = AnalysisTC $ f <$> ct
   bimap fOrig f AnalysisRel = AnalysisRel
   bimap fOrig f (AnalysisSolve t) = AnalysisSolve $ fOrig <$> t
-instance (Functor t, Functor (Classif t)) => Functor (Analysis option t vOrig) where
-  fmap f analysis = bimap id f analysis
+instance (Functor t, Functor (Classif t)) => Functor (Analysis option t vOut) where
+  fmap f analysis = bimap id f analysis-}
+instance (Functor t, Functor (Classif t)) => Functor (Analysis option t) where
+  fmap f (AnalysisTrav t) = AnalysisTrav $ f <$> t
+  fmap f (AnalysisTC ct) = AnalysisTC $ f <$> ct
+  fmap f AnalysisRel = AnalysisRel
 
 {-
 type family TypeForOption (option :: AnalyzerOption) :: KSys -> * -> *
@@ -225,13 +229,13 @@ class (Functor t,
   type Relation t :: * -> *
   analyzableToken :: AnalyzableToken sys t
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
-  analyze :: forall option f vOrig v .
-    (Applicative f, DeBruijnLevel vOrig, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+  analyze :: forall option f vOut v .
+    (Applicative f, DeBruijnLevel vOut, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
     Ctx (TypeForOption option) sys v Void ->
     Classification t v ->
     (forall s ext .
-      (Analyzable sys s, DeBruijnLevel (ext vOrig), DeBruijnLevel (ext v), Traversable ext) =>
+      (Analyzable sys s, DeBruijnLevel (ext vOut), DeBruijnLevel (ext v), Traversable ext) =>
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
         Ctx (TypeForOption option) sys u Void ->
@@ -248,9 +252,9 @@ class (Functor t,
         Relation t v -> Relation s (ext v)
       ) ->
       AddressInfo ->
-      f (Analysis option s (ext vOrig) (ext v))
+      f (Analysis option s (ext vOut))
     ) ->
-    Either (AnalyzerError sys) (f (Analysis option t vOrig v))
+    Either (AnalyzerError sys) (f (Analysis option t vOut))
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
@@ -306,8 +310,8 @@ makeLenses ''Classification
     - Since you cannot allocate metas, you should pass down either a complete classifier or no classifier.
       Hence, if you know something about a subAST's classifier, please know all about it.
 -}
-analyzeOld :: forall sys t option f vOrig v .
-    (Analyzable sys t, Applicative f, DeBruijnLevel vOrig, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+analyzeOld :: forall sys t option f v .
+    (Analyzable sys t, Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
     --{-| When AST-nodes do not have the same head. -}
     --(forall a . IfDoubled option (f a)) ->
@@ -316,8 +320,8 @@ analyzeOld :: forall sys t option f vOrig v .
     Classification t v ->
     IfDoubled option (Classification t v) ->
     IfDoubled option (Relation t v) ->
-    (forall s wOrig w .
-      (Analyzable sys s, DeBruijnLevel wOrig, DeBruijnLevel w) =>
+    (forall s w .
+      (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
       Maybe (Ctx (TypeForOption option) sys w Void) ->
       Classification s w ->
@@ -325,9 +329,9 @@ analyzeOld :: forall sys t option f vOrig v .
       IfDoubled option (Relation s w) ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
-      f (Analysis option s wOrig w)
+      f (Analysis option s w)
     ) ->
-    Either (AnalyzerError sys) (f (Analysis option t vOrig v))
+    Either (AnalyzerError sys) (f (Analysis option t v))
 analyzeOld token gamma inputT1 condInputT2 condRel h =
   analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel info ->
   h wkn
@@ -352,7 +356,7 @@ subASTsTyped :: forall sys f t v .
   ) ->
   Either (AnalyzerError sys) (f (t v))
 subASTsTyped gamma inputT h = fmap getAnalysisTrav <$>
-  (analyzeOld @sys @t @OptionTrav @f @v @v TokenTrav gamma inputT typesArentDoubled typesArentDoubled $
+  (analyzeOld @sys @t @OptionTrav @f @v TokenTrav gamma inputT typesArentDoubled typesArentDoubled $
     \ wkn maybeGamma inputS _ _ addressInfo _ ->
       AnalysisTrav <$> h wkn (fromMaybe unreachable maybeGamma) inputS addressInfo
   )
@@ -391,7 +395,7 @@ typetrick :: forall sys f t v .
   ) ->
   Either (AnalyzerError sys) (f (Classif t v))
 typetrick gamma inputT h = fmap getAnalysisTC <$>
-  (analyzeOld @sys @t @OptionTC @f @v @v TokenTC gamma inputT typesArentDoubled typesArentDoubled $
+  (analyzeOld @sys @t @OptionTC @f @v TokenTC gamma inputT typesArentDoubled typesArentDoubled $
     \ wkn maybeGamma inputS _ _ addressInfo _ ->
       AnalysisTC <$> h wkn (fromMaybe unreachable maybeGamma) inputS addressInfo
   )
