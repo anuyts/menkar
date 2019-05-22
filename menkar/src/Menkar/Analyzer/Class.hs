@@ -256,17 +256,17 @@ class (Functor t,
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
   extraClassif :: ClassifExtraInput (Classif t) v
 
-extCtxId :: forall sys t option u option' . (DeBruijnLevel u) => 
-        Ctx (TypeForOption option') sys u Void ->
+extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) => 
+        Ctx (TypeMaybeTwice doubled) sys u Void ->
         Classification t u ->
-        IfDoubled option' (Classification t u) ->
-        Maybe (Ctx (TypeForOption option') sys (Identity u) Void)
+        IfTrue doubled (Classification t u) ->
+        Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
 extCtxId gamma _ _ = Just $ CtxId gamma
-crispExtCtxId :: forall sys t option u option' . (DeBruijnLevel u, Multimode sys) => 
-        Ctx (TypeForOption option') sys u Void ->
+crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys) => 
+        Ctx (TypeMaybeTwice doubled) sys u Void ->
         Classification t u ->
-        IfDoubled option' (Classification t u) ->
-        Maybe (Ctx (TypeForOption option') sys (Identity u) Void)
+        IfTrue doubled (Classification t u) ->
+        Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
 crispExtCtxId gamma _ _ = Just $ CtxId $ crispModedModality (ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
