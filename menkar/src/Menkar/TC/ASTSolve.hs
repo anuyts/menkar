@@ -44,11 +44,11 @@ newRelatedAST' :: forall sys tc t v vOrig .
 newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 (Twice1 extraT1 extraT2) maybeCTs alternative = do
   let maybeCT1 = fstTwice1 <$> maybeCTs
   let maybeCT2 = sndTwice1 <$> maybeCTs
-  let inputT1 = (AnalyzerInput _  extraT1 maybeCT1)
-  let inputT2 = (AnalyzerInput t2 extraT2 maybeCT2)
+  let inputT1 = (Classification _  extraT1 maybeCT1)
+  let inputT2 = (Classification t2 extraT2 maybeCT2)
   attempt <- sequenceA $ analyze TokenRelate gamma inputT2
     $ \ wkn extract extCtx extractRel addressInfo -> do
-      let (AnalyzerInput s2 extraS2 maybeCS2) = fromMaybe unreachable $ extract gamma inputT2
+      let (Classification s2 extraS2 maybeCS2) = fromMaybe unreachable $ extract gamma inputT2
       let relS = extractRel relT
       let gammadeltaOrig = fromMaybe unreachable $ _ --extCtx gammaOrig inputT2 absurdRelate
       let gammaOrig = fromMaybe _ $ extCtx gamma inputT1 (conditional inputT2)

@@ -264,8 +264,8 @@ whnormalizeAST' :: forall sys whn v t .
   String ->
   whn (t v)
 whnormalizeAST' parent gamma t extraT classifT reason =
-         let attempt = subASTsTyped gamma (AnalyzerInput t extraT (ClassifWillBe classifT)) $
-               \ wkn gammadelta (AnalyzerInput s extraS maybeClassifS) addressInfo ->
+         let attempt = subASTsTyped gamma (Classification t extraT (ClassifWillBe classifT)) $
+               \ wkn gammadelta (Classification s extraS maybeClassifS) addressInfo ->
                  if _addressInfo'shouldWHN addressInfo
                  then whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
                  else return s

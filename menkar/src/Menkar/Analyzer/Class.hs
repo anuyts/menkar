@@ -89,23 +89,23 @@ fromClassifInfo a0 (ClassifUnknown) = a0
 
 {-
 data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
-  _analyzerInput'get1 :: t v,
+  _classification'get1 :: t v,
   -- -- | Needs to be present when calling @'analyze'@.
-  --_analyzerInput'get2 :: IfRelate option (Maybe (t v)),
-  _analyzerInput'extra1 :: AnalyzerExtraInput t v,
-  _analyzerInput'extra2 :: IfRelate option (AnalyzerExtraInput t v),
-  _analyzerInput'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
-  _analyzerInput'relation :: IfRelate option (Relation t v)}
+  --_classification'get2 :: IfRelate option (Maybe (t v)),
+  _classification'extra1 :: AnalyzerExtraInput t v,
+  _classification'extra2 :: IfRelate option (AnalyzerExtraInput t v),
+  _classification'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
+  _classification'relation :: IfRelate option (Relation t v)}
 -}
 
-data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerInput {
-  _analyzerInput'get :: t v,
-  _analyzerInput'extra :: AnalyzerExtraInput t v,
-  _analyzerInput'classifInfo :: ClassifInfo (Classif t v)}
+data Classification (t :: * -> *) (v :: *) = Classification {
+  _classification'get :: t v,
+  _classification'extra :: AnalyzerExtraInput t v,
+  _classification'classifInfo :: ClassifInfo (Classif t v)}
 deriving instance (Functor t,
                    Functor (AnalyzerExtraInput t),
                    Functor (Classif t))
-  => Functor (AnalyzerInput option t)
+  => Functor (Classification t)
 
 mapMaybeClassifs :: forall option s t w v .
   (s w -> t v) ->
@@ -194,18 +194,18 @@ class (Functor t,
     (Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
     AnalyzerToken option ->
     Ctx (VarClassif option) sys v Void ->
-    AnalyzerInput option t v ->
+    Classification t v ->
     (forall s ext . (Analyzable sys s, DeBruijnLevel (ext v), Traversable ext) =>
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
         Ctx (VarClassif option) sys u Void ->
-        AnalyzerInput option t u ->
-        Maybe (AnalyzerInput option s (ext u))
+        Classification t u ->
+        Maybe (Classification s (ext u))
       ) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>
         Ctx (VarClassif option) sys u Void ->
-        AnalyzerInput option t u ->
-        IfRelate option (AnalyzerInput option t u) ->
+        Classification t u ->
+        IfRelate option (Classification t u) ->
         Maybe (Ctx (VarClassif option) sys (ext u) Void)
       ) ->
       ({-forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>-}
@@ -222,21 +222,21 @@ class (Functor t,
 
 extCtxId :: forall sys t option u option' . (DeBruijnLevel u) => 
         Ctx (VarClassif option') sys u Void ->
-        AnalyzerInput option t u ->
-        IfRelate option' (AnalyzerInput option t u) ->
+        Classification t u ->
+        IfRelate option' (Classification t u) ->
         Maybe (Ctx (VarClassif option') sys (Identity u) Void)
 extCtxId gamma _ _ = Just $ CtxId gamma
 crispExtCtxId :: forall sys t option u option' . (DeBruijnLevel u, Multimode sys) => 
         Ctx (VarClassif option') sys u Void ->
-        AnalyzerInput option t u ->
-        IfRelate option' (AnalyzerInput option t u) ->
+        Classification t u ->
+        IfRelate option' (Classification t u) ->
         Maybe (Ctx (VarClassif option') sys (Identity u) Void)
 crispExtCtxId gamma _ _ = Just $ CtxId $ crispModedModality (ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
 
-makeLenses ''AnalyzerInput
+makeLenses ''Classification
 
 
 {-| A supercombinator for type-checking, relatedness-checking, weak-head-normalization, normalization,
@@ -277,15 +277,15 @@ analyzeOld :: forall sys t option f v .
     --(forall a . IfRelate option (f a)) ->
     {-| For adding stuff to the context. -}
     Ctx (VarClassif option) sys v Void ->
-    AnalyzerInput option t v ->
-    IfRelate option (AnalyzerInput option t v) ->
+    Classification t v ->
+    IfRelate option (Classification t v) ->
     IfRelate option (Relation t v) ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
       Maybe (Ctx (VarClassif option) sys w Void) ->
-      AnalyzerInput option s w ->
-      IfRelate option (Maybe (AnalyzerInput option s w)) ->
+      Classification s w ->
+      IfRelate option (Maybe (Classification s w)) ->
       IfRelate option (Relation s w) ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
@@ -300,17 +300,17 @@ analyzeOld token gamma inputT1 condInputT2 condRel h =
     (extractT gamma <$> condInputT2)
     (extractRel <$> condRel)
     info
-    (\ t1' -> _analyzerInput'get <$> extractT gamma (analyzerInput'get .~ t1' $ inputT1))
+    (\ t1' -> _classification'get <$> extractT gamma (classification'get .~ t1' $ inputT1))
 
 subASTsTyped :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
-  AnalyzerInput OptionSubASTs t v ->
+  Classification t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
-    AnalyzerInput OptionSubASTs s w ->
+    Classification s w ->
     AddressInfo ->
     f (s w)
   ) ->
@@ -337,19 +337,19 @@ subASTs :: forall sys f t v .
   ) ->
   Either (AnalyzerError sys) (f (t v))
 subASTs gamma t extraInputT h = subASTsTyped gamma
-  (AnalyzerInput t extraInputT ClassifUnknown) $
+  (Classification t extraInputT ClassifUnknown) $
   \ wkn gamma inputS addressInfo ->
-     h wkn gamma (_analyzerInput'get inputS) (_analyzerInput'extra inputS) addressInfo
+     h wkn gamma (_classification'get inputS) (_classification'extra inputS) addressInfo
   
 typetrick :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
-  AnalyzerInput OptionTypes t v ->
+  Classification t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
-    AnalyzerInput OptionTypes s w ->
+    Classification s w ->
     AddressInfo ->
     f (Classif s w)
   ) ->

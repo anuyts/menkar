@@ -39,8 +39,8 @@ quickInferNoCheckUnsafe :: forall sys tc v t .
   [String] -> 
   tc (Classif t v)
 quickInferNoCheckUnsafe parent gamma t extraT address = do
-    maybeCT <- sequenceA $ typetrick id gamma (AnalyzerInput t extraT ClassifUnknown IfRelateTypes) $
-      \ wkn gammadelta (AnalyzerInput s extraS maybeCS _) addressInfo ->
+    maybeCT <- sequenceA $ typetrick id gamma (Classification t extraT ClassifUnknown IfRelateTypes) $
+      \ wkn gammadelta (Classification s extraS maybeCS _) addressInfo ->
         quickInferNoCheck parent gammadelta s extraS (address ++ _addressInfo'address addressInfo)
     case maybeCT of
       Right ct -> return ct
@@ -171,8 +171,8 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
         -----
         return tyResult
     (AnErrorTermAlgorithm, _, _) -> unreachable
-    (AnErrorTermSys, AnTokenTermNV, TermSys syst) -> inferTermSys parent gamma syst
-    (AnErrorTermSys, _, _) -> unreachable
+    (AnErrorTermSys sysError, AnTokenTermNV, TermSys syst) -> inferTermSys sysError parent gamma syst
+    (AnErrorTermSys sysError, _, _) -> unreachable
     (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent $ "Erroneous term."
     (AnErrorTermProblem, _, _) -> unreachable
     (AnErrorVar, AnTokenTerm, Var2 v) -> do
@@ -202,8 +202,8 @@ checkAST :: forall sys tc v t .
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
 checkAST parent gamma t extraT maybeCT = do
-  maybeCTInferred <- sequenceA $ typetrick gamma (AnalyzerInput t extraT maybeCT) $
-    \ wkn gammadelta (AnalyzerInput (s :: s w) extraS maybeCS) addressInfo ->
+  maybeCTInferred <- sequenceA $ typetrick gamma (Classification t extraT maybeCT) $
+    \ wkn gammadelta (Classification (s :: s w) extraS maybeCS) addressInfo ->
       haveClassif @sys @s $
       case _addressInfo'boredom addressInfo of
         -- entirely boring: pass on and return inferred and certified type. 
