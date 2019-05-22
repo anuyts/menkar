@@ -86,10 +86,10 @@ instance (SysAnalyzer sys,
     rbody <- h VarWkn
       (\ gamma' (Classification (Binding seg' body') U1 maybeCl') ->
          Just $ Classification body' U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl'))
-      (\ gamma (Classification (Binding seg1 body1) U1 maybeCl1) condInput2 ->
-         Just $ gamma :..
+      (\ token' gamma' (Classification (Binding seg1 body1) U1 maybeCl1) condInput2 ->
+         Just $ gamma' :..
            (decl'content %~ \ ty1 ->
-             toTypeForOption token ty1 $
+             toTypeMaybeTwice token' ty1 $
              fmap VarFromCtx . _decl'content . binding'segment . _classification'get <$> condInput2
            )
            (VarFromCtx <$> seg1)
@@ -121,10 +121,10 @@ instance (SysAnalyzer sys,
     rbody <- h VarWkn
       (\ gamma' (Classification (ClassifBinding seg' body') (Comp1 extraBody') maybeCl') ->
          Just $ Classification body' extraBody' (_classifBinding'body <$> classifMust2will maybeCl'))
-      (\ gamma (Classification (ClassifBinding seg1 body1) (Comp1 extraBody1) maybeCl1) condInput2 ->
-         Just $ gamma :..
+      (\ token' gamma' (Classification (ClassifBinding seg1 body1) (Comp1 extraBody1) maybeCl1) condInput2 ->
+         Just $ gamma' :..
            (decl'content %~ \ ty1 ->
-             toTypeForOption token ty1 $
+             toTypeMaybeTwice token' ty1 $
              fmap VarFromCtx . _decl'content . _classifBinding'segment . _classification'get <$>
              condInput2
            )
@@ -133,7 +133,7 @@ instance (SysAnalyzer sys,
       unComp1
       (AddressInfo ["body"] False EntirelyBoring)
     return $ case token of
-      TokenTrav -> AnalysisTrav $ ClassifBinding seg (getAnalysisTrav rbody)
+      TokenTrav -> AnalysisTrav $ ClassifBinding _seg (getAnalysisTrav rbody)
       TokenTC -> AnalysisTC $ ClassifBinding seg (getAnalysisTC rbody)
       TokenRel -> AnalysisRel
   convRel token d = Comp1 $ convRel (analyzableToken @sys @rhs) (VarWkn <$> d)
@@ -155,14 +155,14 @@ instance (SysAnalyzer sys,
     rbody <- h VarWkn
       (\ gamma' (Classification (NamedBinding name' body') (seg' :*: Comp1 extraBody') maybeCl') ->
          Just $ Classification body' extraBody' (_classifBinding'body <$> classifMust2will maybeCl'))
-      (\ gamma'
+      (\ token' gamma'
          (Classification (NamedBinding name1 body1) (seg1 :*: Comp1 extraBody1) maybeCl1)
          condInput2 ->
          Just $ gamma' :.. VarFromCtx <$> (Declaration
            (DeclNameSegment name1)
            (_decl'modty seg1)
            (_decl'plicity seg1)
-           (toTypeForOption token
+           (toTypeMaybeTwice token'
              (_decl'content seg1)
              (_decl'content . fst1 . _classification'extra <$> condInput2)
            )
@@ -291,7 +291,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             (forall w . Binding Type Type sys w -> UniHSConstructor sys w) ->
             Binding Type Type sys v ->
             (forall w . UniHSConstructor sys w -> Maybe (Binding Type Type sys w)) ->
-            _ (Analysis option (UniHSConstructor sys) _ v)
+            _ (Analysis option (UniHSConstructor sys) vOut {-v-})
           handleBinder binder binding extract = do
             rbinding <- h Identity
               (\ gamma' (Classification ty' U1 maybeD') -> extract ty' <&> \ binding' ->
@@ -682,7 +682,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                  (ClassifMustBe $ _segment'content $ binding'segment binding')
                otherwise -> Nothing
           )
-          (\ gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) _ ->
+          (\ token' gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) _ ->
              case (tyEliminee', eliminator') of
                (Pi binding', App arg') ->
                  Just $ CtxId $ VarFromCtx <$> _segment'modty (binding'segment binding') :\\ gamma'
@@ -854,7 +854,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
               Just $ Identity !<$> Classification eliminee' U1 (ClassifMustBe $ hs2type tyEliminee')
             otherwise -> Nothing
         )
-        (\ gamma' input1 condInput2 -> case input1 of
+        (\ token' gamma' input1 condInput2 -> case input1 of
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
             otherwise -> Nothing
@@ -867,7 +867,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
               Just $ Identity !<$> Classification tyEliminee' U1 (ClassifMustBe $ unVarFromCtx <$> ctx'mode gamma')
             otherwise -> Nothing
         )
-        (\ gamma' input1 condInput2 -> case input1 of
+        (\ token' gamma' input1 condInput2 -> case input1 of
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
             otherwise -> Nothing
@@ -974,13 +974,13 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
          Just $ Identity !<$>
          Classification content' extraContent' (classifMust2will maybeTyContent'))
-      (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') _ ->
+      (\ token' gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') _ ->
          Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
       )
       (fmapCoe Identity)
       (AddressInfo ["type"] True omit)
     return $ case token of
-      TokenTrav -> AnalysisTrav $ runIdentity !<$> Declaration name (getAnalysisTrav rdmu) (Identity !<$> plic) (getAnalysisTrav rcontent)
+      TokenTrav -> AnalysisTrav $ runIdentity !<$> Declaration name (getAnalysisTrav rdmu) (Identity !<$> _plic) (getAnalysisTrav rcontent)
       TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rcontent
       TokenRel -> AnalysisRel
   {-
@@ -1053,11 +1053,10 @@ instance (SysAnalyzer sys,
                 Just $ Classification telescopedRHS' U1 (ClassifWillBe U1)
               otherwise -> Nothing
           )
-          (\ gamma' input1 condInput2 -> case input1 of
-              (Classification (seg' :|- telescopedRHS') U1 maybeU1') -> case token of
-                TokenTrav -> Just $ gamma' :.. VarFromCtx <$> seg'
-                TokenTC   -> Just $ gamma' :.. VarFromCtx <$> seg'
-                TokenRel  -> runConditional condInput2 & \ case
+          (\ token' gamma' input1 condInput2 -> case input1 of
+              (Classification (seg' :|- telescopedRHS') U1 maybeU1') -> case token' of
+                TokenFalse -> Just $ gamma' :.. VarFromCtx <$> seg'
+                TokenTrue  -> runConditional condInput2 & \ case
                   (Classification (seg2 :|- telescopedRHS2) U1 maybeU12) ->
                     Just $ gamma' :.. VarFromCtx <$> (seg' & decl'content %~
                       \ ty1 -> Twice2 ty1 $ _decl'content seg2
@@ -1089,7 +1088,7 @@ instance (SysAnalyzer sys,
                 Just $ Identity !<$> Classification telescopedRHS' U1 (ClassifWillBe U1)
               otherwise -> Nothing
           )
-          (\ gamma' input1 condInput2 -> case input1 of
+          (\ token' gamma' input1 condInput2 -> case input1 of
               (Classification (dmu' :** telescopedRHS') U1 maybeU1') ->
                 Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
               otherwise -> Nothing
@@ -1149,7 +1148,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
       h VarInModule
         (\ gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') ->
            Just $ Classification (revEntries' !! indexRev) U1 (ClassifWillBe U1))
-        (\ gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') _ ->
+        (\ token' gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') _ ->
            Just $ gamma' :<...> VarFromCtx <$> ModuleRHS (Compose $ tails revEntries' !! indexRev))
         (fmapCoe VarInModule)
         (AddressInfo [show (index + 1) ++ "th entry"] True omit)

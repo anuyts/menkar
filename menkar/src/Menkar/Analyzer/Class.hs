@@ -21,6 +21,10 @@ import Data.Functor.Compose
 import GHC.Generics
 import Data.Maybe
 
+data BoolToken (bool :: Bool) where
+  TokenTrue :: BoolToken True
+  TokenFalse :: BoolToken False
+
 data AnalyzerOption = OptionTrav | OptionTC | OptionRel -- -| OptionSolve
 
 data AnalyzerToken (option :: AnalyzerOption) where
@@ -66,6 +70,11 @@ data AnalyzerError sys =
   AnErrorTermSys (SysAnalyzerError sys) |
   AnErrorTermProblem |
   AnErrorVar
+
+type family AnalyzerAssumption (option :: AnalyzerOption) (vOut :: *) (v :: *) :: Constraint
+type instance AnalyzerAssumption OptionTrav vOut v = ()
+type instance AnalyzerAssumption OptionTC vOut v = vOut ~ v
+type instance AnalyzerAssumption OptionRel vOut v = ()
 
 --newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
@@ -177,10 +186,28 @@ type instance CheckDoubled OptionTC = False
 type instance CheckDoubled OptionRel = True
 --type instance CheckDoubled OptionSolve = True
 
-class (Functor (TypeForOption option sys)) => IsAnalyzerOption option sys where
+tokenCheckDoubled :: AnalyzerToken option -> BoolToken (CheckDoubled option)
+tokenCheckDoubled TokenTrav = TokenFalse
+tokenCheckDoubled TokenTC = TokenFalse
+tokenCheckDoubled TokenRel = TokenTrue
+
+class (Functor (TypeMaybeTwice doubled sys)) => IsDoubledness doubled sys where
+instance (SysTrav sys) => (IsDoubledness True sys) where
+instance (SysTrav sys) => (IsDoubledness False sys) where
+
+class (IsDoubledness (CheckDoubled option) sys) => IsAnalyzerOption option sys where
 instance (SysTrav sys) => IsAnalyzerOption OptionTrav sys where
 instance (SysTrav sys) => IsAnalyzerOption OptionTC sys where
 instance (SysTrav sys) => IsAnalyzerOption OptionRel sys where
+
+toTypeMaybeTwice :: forall doubled sys v .
+  BoolToken doubled ->
+  Type sys v ->
+  IfTrue doubled (Type sys v) ->
+  TypeMaybeTwice doubled sys v
+toTypeMaybeTwice token ty1 (ConditionalT identityTy2) = case token of
+  TokenFalse -> ty1
+  TokenTrue  -> Twice2 ty1 (runIdentity identityTy2)
 
 toTypeForOption :: forall option sys v .
   AnalyzerToken option ->
@@ -230,7 +257,8 @@ class (Functor t,
   analyzableToken :: AnalyzableToken sys t
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
   analyze :: forall option f vOut v .
-    (Applicative f, DeBruijnLevel vOut, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+    (Applicative f, DeBruijnLevel vOut, DeBruijnLevel v, IsAnalyzerOption option sys,
+     AnalyzerAssumption option vOut v) =>
     AnalyzerToken option ->
     Ctx (TypeForOption option) sys v Void ->
     Classification t v ->
@@ -242,11 +270,12 @@ class (Functor t,
         Classification t u ->
         Maybe (Classification s (ext u))
       ) ->
-      (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>
-        Ctx (TypeForOption option) sys u Void ->
+      (forall u doubled . (DeBruijnLevel u, DeBruijnLevel (ext u), IsDoubledness doubled sys) =>
+        BoolToken doubled ->
+        Ctx (TypeMaybeTwice doubled) sys u Void ->
         Classification t u ->
-        IfDoubled option (Classification t u) ->
-        Maybe (Ctx (TypeForOption option) sys (ext u) Void)
+        IfTrue doubled (Classification t u) ->
+        Maybe (Ctx (TypeMaybeTwice doubled) sys (ext u) Void)
       ) ->
       ({-forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>-}
         Relation t v -> Relation s (ext v)
@@ -260,18 +289,20 @@ class (Functor t,
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
   extraClassif :: ClassifExtraInput (Classif t) v
 
-extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) => 
+extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) =>
+        BoolToken doubled ->
         Ctx (TypeMaybeTwice doubled) sys u Void ->
         Classification t u ->
         IfTrue doubled (Classification t u) ->
         Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
-extCtxId gamma _ _ = Just $ CtxId gamma
+extCtxId token gamma _ _ = Just $ CtxId gamma
 crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys) => 
+        BoolToken doubled ->
         Ctx (TypeMaybeTwice doubled) sys u Void ->
         Classification t u ->
         IfTrue doubled (Classification t u) ->
         Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
-crispExtCtxId gamma _ _ = Just $ CtxId $ crispModedModality (ctx'mode gamma) :\\ gamma
+crispExtCtxId token gamma _ _ = Just $ CtxId $ crispModedModality (ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
@@ -311,7 +342,8 @@ makeLenses ''Classification
       Hence, if you know something about a subAST's classifier, please know all about it.
 -}
 analyzeOld :: forall sys t option f v .
-    (Analyzable sys t, Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys) =>
+    (Analyzable sys t, Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys,
+     AnalyzerAssumption option v v) =>
     AnalyzerToken option ->
     --{-| When AST-nodes do not have the same head. -}
     --(forall a . IfDoubled option (f a)) ->
@@ -335,7 +367,7 @@ analyzeOld :: forall sys t option f v .
 analyzeOld token gamma inputT1 condInputT2 condRel h =
   analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel info ->
   h wkn
-    (extendCtx gamma inputT1 condInputT2)
+    (extendCtx (tokenCheckDoubled token) gamma inputT1 condInputT2)
     (fromMaybe unreachable $ extractT gamma inputT1)
     (extractT gamma <$> condInputT2)
     (extractRel <$> condRel)
