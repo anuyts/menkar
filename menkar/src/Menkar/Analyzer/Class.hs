@@ -21,13 +21,13 @@ import Data.Functor.Compose
 import GHC.Generics
 import Data.Maybe
 
-data AnalyzerOption = OptionTrav | OptionTC | OptionRel | OptionSolve
+data AnalyzerOption = OptionTrav | OptionTC | OptionRel -- -| OptionSolve
 
 data AnalyzerToken (option :: AnalyzerOption) where
   TokenTrav :: AnalyzerToken OptionTrav
   TokenTC :: AnalyzerToken OptionTC
   TokenRel :: AnalyzerToken OptionRel
-  TokenSolve :: AnalyzerToken OptionSolve
+  --TokenSolve :: AnalyzerToken OptionSolve
 
 data AnalyzableToken sys (ast :: * -> *) where
   AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
@@ -175,7 +175,7 @@ type family CheckDoubled (option :: AnalyzerOption) :: Bool
 type instance CheckDoubled OptionTrav = False
 type instance CheckDoubled OptionTC = False
 type instance CheckDoubled OptionRel = True
-type instance CheckDoubled OptionSolve = True
+--type instance CheckDoubled OptionSolve = True
 
 class (Functor (TypeForOption option sys)) => IsAnalyzerOption option sys where
 instance (SysTrav sys) => IsAnalyzerOption OptionTrav sys where
@@ -191,7 +191,7 @@ toTypeForOption option ty1 (ConditionalT identityTy2) = case option of
   TokenTrav -> ty1
   TokenTC -> ty1
   TokenRel -> Twice2 ty1 (runIdentity identityTy2)
-  TokenSolve -> Twice2 ty1 (runIdentity identityTy2)
+  --TokenSolve -> Twice2 ty1 (runIdentity identityTy2)
 
 type IfTrueT cond m = ConditionalT (cond ~ True) m
 type IfTrue cond = Conditional (cond ~ True)
