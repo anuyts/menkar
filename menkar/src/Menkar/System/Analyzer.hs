@@ -26,11 +26,11 @@ class (SysSyntax (Term sys) sys,
        Relation (Degree sys) ~ Const ModRel,
        Relation (SysTerm sys) ~ ModedDegree sys,
        Relation (SysUniHSConstructor sys) ~ Relation (UniHSConstructor sys),
-       AnalyzerExtraInput (Mode sys) ~ U1,
-       AnalyzerExtraInput (Modality sys) ~ U1,
-       AnalyzerExtraInput (Degree sys) ~ U1,
-       AnalyzerExtraInput (SysTerm sys) ~ U1,
-       AnalyzerExtraInput (SysUniHSConstructor sys) ~ U1
+       ClassifExtraInput (Mode sys) ~ U1,
+       ClassifExtraInput (Modality sys) ~ U1,
+       ClassifExtraInput (Degree sys) ~ U1,
+       ClassifExtraInput (SysTerm sys) ~ U1,
+       ClassifExtraInput (SysUniHSConstructor sys) ~ U1
       ) => SysAnalyzer sys where
   quickEqSysUnanalyzable :: forall v .
     (DeBruijnLevel v) =>

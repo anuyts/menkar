@@ -33,7 +33,7 @@ fromRight b0 (Right b) = b
 instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type Classif (ModedModality sys) = Mode sys :*: Mode sys -- domain and codomain
   type Relation (ModedModality sys) = Const ModRel
-  type AnalyzerExtraInput (ModedModality sys) = U1
+  type ClassifExtraInput (ModedModality sys) = U1
   analyzableToken = AnTokenModedModality
   witClassif token = Witness
   analyze token gamma (Classification (ModedModality dom cod mu) U1 _) h = Right $ do
@@ -68,12 +68,12 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
 instance (SysAnalyzer sys,
           Analyzable sys (rhs sys),
           Relation (rhs sys) ~ ModedDegree sys,
-          AnalyzerExtraInput (rhs sys) ~ U1,
-          AnalyzerExtraInput (Classif (rhs sys)) ~ U1
+          ClassifExtraInput (rhs sys) ~ U1,
+          ClassifExtraInput (Classif (rhs sys)) ~ U1
          ) => Analyzable sys (Binding Type rhs sys) where
   type Classif (Binding Type rhs sys) = Classif (Segment Type sys) :*: ClassifBinding Type (Classif (rhs sys)) sys
   type Relation (Binding Type rhs sys) = ModedDegree sys
-  type AnalyzerExtraInput (Binding Type rhs sys) = U1
+  type ClassifExtraInput (Binding Type rhs sys) = U1
   analyzableToken = AnTokenBinding analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token gamma (Classification (Binding seg body) U1 maybeCl) h = Right $ do
@@ -109,11 +109,11 @@ instance (SysAnalyzer sys,
 instance (SysAnalyzer sys,
           Analyzable sys rhs
           --Relation rhs ~ ModedDegree sys,
-          --AnalyzerExtraInput rhs ~ U1
+          --ClassifExtraInput rhs ~ U1
          ) => Analyzable sys (ClassifBinding Type rhs sys) where
   type Classif (ClassifBinding Type rhs sys) = ClassifBinding Type (Classif rhs) sys
   type Relation (ClassifBinding Type rhs sys) = Relation rhs :.: VarExt
-  type AnalyzerExtraInput (ClassifBinding Type rhs sys) = AnalyzerExtraInput rhs :.: VarExt
+  type ClassifExtraInput (ClassifBinding Type rhs sys) = ClassifExtraInput rhs :.: VarExt
   analyzableToken = AnTokenClassifBinding analyzableToken
   witClassif token = haveClassif @sys @rhs Witness
   analyze token gamma
@@ -146,8 +146,8 @@ instance (SysAnalyzer sys,
          ) => Analyzable sys (NamedBinding rhs sys) where
   type Classif (NamedBinding rhs sys) = ClassifBinding Type (Classif (rhs sys)) sys
   type Relation (NamedBinding rhs sys) = Relation (rhs sys) :.: VarExt
-  type AnalyzerExtraInput (NamedBinding rhs sys) =
-    Segment Type sys :*: (AnalyzerExtraInput (rhs sys) :.: VarExt)
+  type ClassifExtraInput (NamedBinding rhs sys) =
+    Segment Type sys :*: (ClassifExtraInput (rhs sys) :.: VarExt)
   analyzableToken = AnTokenNamedBinding analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token gamma
@@ -184,7 +184,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   
   type Classif (UniHSConstructor sys) = Mode sys
   type Relation (UniHSConstructor sys) = ModedDegree sys
-  type AnalyzerExtraInput (UniHSConstructor sys) = U1
+  type ClassifExtraInput (UniHSConstructor sys) = U1
   analyzableToken = AnTokenUniHSConstructor
   witClassif token = Witness
   analyze (token :: AnalyzerToken option) gamma
@@ -319,7 +319,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
   type Classif (ConstructorTerm sys) = Type sys
   type Relation (ConstructorTerm sys) = ModedDegree sys
-  type AnalyzerExtraInput (ConstructorTerm sys) = U1
+  type ClassifExtraInput (ConstructorTerm sys) = U1
   analyzableToken = AnTokenConstructorTerm
   witClassif token = Witness
   analyze token gamma (Classification t U1 _) h = Right $ do
@@ -481,7 +481,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
 instance SysAnalyzer sys => Analyzable sys (Type sys) where
   type Classif (Type sys) = U1
   type Relation (Type sys) = ModedDegree sys
-  type AnalyzerExtraInput (Type sys) = U1
+  type ClassifExtraInput (Type sys) = U1
   analyzableToken = AnTokenType
   witClassif token = Witness
   analyze token gamma (Classification (Type t) U1 maybeU1) h = Right $ do
@@ -505,7 +505,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
 instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
   type Classif (DependentEliminator sys) = U1
   type Relation (DependentEliminator sys) = ModedDegree sys
-  type AnalyzerExtraInput (DependentEliminator sys) =
+  type ClassifExtraInput (DependentEliminator sys) =
     ModedModality sys :*: Term sys :*: UniHSConstructor sys :*: (Type sys :.: VarExt)
   analyzableToken = AnTokenDependentEliminator
   witClassif token = Witness
@@ -661,7 +661,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
 instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
   type Classif (Eliminator sys) = Type sys
   type Relation (Eliminator sys) = ModedDegree sys
-  type AnalyzerExtraInput (Eliminator sys) = ModedModality sys :*: Term sys :*: UniHSConstructor sys
+  type ClassifExtraInput (Eliminator sys) = ModedModality sys :*: Term sys :*: UniHSConstructor sys
   analyzableToken = AnTokenEliminator
   witClassif token = Witness
 
@@ -816,7 +816,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
 instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
   type Classif (TermNV sys) = Type sys
   type Relation (TermNV sys) = ModedDegree sys
-  type AnalyzerExtraInput (TermNV sys) = U1
+  type ClassifExtraInput (TermNV sys) = U1
   analyzableToken = AnTokenTermNV
   witClassif token = Witness
 
@@ -932,7 +932,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
 instance SysAnalyzer sys => Analyzable sys (Term sys) where
   type Classif (Term sys) = Type sys
   type Relation (Term sys) = ModedDegree sys
-  type AnalyzerExtraInput (Term sys) = U1
+  type ClassifExtraInput (Term sys) = U1
   analyzableToken = AnTokenTerm
   witClassif token = Witness
   analyze token gamma (Classification t U1 maybeTy) h = case t of
@@ -959,7 +959,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
 instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declaration declSort rhs sys) where
   type Classif (Declaration declSort rhs sys) = Classif (rhs sys)
   type Relation (Declaration declSort rhs sys) = Relation (rhs sys)
-  type AnalyzerExtraInput (Declaration declSort rhs sys) = AnalyzerExtraInput (rhs sys)
+  type ClassifExtraInput (Declaration declSort rhs sys) = ClassifExtraInput (rhs sys)
   analyzableToken = AnTokenDeclaration analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token gamma (Classification decl@(Declaration name dmu plic content) extraContent maybeTyContent) h = Right $ do
@@ -1011,11 +1011,11 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
 instance (SysAnalyzer sys,
           Analyzable sys (rhs sys),
           Classif (rhs sys) ~ U1,
-          AnalyzerExtraInput (rhs sys) ~ U1,
+          ClassifExtraInput (rhs sys) ~ U1,
           Relation (rhs sys) ~ ModedDegree sys) => Analyzable sys (Telescoped Type rhs sys) where
   type Classif (Telescoped Type rhs sys) = U1
   type Relation (Telescoped Type rhs sys) = Relation (Type sys) :*: Relation (rhs sys)
-  type AnalyzerExtraInput (Telescoped Type rhs sys) = U1
+  type ClassifExtraInput (Telescoped Type rhs sys) = U1
   analyzableToken = AnTokenTelescoped analyzableToken
   witClassif token = Witness
   
@@ -1109,7 +1109,7 @@ instance (SysAnalyzer sys,
 instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
   type Classif (ValRHS sys) = U1
   type Relation (ValRHS sys) = ModedDegree sys
-  type AnalyzerExtraInput (ValRHS sys) = U1
+  type ClassifExtraInput (ValRHS sys) = U1
   analyzableToken = AnTokenValRHS
   witClassif token = Witness
   analyze token gamma (Classification valRHS@(ValRHS t ty) U1 maybeU1) h = Right $ do
@@ -1137,7 +1137,7 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
 instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
   type Classif (ModuleRHS sys) = U1
   type Relation (ModuleRHS sys) = ModedDegree sys
-  type AnalyzerExtraInput (ModuleRHS sys) = U1
+  type ClassifExtraInput (ModuleRHS sys) = U1
   analyzableToken = AnTokenModuleRHS
   witClassif token = Witness
 
@@ -1167,7 +1167,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
 instance SysAnalyzer sys => Analyzable (Val sys) where
   type Classif (Val sys) = U1
   type Relation (Val sys) = ModedDegree sys
-  type AnalyzerExtraInput (Val sys) = U1
+  type ClassifExtraInput (Val sys) = U1
   analyze token fromType h gamma (Classification val@(Declaration ))
 -}
 
@@ -1176,7 +1176,7 @@ instance SysAnalyzer sys => Analyzable (Val sys) where
 instance SysAnalyzer sys => Analyzable sys (Entry sys) where
   type Classif (Entry sys) = U1
   type Relation (Entry sys) = ModedDegree sys
-  type AnalyzerExtraInput (Entry sys) = U1
+  type ClassifExtraInput (Entry sys) = U1
   analyzableToken = AnTokenEntry
   witClassif token = Witness
   analyze token gamma (Classification entry U1 maybeU1) h = Right $ do
@@ -1219,7 +1219,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
 instance (SysAnalyzer sys) => Analyzable sys U1 where
   type Classif U1 = U1
   type Relation U1 = U1
-  type AnalyzerExtraInput U1 = U1
+  type ClassifExtraInput U1 = U1
   analyzableToken = AnTokenU1
   witClassif token = Witness
   analyze token gamma (Classification U1 U1 _) h =
@@ -1237,7 +1237,7 @@ instance (SysAnalyzer sys,
           Analyzable sys g) => Analyzable sys (f :*: g) where
   type Classif (f :*: g) = Classif f :*: Classif g
   type Relation (f :*: g) = Relation f :*: Relation g
-  type AnalyzerExtraInput (f :*: g) = AnalyzerExtraInput f :*: AnalyzerExtraInput g
+  type ClassifExtraInput (f :*: g) = ClassifExtraInput f :*: ClassifExtraInput g
   analyzableToken = AnTokenPair1 analyzableToken analyzableToken
   witClassif token = 
     haveClassif @sys @f $
@@ -1274,7 +1274,7 @@ instance (SysAnalyzer sys,
           Applicative f) => Analyzable sys (Compose f t) where
   type Classif (Compose f t) = Classif t
   type Relation (Compose f t) = Relation t
-  type AnalyzerExtraInput (Compose f t) = Compose f (AnalyzerExtraInput t)
+  type ClassifExtraInput (Compose f t) = Compose f (ClassifExtraInput t)
   analyzableToken = AnTokenCompose analyzableToken
   analyze token fromType gamma (Classification (Compose ftv) (Compose fextra) maybeClassifs maybeRel) h = Right $ do
     return $ case token of
@@ -1289,7 +1289,7 @@ instance (SysAnalyzer sys,
           Functor g) => Analyzable sys (f :.: g) where
   type Classif (f :.: g) = Classif f :.: g
   type Relation (f :.: g) = Relation f :.: g
-  type AnalyzerExtraInput (f :.: g) = AnalyzerExtraInput f :.: g
+  type ClassifExtraInput (f :.: g) = ClassifExtraInput f :.: g
   analyze token fromType h gamma (Classification (Comp1 fgv) (Comp1 extra) maybeCompClassif maybeCompRel) = do
     analyze <- analyze token fromType _h gamma
       (Classification fgv extra (unComp1 <$> maybeCompClassif) (unComp1 <$> maybeCompRel))

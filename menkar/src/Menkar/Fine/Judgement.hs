@@ -35,7 +35,7 @@ data Judgement (sys :: KSys) where
     AnalyzableToken sys t ->
     Ctx Type sys v Void ->
     t v ->
-    AnalyzerExtraInput t v ->
+    ClassifExtraInput t v ->
     ClassifInfo (Classif t v) {-^ Will or must, not unknown. -} ->
     Judgement sys
   JudRel :: (DeBruijnLevel v, Analyzable sys t) =>
@@ -44,7 +44,7 @@ data Judgement (sys :: KSys) where
     Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice1 t v ->
-    Twice1 (AnalyzerExtraInput t) v ->
+    Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) {-^ Will or unknown; not must. If unknown, we can't do eta. -} ->
     Judgement sys
     

@@ -259,7 +259,7 @@ whnormalizeAST' :: forall sys whn v t .
   Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   Classif t v ->
   String ->
   whn (t v)
@@ -280,7 +280,7 @@ whnormalizeAST :: forall sys whn v t .
   Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   Classif t v ->
   String ->
   whn (t v)

@@ -30,7 +30,7 @@ data AnalyzerToken (option :: AnalyzerOption) where
 
 data AnalyzableToken sys (ast :: * -> *) where
   AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
-  AnTokenBinding :: (Analyzable sys (rhs sys), AnalyzerExtraInput (rhs sys) ~ U1) =>
+  AnTokenBinding :: (Analyzable sys (rhs sys), ClassifExtraInput (rhs sys) ~ U1) =>
     AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
   AnTokenClassifBinding :: (Analyzable sys rhs) =>
     AnalyzableToken sys rhs -> AnalyzableToken sys (ClassifBinding Type rhs sys)
@@ -92,18 +92,18 @@ data AnalyzerInput (option :: AnalyzerOption) (t :: * -> *) (v :: *) = AnalyzerI
   _classification'get1 :: t v,
   -- -- | Needs to be present when calling @'analyze'@.
   --_classification'get2 :: IfRelate option (Maybe (t v)),
-  _classification'extra1 :: AnalyzerExtraInput t v,
-  _classification'extra2 :: IfRelate option (AnalyzerExtraInput t v),
+  _classification'extra1 :: ClassifExtraInput t v,
+  _classification'extra2 :: IfRelate option (ClassifExtraInput t v),
   _classification'classifInfo :: ClassifInfo (Classif t v, IfRelate option (Classif t v)),
   _classification'relation :: IfRelate option (Relation t v)}
 -}
 
 data Classification (t :: * -> *) (v :: *) = Classification {
   _classification'get :: t v,
-  _classification'extra :: AnalyzerExtraInput t v,
+  _classification'extra :: ClassifExtraInput t v,
   _classification'classifInfo :: ClassifInfo (Classif t v)}
 deriving instance (Functor t,
-                   Functor (AnalyzerExtraInput t),
+                   Functor (ClassifExtraInput t),
                    Functor (Classif t))
   => Functor (Classification t)
 
@@ -182,10 +182,10 @@ toIfRelate TokenRelate a = IfRelate a
 -}
 
 class (Functor t,
-       Functor (AnalyzerExtraInput t),
+       Functor (ClassifExtraInput t),
        Functor (Classif t),
        Functor (Relation t)) => Analyzable sys t where
-  type AnalyzerExtraInput t :: * -> *
+  type ClassifExtraInput t :: * -> *
   type Classif t :: * -> *
   type Relation t :: * -> *
   analyzableToken :: AnalyzableToken sys t
@@ -218,7 +218,7 @@ class (Functor t,
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
-  extraClassif :: AnalyzerExtraInput (Classif t) v
+  extraClassif :: ClassifExtraInput (Classif t) v
 
 extCtxId :: forall sys t option u option' . (DeBruijnLevel u) => 
         Ctx (VarClassif option') sys u Void ->
@@ -325,13 +325,13 @@ subASTs :: forall sys f t v .
   (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
     Ctx Type sys w Void ->
     s w ->
-    AnalyzerExtraInput s w ->
+    ClassifExtraInput s w ->
     AddressInfo ->
     f (s w)
   ) ->

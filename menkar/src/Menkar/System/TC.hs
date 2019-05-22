@@ -74,7 +74,7 @@ class SysWHN sys => SysTC sys where
     Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
     Twice1 t v ->
-    Twice1 (AnalyzerExtraInput t) v ->
+    Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     tc ()
   -- | see Menkar.TC.Solve.checkEta.
@@ -177,7 +177,7 @@ class SysWHN sys => SysTC sys where
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     t v ->
-    Twice1 (AnalyzerExtraInput t) v ->
+    Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     (String -> tc ()) ->
     String ->
@@ -193,7 +193,7 @@ newMetaClassif4ast :: forall sys tc t v .
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   String ->
   tc (Classif t v)
 newMetaClassif4ast maybeParent gamma t extraT reason =

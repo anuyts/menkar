@@ -23,7 +23,7 @@ class SysSyntax (Term sys) sys => SysScoper sys where
     Maybe (Constraint sys) ->
     Ctx Type sys v Void ->
     t v ->
-    AnalyzerExtraInput t v ->
+    ClassifExtraInput t v ->
     String ->
     sc (Classif t v)
 
@@ -44,7 +44,7 @@ newMetaClassif4astNoCheck :: forall sys sc t v .
   Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   String ->
   sc (Classif t v)
 newMetaClassif4astNoCheck maybeParent gamma t extraT reason = do

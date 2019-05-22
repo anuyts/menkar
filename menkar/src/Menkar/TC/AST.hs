@@ -35,7 +35,7 @@ quickInferNoCheckUnsafe :: forall sys tc v t .
   Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   [String] -> 
   tc (Classif t v)
 quickInferNoCheckUnsafe parent gamma t extraT address = do
@@ -54,7 +54,7 @@ quickInferNoCheck :: forall sys tc v t .
   Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   [String] -> 
   tc (Classif t v)
 quickInferNoCheck parent gamma t extraT address = case (analyzableToken :: AnalyzableToken sys t) of
@@ -68,7 +68,7 @@ quickInfer :: forall sys tc v t .
   Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   [String] -> 
   tc (Classif t v)
 quickInfer parent gamma t extraT address = do
@@ -83,7 +83,7 @@ checkSpecialAST :: forall sys tc v t .
   Ctx Type sys v Void ->
   AnalyzerError sys ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
 checkSpecialAST parent gamma anErr t extraT maybeCT = do
@@ -198,7 +198,7 @@ checkAST :: forall sys tc v t .
   Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
 checkAST parent gamma t extraT maybeCT = do
