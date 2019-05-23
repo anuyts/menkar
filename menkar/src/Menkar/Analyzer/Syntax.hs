@@ -857,8 +857,8 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
   analyze token gamma (Classification t U1 maybeTy) h = case t of
 
     TermCons c -> Right $ do
-      rc <- h Identity
-        _
+      rc <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TermCons unreachable)
         (\ gamma' -> \ case
             (Classification (TermCons c') U1 maybeTy') ->
               Just $ Identity !<$> Classification c' U1 (classifMust2will maybeTy')
@@ -868,13 +868,13 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (fmapCoe Identity)
         (AddressInfo ["underlying constructor"] False EntirelyBoring)
       return $ case token of
-        TokenTrav -> AnalysisTrav $ TermCons $ runIdentity !<$> getAnalysisTrav rc
-        TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rc
+        TokenTrav -> AnalysisTrav $ TermCons $ getAnalysisTrav rc
+        TokenTC -> AnalysisTC $ getAnalysisTC rc
         TokenRel -> AnalysisRel
 
     TermElim dmuElim eliminee tyEliminee eliminator -> Right $ do
-      rdmuElim <- h Identity
-        _
+      rdmuElim <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TermElim unreachable unreachable unreachable unreachable)
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ Identity !<$> Classification dmuElim' U1
@@ -884,22 +884,8 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         crispExtCtxId
         (const $ Const ModEq)
         (AddressInfo ["modality of elimination"] False omit)
-      reliminee <- h Identity
-        _
-        (\ gamma' -> \ case
-            (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
-              Just $ Identity !<$> Classification eliminee' U1 (ClassifMustBe $ hs2type tyEliminee')
-            otherwise -> Nothing
-        )
-        (\ token' gamma' input1 condInput2 -> case input1 of
-            (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
-              Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
-            otherwise -> Nothing
-        )
-        (fmapCoe Identity . modedDivDeg dmuElim)
-        (AddressInfo ["eliminee"] True omit)
-      rtyEliminee <- h Identity
-        _
+      rtyEliminee <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TermElim (getAnalysisTrav rdmuElim) unreachable unreachable unreachable)
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ Identity !<$> Classification tyEliminee' U1 (ClassifMustBe $ unVarFromCtx <$> ctx'mode gamma')
@@ -912,8 +898,23 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         )
         (fmapCoe Identity . modedDivDeg dmuElim)
         (AddressInfo ["type of eliminee"] False omit)
-      reliminator <- h Identity
-        _
+      reliminee <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TermElim (getAnalysisTrav rdmuElim) unreachable (getAnalysisTrav rtyEliminee) unreachable)
+        (\ gamma' -> \ case
+            (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ Identity !<$> Classification eliminee' U1 (ClassifMustBe $ hs2type tyEliminee')
+            otherwise -> Nothing
+        )
+        (\ token' gamma' input1 condInput2 -> case input1 of
+            (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
+              Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
+            otherwise -> Nothing
+        )
+        (fmapCoe Identity . modedDivDeg dmuElim)
+        (AddressInfo ["eliminee"] True omit)
+      reliminator <- fmapCoe runIdentity <$> h Identity
+        (conditional $
+          TermElim (getAnalysisTrav rdmuElim) (getAnalysisTrav reliminee) (getAnalysisTrav rtyEliminee) unreachable)
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ Identity !<$> Classification
@@ -927,8 +928,8 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (AddressInfo ["eliminator"] False EntirelyBoring)
       return $ case token of
         TokenTrav ->
-          AnalysisTrav $ runIdentity !<$> TermElim (getAnalysisTrav rdmuElim) (getAnalysisTrav reliminee) (getAnalysisTrav rtyEliminee) (getAnalysisTrav reliminator)
-        TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC reliminator
+          AnalysisTrav $ TermElim (getAnalysisTrav rdmuElim) (getAnalysisTrav reliminee) (getAnalysisTrav rtyEliminee) (getAnalysisTrav reliminator)
+        TokenTC -> AnalysisTC $ getAnalysisTC reliminator
         TokenRel -> AnalysisRel
 
     TermMeta _ _ _ _ -> Left AnErrorTermMeta
@@ -947,8 +948,8 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
     TermAlgorithm _ _ -> Left AnErrorTermAlgorithm
 
     TermSys syst -> Right $ do
-      _
       rsyst <- h Identity
+        (conditional $ TermSys unreachable)
         (\ gamma' -> \ case
             (Classification (TermSys syst') U1 maybeTy') ->
               Just $ Identity !<$> Classification syst' U1 (classifMust2will maybeTy')
@@ -978,7 +979,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
   analyze token gamma (Classification t U1 maybeTy) h = case t of
     Expr2 tnv -> Right $ do
       rtnv <- h Identity
-        _
+        (conditional $ Expr2 unreachable)
         (\ gamma' -> \ case
             (Classification (Expr2 tnv') U1 maybeTy') ->
               Just $ Identity !<$> Classification tnv' U1 (classifMust2will maybeTy')
