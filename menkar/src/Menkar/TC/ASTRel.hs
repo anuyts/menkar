@@ -22,24 +22,6 @@ import GHC.Generics
 import Data.Maybe
 
 ---------------------------------------------------
-  
-tryToSolveTerm :: forall sys tc v .
-  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
-  Eta ->
-  ModedDegree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
-  Term sys v {-^ Blocked. -} ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
-  [Int] ->
-  [Int] ->
-  (String -> tc ()) ->
-  tc ()
-tryToSolveTerm = _tryToSolveTerm
-
----------------------------------------------------
 
 checkASTRel' :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
@@ -48,23 +30,23 @@ checkASTRel' :: forall sys tc t v .
   Relation t v ->
   Ctx (Twice2 Type) sys v Void ->
   Twice1 t v ->
-  Twice1 (AnalyzerExtraInput t) v ->
+  Twice1 (ClassifExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
 checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = do
   let maybeCT1 = fstTwice1 <$> maybeCTs
   let maybeCT2 = sndTwice1 <$> maybeCTs
-  let inputT1 = (AnalyzerInput t1 extraT1 maybeCT1)
-  let inputT2 = (AnalyzerInput t2 extraT2 maybeCT2)
-  attempt <- sequenceA $ analyze TokenRelate gamma inputT1
-    $ \ wkn extract extCtx extractRel addressInfo ->
+  let inputT1 = (Classification t1 extraT1 maybeCT1)
+  let inputT2 = (Classification t2 extraT2 maybeCT2)
+  attempt <- sequenceA $ analyze TokenRel gamma inputT1
+    $ \ wkn _ extract extCtx extractRel addressInfo ->
       case (extract gamma inputT1, extract gamma inputT2) of
         (Nothing, _) -> unreachable
         (Just _, Nothing) -> tcFail parent "False"
-        (Just (AnalyzerInput (s1 :: s _) extraS1 maybeCS1),
-         Just (AnalyzerInput (s2 :: s _) extraS2 maybeCS2)) -> do
+        (Just (Classification (s1 :: s _) extraS1 maybeCS1),
+         Just (Classification (s2 :: s _) extraS2 maybeCS2)) -> do
           let relS = extractRel relT
-          let gammadelta = fromMaybe unreachable $ extCtx gamma inputT1 (conditional inputT2)
+          let gammadelta = fromMaybe unreachable $ extCtx TokenTrue gamma inputT1 (conditional inputT2)
               -- Cannot fail because we already know that the shapes of t1 and t2 match.
           addNewConstraint
             (JudRel (analyzableToken @sys @s) (Eta True) relS gammadelta
@@ -74,9 +56,9 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
             )
             (Just parent)
             ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
-          return Unit2
+          return AnalysisRel
   case attempt of
-    Right Unit2 -> return ()
+    Right AnalysisRel -> return ()
     Left anErr -> case (anErr, analyzableToken :: AnalyzableToken sys t, t1) of
          (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) ->
            unreachable -- terms are neutral at this point
@@ -110,7 +92,7 @@ checkASTRel :: forall sys tc t v .
   Relation t v ->
   Ctx (Twice2 Type) sys v Void ->
   Twice1 t v ->
-  Twice1 (AnalyzerExtraInput t) v ->
+  Twice1 (ClassifExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
 checkASTRel parent eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs =

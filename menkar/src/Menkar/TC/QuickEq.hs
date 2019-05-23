@@ -15,23 +15,28 @@ import Data.Functor.Const
 import Control.Lens
 import GHC.Generics
 
+instance Monoid a => Monad (Const a) where
+  return = pure
+  Const a >>= f = let Const b = f unreachable
+                  in  Const $ a <> b
+
 quickEq :: forall sys t v .
   (SysAnalyzer sys, Analyzable sys t, DeBruijnLevel v) =>
   t v ->
   t v ->
-  AnalyzerExtraInput t v ->
-  AnalyzerExtraInput t v ->
+  ClassifExtraInput t v ->
+  ClassifExtraInput t v ->
   Bool
 quickEq t t' extraT extraT' =
-  let result = fmap getConst $ analyze @sys @t TokenRelate unreachable
-        (AnalyzerInput t extraT ClassifUnknown)
-        $ \ wkn extract extCtx extractRel addressInfo ->
-          case (extract unreachable (AnalyzerInput t  extraT  ClassifUnknown),
-                extract unreachable (AnalyzerInput t' extraT' ClassifUnknown)) of
+  let result = fmap getConst $ analyze @sys @t @_ @_ @v TokenRel unreachable
+        (Classification t extraT ClassifUnknown)
+        $ \ wkn _ extract extCtx extractRel addressInfo ->
+          case (extract unreachable (Classification t  extraT  ClassifUnknown),
+                extract unreachable (Classification t' extraT' ClassifUnknown)) of
             (Nothing, _) -> unreachable
             (Just _, Nothing) -> Const $ All False
-            (Just (AnalyzerInput s  extraS  _),
-             Just (AnalyzerInput s' extraS' _)) -> Const $ All $ quickEq @sys s s' extraS extraS'
+            (Just (Classification s  extraS  _),
+             Just (Classification s' extraS' _)) -> Const $ All $ quickEq @sys s s' extraS extraS'
   in case result of
        Right (All b) -> b
        Left anErr -> case (anErr, analyzableToken @sys @t, t) of
