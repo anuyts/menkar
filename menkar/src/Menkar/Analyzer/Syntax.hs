@@ -548,8 +548,8 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
     case (tyEliminee, clauses) of
       
       (Sigma binding, ElimSigma boundBoundPairClause) -> do
-        rboundBoundPairClause <- h Identity
-          _
+        rboundBoundPairClause <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimSigma unreachable)
           (\ (gamma' :: Ctx _ _ u Void)
              (Classification clauses'
                (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
@@ -583,14 +583,14 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["pair clause"] False omit)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ ElimSigma $ runIdentity !<$> getAnalysisTrav rboundBoundPairClause
+          TokenTrav -> AnalysisTrav $ ElimSigma $ getAnalysisTrav rboundBoundPairClause
           TokenTC -> AnalysisTC U1
           TokenRel -> AnalysisRel
       (_, ElimSigma _) -> unreachable
 
       (BoxType seg, ElimBox boundBoxClause) -> do
-        rboundBoxClause <- h Identity
-          _
+        rboundBoxClause <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimBox unreachable)
           (\ (gamma' :: Ctx _ _ u Void)
              (Classification clauses'
                (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
@@ -616,7 +616,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           (Comp1 . fmap (VarWkn . Identity))
           (AddressInfo ["box clause"] False omit)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ ElimBox $ runIdentity !<$> getAnalysisTrav rboundBoxClause
+          TokenTrav -> AnalysisTrav $ ElimBox $ getAnalysisTrav rboundBoxClause
           TokenTC -> AnalysisTC U1
           TokenRel -> AnalysisRel
       (_, ElimBox _) -> unreachable
@@ -628,8 +628,8 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
       (_, ElimEmpty) -> unreachable
       
       (NatType, ElimNat (zeroClause :: Term sys v) boundBoundSucClause) -> do
-        rzeroClause <- h Identity
-          _
+        rzeroClause <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimNat unreachable unreachable)
           (\ (gamma' :: Ctx _ _ u Void)
              (Classification clauses'
                (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
@@ -643,8 +643,8 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           extCtxId
           (fmapCoe Identity)
           (AddressInfo ["zero clause"] False omit)
-        rboundBoundSucClause <- h Identity
-          _
+        rboundBoundSucClause <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimNat unreachable unreachable)
           (\ (gamma' :: Ctx _ _ u Void)
              (Classification clauses'
                (dmuElim' :*: eliminee' :*: tyEliminee' :*: Comp1 (motive' :: Type sys (VarExt u)))
@@ -677,7 +677,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
           (AddressInfo ["successor clause"] False omit)
         return $ case token of
           TokenTrav ->
-            AnalysisTrav $ runIdentity !<$> ElimNat (getAnalysisTrav rzeroClause) (getAnalysisTrav rboundBoundSucClause)
+            AnalysisTrav $ ElimNat (getAnalysisTrav rzeroClause) (getAnalysisTrav rboundBoundSucClause)
           TokenTC -> AnalysisTC U1
           TokenRel -> AnalysisRel
       (_, ElimNat _ _) -> unreachable
