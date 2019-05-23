@@ -263,7 +263,7 @@ class (Functor t,
     (Monad f, DeBruijnLevel vOut, DeBruijnLevel v, IsAnalyzerOption option sys,
      AnalyzerAssumption option vOut v) =>
     AnalyzerToken option ->
-    Ctx (TypeForOption option) sys v Void ->
+    Ctx (TypeForOption option) sys vOut Void ->
     Classification t v ->
     (forall s ext .
       (Analyzable sys s, DeBruijnLevel (ext vOut), DeBruijnLevel (ext v), Traversable ext) =>
