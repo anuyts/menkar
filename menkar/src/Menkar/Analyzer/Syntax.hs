@@ -203,8 +203,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
     case ty of
 
       UniHS d -> do
-        rd <- h Identity
-          _
+        rd <- fmapCoe runIdentity <$> h Identity
+          (conditional $ UniHS unreachable)
           (\ gamma' -> \ case
               (Classification (UniHS d') U1 maybeD') ->
                 Just $ Identity !<$> Classification d' U1 (ClassifWillBe U1)
@@ -214,7 +214,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (const U1)
           (AddressInfo ["mode"] False omit)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ runIdentity !<$> UniHS (getAnalysisTrav rd)
+          TokenTrav -> AnalysisTrav $ UniHS (getAnalysisTrav rd)
           TokenTC -> AnalysisTC $ d
           TokenRel -> AnalysisRel
 
@@ -233,23 +233,23 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       BoxType segment -> do
         let extract (BoxType segment) = Just segment
             extract _ = Nothing
-        rsegment <- h Identity
-              _
+        rsegment <- fmapCoe runIdentity <$> h Identity
+              (conditional $ BoxType unreachable)
               (\ gamma' (Classification ty' U1 maybeD') -> extract ty' <&> \ segment' ->
                   Identity !<$> Classification segment' U1 (ClassifWillBe $ U1))
               extCtxId
               (fmapCoe Identity)
               (AddressInfo ["segment"] False EntirelyBoring)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ BoxType $ runIdentity !<$> getAnalysisTrav rsegment
+          TokenTrav -> AnalysisTrav $ BoxType $ getAnalysisTrav rsegment
           TokenTC -> AnalysisTC $ dgamma
           TokenRel -> AnalysisRel
 
       NatType -> handleConstant
 
       EqType tyAmbient tL tR -> do
-        rtyAmbient <- h Identity
-          _
+        rtyAmbient <- fmapCoe runIdentity <$> h Identity
+          (conditional $ EqType unreachable unreachable unreachable)
           (\ gamma' -> \ case
               Classification (EqType tyAmbient' tL' tR') U1 maybeD' ->
                 Just $ Identity !<$> Classification tyAmbient' U1 (ClassifWillBe U1)
@@ -258,8 +258,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           extCtxId
           (fmapCoe Identity)
           (AddressInfo ["ambient type"] False omit)
-        rtL <- h Identity
-          _
+        rtL <- fmapCoe runIdentity <$> h Identity
+          (conditional $ EqType (getAnalysisTrav rtyAmbient) unreachable unreachable)
           (\ gamma' -> \ case
               Classification (EqType tyAmbient' tL' tR') U1 maybeD' ->
                 Just $ Identity !<$> Classification tL' U1 (ClassifMustBe tyAmbient')
@@ -268,8 +268,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           extCtxId
           (fmapCoe Identity)
           (AddressInfo ["left equand"] False omit)
-        rtR <- h Identity
-          _
+        rtR <- fmapCoe runIdentity <$> h Identity
+          (conditional $ EqType (getAnalysisTrav rtyAmbient) unreachable unreachable)
           (\ gamma' -> \ case
               Classification (EqType tyAmbient' tL' tR') U1 maybeD' ->
                 Just $ Identity !<$> Classification tR' U1 (ClassifMustBe tyAmbient')
@@ -280,13 +280,13 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (AddressInfo ["right equand"] False omit)
         return $ case token of
           TokenTrav ->
-            AnalysisTrav $ runIdentity !<$> EqType (getAnalysisTrav rtyAmbient) (getAnalysisTrav rtL) (getAnalysisTrav rtR)
+            AnalysisTrav $ EqType (getAnalysisTrav rtyAmbient) (getAnalysisTrav rtL) (getAnalysisTrav rtR)
           TokenTC -> AnalysisTC $ dgamma
           TokenRel -> AnalysisRel
 
       SysType systy -> do
-        rsysty <- h Identity
-          _
+        rsysty <- fmapCoe runIdentity <$> h Identity
+          (conditional $ SysType unreachable)
           (\ gamma' -> \ case
               Classification (SysType systy') U1 maybeD' ->
                 Just $ Identity !<$> Classification systy' U1 (classifMust2will maybeD')
@@ -296,8 +296,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (fmapCoe Identity)
           (AddressInfo ["system-specific type"] False EntirelyBoring)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ SysType $ runIdentity !<$> getAnalysisTrav rsysty
-          TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rsysty
+          TokenTrav -> AnalysisTrav $ SysType $ getAnalysisTrav rsysty
+          TokenTC -> AnalysisTC $ getAnalysisTC rsysty
           TokenRel -> AnalysisRel
         
     where handleBinder ::
@@ -306,8 +306,8 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             (forall w . UniHSConstructor sys w -> Maybe (Binding Type Type sys w)) ->
             _ (Analysis option (UniHSConstructor sys) vOut {-v-})
           handleBinder binder binding extract = do
-            rbinding <- h Identity
-              _
+            rbinding <- fmapCoe runIdentity <$> h Identity
+              (conditional $ binder unreachable)
               (\ gamma' (Classification ty' U1 maybeD') -> extract ty' <&> \ binding' ->
                   Identity !<$> Classification binding' U1
                     (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment binding') U1)
@@ -316,12 +316,12 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (fmapCoe Identity)
               (AddressInfo ["binding"] False EntirelyBoring)
             return $ case token of
-              TokenTrav -> AnalysisTrav $ binder $ runIdentity !<$> getAnalysisTrav rbinding
+              TokenTrav -> AnalysisTrav $ binder $ getAnalysisTrav rbinding
               TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
               TokenRel -> AnalysisRel
               
           handleConstant = pure $ case token of
-            TokenTrav -> AnalysisTrav $ ty
+            TokenTrav -> AnalysisTrav $ const unreachable <$> ty
             TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
             TokenRel -> AnalysisRel
             
