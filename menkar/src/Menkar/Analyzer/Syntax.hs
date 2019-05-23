@@ -1004,16 +1004,21 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
   analyzableToken = AnTokenDeclaration analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token gamma (Classification decl@(Declaration name dmu plic content) extraContent maybeTyContent) h = Right $ do
-    rdmu <- h Identity
-      _
+    rdmu <- fmapCoe runIdentity <$> h Identity
+      (conditional $ Declaration name unreachable unreachable unreachable)
       (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
          Just $ Identity !<$>
          Classification dmu' U1 (ClassifMustBe $ modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma')))
       crispExtCtxId
       (const $ Const $ ModEq)
       (AddressInfo ["modality"] True omit)
-    rcontent <- h Identity
-      _
+    let plicOut :: forall v' . Plicity sys v'
+        plicOut = case plic of
+          Explicit -> Explicit :: Plicity sys v'
+          Implicit -> Implicit :: Plicity sys v'
+          Resolves t -> todo :: Plicity sys v'
+    rcontent <- fmapCoe runIdentity <$> h Identity
+      (conditional $ Declaration name (getAnalysisTrav rdmu) plicOut unreachable)
       (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
          Just $ Identity !<$>
          Classification content' extraContent' (classifMust2will maybeTyContent'))
@@ -1023,8 +1028,8 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       (fmapCoe Identity)
       (AddressInfo ["type"] True omit)
     return $ case token of
-      TokenTrav -> AnalysisTrav $ runIdentity !<$> Declaration name (getAnalysisTrav rdmu) (Identity !<$> _plic) (getAnalysisTrav rcontent)
-      TokenTC -> AnalysisTC $ runIdentity !<$> getAnalysisTC rcontent
+      TokenTrav -> AnalysisTrav $ Declaration name (getAnalysisTrav rdmu) (plicOut) (getAnalysisTrav rcontent)
+      TokenTC -> AnalysisTC $ getAnalysisTC rcontent
       TokenRel -> AnalysisRel
   {-
   analyze token fromType gamma (Classification seg@(Declaration name dmu plic ty) extra maybeTy maybeRel) h = Right $ do
