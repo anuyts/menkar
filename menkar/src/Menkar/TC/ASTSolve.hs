@@ -117,15 +117,13 @@ newRelatedAST :: forall sys tc t v vOrig .
   String ->
   tc (t vOrig)
 newRelatedAST parent eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
-  _newRelatedAST
-{-
   case analyzableToken @sys @t of
     AnTokenTerm ->
-      Just <$> newRelatedMetaTerm parent eta relT gammaOrig gamma subst partialInv t2 maybeCTs
-      (if unEta eta then MetaBlocked else MetaNeutral) reason
+      newRelatedMetaTerm parent eta relT gammaOrig gamma subst partialInv t2 maybeCTs
+        (if unEta eta then MetaBlocked else MetaNeutral) reason
     AnTokenSys sysToken ->
-      newRelatedSysAST sysToken parent eta relT gammaOrig gamma subst partialInv t2 extraTs maybeCTs alternative reason
-    _ -> newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 extraTs maybeCTs alternative
+      newRelatedSysAST sysToken parent eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason
+    _ -> newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs
 
 newRelatedMetaTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
@@ -167,10 +165,9 @@ solveMetaAgainstWHNF :: forall sys tc v vOrig .
   Type sys v ->
   [Int] ->
   [Int] ->
-  (String -> tc ()) ->
-  tc (Maybe (Term sys vOrig))
-solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative =
-  newRelatedAST' parent deg gammaOrig gamma subst partialInv t2 (Twice1 U1 U1) (ClassifWillBe $ Twice1 ty1 ty2) alternative
+  tc (Term sys vOrig)
+solveMetaAgainstWHNF parent deg gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 =
+  newRelatedAST' parent deg gammaOrig gamma subst partialInv t2 U1 U1 (ClassifWillBe $ Twice1 ty1 ty2)
     {-("Inferring the solution - which is pointless since we would be solving a meta with a meta."
      ++ " So if I'm doing this, that is probably a bug.")-}
 
@@ -187,20 +184,18 @@ solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBru
   Type sys v ->
   [Int] ->
   [Int] ->
-  (String -> tc ()) ->
-  tc (Maybe (Term sys vOrig))
-solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative = do
+  tc (Term sys vOrig)
+solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 = do
   -- Try to write t2 in gammaOrig
   let dgamma' = ctx'mode gamma
       dgamma = unVarFromCtx <$> dgamma'
   let maybeT2orig = sequenceA $ partialInv <$> t2
   case maybeT2orig of
     -- If it works, return that.
-    Just t2orig -> return $ Just t2orig
+    Just t2orig -> return $ t2orig
     -- If t2 contains variables not in gammaOrig: solve against WHNF
     Nothing ->
-      solveMetaAgainstWHNF parent
-        (modedEqDeg dgamma) gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
+      solveMetaAgainstWHNF parent (modedEqDeg dgamma) gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
 
 --------------------------------------------------------
 -- ALWAYS ETA --
@@ -374,8 +369,7 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 
             solution <- case itIsEqDeg of
               -- We're certainly checking equality: solve the meta immediately.
               Just True ->
-                   solveMetaImmediately parent
-                     gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 alternative
+                Just <$> solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
               -- We may not be checking equality.
               _ -> -- Check if eta is allowed.
                    if unEta eta
@@ -390,11 +384,11 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 
                        -- If so, then above we have equated the meta to its expansion, so we can just come back later on.
                        then Nothing <$ addConstraint parent
                        -- Otherwise, solve against the WHNF.
-                       else solveMetaAgainstWHNF parent deg
-                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 $ tcBlock parent
+                       else Just <$> solveMetaAgainstWHNF parent deg
+                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
                    -- Otherwise, solve against the WHNF.
-                   else solveMetaAgainstWHNF parent deg
-                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 $ alternative
+                   else Just <$> solveMetaAgainstWHNF parent deg
+                          gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
             case neutrality1 of
               MetaBlocked -> return solution
               MetaNeutral -> case solution of
@@ -425,4 +419,3 @@ tryToSolveTerm parent eta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 alternative 
   (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) (Compose maybeAlg1))) ->
     tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 metasTy1 metasTy2 alternative
   _ -> alternative "Cannot solve relation: one side is blocked on a meta-variable."
--}

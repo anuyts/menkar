@@ -176,11 +176,11 @@ class SysWHN sys => SysTC sys where
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     t v ->
-    Twice1 (ClassifExtraInput t) v ->
+    ClassifExtraInput t vOrig ->
+    ClassifExtraInput t v ->
     ClassifInfo (Twice1 (Classif t) v) ->
-    (String -> tc ()) ->
     String ->
-    tc (Maybe (t vOrig))
+    tc (t vOrig)
 
 newMetaClassif4ast :: forall sys tc t v .
   (MonadTC sys tc,
