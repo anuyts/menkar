@@ -16,6 +16,8 @@ import Menkar.TC.SmartElim
 --import Menkar.TC.Entry
 --import Menkar.TC.Segment
 --import Menkar.TC.Solve
+import Menkar.TC.ASTRel
+import Menkar.TC.ASTSolve
 import Menkar.WHN
 
 import Data.Void
@@ -51,7 +53,7 @@ checkConstraint parent = case constraint'judgement parent of
 
   Jud token gamma t extraT classifT -> void $ checkAST parent gamma t extraT classifT
 
-  JudRel token eta rel gamma (Twice1 t1 t2) maybeCTs -> _checkASTRel eta rel gamma t1 t2 maybeCTs
+  JudRel token eta rel gamma ts extraTs maybeCTs -> checkASTRel parent eta rel gamma ts extraTs maybeCTs
 
   {-
   JudType gamma (Type ty) -> do
@@ -81,7 +83,7 @@ checkConstraint parent = case constraint'judgement parent of
     Expr2 (TermMeta MetaBlocked meta (Compose depcies) maybeAlg) -> do
       maybeT <- awaitMeta parent "If it's solved, then I needn't bother." meta depcies
       case maybeT of
-        Nothing -> void $ _checkEta parent gamma t tyT
+        Nothing -> void $ checkEta parent gamma t tyT
         Just _ -> return () -- every known term is obviously equal to its eta-expansion.
     _ -> unreachable
 
