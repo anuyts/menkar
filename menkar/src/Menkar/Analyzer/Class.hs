@@ -260,7 +260,7 @@ class (Functor t,
   analyzableToken :: AnalyzableToken sys t
   witClassif :: AnalyzableToken sys t -> Witness (Analyzable sys (Classif t))
   analyze :: forall option f vOut v .
-    (Applicative f, DeBruijnLevel vOut, DeBruijnLevel v, IsAnalyzerOption option sys,
+    (Monad f, DeBruijnLevel vOut, DeBruijnLevel v, IsAnalyzerOption option sys,
      AnalyzerAssumption option vOut v) =>
     AnalyzerToken option ->
     Ctx (TypeForOption option) sys v Void ->
@@ -349,7 +349,7 @@ makeLenses ''Classification
       Hence, if you know something about a subAST's classifier, please know all about it.
 -}
 analyzeOld :: forall sys t option f v .
-    (Analyzable sys t, Applicative f, DeBruijnLevel v, IsAnalyzerOption option sys,
+    (Analyzable sys t, Monad f, DeBruijnLevel v, IsAnalyzerOption option sys,
      AnalyzerAssumption option v v) =>
     AnalyzerToken option ->
     --{-| When AST-nodes do not have the same head. -}
@@ -384,7 +384,7 @@ analyzeOld token gamma inputT1 condInputT2 condRel h =
     (\ t1' -> _classification'get <$> extractT gamma (classification'get .~ t1' $ inputT1))
 
 subASTsTyped :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
   Classification t v ->
   (forall s w .
@@ -403,7 +403,7 @@ subASTsTyped gamma inputT h = fmap getAnalysisTrav <$>
   )
  
 subASTs :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
   t v ->
   ClassifExtraInput t v ->
@@ -423,7 +423,7 @@ subASTs gamma t extraInputT h = subASTsTyped gamma
      h wkn gamma (_classification'get inputS) (_classification'extra inputS) addressInfo
   
 typetrick :: forall sys f t v .
-  (Applicative f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
   Ctx Type sys v Void ->
   Classification t v ->
   (forall s w .

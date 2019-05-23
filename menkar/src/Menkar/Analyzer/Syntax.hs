@@ -1067,7 +1067,7 @@ instance (SysAnalyzer sys,
       
       Telescoped rhs -> do
         rrhs <- h Identity
-          _
+          (conditional $ Telescoped unreachable)
           (\ gamma -> \ case
               (Classification (Telescoped rhs') U1 maybeU1') ->
                 Just $ Identity !<$> Classification rhs' U1 (ClassifWillBe U1)
@@ -1082,8 +1082,8 @@ instance (SysAnalyzer sys,
           TokenRel -> AnalysisRel
           
       (seg :|- telescopedRHS) -> do
-        rseg <- h Identity
-          _
+        rseg <- fmapCoe runIdentity <$> h Identity
+          (conditional $ unreachable :|- unreachable)
           (\ gamma -> \ case
               (Classification (seg' :|- telescopedRHS') U1 maybeU1') ->
                 Just $ Identity !<$> Classification seg' U1 (ClassifWillBe U1)
@@ -1093,7 +1093,7 @@ instance (SysAnalyzer sys,
           (fmapCoe Identity . fst1)
           (AddressInfo ["a segment"] True omit)
         rtelescopedRHS <- h VarWkn
-          _
+          (conditional $ getAnalysisTrav rseg :|- unreachable)
           (\ gamma' -> \ case
               (Classification (seg' :|- telescopedRHS') U1 maybeU1') ->
                 Just $ Classification telescopedRHS' U1 (ClassifWillBe U1)
@@ -1113,13 +1113,13 @@ instance (SysAnalyzer sys,
           (fmap VarWkn)
           (AddressInfo ["tail"] True EntirelyBoring)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ runIdentity !<$> getAnalysisTrav rseg :|- getAnalysisTrav rtelescopedRHS
+          TokenTrav -> AnalysisTrav $ getAnalysisTrav rseg :|- getAnalysisTrav rtelescopedRHS
           TokenTC -> AnalysisTC U1
           TokenRel -> AnalysisRel
 
       (dmu :** telescopedRHS) -> do
-        rdmu <- h Identity
-          _
+        rdmu <- fmapCoe runIdentity <$> h Identity
+          (conditional $ unreachable :** unreachable)
           (\ gamma' -> \ case
               (Classification (dmu' :** telescopedRHS') U1 maybeU1') ->
                 Just $ Identity !<$> Classification dmu' U1
@@ -1129,8 +1129,8 @@ instance (SysAnalyzer sys,
           crispExtCtxId
           (const $ Const ModEq)
           (AddressInfo ["applied modality"] True omit)
-        rtelescopedRHS <- h Identity
-          _
+        rtelescopedRHS <- fmapCoe runIdentity <$> h Identity
+          (conditional $ getAnalysisTrav rdmu :** unreachable)
           (\ gamma' -> \ case
               (Classification (dmu' :** telescopedRHS') U1 maybeU1') ->
                 Just $ Identity !<$> Classification telescopedRHS' U1 (ClassifWillBe U1)
@@ -1144,7 +1144,7 @@ instance (SysAnalyzer sys,
           (fmapCoe Identity . (\ (ddegSeg :*: ddegRHS) -> modedDivDeg dmu ddegSeg :*: modedDivDeg dmu ddegRHS))
           (AddressInfo ["tail"] True EntirelyBoring)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ runIdentity !<$> getAnalysisTrav rdmu :** getAnalysisTrav rtelescopedRHS
+          TokenTrav -> AnalysisTrav $ getAnalysisTrav rdmu :** getAnalysisTrav rtelescopedRHS
           TokenTC -> AnalysisTC U1
           TokenRel -> AnalysisRel
 
@@ -1160,22 +1160,22 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
   analyzableToken = AnTokenValRHS
   witClassif token = Witness
   analyze token gamma (Classification valRHS@(ValRHS t ty) U1 maybeU1) h = Right $ do
-    rty <- h Identity
-      _
+    rty <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ValRHS unreachable unreachable)
       (\ gamma' (Classification valRHS@(ValRHS t' ty') U1 maybeU1') ->
          Just $ Identity !<$> Classification ty' U1 (ClassifWillBe U1))
       extCtxId
       (fmapCoe Identity)
       (AddressInfo ["type"] True omit)
-    rt <- h Identity
-      _
+    rt <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ValRHS unreachable (getAnalysisTrav rty))
       (\ gamma' (Classification valRHS@(ValRHS t' ty') U1 maybeU1') ->
          Just $ Identity !<$> Classification t' U1 (ClassifMustBe ty'))
       extCtxId
       (fmapCoe Identity)
       (AddressInfo ["RHS"] True omit)
     return $ case token of
-      TokenTrav -> AnalysisTrav $ runIdentity !<$> ValRHS (getAnalysisTrav rt) (getAnalysisTrav rty)
+      TokenTrav -> AnalysisTrav $ ValRHS (getAnalysisTrav rt) (getAnalysisTrav rty)
       TokenTC -> AnalysisTC $ U1
       TokenRel -> AnalysisRel
   convRel token d = U1
@@ -1196,7 +1196,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
       zip4 (reverse revEntries) (reverse $ tails revEntries) [n-1, n-2..] [0..] <&>
       \ (entry, revPrevEntries, indexRev, index) ->
       h VarInModule
-        _
+        (conditional $ ModuleRHS (Compose unreachable)) -- Could be more sophisticated, but you don't need that!
         (\ gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') ->
            Just $ Classification (revEntries' !! indexRev) U1 (ClassifWillBe U1))
         (\ token' gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') _ ->
@@ -1233,7 +1233,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
     case entry of
       EntryVal val -> do
         rval <- h Identity
-          _
+          (conditional $ EntryVal unreachable)
           (\ gamma' -> \ case
               (Classification (EntryVal val') U1 maybeU1') ->
                 Just $ Identity !<$> Classification val' U1 (ClassifWillBe U1)
@@ -1248,7 +1248,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           TokenRel -> AnalysisRel
       EntryModule modul -> do
         rmodul <- h Identity
-          _
+          (conditional $ EntryModule unreachable)
           (\ gamma' -> \ case
               (Classification (EntryModule modul') U1 maybeU1') ->
                 Just $ Identity !<$> Classification modul' U1 (ClassifWillBe U1)
@@ -1297,14 +1297,14 @@ instance (SysAnalyzer sys,
 
   analyze token gamma (Classification (fv :*: gv) (extraF :*: extraG) maybeClassifs) h = Right $ do
     rfv <- h Identity
-      _
+      (conditional $ unreachable :*: unreachable)
       (\ gamma' (Classification (fv' :*: gv') (extraF' :*: extraG') maybeClassifs') ->
          Just $ Identity !<$> Classification fv' extraF' (fst1 <$> maybeClassifs'))
       extCtxId
       (fmapCoe Identity . fst1)
       (AddressInfo ["first component"] True omit)
     rgv <- h Identity
-      _
+      (conditional $ unreachable :*: unreachable)
       (\ gamma' (Classification (fv' :*: gv') (extraF' :*: extraG') maybeClassifs') ->
          Just $ Identity !<$> Classification gv' extraG' (snd1 <$> maybeClassifs'))
       extCtxId
