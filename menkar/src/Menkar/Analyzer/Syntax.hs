@@ -23,6 +23,7 @@ import Control.Monad
 import Data.Void
 import Data.Maybe
 import Data.List
+import Data.Kind hiding (Type)
 
 fromRight :: b -> Either a b -> b
 fromRight b0 (Left a) = b0
@@ -222,6 +223,44 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           TokenTC -> AnalysisTC $ d
           TokenRel -> AnalysisRel
 
+      -- Sorry for the code duplication; without type applications on the LHS, I couldn't get it to work
+      -- in a where-clause.
+
+      Pi binding -> do
+            rbinding <- fmapCoe runIdentity <$> h Identity
+              (conditional $ Pi unreachable)
+              (\ gamma' (Classification ty' U1 maybeD') -> case ty' of
+                  Pi binding' -> Just $ Identity !<$> Classification binding' U1
+                    (ClassifWillBe $ U1 :*: NamedBinding
+                      (getDeclNameSegment . _decl'name . binding'segment $ binding') (Const1 U1))
+                  otherwise -> Nothing
+              )
+              extCtxId
+              (fmapCoe Identity)
+              (AddressInfo ["binding"] False EntirelyBoring)
+            return $ case token of
+              TokenTrav -> AnalysisTrav $ Pi $ getAnalysisTrav rbinding
+              TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+              TokenRel -> AnalysisRel
+
+      Sigma binding -> do
+            rbinding <- fmapCoe runIdentity <$> h Identity
+              (conditional $ Sigma unreachable)
+              (\ gamma' (Classification ty' U1 maybeD') -> case ty' of
+                  Sigma binding' -> Just $ Identity !<$> Classification binding' U1
+                    (ClassifWillBe $ U1 :*: NamedBinding
+                      (getDeclNameSegment . _decl'name . binding'segment $ binding') (Const1 U1))
+                  otherwise -> Nothing
+              )
+              extCtxId
+              (fmapCoe Identity)
+              (AddressInfo ["binding"] False EntirelyBoring)
+            return $ case token of
+              TokenTrav -> AnalysisTrav $ Sigma $ getAnalysisTrav rbinding
+              TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+              TokenRel -> AnalysisRel
+
+      {-
       Pi binding -> handleBinder Pi binding $ \case
         Pi binding -> Just binding
         _ -> Nothing
@@ -229,6 +268,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
       Sigma binding -> handleBinder Sigma binding $ \case
         Sigma binding -> Just binding
         _ -> Nothing
+      -}
 
       EmptyType -> handleConstant
 
@@ -303,18 +343,24 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           TokenTrav -> AnalysisTrav $ SysType $ getAnalysisTrav rsysty
           TokenTC -> AnalysisTC $ getAnalysisTC rsysty
           TokenRel -> AnalysisRel
-        
-    where handleBinder ::
+
+    where handleConstant = pure $ case token of
+            TokenTrav -> AnalysisTrav $ const unreachable <$> ty
+            TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+            TokenRel -> AnalysisRel
+
+          {-handleBinder ::
             (forall w . Binding Type Type sys w -> UniHSConstructor sys w) ->
             Binding Type Type sys v ->
             (forall w . UniHSConstructor sys w -> Maybe (Binding Type Type sys w)) ->
-            _ (Analysis option (UniHSConstructor sys) vOut {-v-})
+            f (Analysis option (UniHSConstructor sys) vOut {-v-})
           handleBinder binder binding extract = do
             rbinding <- fmapCoe runIdentity <$> h Identity
               (conditional $ binder unreachable)
               (\ gamma' (Classification ty' U1 maybeD') -> extract ty' <&> \ binding' ->
                   Identity !<$> Classification binding' U1
-                    (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment binding') U1)
+                    (ClassifWillBe $ U1 :*: NamedBinding
+                      (getDeclNameSegment . _decl'name . binding'segment $ binding') (Const1 U1))
               )
               extCtxId
               (fmapCoe Identity)
@@ -322,12 +368,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
             return $ case token of
               TokenTrav -> AnalysisTrav $ binder $ getAnalysisTrav rbinding
               TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
-              TokenRel -> AnalysisRel
-              
-          handleConstant = pure $ case token of
-            TokenTrav -> AnalysisTrav $ const unreachable <$> ty
-            TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
-            TokenRel -> AnalysisRel
+              TokenRel -> AnalysisRel-}
             
   convRel token d = U1
   extraClassif t extraT = U1
@@ -377,7 +418,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         return $ case token of
           TokenTrav -> AnalysisTrav $ Lam $ getAnalysisTrav rbinding
           TokenTC -> AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) $
-            _classifBinding'body $ snd1 $ getAnalysisTC rbinding
+            getConst1 $ _namedBinding'body $ snd1 $ getAnalysisTC rbinding
             --let (U1 :*: Comp1 ty) = getAnalysisTC rbinding
             --in  AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) ty
           TokenRel -> AnalysisRel
@@ -388,7 +429,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (\ gamma' -> \ case
               Classification (Pair sigmaBinding' tFst' tSnd') U1 _ ->
                 Just $ Identity !<$> Classification sigmaBinding' U1
-                  (ClassifWillBe $ U1 :*: ClassifBinding (binding'segment sigmaBinding') U1)
+                  (ClassifWillBe $ U1 :*:
+                   NamedBinding (getDeclNameSegment . _decl'name . binding'segment $ sigmaBinding') (Const1 U1))
               otherwise -> Nothing
           )
           extCtxId
@@ -578,7 +620,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                  in  Just $ Identity !<$> Classification
                        boundBoundPairClause'
                        (segFst' :*: Comp1 (segSnd' :*: Comp1 U1))
-                       (ClassifMustBe $ ClassifBinding segFst' $ ClassifBinding segSnd' $
+                       (ClassifMustBe $ NamedBinding Nothing $ Const1 $ NamedBinding Nothing $ Const1 $
                          swallow $ subst <$> motive'
                        )
                otherwise -> Nothing
@@ -611,7 +653,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                  in  Just $ Identity !<$> Classification
                        boundBoxClause'
                        (segUnbox' :*: Comp1 U1)
-                       (ClassifMustBe $ ClassifBinding segUnbox' $
+                       (ClassifMustBe $ NamedBinding Nothing $ Const1 $
                          swallow $ subst <$> motive'
                        )
                otherwise -> Nothing
@@ -671,7 +713,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                  in  Just $ Identity !<$> Classification
                        boundBoundSucClause'
                        (segPred' :*: Comp1 (segHyp' :*: Comp1 U1))
-                       (ClassifMustBe $ ClassifBinding segPred' $ ClassifBinding segHyp' $
+                       (ClassifMustBe $ NamedBinding Nothing $ Const1 $ NamedBinding Nothing $ Const1 $
                          swallow $ substS <$> motive'
                        )
                otherwise -> Nothing
@@ -777,7 +819,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                        (hs2type tyEliminee')
                  in  Just $ Identity !<$> Classification boundMotive'
                        (seg' :*: Comp1 U1)
-                       (ClassifWillBe $ ClassifBinding seg' U1)
+                       (ClassifWillBe $ NamedBinding Nothing $ Const1 U1)
                otherwise -> Nothing
           )
           extCtxId
@@ -815,7 +857,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                        (hs2type $ EqType (VarWkn <$> tyAmbient') (VarWkn <$> tL') (Var2 VarLast))
                  in  Just $ Identity !<$> Classification boundBoundMotive'
                        (segR' :*: Comp1 (segEq' :*: Comp1 U1))
-                       (ClassifWillBe $ ClassifBinding segR' $ ClassifBinding segEq' $ U1)
+                       (ClassifWillBe $ NamedBinding Nothing $ Const1 $ NamedBinding Nothing $ Const1 $ U1)
                otherwise -> Nothing
           )
           extCtxId
@@ -1055,7 +1097,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       TokenRel -> AnalysisRel
 -}
   convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
-  extraClassif t extraT = extraClassif @sys @(rhs sys) _ _
+  extraClassif decl extraDecl = extraClassif @sys @(rhs sys) (_decl'content decl) extraDecl
 
 -------------------------
 
@@ -1324,8 +1366,8 @@ instance (SysAnalyzer sys,
       TokenRel -> AnalysisRel
   convRel token d = convRel (analyzableToken @sys @f) d :*:
                     convRel (analyzableToken @sys @g) d
-  extraClassif t extraT = extraClassif @sys @f _ _ :*:
-                          extraClassif @sys @g _ _
+  extraClassif (fv :*: gv) (extraF :*: extraG) = extraClassif @sys @f fv extraF :*:
+                                                 extraClassif @sys @g gv extraG
 
 ------------------------
 
