@@ -83,6 +83,7 @@ unbox parent gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
         dmuUnbox
         dmuInfer
       )
+      (Twice1 U1 U1)
       (ClassifMustBe $ (\x -> Twice1 x x) $ modality'dom dmuInfer :*: modality'dom dmuElimTotal)
     )
     (Just parent)
@@ -125,6 +126,7 @@ projFst parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
     (JudRel AnTokenModedModality (Eta True) (Const ModEq)
       (crispModedModality dgamma' :\\ duplicateCtx gamma)
       (Twice1 dmuProjFst dmuInfer)
+      (Twice1 U1 U1)
       (ClassifMustBe $ (\x -> Twice1 x x) $ modality'dom dmuInfer :*: modality'dom dmuElimTotal)
     )
     (Just parent)
@@ -182,6 +184,7 @@ projSnd parent gamma eliminee sigmaBinding dmuInfer eliminators result tyResult 
         (idModedModality $ modality'dom dmuElimTotal)
         (dmuInfer)
       )
+      (Twice1 U1 U1)
       ClassifUnknown
     )
     (Just parent)
@@ -226,6 +229,7 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
             dmuArg
             (_segment'modty $ binding'segment $ piBinding)
           )
+          (Twice1 U1 U1)
           (ClassifMustBe $ (\x -> Twice1 x x) $ modality'dom dmuArg :*: modality'dom dmuElimTotal)
         )
         (Just parent)
@@ -238,6 +242,7 @@ apply parent gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators resul
         (idModedModality $ modality'dom dmuElimTotal)
         (dmuInfer)
       )
+      (Twice1 U1 U1)
       ClassifUnknown
     )
     (Just parent)
@@ -335,6 +340,7 @@ popModality parent gamma eliminee tyEliminee eliminators result tyResult =
             (modality'mod $ compModedModality dmuElimNew dmuPoppee)
             (muSplittee)
           )
+          (Twice1 U1 U1)
           (ClassifMustBe $ (\x -> Twice1 x x) $ domSplittee :*: codSplittee)
         )
         (Just parent)
@@ -451,6 +457,7 @@ checkSmartElimForNormalType parent gamma eliminee tyEliminee eliminators result 
               (idModedModality d)
               (dmuInfer)
             )
+            (Twice1 U1 U1)
             ClassifUnknown
           )
           (Just parent)
