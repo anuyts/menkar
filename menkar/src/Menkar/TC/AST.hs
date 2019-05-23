@@ -129,10 +129,11 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
             (_modApplied'modality . _leftDivided'content $ ldivModAppliedValRHS)
             (_leftDivided'modality $ ldivModAppliedValRHS)
           )
+          (Twice1 U1 U1)
           ClassifUnknown
         )
         (Just parent)
-        "Checking that variable is accessible."
+        "Checking that definition is accessible."
       return $ _val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedValRHS
     (AnErrorTermQName, _, _) -> unreachable
     (AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked tyChecked) -> return tyChecked
@@ -184,6 +185,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
             (_decl'modty . _leftDivided'content $ ldivSeg)
             (_leftDivided'modality $ ldivSeg)
           )
+          (Twice1 U1 U1)
           ClassifUnknown
         )
         (Just parent)
@@ -240,6 +242,7 @@ checkAST parent gamma t extraT maybeCT = do
             (convRel (analyzableToken :: AnalyzableToken sys t) $ unVarFromCtx <$> ctx'mode gamma)
             (duplicateCtx gamma)
             (Twice1 ctInferred ct)
+            (Twice1 (extraClassif @sys t extraT) (extraClassif @sys t extraT))
             ClassifUnknown)
           (Just parent)
           ("Checking whether actual classifier equals expected classifier.")
