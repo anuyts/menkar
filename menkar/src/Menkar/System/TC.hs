@@ -201,10 +201,10 @@ newMetaClassif4ast maybeParent gamma t extraT reason =
   haveClassif @sys @(Classif t) $
   do
     ct <- newMetaClassif4astNoCheck maybeParent gamma t extraT reason
-    cct <- newMetaClassif4astNoCheck maybeParent gamma ct (extraClassif @sys @t) reason
+    cct <- newMetaClassif4astNoCheck maybeParent gamma ct (extraClassif @sys @t t extraT) reason
       -- It is assumed that a classifier's classifier needs no metas.
     addNewConstraint
-      (Jud (analyzableToken @sys @(Classif t)) gamma ct (extraClassif @sys @t) (ClassifWillBe cct))
+      (Jud (analyzableToken @sys @(Classif t)) gamma ct (extraClassif @sys @t t extraT) (ClassifWillBe cct))
       maybeParent
       reason
     return ct
