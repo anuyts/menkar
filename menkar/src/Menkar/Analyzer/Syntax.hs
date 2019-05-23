@@ -1376,6 +1376,22 @@ instance (SysAnalyzer sys,
   type Classif (Const1 t a) = Classif t
   type Relation (Const1 t a) = Relation t
   type ClassifExtraInput (Const1 t a) = ClassifExtraInput t
+  analyzableToken = AnTokenConst1 analyzableToken
+  witClassif token = haveClassif @sys @t $ Witness
+  analyze token gamma (Classification (Const1 t) extraT maybeCT) h = Right $ do
+    rt <- fmapCoe runIdentity <$> h Identity
+      (conditional $ Const1 unreachable)
+      (\ gamma' (Classification (Const1 t') extraT' maybeCT') ->
+         Just $ Identity !<$> Classification t' extraT' (classifMust2will maybeCT'))
+      extCtxId
+      (fmapCoe Identity)
+      (AddressInfo ["it"] False EntirelyBoring)
+    return $ case token of
+      TokenTrav -> AnalysisTrav $ Const1 $ getAnalysisTrav rt
+      TokenTC -> AnalysisTC $ getAnalysisTC rt
+      TokenRel -> AnalysisRel
+  convRel token d = convRel (analyzableToken @sys @t) d
+  extraClassif (Const1 t) extraT = extraClassif @sys @t t extraT
 
 ------------------------
 
