@@ -704,7 +704,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
 
       (Pi binding, App arg) -> do
         rarg <- h Identity
-          _
+          (conditional $ App unreachable)
           (\ gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
              case (tyEliminee', eliminator') of
                (Pi binding', App arg') ->
@@ -764,8 +764,8 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
       (_, Funext) -> unreachable
 
       (_, ElimDep boundMotive@(NamedBinding name motive) clauses) -> do
-        rboundMotive <- h Identity
-          _
+        rboundMotive <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimDep unreachable unreachable)
           (\ gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
              case (tyEliminee', eliminator') of
                (_, ElimDep boundMotive' clauses') ->
@@ -779,8 +779,8 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           extCtxId
           (Comp1 . fmap (VarWkn . Identity))
           (AddressInfo ["motive"] False omit)
-        rclauses <- h Identity
-          _
+        rclauses <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimDep (getAnalysisTrav rboundMotive) unreachable)
           (\ gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
              case (tyEliminee', eliminator') of
                (_, ElimDep (NamedBinding name' motive') clauses') ->
@@ -793,14 +793,13 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           (fmapCoe Identity)
           (AddressInfo ["clauses"] False EntirelyBoring)
         return $ case token of
-          TokenTrav ->
-            AnalysisTrav $ runIdentity !<$> ElimDep (getAnalysisTrav rboundMotive) (getAnalysisTrav rclauses)
+          TokenTrav -> AnalysisTrav $ ElimDep (getAnalysisTrav rboundMotive) (getAnalysisTrav rclauses)
           TokenTC -> AnalysisTC $ substLast2 eliminee motive
           TokenRel -> AnalysisRel
           
       (EqType tyAmbient tL tR, ElimEq boundBoundMotive clauseRefl) -> do
-        rboundBoundMotive <- h Identity
-          _
+        rboundBoundMotive <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimEq unreachable unreachable)
           (\ gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
              case (tyEliminee', eliminator') of
                (EqType tyAmbient' tL' tR', ElimEq boundBoundMotive' clauseRefl') ->
@@ -818,8 +817,8 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           extCtxId
           (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["motive"] False omit)
-        rclauseRefl <- h Identity
-          _
+        rclauseRefl <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ElimEq (getAnalysisTrav rboundBoundMotive) unreachable)
           (\ gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
              case (tyEliminee', eliminator') of
                (EqType tyAmbient' tL' tR', ElimEq boundBoundMotive' clauseRefl') ->
@@ -835,8 +834,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           (fmapCoe Identity)
           (AddressInfo ["refl clause"] False omit)
         return $ case token of
-           TokenTrav ->
-             AnalysisTrav $ runIdentity !<$> ElimEq (getAnalysisTrav rboundBoundMotive) (getAnalysisTrav rclauseRefl)
+           TokenTrav -> AnalysisTrav $ ElimEq (getAnalysisTrav rboundBoundMotive) (getAnalysisTrav rclauseRefl)
            TokenTC -> AnalysisTC $ substLast2 tR $ substLast2 (VarWkn <$> eliminee) $
              _namedBinding'body $ _namedBinding'body $ boundBoundMotive
            TokenRel -> AnalysisRel
