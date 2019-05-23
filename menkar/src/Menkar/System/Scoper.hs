@@ -55,18 +55,20 @@ newMetaClassif4astNoCheck maybeParent gamma t extraT reason = do
       return $ dom :*: cod
     (AnTokenBinding tokenRHS, Binding seg rhs) -> do
       crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. VarFromCtx <$> seg) rhs U1 reason
-      return $ U1 :*: ClassifBinding seg crhs
-    (AnTokenClassifBinding tokenRHS, ClassifBinding seg rhs) -> do
+      return $ U1 :*: (NamedBinding (getDeclNameSegment . _decl'name $ seg) $ Const1 $ crhs)
+                    --ClassifBinding seg crhs
+{-    (AnTokenClassifBinding tokenRHS, ClassifBinding seg rhs) -> do
       let Comp1 extraRHS = extraT
       crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. VarFromCtx <$> seg) rhs extraRHS reason
-      return $ ClassifBinding seg crhs
+      return $ ClassifBinding seg crhs-}
     (AnTokenNamedBinding tokenRHS, NamedBinding maybeName (rhs :: rhs sys (VarExt v))) -> do
       --let seg = fst1 extraT
       --let extraRHS = unComp1 $ snd1 extraT
       let seg :*: Comp1 extraRHS = extraT
       crhs <- newMetaClassif4astNoCheck @sys @sc @(rhs sys) @(VarExt v)
         maybeParent (gamma :.. VarFromCtx <$> seg) rhs extraRHS reason
-      return $ ClassifBinding seg crhs
+      return $ NamedBinding (getDeclNameSegment . _decl'name $ seg) $ Const1 $ crhs
+             --ClassifBinding seg crhs
     (AnTokenUniHSConstructor, _) -> newMetaModeNoCheck maybeParent gamma reason
     (AnTokenConstructorTerm, _) -> newMetaTypeNoCheck maybeParent gamma reason
     (AnTokenType, _) -> return U1
@@ -84,5 +86,6 @@ newMetaClassif4astNoCheck maybeParent gamma t extraT reason = do
     (AnTokenPair1 tokenF tokenG, fv :*: gv) ->
       (:*:) <$> newMetaClassif4astNoCheck maybeParent gamma fv (fst1 extraT) reason
             <*> newMetaClassif4astNoCheck maybeParent gamma gv (snd1 extraT) reason
+    (AnTokenConst1 token, Const1 t) -> newMetaClassif4astNoCheck maybeParent gamma t extraT reason
     (AnTokenSys sysToken, _) -> newMetaClassif4sysASTNoCheck sysToken maybeParent gamma t extraT reason
     --_ -> _newMetaClassifNoCheck
