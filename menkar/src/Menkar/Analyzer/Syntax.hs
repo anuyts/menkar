@@ -37,30 +37,29 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   analyzableToken = AnTokenModedModality
   witClassif token = Witness
   analyze token gamma (Classification (ModedModality dom cod mu) U1 _) h = Right $ do
-    rdom <- h Identity
-      _
+    rdom <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ModedModality unreachable unreachable unreachable)
       (\ gamma' (Classification (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1))
       extCtxId
       (const U1)
       (AddressInfo ["domain"] True omit)
-    rcod <- h Identity
-      _
+    rcod <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ModedModality unreachable unreachable unreachable)
       (\ gamma' (Classification (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1))
       extCtxId
       (const U1)
       (AddressInfo ["codomain"] True omit)
-    rmu <- h Identity
-      _
+    rmu <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ModedModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) unreachable)
       (\ gamma' (Classification (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> Classification mu' U1 (ClassifWillBe $ dom' :*: cod'))
       extCtxId
       (fmapCoe Identity)
       (AddressInfo ["modality"] True omit)
     return $ case token of
-        TokenTrav ->
-          AnalysisTrav $ runIdentity !<$> ModedModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rmu)
+        TokenTrav -> AnalysisTrav $ ModedModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rmu)
         TokenTC -> AnalysisTC $ dom :*: cod
         TokenRel -> AnalysisRel
   convRel token d = U1 :*: U1
@@ -80,15 +79,15 @@ instance (SysAnalyzer sys,
   analyzableToken = AnTokenBinding analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
   analyze token gamma (Classification (Binding seg body) U1 maybeCl) h = Right $ do
-    rseg <- h Identity
-      _
+    rseg <- fmapCoe runIdentity <$> h Identity
+      (conditional $ Binding unreachable unreachable)
       (\ gamma' (Classification (Binding seg' body') U1 maybeCl') ->
          Just $ Identity !<$> Classification seg' U1 (fst1 <$> classifMust2will maybeCl'))
       extCtxId
       (fmapCoe Identity)
       (AddressInfo ["segment"] False omit)
     rbody <- h VarWkn
-      _
+      (conditional $ Binding (getAnalysisTrav rseg) unreachable)
       (\ gamma' (Classification (Binding seg' body') U1 maybeCl') ->
          Just $ Classification body' U1 (_classifBinding'body . snd1 <$> classifMust2will maybeCl'))
       (\ token' gamma' (Classification (Binding seg1 body1) U1 maybeCl1) condInput2 ->
@@ -102,9 +101,8 @@ instance (SysAnalyzer sys,
       (fmap VarWkn)
       (AddressInfo ["body"] False omit)
     return $ case token of
-      TokenTrav -> AnalysisTrav $ Binding (runIdentity !<$> getAnalysisTrav rseg) (getAnalysisTrav rbody)
-      TokenTC -> AnalysisTC $
-        (runIdentity !<$> getAnalysisTC rseg) :*: ClassifBinding seg (getAnalysisTC rbody)
+      TokenTrav -> AnalysisTrav $ Binding (getAnalysisTrav rseg) (getAnalysisTrav rbody)
+      TokenTC -> AnalysisTC $ getAnalysisTC rseg :*: ClassifBinding seg (getAnalysisTC rbody)
       TokenRel -> AnalysisRel
   convRel token d = U1 :*: Comp1 (convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d))
   extraClassif = U1 :*: Comp1 (extraClassif @sys @(rhs sys))
@@ -124,7 +122,7 @@ instance (SysAnalyzer sys,
   analyze token gamma
     (Classification (ClassifBinding seg body) (Comp1 extraBody) maybeCl) h = Right $ do
     rbody <- h VarWkn
-      _
+      (conditional $ ClassifBinding _seg unreachable)
       (\ gamma' (Classification (ClassifBinding seg' body') (Comp1 extraBody') maybeCl') ->
          Just $ Classification body' extraBody' (_classifBinding'body <$> classifMust2will maybeCl'))
       (\ token' gamma' (Classification (ClassifBinding seg1 body1) (Comp1 extraBody1) maybeCl1) condInput2 ->
@@ -159,7 +157,7 @@ instance (SysAnalyzer sys,
   analyze token gamma
     (Classification (NamedBinding name body) (seg :*: Comp1 extraBody) maybeCl) h = Right $ do
     rbody <- h VarWkn
-      _
+      (conditional $ NamedBinding name unreachable)
       (\ gamma' (Classification (NamedBinding name' body') (seg' :*: Comp1 extraBody') maybeCl') ->
          Just $ Classification body' extraBody' (_classifBinding'body <$> classifMust2will maybeCl'))
       (\ token' gamma'
