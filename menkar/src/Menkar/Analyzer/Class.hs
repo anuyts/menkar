@@ -20,6 +20,7 @@ import Data.Functor.Identity
 import Data.Functor.Compose
 import GHC.Generics
 import Data.Maybe
+import Control.Monad
 
 data BoolToken (bool :: Bool) where
   TokenTrue :: BoolToken True
@@ -136,6 +137,9 @@ data AddressInfo = AddressInfo {
   _addressInfo'shouldWHN :: Bool,
   _addressInfo'boredom :: Boredom
   }
+
+_addressInfo'reason :: AddressInfo -> String
+_addressInfo'reason address = join $ (" > " ++) <$> _addressInfo'address address
 
 {-
 type family AnalyzerResult (option :: AnalyzerOption) = (result :: (* -> *) -> * -> *) | result -> option

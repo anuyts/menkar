@@ -26,8 +26,9 @@ class SysWHN sys => SysTC sys where
     Type sys v ->
     tc ()
   -- see Menkar.TC.Solve.solveMetaAgainstWHNF
-  newRelatedSysTerm :: forall tc v vOrig .
+  newRelatedUnanalyzableSysTerm :: forall tc v vOrig .
     (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+    SysAnalyzerError sys ->
     Constraint sys ->
     ModedDegree sys v ->
     Ctx Type sys vOrig Void ->
@@ -35,10 +36,8 @@ class SysWHN sys => SysTC sys where
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     SysTerm sys v ->
-    Type sys v ->
-    Type sys v ->
-    (String -> tc ()) ->
-    tc (Maybe (Term sys vOrig))
+    ClassifInfo (Twice1 (Type sys) v) ->
+    tc (SysTerm sys vOrig)
   -- see Menkar.TC.Rel
   {-
   checkTermRelSysTermWHNTerm :: forall tc v .

@@ -28,6 +28,7 @@ import GHC.Generics
 
 ---------------------------------------------------
 
+-- | Immediately calls the analyzer.
 newRelatedAST' :: forall sys tc t v vOrig .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
   Constraint sys ->
@@ -37,27 +38,69 @@ newRelatedAST' :: forall sys tc t v vOrig .
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   t v ->
-  Twice1 (AnalyzerExtraInput t) v ->
+  ClassifExtraInput t vOrig ->
+  ClassifExtraInput t v ->
   ClassifInfo (Twice1 (Classif t) v) ->
-  (String -> tc ()) ->
-  tc (Maybe (t vOrig))
-newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 (Twice1 extraT1 extraT2) maybeCTs alternative = do
-  let maybeCT1 = fstTwice1 <$> maybeCTs
-  let maybeCT2 = sndTwice1 <$> maybeCTs
-  let inputT1 = (Classification _  extraT1 maybeCT1)
-  let inputT2 = (Classification t2 extraT2 maybeCT2)
-  attempt <- sequenceA $ analyze TokenRelate gamma inputT2
-    $ \ wkn extract extCtx extractRel addressInfo -> do
-      let (Classification s2 extraS2 maybeCS2) = fromMaybe unreachable $ extract gamma inputT2
+  tc (t vOrig)
+newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs = do
+  let maybeCT1 :: ClassifInfo (Classif t v) = fstTwice1 <$> maybeCTs
+  let maybeCT2 :: ClassifInfo (Classif t v) = sndTwice1 <$> maybeCTs
+  --let inputT1 :: Classification t v = (Classification _  extraT1 maybeCT1)
+  let inputT2 :: Classification t v = (Classification t2 extraT2 maybeCT2)
+  attempt <- sequenceA $ analyze TokenTrav gammaOrig inputT2
+    $ \ wkn condT1origDraft extract extCtx extractRel addressInfo -> do
+      let t1origDraft = runConditional condT1origDraft
+      let inputT1orig :: Classification t vOrig = Classification t1origDraft extraT1orig ClassifUnknown
+      let inputT1 :: Classification t v = subst <$> inputT1orig
+      let Classification _  extraS1orig maybeCS1orig = fromMaybe unreachable $ extract gammaOrig inputT1orig
+      let Classification s2 extraS2     maybeCS2 = fromMaybe unreachable $ extract (sndCtx gamma) inputT2
       let relS = extractRel relT
-      let gammadeltaOrig = fromMaybe unreachable $ _ --extCtx gammaOrig inputT2 absurdRelate
-      let gammaOrig = fromMaybe _ $ extCtx gamma inputT1 (conditional inputT2)
-      let eta = if _addressInfo'shouldWHN addressInfo then True else False
+      let gammadeltaOrig = fromMaybe unreachable $ extCtx TokenFalse gammaOrig inputT1orig typesArentDoubled
+      let gammadelta     = fromMaybe unreachable $ extCtx TokenTrue  gamma     inputT1     (conditional inputT2)
+      let eta = if _addressInfo'shouldWHN addressInfo then Eta True else Eta False
       let substDelta = over traverse $ subst
       let partialInvDelta = traverse $ partialInv
-      _
-  _newRelatedAST'
+      AnalysisTrav <$>
+        newRelatedAST parent eta relS gammadeltaOrig gammadelta substDelta partialInvDelta s2 extraS1orig extraS2
+        (classifMust2will $ Twice1 <$> (fmap substDelta <$> maybeCS1orig) <*> maybeCS2) (_addressInfo'reason addressInfo)
+      -- Do something with the reason.
+      {-case _addressInfo'boredom addressInfo of
+        EntirelyBoring ->
+          
+            
+        WorthMentioning -> _
+        WorthScheduling -> do
+          addNewConstraint
+            (JudRel analyzableToken gamma)-}
+  case attempt of
+    Right (AnalysisTrav t1orig) -> return t1orig
+    Left anErr -> case (anErr, analyzableToken :: AnalyzableToken sys t, t2) of
+         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) ->
+           unreachable -- terms are neutral at this point
+         (AnErrorTermMeta, _, _) -> unreachable
+         (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
+         (AnErrorTermWildcard, _, _) -> unreachable
+         (AnErrorTermQName, AnTokenTermNV, TermQName qname ldivVal) ->
+           unreachable -- terms are neutral at this point
+         (AnErrorTermQName, _, _) -> unreachable
+         (AnErrorTermAlreadyChecked, AnTokenTermNV, TermAlreadyChecked tChecked tyChecked) ->
+           unreachable -- terms are neutral at this point
+         (AnErrorTermAlreadyChecked, _, _) -> unreachable
+         (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> 
+           unreachable -- terms are neutral at this point
+         (AnErrorTermAlgorithm, _, _) -> unreachable
+         (AnErrorTermSys sysErr, AnTokenTermNV, TermSys syst) ->
+           TermSys <$> newRelatedUnanalyzableSysTerm sysErr parent relT gammaOrig gamma subst partialInv syst maybeCTs
+         (AnErrorTermSys _, _, _) -> unreachable
+         (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent "Problematic term encountered."
+         (AnErrorTermProblem, _, _) -> unreachable
+         (AnErrorVar, AnTokenTerm, Var2 v2) -> case partialInv v2 of
+           Just v1orig -> return $ Var2 v1orig
+           Nothing ->
+             tcFail parent "Have to resolve meta not depending on certain variable, with solution that does depend on it."
+         (AnErrorVar, _, _) -> unreachable
 
+-- | To be called by the analyzer.
 newRelatedAST :: forall sys tc t v vOrig .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
   Constraint sys ->
@@ -68,12 +111,14 @@ newRelatedAST :: forall sys tc t v vOrig .
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   t v ->
-  Twice1 (AnalyzerExtraInput t) v ->
+  ClassifExtraInput t vOrig ->
+  ClassifExtraInput t v ->
   ClassifInfo (Twice1 (Classif t) v) ->
-  (String -> tc ()) ->
   String ->
-  tc (Maybe (t vOrig))
-newRelatedAST parent eta relT gammaOrig gamma subst partialInv t2 extraTs maybeCTs alternative reason =
+  tc (t vOrig)
+newRelatedAST parent eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
+  _newRelatedAST
+{-
   case analyzableToken @sys @t of
     AnTokenTerm ->
       Just <$> newRelatedMetaTerm parent eta relT gammaOrig gamma subst partialInv t2 maybeCTs
@@ -380,3 +425,4 @@ tryToSolveTerm parent eta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 alternative 
   (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) (Compose maybeAlg1))) ->
     tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 metasTy1 metasTy2 alternative
   _ -> alternative "Cannot solve relation: one side is blocked on a meta-variable."
+-}
