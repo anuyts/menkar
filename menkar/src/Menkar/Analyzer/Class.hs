@@ -230,6 +230,9 @@ typesArentDoubledT = ConditionalT $ return unreachable
 typesArentDoubled :: forall a . IfTrue False a
 typesArentDoubled = typesArentDoubledT -- conditional unreachable
 
+type IfTravT option m = ConditionalT (option ~ OptionTrav) m
+type IfTrav option = Conditional (option ~ OptionTrav)
+
 {-
 data IfDoubled (option :: AnalyzerOption) a where
   IfDoubledTrav :: IfDoubled OptionTrav a
@@ -265,6 +268,10 @@ class (Functor t,
     (forall s ext .
       (Analyzable sys s, DeBruijnLevel (ext vOut), DeBruijnLevel (ext v), Traversable ext) =>
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
+      {-| The result as hitherto composed. Contains 'undefined' parts wherever necessary,
+          though it shall at all times match the structure of the analyzee.
+      -}
+      (IfTrav option (t vOut)) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
         Ctx (TypeForOption option) sys u Void ->
         Classification t u ->
@@ -365,8 +372,10 @@ analyzeOld :: forall sys t option f v .
     ) ->
     Either (AnalyzerError sys) (f (Analysis option t v))
 analyzeOld token gamma inputT1 condInputT2 condRel h =
-  analyze token gamma inputT1 $ \ wkn extractT extendCtx extractRel info ->
+  analyze token gamma inputT1 $ \ wkn tDraft extractT extendCtx extractRel info ->
   h wkn
+    -- The following is a hack; this argument is presumed to never be used.
+    -- (conditional $ _classification'get inputT1 <&> \ x -> unreachable)
     (extendCtx (tokenCheckDoubled token) gamma inputT1 condInputT2)
     (fromMaybe unreachable $ extractT gamma inputT1)
     (extractT gamma <$> condInputT2)
