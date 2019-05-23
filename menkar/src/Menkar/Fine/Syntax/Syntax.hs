@@ -57,6 +57,10 @@ data Pair2 s t (a :: ka) (b :: kb) = Pair2 {fst2 :: s a b, snd2 :: t a b}
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (CanSwallow (Term sys) (s sys), CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Pair2 s t sys)
 
+newtype Const1 t sys v = Const1 {getConst1 :: t v}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Const1 t sys)
+
 {-
 data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c}
   deriving (Functor, Foldable, Traversable, Generic1)
@@ -201,6 +205,7 @@ deriving instance (
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (Binding lhs rhs sys)
 
+{-
 {-| Same as binding, but analyzer takes segment for granted and doesn't traverse it. -}
 data ClassifBinding
     (lhs :: KSys -> * -> *)
@@ -221,7 +226,8 @@ deriving instance (
     CanSwallow (Term sys) (lhs sys),
     CanSwallow (Term sys) (rhs)
   ) => CanSwallow (Term sys) (ClassifBinding lhs rhs sys)
-  
+-}
+
 data NamedBinding
     (rhs :: KSys -> * -> *)
     (sys :: KSys) (v :: *) =
@@ -460,6 +466,13 @@ data DeclName declSort where
   DeclNameModule :: String -> DeclName DeclSortModule
   DeclNameSegment :: Maybe Raw.Name -> DeclName DeclSortSegment
   DeclNameValSpec :: DeclName DeclSortValSpec
+
+getDeclNameVal :: DeclName DeclSortVal -> Raw.Name
+getDeclNameVal (DeclNameVal rawName) = rawName
+getDeclNameModule :: DeclName DeclSortModule -> String
+getDeclNameModule (DeclNameModule str) = str
+getDeclNameSegment :: DeclName DeclSortSegment -> Maybe Raw.Name
+getDeclNameSegment (DeclNameSegment maybeRawName) = maybeRawName
 
 {-
 data DeclType
