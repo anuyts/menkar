@@ -344,8 +344,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
     case t of
 
       ConsUniHS ty -> do
-        rty <- h Identity
-          _
+        rty <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ConsUniHS unreachable)
           (\ gamma' -> \ case
               Classification (ConsUniHS ty') U1 _ ->
                 Just $ Identity !<$> Classification ty' U1 ClassifUnknown
@@ -355,13 +355,13 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["UniHS-constructor"] False EntirelyBoring)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ ConsUniHS $ runIdentity !<$> getAnalysisTrav rty
-          TokenTC -> AnalysisTC $ hs2type $ UniHS $ runIdentity !<$> getAnalysisTC rty
+          TokenTrav -> AnalysisTrav $ ConsUniHS $ getAnalysisTrav rty
+          TokenTC -> AnalysisTC $ hs2type $ UniHS $ getAnalysisTC rty
           TokenRel -> AnalysisRel
 
       Lam binding -> do
-        rbinding <- h Identity
-          _
+        rbinding <- fmapCoe runIdentity <$> h Identity
+          (conditional $ Lam unreachable)
           (\ gamma' -> \ case
               Classification (Lam binding') U1 _ ->
                 Just $ Identity !<$> Classification binding' U1 ClassifUnknown
@@ -371,16 +371,16 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["binding"] False EntirelyBoring)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ Lam $ runIdentity !<$> getAnalysisTrav rbinding
+          TokenTrav -> AnalysisTrav $ Lam $ getAnalysisTrav rbinding
           TokenTC -> AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) $
-            _classifBinding'body $ snd1 $ runIdentity !<$> getAnalysisTC rbinding
+            _classifBinding'body $ snd1 $ getAnalysisTC rbinding
             --let (U1 :*: Comp1 ty) = getAnalysisTC rbinding
             --in  AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) ty
           TokenRel -> AnalysisRel
 
       Pair sigmaBinding tFst tSnd -> do
-        rsigmaBinding <- h Identity
-          _
+        rsigmaBinding <- fmapCoe runIdentity <$> h Identity
+          (conditional $ Pair unreachable unreachable unreachable)
           (\ gamma' -> \ case
               Classification (Pair sigmaBinding' tFst' tSnd') U1 _ ->
                 Just $ Identity !<$> Classification sigmaBinding' U1
@@ -390,8 +390,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           extCtxId
           (fmapCoe Identity)
           (AddressInfo ["Sigma-type annotation"] False omit)
-        rtFst <- h Identity
-          _
+        rtFst <- fmapCoe runIdentity <$> h Identity
+          (conditional $ Pair (getAnalysisTrav rsigmaBinding) unreachable unreachable)
           (\ gamma' -> \ case
               Classification (Pair sigmaBinding' tFst' tSnd') U1 _ ->
                 Just $ Identity !<$> Classification tFst' U1
@@ -401,8 +401,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           extCtxId
           (fmapCoe Identity)
           (AddressInfo ["first component"] False omit)
-        rtSnd <- h Identity
-          _
+        rtSnd <- fmapCoe runIdentity <$> h Identity
+          (conditional $ Pair (getAnalysisTrav rsigmaBinding) (getAnalysisTrav rtFst) unreachable)
           (\ gamma' -> \ case
               Classification (Pair sigmaBinding' tFst' tSnd') U1 _ ->
                 Just $ Identity !<$> Classification tSnd' U1
@@ -414,7 +414,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (AddressInfo ["second component"] False omit)
         return $ case token of
           TokenTrav ->
-            AnalysisTrav $ runIdentity !<$> Pair (getAnalysisTrav rsigmaBinding) (getAnalysisTrav rtFst) (getAnalysisTrav rtSnd)
+            AnalysisTrav $ Pair (getAnalysisTrav rsigmaBinding) (getAnalysisTrav rtFst) (getAnalysisTrav rtSnd)
           TokenTC -> AnalysisTC $ hs2type $ Sigma sigmaBinding
           TokenRel -> AnalysisRel
 
@@ -424,8 +424,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         TokenRel -> AnalysisRel
 
       ConsBox boxSeg tUnbox -> do
-        rboxSeg <- h Identity
-          _
+        rboxSeg <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ConsBox unreachable unreachable)
           (\ gamma' -> \ case
               Classification (ConsBox boxSeg' tUnbox') U1 _ ->
                 Just $ Identity !<$> Classification boxSeg' U1 (ClassifWillBe $ U1)
@@ -434,8 +434,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           extCtxId
           (fmapCoe Identity)
           (AddressInfo ["Box-type annotation"] False omit)
-        rtUnbox <- h Identity
-          _
+        rtUnbox <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ConsBox (getAnalysisTrav rboxSeg) unreachable)
           (\ gamma' -> \ case
               Classification (ConsBox boxSeg' tUnbox') U1 _ ->
                 Just $ Identity !<$> Classification tUnbox' U1
@@ -446,7 +446,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["box content"] False omit)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ runIdentity !<$> ConsBox (getAnalysisTrav rboxSeg) (getAnalysisTrav rtUnbox)
+          TokenTrav -> AnalysisTrav $ ConsBox (getAnalysisTrav rboxSeg) (getAnalysisTrav rtUnbox)
           TokenTC -> AnalysisTC $ hs2type $ BoxType boxSeg
           TokenRel -> AnalysisRel
 
@@ -456,8 +456,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
         TokenRel -> AnalysisRel
 
       ConsSuc t -> do
-        rt <- h Identity
-          _
+        rt <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ConsSuc unreachable)
           (\ gamma' -> \ case
               Classification (ConsSuc t') U1 _ ->
                 Just $ Identity !<$> Classification t' U1 (ClassifMustBe $ hs2type NatType)
@@ -467,13 +467,13 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["predecessor"] False omit)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ ConsSuc $ runIdentity !<$> (getAnalysisTrav rt)
+          TokenTrav -> AnalysisTrav $ ConsSuc $ getAnalysisTrav rt
           TokenTC -> AnalysisTC $ hs2type $ NatType
           TokenRel -> AnalysisRel
 
       ConsRefl tyAmbient t -> do
-        rtyAmbient <- h Identity
-          _
+        rtyAmbient <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ConsRefl unreachable unreachable)
           (\ gamma' -> \ case
               Classification (ConsRefl tyAmbient' t') U1 _ ->
                 Just $ Identity !<$> Classification tyAmbient' U1 (ClassifWillBe U1)
@@ -482,8 +482,8 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           extCtxId
           (fmapCoe Identity)
           (AddressInfo ["ambient type"] False omit)
-        rt <- h Identity
-          _
+        rt <- fmapCoe runIdentity <$> h Identity
+          (conditional $ ConsRefl (getAnalysisTrav rtyAmbient) unreachable)
           (\ gamma' -> \ case
               Classification (ConsRefl tyAmbient' t') U1 _ ->
                 Just $ Identity !<$> Classification t' U1 (ClassifMustBe tyAmbient')
@@ -493,7 +493,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (fmapCoe Identity)
           (AddressInfo ["self-equand"] False omit)
         return $ case token of
-          TokenTrav -> AnalysisTrav $ runIdentity !<$> ConsRefl (getAnalysisTrav rtyAmbient) (getAnalysisTrav rt)
+          TokenTrav -> AnalysisTrav $ ConsRefl (getAnalysisTrav rtyAmbient) (getAnalysisTrav rt)
           TokenTC -> AnalysisTC $ hs2type $ EqType tyAmbient t t
           TokenRel -> AnalysisRel
 
@@ -510,7 +510,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
   witClassif token = Witness
   analyze token gamma (Classification (Type t) U1 maybeU1) h = Right $ do
     rt <- h Identity
-      _
+      (conditional $ Type unreachable)
       (\ gamma' (Classification (Type t') U1 maybeU1') ->
          Just $ Identity !<$> Classification t' U1
            (ClassifMustBe $ hs2type $ UniHS $ unVarFromCtx <$> ctx'mode gamma'))
