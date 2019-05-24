@@ -187,8 +187,8 @@ etaExpandIfApplicable parent ddeg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
       let app2 = Expr2 $ TermElim
             (idModedModality $ VarWkn <$> dgamma)
             (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
-      return $ Just (Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding1) app1,
-                     Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding2) app2)
+      return $ Just (Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding1) $ ValRHS app1 $ binding'body piBinding1,
+                     Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding2) $ ValRHS app2 $ binding'body piBinding2)
     (Pi _, _) -> tcFail parent "Types are presumed to be related."
     (_, Pi _) -> tcFail parent "Types are presumed to be related."
     -- Sigma types: eta expand if allowed

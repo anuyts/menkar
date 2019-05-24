@@ -220,7 +220,7 @@ etaExpand parent gamma t (Pi piBinding) = do
             (binding'body piBinding)
             MetaBlocked
             "Infer function body."
-  return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) body
+  return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) (ValRHS body $ binding'body piBinding)
 etaExpand parent gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
