@@ -14,6 +14,7 @@ import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.PrettyPrint.Fine.Class
 import Menkar.PrettyPrint.Fine.Syntax
 import Menkar.PrettyPrint.Fine.Context
+import Menkar.Analyzer.Class
 
 import Text.PrettyPrint.Tree
 import Data.Omissible
@@ -25,12 +26,56 @@ import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
+import GHC.Generics
 
 vdash = '\x22A2'
 vdash_ = vdash : " "
 _vdash = [' ', vdash]
 _vdash_ = [' ', vdash, ' ']
 
+classif2pretty :: forall sys t v .
+  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  AnalyzableToken sys t ->
+  ScCtx sys v Void ->
+  Classif t v ->
+  Fine2PrettyOptions sys ->
+  PrettyTree String
+classif2pretty token gamma ct opts =
+  case (token, ct) of
+    (AnTokenModedModality, dom :*: cod) ->
+      fine2pretty gamma dom opts
+      |++ " -> " |+|
+      fine2pretty gamma cod opts
+
+maybeClassif2pretty :: forall sys t v .
+  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  AnalyzableToken sys t ->
+  ScCtx sys v Void ->
+  ClassifInfo (Classif t v) ->
+  Fine2PrettyOptions sys ->
+  PrettyTree String
+maybeClassif2pretty token gamma (ClassifWillBe ct) opts = ":. " ++| classif2pretty token gamma ct opts
+maybeClassif2pretty token gamma (ClassifMustBe ct) opts = ":! " ++| classif2pretty token gamma ct opts
+maybeClassif2pretty token gamma (ClassifUnknown) opts = ribbon ":_"
+
+classification2pretty :: forall sys t v .
+  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  ScCtx sys v Void ->
+  Classification t v ->
+  Fine2PrettyOptions sys ->
+  PrettyTree String
+classification2pretty gamma (Classification t extraT maybeCT) opts =
+  let token = analyzableToken @sys @t
+  in case (token, t, extraT) of
+       (AnTokenModedModality, ModedModality dom cod mod, U1) -> 
+         ribbon " <modality> (" \\\ [
+           fine2pretty gamma mod opts,
+           " :  " ++| fine2pretty gamma dom opts,
+           " -> " ++| fine2pretty gamma cod opts
+           ] ///
+         ")" ++| maybeClassif2pretty token gamma maybeCT opts
+
+{-
 jud2pretty :: forall sys .
   (Multimode sys,
    SysPretty sys) =>
@@ -140,3 +185,4 @@ instance (Multimode sys,
           SysPretty sys)
          => Show (Judgement sys) where
   show jud = render (jud2pretty jud $? id) $? id
+-}
