@@ -417,8 +417,9 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (AddressInfo ["binding"] False EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ Lam $ getAnalysisTrav rbinding
-          TokenTC -> AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) $
-            getConst1 $ _namedBinding'body $ snd1 $ getAnalysisTC rbinding
+          TokenTC -> AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) (_val'type $ binding'body binding)
+            {-(binding'segment binding) $
+            getConst1 $ _namedBinding'body $ snd1 $ getAnalysisTC rbinding-}
             --let (U1 :*: Comp1 ty) = getAnalysisTC rbinding
             --in  AnalysisTC $ hs2type $ Pi $ Binding (binding'segment binding) ty
           TokenRel -> AnalysisRel
@@ -803,8 +804,8 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
         TokenTC -> case binding'body binding of
           TypeHS (EqType tyAmbient tL tR) -> AnalysisTC $ hs2type $ EqType
             (hs2type $ Pi $           Binding (binding'segment binding) tyAmbient)
-            (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) tL)
-            (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) tR)
+            (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) $ ValRHS tL tyAmbient)
+            (Expr2 $ TermCons $ Lam $ Binding (binding'segment binding) $ ValRHS tR tyAmbient)
           _ -> unreachable
         TokenRel -> AnalysisRel
       (_, Funext) -> unreachable
