@@ -99,7 +99,8 @@ instance (SysPretty sys,
       " " ++| fine2pretty gamma (Mode d),
       " (" ++| fine2pretty gamma typeterm |++ ")"
       ]-}
-  fine2pretty gamma (Lam binding) opts = binding2pretty ">" gamma binding opts
+  fine2pretty gamma (Lam (Binding seg (ValRHS body cod))) opts =
+    binding2pretty ">" gamma (Binding seg $ TypedTerm body cod) opts
   fine2pretty gamma (Pair binding tmFst tmSnd) opts =
     ribbon "ofType" \\\ [
       " (" ++| fine2pretty gamma (Sigma binding) opts |++ ")",
@@ -113,7 +114,7 @@ instance (SysPretty sys,
       ]
   fine2pretty gamma (ConsZero) opts = ribbon "zero"
   fine2pretty gamma (ConsSuc t) opts = "suc .{" ++| fine2pretty gamma t opts |++ "}"
-  fine2pretty gamma (ConsRefl t) opts = "refl .{" ++| fine2pretty gamma t opts |++ "}"
+  fine2pretty gamma (ConsRefl tyAmbient t) opts = "refl .{" ++| typed2pretty gamma t tyAmbient opts |++ "}"
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ConstructorTerm sys Void) where
@@ -159,6 +160,12 @@ typed2pretty :: (DeBruijnLevel v,
   Fine2PrettyOptions sys ->
   PrettyTree String
 typed2pretty gamma t ty opts = typed2pretty' (fine2pretty gamma t opts) (fine2pretty gamma ty opts) opts
+
+data TypedTerm sys v = TypedTerm (Term sys v) (Type sys v)
+instance (SysPretty sys,
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+         Fine2Pretty sys (TypedTerm sys) where
+  fine2pretty gamma (TypedTerm t ty) opts = typed2pretty gamma t ty opts
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>

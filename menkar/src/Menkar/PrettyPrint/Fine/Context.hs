@@ -33,7 +33,10 @@ dividedCtx2pretty :: forall v w sys ty .
    Multimode sys, Functor (ty sys),
    SysPretty sys, Fine2Pretty sys (ty sys)) =>
   Maybe (ModedModality sys v) -> ScCtx sys v Void -> Ctx ty sys w v -> Fine2PrettyOptions sys -> PrettyTree String
-dividedCtx2pretty maybeDRho delta (CtxEmpty d) opts = "{context-mode : " ++| fine2pretty delta d opts |++ "}"
+dividedCtx2pretty Nothing delta (CtxEmpty d) opts =
+  "{context-mode : " ++| fine2pretty delta d opts |++ "}"
+dividedCtx2pretty (Just drho) delta (CtxEmpty d) opts =
+  "{context-mode : " ++| fine2pretty delta (modality'dom drho) opts |++ "}"
 dividedCtx2pretty maybeDRho delta (gamma :.. seg) opts = haveDB gamma $
   dividedCtx2pretty maybeDRho delta gamma opts
     \+\ [
@@ -68,6 +71,8 @@ dividedCtx2pretty Nothing delta (dmu :\\ gamma) opts = --haveDB gamma $
                              /// ribbon ")"
 dividedCtx2pretty (Just drho) delta (dmu :\\ gamma) opts =
   dividedCtx2pretty (Just $ compModedModality (unVarBeforeCtxUnsafe <$> dmu) drho) delta gamma opts
+dividedCtx2pretty maybeDRho delta (CtxId gamma) opts = dividedCtx2pretty maybeDRho delta gamma opts
+dividedCtx2pretty maybeDRho delta (CtxComp gamma) opts = dividedCtx2pretty maybeDRho delta gamma opts
 
 ctx2pretty :: forall v sys ty .
   (DeBruijnLevel v,
