@@ -48,7 +48,10 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
           let relS = extractRel relT
           let gammadelta = fromMaybe unreachable $ extCtx TokenTrue gamma inputT1 (conditional inputT2)
               -- Cannot fail because we already know that the shapes of t1 and t2 match.
-          let eta = if _addressInfo'shouldWHN addressInfo then Eta False else Eta True
+          let eta = case _addressInfo'focus addressInfo of
+                FocusEliminee -> Eta False
+                FocusWrapped -> Eta True
+                NoFocus -> Eta True
           let maybeCSs = classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2
           case _addressInfo'boredom addressInfo of
             EntirelyBoring -> checkASTRel parent eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs

@@ -57,7 +57,10 @@ newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 extraT1orig extra
       let relS = extractRel relT
       let gammadeltaOrig = fromMaybe unreachable $ extCtx TokenFalse gammaOrig inputT1orig typesArentDoubled
       let gammadelta     = fromMaybe unreachable $ extCtx TokenTrue  gamma     inputT1     (conditional inputT2)
-      let eta = if _addressInfo'shouldWHN addressInfo then Eta True else Eta False
+      let eta = case _addressInfo'focus addressInfo of
+            FocusEliminee -> Eta False
+            FocusWrapped -> Eta True
+            NoFocus -> Eta True
       let substDelta = over traverse $ subst
       let partialInvDelta = traverse $ partialInv
       AnalysisTrav <$>

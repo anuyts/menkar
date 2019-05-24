@@ -265,9 +265,9 @@ whnormalizeAST' :: forall sys whn v t .
 whnormalizeAST' parent gamma t extraT classifT reason =
          let attempt = subASTsTyped gamma (Classification t extraT (ClassifWillBe classifT)) $
                \ wkn gammadelta (Classification s extraS maybeClassifS) addressInfo ->
-                 if _addressInfo'shouldWHN addressInfo
-                 then whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
-                 else return s
+                 case _addressInfo'focus addressInfo of
+                   NoFocus -> return s
+                   otherwise -> whnormalizeAST parent gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
          in fromRight (return t) attempt
 
 whnormalizeAST :: forall sys whn v t .
