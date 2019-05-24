@@ -20,6 +20,7 @@ import Data.Kind hiding (Type)
 
 ----------------------------
 
+{-
 telescoped2lambda :: Telescoped Type ValRHS sys v -> Term sys v
 telescoped2lambda (Telescoped valRHS) = _val'term valRHS
 telescoped2lambda (seg :|- telescopedValRHS) = Expr2 $ TermCons $ Lam $ Binding seg (telescoped2lambda telescopedValRHS)
@@ -38,6 +39,27 @@ telescoped2quantified :: (SysTrav sys) =>
 telescoped2quantified telescopedVal = ValRHS
   (telescoped2lambda $ telescopedVal)
   (telescoped2pi $ telescopedVal)
+-}
+
+telescoped2lambda :: Telescoped Type ValRHS sys v -> Term sys v
+telescoped2lambda telescopedValRHS = _val'term $ telescoped2quantified telescopedValRHS
+
+telescoped2pi :: Telescoped Type ValRHS sys v -> Type sys v
+telescoped2pi telescopedValRHS = _val'type $ telescoped2quantified telescopedValRHS
+
+telescoped2quantified :: Telescoped Type ValRHS sys v -> ValRHS sys v
+telescoped2quantified (Telescoped valRHS) = valRHS
+telescoped2quantified (seg :|- telescopedValRHS) =
+  let quantifiedValRHS = telescoped2quantified telescopedValRHS
+  in  ValRHS
+        (Expr2 $ TermCons $ Lam $ Binding seg $ quantifiedValRHS)
+        (hs2type $ Pi $ Binding seg $ _val'type quantifiedValRHS)
+telescoped2quantified (dmu :** telescopedValRHS) = 
+  let quantifiedValRHS = telescoped2quantified telescopedValRHS
+      boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit (_val'type quantifiedValRHS)
+  in  ValRHS
+        (Expr2 $ TermCons $ ConsBox boxSeg $ _val'term quantifiedValRHS)
+        (hs2type $ BoxType boxSeg)
 
 telescoped2modalQuantified :: (Multimode sys) =>
   Mode sys v {-^ Mode of the telescope -} -> Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v

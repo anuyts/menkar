@@ -280,7 +280,7 @@ data ConstructorTerm (sys :: KSys) (v :: *) =
     --(mode v) {-^ Type's mode -}
     --(Term sys v) {-^ Type's unsafely assigned level -}
     (UniHSConstructor sys v) {-^ Type -} |
-  Lam (Binding Type Term sys v) |
+  Lam (Binding Type ValRHS sys v) |
   Pair
     (Binding Type Type sys v) {-^ pair's sigma type -} 
     (Term sys v)
