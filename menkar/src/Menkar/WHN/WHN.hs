@@ -126,19 +126,18 @@ whnormalizeElim parent gamma dmu whnEliminee tyEliminee e tyResult metasEliminee
             let subst v = case v of
                   VarWkn w -> Var2 w
                   VarLast -> arg
-            in whnormalize parent gamma (join $ subst <$> binding'body binding) tyResult reason
+            in whnormalize parent gamma (join $ subst <$> (_val'term $ binding'body binding)) tyResult reason
           -- Function extensionality over a lambda: WHNormalize the body. (The analyzer doesn't do that!)
-          (Lam (Binding seg body), Funext) -> do
-            let Pi piBinding = tyEliminee
-            whnBody <- whnormalize parent (gamma :.. VarFromCtx <$> seg) body (binding'body piBinding) reason
+          (Lam (Binding seg (ValRHS body cod)), Funext) -> do
+            whnBody <- whnormalize parent (gamma :.. VarFromCtx <$> seg) body cod reason
             case whnBody of
               -- Body is refl: Elimination reduces to refl.
               Expr2 (TermCons (ConsRefl tyAmbient t)) ->
                 return $ Expr2 $ TermCons $ ConsRefl
                   (hs2type $ Pi $ Binding seg tyAmbient)
-                  (Expr2 $ TermCons $ Lam $ Binding seg t)
+                  (Expr2 $ TermCons $ Lam $ Binding seg $ ValRHS t tyAmbient)
               -- Body is blocked or neutral: Return elimination with whnormalized body.
-              _ -> return $ Expr2 $ TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg whnBody) tyEliminee Funext
+              _ -> return $ Expr2 $ TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg $ ValRHS whnBody cod) tyEliminee Funext
           -- Other eliminations of lambda: Bogus.
           (Lam _, _) -> return termProblem
           ---------------              
