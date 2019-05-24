@@ -130,11 +130,13 @@ data Boredom = EntirelyBoring | WorthMentioning | WorthScheduling
 instance Omissible Boredom where
   omit = WorthScheduling
 
+data Focus = FocusEliminee | FocusWrapped | NoFocus
+
 data AddressInfo = AddressInfo {
   {-| Deepest last -}
   _addressInfo'address :: [String],
   {-| If true, a classifier must be provided or at least propagated downward. -}
-  _addressInfo'shouldWHN :: Bool,
+  _addressInfo'focus :: Focus,
   _addressInfo'boredom :: Boredom
   }
 
