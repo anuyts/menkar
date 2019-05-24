@@ -409,7 +409,9 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (conditional $ Lam unreachable)
           (\ gamma' -> \ case
               Classification (Lam binding') U1 _ ->
-                Just $ Identity !<$> Classification binding' U1 ClassifUnknown
+                Just $ Identity !<$> Classification binding' U1
+                  (ClassifWillBe $
+                   U1 :*: NamedBinding (getDeclNameSegment . _decl'name . binding'segment $ binding') (Const1 U1))
               otherwise -> Nothing
           )
           extCtxId
