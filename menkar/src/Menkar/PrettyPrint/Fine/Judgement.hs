@@ -86,10 +86,11 @@ relation2pretty :: forall sys t v .
   AnalyzableToken sys t ->
   ScCtx sys v Void ->
   ClassifExtraInput t v ->
+  ClassifExtraInput t v ->
   Relation t v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
-relation2pretty token gamma extraT relT opts = _
+relation2pretty token gamma extraT1 extraT2 relT opts = _
 
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
@@ -176,31 +177,14 @@ jud2pretty :: forall sys .
   PrettyTree String
 jud2pretty (Jud token gamma t extraT maybeCT) opts = haveFine2Pretty token $
   ctx2pretty gamma opts \\\ [_vdash_ ++| classification2pretty (ctx2scCtx gamma) (Classification t extraT maybeCT) opts]
-jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs) = haveFine2Pretty token $
+jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs) opts = haveFine2Pretty token $
   ctx2pretty gamma opts \\\ [
     ribbon (_vdash_ ++ (if unEta eta then "" else "<no-eta> ")) \\\
-      ["(" ++| classification2pretty (ctx2scCtx gamma) (Classification t1 extraT1 (fstTwice1 maybeCT)) opts |++ ")",
-       relation2pretty token gamma extraT relT opts,
-       "(" ++| classification2pretty (ctx2scCtx gamma) (Classification t2 extraT2 (fstTwice2 maybeCT)) opts |++ ")"
+      ["(" ++| classification2pretty (ctx2scCtx gamma) (Classification t1 extraT1 (fstTwice1 <$> maybeCTs)) opts |++ ")",
+       relation2pretty token (ctx2scCtx gamma) extraT1 extraT2 relT opts,
+       "(" ++| classification2pretty (ctx2scCtx gamma) (Classification t2 extraT2 (sndTwice1 <$> maybeCTs)) opts |++ ")"
       ]
   ]
-
-
-{-
-jud2pretty (JudType gamma ty) opts =
-  ctx2pretty gamma opts \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty opts]
-jud2pretty (JudTypeRel deg gamma (Twice2 ty1 ty2)) opts =
-  ctx2pretty gamma opts \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) (Twice2 ty1 ty2) opts]
-  -- CMODE print the degree
-jud2pretty (JudTerm gamma t ty) opts =
-  ctx2pretty gamma opts \\\ [
-    _vdash_ ++| fine2pretty (ctx2scCtx gamma) t opts,
-    " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
-jud2pretty (JudTermRel eta deg gamma (Twice2 t1 t2) ty) opts =
-  ctx2pretty gamma opts \\\ [
-    _vdash_ ++ (if unEta eta then "" else "<no-eta> ") ++| fine2pretty (ctx2scCtx gamma) (Twice2 t1 t2) opts,
-    " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
-  -- CMODE print the degree
 jud2pretty (JudEta gamma t ty) opts =
   ctx2pretty gamma opts \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t opts |++ " = eta-expansion",
@@ -225,6 +209,24 @@ jud2pretty (JudGoal gamma goalName t ty) opts =
     _vdash_ ++ "?" ++ goalName ++ " <takes-value> " ++| fine2pretty (ctx2scCtx gamma) t opts,
     " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
 jud2pretty (JudResolve gamma t ty) opts = todo
+jud2pretty (JudSys jud) opts = sysJud2pretty jud opts
+
+
+{-
+jud2pretty (JudType gamma ty) opts =
+  ctx2pretty gamma opts \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty opts]
+jud2pretty (JudTypeRel deg gamma (Twice2 ty1 ty2)) opts =
+  ctx2pretty gamma opts \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) (Twice2 ty1 ty2) opts]
+  -- CMODE print the degree
+jud2pretty (JudTerm gamma t ty) opts =
+  ctx2pretty gamma opts \\\ [
+    _vdash_ ++| fine2pretty (ctx2scCtx gamma) t opts,
+    " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
+jud2pretty (JudTermRel eta deg gamma (Twice2 t1 t2) ty) opts =
+  ctx2pretty gamma opts \\\ [
+    _vdash_ ++ (if unEta eta then "" else "<no-eta> ") ++| fine2pretty (ctx2scCtx gamma) (Twice2 t1 t2) opts,
+    " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
+  -- CMODE print the degree
 jud2pretty (JudMode gamma d) opts =
   ctx2pretty gamma opts \\\ [_vdash ++ " <mode> " ++| fine2pretty (ctx2scCtx gamma) d opts]
 jud2pretty (JudModeRel gamma d1 d2) opts =
@@ -275,7 +277,6 @@ jud2pretty (JudModedModalityRel modrel gamma (ModedModality ddom1 mu1) (ModedMod
   where modrelsign = case modrel of
           ModEq -> " = "
           ModLeq -> " =< "
-jud2pretty (JudSys jud) opts = sysJud2pretty jud opts
 jud2pretty (JudSegment gamma seg) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <segment> " ++| fine2pretty (ctx2scCtx gamma) seg opts]
 jud2pretty (JudVal gamma val) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <val> " ++| fine2pretty (ctx2scCtx gamma) val opts]
 jud2pretty (JudModule gamma modul) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <module> " ++| fine2pretty (ctx2scCtx gamma) modul opts]
