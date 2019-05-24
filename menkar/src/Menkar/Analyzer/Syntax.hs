@@ -74,6 +74,7 @@ instance (SysAnalyzer sys,
           ClassifExtraInput (rhs sys) ~ U1,
           ClassifExtraInput (Classif (rhs sys)) ~ U1
          ) => Analyzable sys (Binding Type rhs sys) where
+  -- First component of classifier is redundant!
   type Classif (Binding Type rhs sys) = Classif (Segment Type sys) :*: NamedBinding (Const1 (Classif (rhs sys))) sys
   type Relation (Binding Type rhs sys) = ModedDegree sys
   type ClassifExtraInput (Binding Type rhs sys) = U1

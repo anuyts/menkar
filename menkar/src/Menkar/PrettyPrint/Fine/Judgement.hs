@@ -33,47 +33,105 @@ vdash_ = vdash : " "
 _vdash = [' ', vdash]
 _vdash_ = [' ', vdash, ' ']
 
+token2string :: forall sys t . (SysPretty sys) => AnalyzableToken sys t -> String
+token2string token = case token of
+  AnTokenModedModality -> "modality"
+  AnTokenBinding token -> "binding:" ++ token2string token
+  AnTokenNamedBinding token -> "name-only-binding:" ++ token2string token
+  AnTokenUniHSConstructor -> "UniHS-constructor"
+  AnTokenConstructorTerm -> "constructor"
+  AnTokenType -> "type"
+  AnTokenDependentEliminator -> "elimination-clauses"
+  AnTokenEliminator -> "eliminator"
+  AnTokenTermNV -> "non-variable"
+  AnTokenTerm -> "term"
+  AnTokenDeclaration token -> "declaration/segment"
+  AnTokenTelescoped token -> "telescoped:" ++ token2string token
+  AnTokenValRHS -> "typed-term"
+  AnTokenModuleRHS -> "module-definition"
+  AnTokenEntry -> "entry"
+  AnTokenU1 -> "0-tuple"
+  AnTokenPair1 ltoken rtoken -> "pair:(" ++ token2string ltoken ++ ", " ++ token2string rtoken ++ ")"
+  AnTokenConst1 token -> "const-boxed:" ++ token2string token
+  AnTokenSys systoken -> "system-boxed:" ++ sysToken2string systoken
+
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
   ScCtx sys v Void ->
+  ClassifExtraInput t v ->
   Classif t v ->
+  ClassifExtraInput (Classif t) v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
-classif2pretty token gamma ct opts =
-  case (token, ct) of
-    (AnTokenModedModality, dom :*: cod) ->
+classif2pretty token gamma extraT ct extraCT opts =
+  case (token, extraT, ct, extraCT) of
+    (AnTokenModedModality, U1, dom :*: cod, _) ->
       fine2pretty gamma dom opts
       |++ " -> " |+|
       fine2pretty gamma cod opts
+    (AnTokenBinding token, U1, _ :*: boundCRHS, _ :*: seg :*: Comp1 extraCRHS) ->
+      "_ -> " ++| classif2pretty token
+        (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
+        U1 (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
+    (AnTokenNamedBinding token, seg :*: Comp1 extraRHS, boundCRHS, seg' :*: Comp1 extraCRHS) ->
+      "_ -> " ++| classif2pretty token
+        (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
+        extraRHS (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
+    (AnTokenUniHSConstructor, U1, d, U1) -> "UniHS " ++| fine2pretty gamma d opts
+    (AnTokenConstructorTerm, U1, ty, U1) -> fine2pretty gamma ty opts
+    (AnTokenType, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenDependentEliminator, dmuElim :*: eliminee :*: tyEliminee :*: Comp1 motive, U1, U1) ->
+      fine2pretty gamma (Binding (Declaration (DeclNameSegment Nothing) dmuElim Explicit (hs2type tyEliminee)) motive) opts
+    (AnTokenEliminator, dmuElim :*: eliminee :*: tyEliminee, tyResult, U1) ->
+      ribbon "<eliminate> " \\\
+        [fine2pretty gamma eliminee opts] ///
+      ribbon " <of-type> " \\\
+        [fine2pretty gamma (Declaration (DeclNameSegment Nothing) dmuElim Explicit (hs2type tyEliminee)) opts] ///
+      ribbon " <to> " \\\
+        [fine2pretty gamma tyEliminee opts]
+    (AnTokenTermNV, U1, ty, U1) -> fine2pretty gamma ty opts
+    (AnTokenTerm, U1, ty, U1) -> fine2pretty gamma ty opts
+    (AnTokenDeclaration token, extraRHS, crhs, extraCRHS) -> classif2pretty token gamma extraRHS crhs extraCRHS opts
+    (AnTokenTelescoped token, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenValRHS, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenModuleRHS, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenEntry, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenU1, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenPair1 tokenL tokenR, extraL :*: extraR, cl :*: cr, extraCL :*: extraCR) ->
+      ribbon "("  \\\ [classif2pretty tokenL gamma extraL cl extraCL opts] ///
+      ribbon ", " \\\ [classif2pretty tokenR gamma extraR cr extraCR opts] ///
+      ribbon ")"
+    (AnTokenConst1 token, extraT, ct, extraCT) -> classif2pretty token gamma extraT ct extraCT opts
+    (AnTokenSys systoken, extraT, ct, extraCT) -> sysClassif2pretty systoken gamma extraT ct extraCT opts
+    
 
 maybeClassif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
   ScCtx sys v Void ->
+  ClassifExtraInput t v ->
   ClassifInfo (Classif t v) ->
+  ClassifExtraInput (Classif t) v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
-maybeClassif2pretty token gamma (ClassifWillBe ct) opts = ":. " ++| classif2pretty token gamma ct opts
-maybeClassif2pretty token gamma (ClassifMustBe ct) opts = ":! " ++| classif2pretty token gamma ct opts
-maybeClassif2pretty token gamma (ClassifUnknown) opts = ribbon ":_"
+maybeClassif2pretty token gamma extraT (ClassifWillBe ct) extraCT opts =
+  ":. " ++| classif2pretty token gamma extraT ct extraCT opts
+maybeClassif2pretty token gamma extraT (ClassifMustBe ct) extraCT opts =
+  ":! " ++| classif2pretty token gamma extraT ct extraCT opts
+maybeClassif2pretty token gamma extraT (ClassifUnknown) extraCT opts = ribbon ":_"
 
 classification2pretty :: forall sys t v .
-  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t, Fine2Pretty sys t) =>
   ScCtx sys v Void ->
   Classification t v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
 classification2pretty gamma (Classification t extraT maybeCT) opts =
   let token = analyzableToken @sys @t
-  in case (token, t, extraT) of
-       (AnTokenModedModality, ModedModality dom cod mod, U1) -> 
-         ribbon " <modality> (" \\\ [
-           fine2pretty gamma mod opts,
-           " :  " ++| fine2pretty gamma dom opts,
-           " -> " ++| fine2pretty gamma cod opts
-           ] ///
-         ")" ++| maybeClassif2pretty token gamma maybeCT opts
+  in  "<" ++ token2string token ++ "> " ++| fine2pretty gamma t opts
+      |++ " " |+| maybeClassif2pretty token gamma extraT maybeCT (extraClassif @sys t extraT) opts
+         
 
 {-
 jud2pretty :: forall sys .
