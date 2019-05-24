@@ -148,7 +148,8 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
           _decl'content = fineTy
         }
     fineBody <- expr (gamma :.. (VarFromCtx <$> fineSeg)) rawBody
-    return . Expr2 . TermCons . Lam $ Binding fineSeg fineBody
+    fineCod <- Type <$> newMetaTermNoCheck Nothing (gamma :.. VarFromCtx <$> fineSeg) MetaBlocked Nothing "Infer codomain."
+    return . Expr2 . TermCons . Lam $ Binding fineSeg $ ValRHS fineBody fineCod
 simpleLambda gamma rawArg rawBody =
   scopeFail $
   "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
@@ -184,8 +185,9 @@ buildLambda ::
   Segment Type sys v ->
   Term sys (VarExt v) ->
   sc (Term sys v)
-buildLambda gamma fineSeg fineCod =
-  return $ Expr2 $ TermCons $ Lam $ Binding fineSeg fineCod
+buildLambda gamma fineSeg fineBody = do
+  fineCod <- Type <$> newMetaTermNoCheck Nothing (gamma :.. VarFromCtx <$> fineSeg) MetaBlocked Nothing "Infer codomain."
+  return $ Expr2 $ TermCons $ Lam $ Binding fineSeg $ ValRHS fineBody fineCod
 
 {-| @'binder2' build gamma fineSegs rawArgs rawBody@ scopes the Menkar expression
     @<fineSegs> **> <rawArgs> **> rawBody@ to a term, where
