@@ -11,13 +11,24 @@ import Data.Void
 import Data.Constraint.Witness
 
 class SysWHN sys => SysTC sys where
-  inferTermSys :: forall tc v .
+  {-inferTermSys :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     SysAnalyzerError sys ->
     Constraint sys ->
     Ctx Type sys v Void ->
     SysTerm sys v ->
-    tc (Type sys v)
+    tc (Type sys v)-}
+  -- See Menkar.TC.AST.checkASTSpecial
+  checkSysASTUnanalyzable :: forall tc v t .
+    (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
+    SysAnalyzerError sys ->
+    Constraint sys ->
+    Ctx Type sys v Void ->
+    AnalyzerError sys ->
+    t v ->
+    ClassifExtraInput t v ->
+    ClassifInfo (Classif t v) ->
+    tc (Classif t v)
   checkTermSys :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
@@ -25,7 +36,7 @@ class SysWHN sys => SysTC sys where
     SysTerm sys v ->
     Type sys v ->
     tc ()
-  -- see Menkar.TC.Solve.solveMetaAgainstWHNF
+  {- -- see Menkar.TC.Solve.solveMetaAgainstWHNF
   newRelatedUnanalyzableSysTerm :: forall tc v vOrig .
     (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
     SysAnalyzerError sys ->
@@ -37,9 +48,22 @@ class SysWHN sys => SysTC sys where
     (v -> Maybe vOrig) ->
     SysTerm sys v ->
     ClassifInfo (Twice1 (Type sys) v) ->
-    tc (SysTerm sys vOrig)
-  -- see Menkar.TC.Rel
-  {-
+    tc (SysTerm sys vOrig) -}
+  newRelatedSysASTUnanalyzable' :: forall tc t v vOrig .
+    (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
+    SysAnalyzerError sys ->
+    Constraint sys ->
+    Relation t v ->
+    Ctx Type sys vOrig Void ->
+    Ctx (Twice2 Type) sys v Void ->
+    (vOrig -> v) ->
+    (v -> Maybe vOrig) ->
+    t v ->
+    ClassifExtraInput t vOrig ->
+    ClassifExtraInput t v ->
+    ClassifInfo (Twice1 (Classif t) v) ->
+    tc (t vOrig)
+  {- -- see Menkar.TC.Rel
   checkTermRelSysTermWHNTerm :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
@@ -54,15 +78,15 @@ class SysWHN sys => SysTC sys where
     [Int] ->
     tc ()
   -}
-  checkUnanalyzableSysASTRel :: forall tc t v .
+  checkUnanalyzableSysASTRel' :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzerError sys ->
     Constraint sys ->
     Eta ->
     Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
-    t v ->
-    t v ->
+    Twice1 t v ->
+    Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     tc ()
   checkSysASTRel :: forall tc t v .

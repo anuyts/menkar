@@ -69,8 +69,8 @@ data AnalyzerError sys =
   AnErrorTermQName |
   AnErrorTermAlreadyChecked |
   AnErrorTermAlgorithm |
-  AnErrorTermSys (SysAnalyzerError sys) |
   AnErrorTermProblem |
+  AnErrorSys (SysAnalyzerError sys) |
   AnErrorVar
 
 type family AnalyzerAssumption (option :: AnalyzerOption) (vOut :: *) (v :: *) :: Constraint

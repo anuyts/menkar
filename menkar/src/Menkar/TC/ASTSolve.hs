@@ -89,9 +89,9 @@ newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 extraT1orig extra
          (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> 
            unreachable -- terms are neutral at this point
          (AnErrorTermAlgorithm, _, _) -> unreachable
-         (AnErrorTermSys sysErr, AnTokenTermNV, TermSys syst) ->
-           TermSys <$> newRelatedUnanalyzableSysTerm sysErr parent relT gammaOrig gamma subst partialInv syst maybeCTs
-         (AnErrorTermSys _, _, _) -> unreachable
+         --(AnErrorTermSys sysErr, AnTokenTermNV, TermSys syst) ->
+         --  TermSys <$> newRelatedUnanalyzableSysTerm sysErr parent relT gammaOrig gamma subst partialInv syst maybeCTs
+         --(AnErrorTermSys _, _, _) -> unreachable
          (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent "Problematic term encountered."
          (AnErrorTermProblem, _, _) -> unreachable
          (AnErrorVar, AnTokenTerm, Var2 v2) -> case partialInv v2 of
@@ -99,6 +99,8 @@ newRelatedAST' parent relT gammaOrig gamma subst partialInv t2 extraT1orig extra
            Nothing ->
              tcFail parent "Have to resolve meta not depending on certain variable, with solution that does depend on it."
          (AnErrorVar, _, _) -> unreachable
+         (AnErrorSys sysError, _, _) -> newRelatedSysASTUnanalyzable' sysError
+           parent relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs
 
 -- | To be called by the analyzer.
 newRelatedAST :: forall sys tc t v vOrig .

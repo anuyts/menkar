@@ -32,9 +32,16 @@ class (SysSyntax (Term sys) sys,
        ClassifExtraInput (SysTerm sys) ~ U1,
        ClassifExtraInput (SysUniHSConstructor sys) ~ U1
       ) => SysAnalyzer sys where
-  quickEqSysUnanalyzable :: forall v .
-    (DeBruijnLevel v) =>
-    SysAnalyzerError sys -> SysTerm sys v -> SysTerm sys v -> Bool
+
+  -- | See Menkar.TC.QuickEq.quickEq
+  quickEqSysUnanalyzable :: forall t v . 
+    (Analyzable sys t, DeBruijnLevel v) =>
+    SysAnalyzerError sys ->
+    t v ->
+    t v ->
+    ClassifExtraInput t v ->
+    ClassifExtraInput t v ->
+    Bool
 
 --type instance Classif (Mode sys) = U1
 --type instance Classif (Modality sys) = Mode sys :*: Mode sys

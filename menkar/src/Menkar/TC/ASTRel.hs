@@ -88,8 +88,8 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
          (AnErrorTermAlgorithm, AnTokenTermNV, TermAlgorithm alg tResult) -> 
            unreachable -- terms are neutral at this point
          (AnErrorTermAlgorithm, _, _) -> unreachable
-         (AnErrorTermSys sysErr, _, _) ->
-           checkUnanalyzableSysASTRel sysErr parent eta relT gamma t1 t2 maybeCTs
+         --(AnErrorTermSys sysErr, _, _) ->
+         --  checkUnanalyzableSysASTRel sysErr parent eta relT gamma t1 t2 maybeCTs
          (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent "False"
          (AnErrorTermProblem, _, _) -> unreachable
          (AnErrorVar, AnTokenTerm, Var2 v1) -> case t2 of
@@ -98,6 +98,8 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
              else tcFail parent "Cannot relate different variables."
            _ -> tcFail parent "False"
          (AnErrorVar, _, _) -> unreachable
+         (AnErrorSys sysErr, _, _) ->
+           checkUnanalyzableSysASTRel' sysErr parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs
 
 checkASTRel :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>

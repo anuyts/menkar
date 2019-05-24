@@ -172,8 +172,8 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
         -----
         return tyResult
     (AnErrorTermAlgorithm, _, _) -> unreachable
-    (AnErrorTermSys sysError, AnTokenTermNV, TermSys syst) -> inferTermSys sysError parent gamma syst
-    (AnErrorTermSys sysError, _, _) -> unreachable
+    --(AnErrorTermSys sysError, AnTokenTermNV, TermSys syst) -> inferTermSys sysError parent gamma syst
+    --(AnErrorTermSys sysError, _, _) -> unreachable
     (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent $ "Erroneous term."
     (AnErrorTermProblem, _, _) -> unreachable
     (AnErrorVar, AnTokenTerm, Var2 v) -> do
@@ -192,6 +192,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
         "Checking that variable is accessible."
       return $ _decl'content . _leftDivided'content $ ldivSeg
     (AnErrorVar, _, _) -> unreachable
+    (AnErrorSys sysError, _, _) -> checkSysASTUnanalyzable sysError parent gamma anErr t extraT maybeCT
     -- _ -> _ 
 
 {-| Equality of expected and actual classifier is checked on the outside IF requested. -}
