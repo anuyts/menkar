@@ -33,6 +33,32 @@ vdash_ = vdash : " "
 _vdash = [' ', vdash]
 _vdash_ = [' ', vdash, ' ']
 
+haveFine2Pretty :: forall sys t a .
+  (SysPretty sys) =>
+  AnalyzableToken sys t ->
+  ((Fine2Pretty sys t) => a) ->
+  a
+haveFine2Pretty token a = case token of
+  AnTokenModedModality -> a
+  AnTokenBinding token -> haveFine2Pretty token a
+  AnTokenNamedBinding token -> haveFine2Pretty token a
+  AnTokenUniHSConstructor -> a
+  AnTokenConstructorTerm -> a
+  AnTokenType -> a
+  AnTokenDependentEliminator -> a
+  AnTokenEliminator -> a
+  AnTokenTermNV -> a
+  AnTokenTerm -> a
+  AnTokenDeclaration token -> a
+  AnTokenTelescoped token -> a
+  AnTokenValRHS -> a
+  AnTokenModuleRHS -> a
+  AnTokenEntry -> a
+  AnTokenU1 -> a
+  AnTokenPair1 ltoken rtoken -> haveFine2Pretty ltoken $ haveFine2Pretty rtoken $ a
+  AnTokenConst1 token -> haveFine2Pretty token a
+  AnTokenSys systoken -> sysHaveFine2Pretty systoken a
+
 token2string :: forall sys t . (SysPretty sys) => AnalyzableToken sys t -> String
 token2string token = case token of
   AnTokenModedModality -> "modality"
@@ -54,6 +80,16 @@ token2string token = case token of
   AnTokenPair1 ltoken rtoken -> "pair:(" ++ token2string ltoken ++ ", " ++ token2string rtoken ++ ")"
   AnTokenConst1 token -> "const-boxed:" ++ token2string token
   AnTokenSys systoken -> "system-boxed:" ++ sysToken2string systoken
+
+relation2pretty :: forall sys t v .
+  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  AnalyzableToken sys t ->
+  ScCtx sys v Void ->
+  ClassifExtraInput t v ->
+  Relation t v ->
+  Fine2PrettyOptions sys ->
+  PrettyTree String
+relation2pretty token gamma extraT relT opts = _
 
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
@@ -132,12 +168,25 @@ classification2pretty gamma (Classification t extraT maybeCT) opts =
   in  "<" ++ token2string token ++ "> " ++| fine2pretty gamma t opts
       |++ " " |+| maybeClassif2pretty token gamma extraT maybeCT (extraClassif @sys t extraT) opts
          
-
-{-
 jud2pretty :: forall sys .
   (Multimode sys,
    SysPretty sys) =>
-  Judgement sys -> Fine2PrettyOptions sys -> PrettyTree String
+  Judgement sys ->
+  Fine2PrettyOptions sys ->
+  PrettyTree String
+jud2pretty (Jud token gamma t extraT maybeCT) opts = haveFine2Pretty token $
+  ctx2pretty gamma opts \\\ [_vdash_ ++| classification2pretty (ctx2scCtx gamma) (Classification t extraT maybeCT) opts]
+jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs) = haveFine2Pretty token $
+  ctx2pretty gamma opts \\\ [
+    ribbon (_vdash_ ++ (if unEta eta then "" else "<no-eta> ")) \\\
+      ["(" ++| classification2pretty (ctx2scCtx gamma) (Classification t1 extraT1 (fstTwice1 maybeCT)) opts |++ ")",
+       relation2pretty token gamma extraT relT opts,
+       "(" ++| classification2pretty (ctx2scCtx gamma) (Classification t2 extraT2 (fstTwice2 maybeCT)) opts |++ ")"
+      ]
+  ]
+
+
+{-
 jud2pretty (JudType gamma ty) opts =
   ctx2pretty gamma opts \\\ [_vdash ++ " <type> " ++| fine2pretty (ctx2scCtx gamma) ty opts]
 jud2pretty (JudTypeRel deg gamma (Twice2 ty1 ty2)) opts =

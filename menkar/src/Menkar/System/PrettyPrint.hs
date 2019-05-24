@@ -29,3 +29,4 @@ class (SysAnalyzer sys,
     ClassifExtraInput (Classif t) v ->
     Fine2PrettyOptions sys ->
     PrettyTree String
+  sysHaveFine2Pretty :: forall t a . SysAnalyzableToken sys t -> (Fine2Pretty sys t => a) -> a
