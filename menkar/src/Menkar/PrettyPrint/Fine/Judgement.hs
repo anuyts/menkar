@@ -50,7 +50,7 @@ haveFine2Pretty token a = case token of
   AnTokenEliminator -> a
   AnTokenTermNV -> a
   AnTokenTerm -> a
-  AnTokenDeclaration token -> a
+  AnTokenDeclaration token -> haveFine2Pretty token a
   AnTokenTelescoped token -> haveFine2Pretty token a
   AnTokenValRHS -> a
   AnTokenModuleRHS -> a

@@ -406,7 +406,6 @@ declName2pretty gamma (DeclNameVal name) opts = Raw.unparse' name
 declName2pretty gamma (DeclNameModule str) opts = ribbon str
 declName2pretty gamma (DeclNameSegment maybeName) opts =
   nameWithIndex maybeName (size (Proxy :: Proxy v))
-declName2pretty gamma (DeclNameValSpec) opts = ribbon "<VALSPECNAME>"
 instance Show (DeclName declSort) where
   show declName = "[DeclName|\n" ++ (render (declName2pretty ScCtxEmpty declName $? id) $? id) ++ "\n|]"
 
@@ -484,15 +483,36 @@ dividedSeg2pretty (Just dmu) gamma seg index opts = dividedSeg2pretty Nothing ga
   where seg' = over decl'modty (divModedModality dmu) $ seg
 dividedSeg2pretty Nothing gamma seg index opts = seg2pretty gamma seg index opts
 
-instance (SysPretty sys, Functor (ty sys),
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
-         Fine2Pretty sys (Segment ty sys) where
-  fine2pretty gamma seg opts =
-    seg2pretty gamma seg (size $ _scCtx'sizeProxy gamma) opts
-instance (SysPretty sys, Functor (ty sys),
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
-         Show (Segment ty sys Void) where
-  show seg = "[Segment|\n" ++ fine2string @sys ScCtxEmpty seg omit ++ "\n|]"
+instance (SysPretty sys, Functor (content sys),
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
+         Fine2Pretty sys (content sys)) =>
+         Fine2Pretty sys (Declaration declSort content sys) where
+  fine2pretty gamma decl opts = case _decl'name decl of
+    DeclNameSegment maybeRawName -> seg2pretty gamma decl (size $ _scCtx'sizeProxy gamma) opts
+    DeclNameVal rawName ->
+      case _fine2pretty'printEntry opts of
+        PrintEntryName -> declName2pretty gamma (_decl'name decl) opts
+        PrintEntryNameAnnots -> prettyNameAndAnnots
+        PrintEntryEntirely -> prettyNameAndAnnots
+          ||| fine2pretty gamma (_decl'content decl) opts
+      where
+        prettyNameAndAnnots = ribbon "val ["
+          \\\ declAnnots2pretties gamma decl opts
+          /// "] " ++| (declName2pretty gamma (_decl'name decl) opts)
+    DeclNameModule str -> case _fine2pretty'printEntry opts of
+      PrintEntryName -> declName2pretty gamma (_decl'name decl) opts
+      PrintEntryNameAnnots -> prettyNameAndAnnots
+      PrintEntryEntirely -> prettyNameAndAnnots
+        ||| fine2pretty gamma (_decl'content decl) opts
+      where
+        prettyNameAndAnnots = ribbon "module  ["
+          \\\ declAnnots2pretties gamma decl opts
+          /// "] " ++| (declName2pretty gamma (_decl'name decl) opts)
+instance (SysPretty sys, Functor (content sys),
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
+         Fine2Pretty sys (content sys)) =>
+         Show (Declaration declSort content sys Void) where
+  show decl = "[Declaration|\n" ++ fine2string @sys ScCtxEmpty decl omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -505,28 +525,6 @@ instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ValRHS sys Void) where
   show valRHS = "[ValRHS|\n" ++ fine2string @sys ScCtxEmpty valRHS omit ++ "\n|]"
-
-instance (SysPretty sys,
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         Fine2Pretty sys (Val sys) where
-  fine2pretty gamma val opts = case _fine2pretty'printEntry opts of
-    PrintEntryName -> declName2pretty gamma (_decl'name val) opts
-    PrintEntryNameAnnots -> prettyNameAndAnnots
-    PrintEntryEntirely -> prettyNameAndAnnots
-      \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content val) opts
-      /// prettyValRHS
-    where
-      prettyNameAndAnnots = ribbon "val ["
-        \\\ declAnnots2pretties gamma val opts
-        /// "] " ++| (declName2pretty gamma (_decl'name val) opts)
-      prettyValRHS = 
-        getConst (mapTelescopedScDB (
-            \ wkn gammadelta t -> Const $ fine2pretty gammadelta t opts
-          ) gamma $ _decl'content val)
-instance (SysPretty sys,
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         Show (Val sys Void) where
-  show val = "[Val|\n" ++ fine2string @sys ScCtxEmpty val omit ++ "\n|]"
 
 moduleContents2pretty ::
   (SysPretty sys, DeBruijnLevel v,
@@ -554,28 +552,6 @@ instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ModuleRHS sys Void) where
   show moduleRHS = "[ModuleRHS|\n" ++ fine2string @sys ScCtxEmpty moduleRHS omit ++ "\n|]"
-
-instance (SysPretty sys,
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         Fine2Pretty sys (Module sys) where
-  fine2pretty gamma modul opts = case _fine2pretty'printEntry opts of
-    PrintEntryName -> declName2pretty gamma (_decl'name modul) opts
-    PrintEntryNameAnnots -> prettyNameAndAnnots
-    PrintEntryEntirely -> prettyNameAndAnnots
-      \\\ telescope2pretties gamma (telescoped'telescope $ _decl'content modul) opts
-      /// prettyModuleRHS
-    where
-      prettyNameAndAnnots = ribbon "module  ["
-        \\\ declAnnots2pretties gamma modul opts
-        /// "] " ++| (declName2pretty gamma (_decl'name modul) opts)
-      prettyModuleRHS = 
-        getConst (mapTelescopedScDB (
-            \ wkn gammadelta modulRHS -> Const $ fine2pretty gammadelta modulRHS opts
-          ) gamma $ _decl'content modul)
-instance (SysPretty sys,
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         Show (Module sys Void) where
-  show modul = "[Module|\n" ++ fine2string @sys ScCtxEmpty modul omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>

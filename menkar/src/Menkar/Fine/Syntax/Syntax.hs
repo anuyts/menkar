@@ -452,7 +452,7 @@ deriving instance (SysTrav sys) => Generic1 (Plicity sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Plicity sys)
 
-data DeclSort = DeclSortVal | DeclSortModule | DeclSortSegment | DeclSortValSpec
+data DeclSort = DeclSortVal | DeclSortModule | DeclSortSegment -- -| DeclSortValSpec
 
 {-
 data DeclSortToken declSort where
@@ -465,7 +465,7 @@ data DeclName declSort where
   DeclNameVal :: Raw.Name -> DeclName DeclSortVal
   DeclNameModule :: String -> DeclName DeclSortModule
   DeclNameSegment :: Maybe Raw.Name -> DeclName DeclSortSegment
-  DeclNameValSpec :: DeclName DeclSortValSpec
+--  DeclNameValSpec :: DeclName DeclSortValSpec
 
 getDeclNameVal :: DeclName DeclSortVal -> Raw.Name
 getDeclNameVal (DeclNameVal rawName) = rawName
