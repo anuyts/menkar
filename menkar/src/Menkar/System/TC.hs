@@ -11,13 +11,6 @@ import Data.Void
 import Data.Constraint.Witness
 
 class SysWHN sys => SysTC sys where
-  {-inferTermSys :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    SysAnalyzerError sys ->
-    Constraint sys ->
-    Ctx Type sys v Void ->
-    SysTerm sys v ->
-    tc (Type sys v)-}
   -- See Menkar.TC.AST.checkASTSpecial
   checkSysASTUnanalyzable :: forall tc v t .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
@@ -29,26 +22,6 @@ class SysWHN sys => SysTC sys where
     ClassifExtraInput t v ->
     ClassifInfo (Classif t v) ->
     tc (Classif t v)
-  {-checkTermSys :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    Ctx Type sys v Void ->
-    SysTerm sys v ->
-    Type sys v ->
-    tc ()-}
-  {- -- see Menkar.TC.Solve.solveMetaAgainstWHNF
-  newRelatedUnanalyzableSysTerm :: forall tc v vOrig .
-    (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
-    SysAnalyzerError sys ->
-    Constraint sys ->
-    ModedDegree sys v ->
-    Ctx Type sys vOrig Void ->
-    Ctx (Twice2 Type) sys v Void ->
-    (vOrig -> v) ->
-    (v -> Maybe vOrig) ->
-    SysTerm sys v ->
-    ClassifInfo (Twice1 (Type sys) v) ->
-    tc (SysTerm sys vOrig) -}
   newRelatedSysASTUnanalyzable' :: forall tc t v vOrig .
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     SysAnalyzerError sys ->
@@ -63,21 +36,6 @@ class SysWHN sys => SysTC sys where
     ClassifExtraInput t v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     tc (t vOrig)
-  {- -- see Menkar.TC.Rel
-  checkTermRelSysTermWHNTerm :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    Eta ->
-    ModedDegree sys v ->
-    Ctx (Twice2 Type) sys v Void ->
-    SysTerm sys v ->
-    Term sys v ->
-    Type sys v ->
-    Type sys v ->
-    [Int] ->
-    [Int] ->
-    tc ()
-  -}
   checkUnanalyzableSysASTRel' :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzerError sys ->
@@ -111,24 +69,6 @@ class SysWHN sys => SysTC sys where
     SysTerm sys v {-^ The type -} ->
     tc Bool
 
-  {-checkSysUniHSConstructor :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    Ctx Type sys v Void ->
-    SysUniHSConstructor sys v ->
-    Type sys v ->
-    tc ()-}
-  {- -- | See Menkar.TC.Solve
-  newRelatedSysUniHSConstructor :: forall tc v vOrig .
-    (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
-    Constraint sys ->
-    ModedDegree sys v ->
-    Ctx Type sys vOrig Void ->
-    Ctx (Twice2 Type) sys v Void ->
-    (vOrig -> v) ->
-    (v -> Maybe vOrig) ->
-    SysUniHSConstructor sys v ->
-    tc (SysUniHSConstructor sys vOrig) -}
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
@@ -136,52 +76,7 @@ class SysWHN sys => SysTC sys where
     Term sys v ->
     SysUniHSConstructor sys v ->
     tc (Maybe (Maybe (Term sys v)))
-  {-checkSysUniHSConstructorRel :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    ModedDegree sys v ->
-    Ctx (Twice2 Type) sys v Void ->
-    SysUniHSConstructor sys v ->
-    SysUniHSConstructor sys v ->
-    Type sys v ->
-    Type sys v ->
-    [Int] ->
-    [Int] ->
-    tc ()-}
     
-  {--- | Check @'JudMode'@.
-  checkMode :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    Ctx Type sys v Void ->
-    Mode sys v ->
-    tc ()
-  -- | Check @'JudModeRel'@.
-  checkModeRel :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    Ctx (Twice2 Type) sys v Void ->
-    Mode sys v ->
-    Mode sys v ->
-    tc ()
-  checkModality :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    Ctx Type sys v Void ->
-    Modality sys v ->
-    Mode sys v ->
-    Mode sys v ->
-    tc ()
-  checkModalityRel :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
-    ModRel ->
-    Ctx (Twice2 Type) sys v Void ->
-    Modality sys v ->
-    Modality sys v ->
-    Mode sys v ->
-    Mode sys v ->
-    tc ()-}
   checkSysJudgement :: forall tc .
     (MonadTC sys tc) =>
     Constraint sys ->
