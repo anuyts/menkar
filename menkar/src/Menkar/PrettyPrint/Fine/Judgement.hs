@@ -51,7 +51,7 @@ haveFine2Pretty token a = case token of
   AnTokenTermNV -> a
   AnTokenTerm -> a
   AnTokenDeclaration token -> a
-  AnTokenTelescoped token -> a
+  AnTokenTelescoped token -> haveFine2Pretty token a
   AnTokenValRHS -> a
   AnTokenModuleRHS -> a
   AnTokenEntry -> a

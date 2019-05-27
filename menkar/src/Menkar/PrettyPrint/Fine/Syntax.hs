@@ -424,9 +424,16 @@ telescope2pretties gamma (mu :** telescope) opts =
     ribbon "}"
   ]
 instance (SysPretty sys, Functor (ty sys),
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
-         Fine2Pretty sys (Telescope ty sys) where
-  fine2pretty gamma telescope opts = treeGroup $ telescope2pretties gamma telescope opts
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
+         Fine2Pretty sys (ty sys), Fine2Pretty sys (rhs sys)) =>
+         Fine2Pretty sys (Telescoped ty rhs sys) where
+  fine2pretty gamma telescoped opts =
+    (treeGroup $ telescope2pretties gamma (telescoped'telescope telescoped) opts) \\\
+    [
+      getConst $ mapTelescopedScDB
+        (\ wkn gammadelta rhs -> Const $ fine2pretty gammadelta rhs opts)
+        gamma telescoped
+    ]
 instance (SysPretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Show (Telescope ty sys Void) where
@@ -592,6 +599,9 @@ instance (SysPretty sys, Functor (ty sys),
 
 instance Fine2Pretty sys U1 where
   fine2pretty gamma U1 opts = ribbonEmpty
+
+instance Fine2Pretty sys (Unit2 a) where
+  fine2pretty gamma Unit2 opts = ribbonEmpty
 
 instance (Fine2Pretty sys f, Fine2Pretty sys g) => Fine2Pretty sys (f :*: g) where
   fine2pretty gamma (a :*: b) opts =
