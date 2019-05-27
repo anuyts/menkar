@@ -182,115 +182,82 @@ elimination2pretty :: (DeBruijnLevel v,
                        SysPretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          ScCtx sys v Void ->
-         ModedModality sys v ->
-         Term sys v ->
-         UniHSConstructor sys v ->
+         Maybe (ModedModality sys v) ->
+         Maybe (Term sys v) ->
+         Maybe (UniHSConstructor sys v) ->
          Eliminator sys v ->
          Fine2PrettyOptions sys ->
          PrettyTree String
-{-
---elimination2pretty gamma eliminee (ElimUnsafeResize) = "UnsafeResize (" ++| eliminee |++ ")"
-elimination2pretty gamma eliminee (App piBinding arg) = 
-    ribbon "(ofType" \\\ [
-      " (" ++| fine2pretty gamma (Pi piBinding) |++ ")",
-      " (" ++| eliminee |++ ")"
-      ] ///
-    ribbon ")" \\\
-      [
-      " .{" ++| fine2pretty gamma arg |++ "}"
-      ]
-elimination2pretty gamma eliminee (ElimSigma motive clause) =
-  ribbon "ofType" \\\ [
-    " (" ++| fine2pretty gamma (Pi motive) |++ ")",
-    " (" ++ nameFst ++ " , " ++ nameSnd ++ " > " ++| fine2pretty gammaFstSnd body |++ ")",
-    " (" ++| eliminee |++ ")"
-    ]
-    where
-      nameFst = fromMaybe "_" $ Raw.unparse <$> _segment'name (binding'segment clause)
-      nameSnd = fromMaybe "_" $ Raw.unparse <$> _segment'name (binding'segment $ binding'body clause)
-      body = binding'body $ binding'body $ clause
-      gammaFstSnd = gamma
-        ::.. (VarFromCtx <$> segment2scSegment (binding'segment clause))
-        ::.. (VarFromCtx <$> segment2scSegment (binding'segment (binding'body clause)))
-elimination2pretty gamma eliminee (Fst sigmaBinding) = todo
-elimination2pretty gamma eliminee (Snd sigmaBinding) = todo
-elimination2pretty gamma eliminee (ElimEmpty motive) = 
-  ribbon "ofType" \\\ [
-    " (" ++| fine2pretty gamma (Pi motive) |++ ")",
-    ribbon " absurd",
-    " (" ++| eliminee |++ ")"
-    ]
-elimination2pretty gamma eliminee (Unbox boxSeg) = todo
-elimination2pretty gamma eliminee (ElimNat motive cz cs) = todo
--}
-elimination2pretty gamma dmu eliminee tyEliminee (App arg) opts =
-    "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ")" \\\
-      [
-      " .{" ++| fine2pretty gamma arg opts |++ "}"
-      ]
-elimination2pretty gamma dmu eliminee tyEliminee (Fst) opts =
-  "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") .1 "
-elimination2pretty gamma dmu eliminee tyEliminee (Snd) opts =
-  "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") ..2 "
-elimination2pretty gamma dmu eliminee tyEliminee (Unbox) opts =
-  "unbox (" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
-elimination2pretty gamma dmu eliminee tyEliminee (Funext) opts =
-  "funext (" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
-elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimSigma clausePair)) opts =
-  ribbon "indSigma " \\\ [
-      fine2pretty gamma dmu opts,
-      "(" ++| fine2pretty gamma motive opts |++ ") ",
-      "(" ++| fine2pretty gamma clausePair opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
-    ]
-  {-
-  ribbon "let {" \\\ [
-    ribbon "elim f" \\\ [
-        " : " ++| fine2pretty gamma (Pi (Binding
-                                      (Declaration
-                                        (DeclNameSegment $ _namedBinding'name motive)
-                                        dmu
-                                        Explicit
-                                        (hs2type $ tyEliminee)
-                                      )
-                                      (unType $ _namedBinding'body motive)
-                                    )),
-        fine2pretty gamma $ ModuleRHS $ Compose $ [
-                todo
+elimination2pretty gamma maybeDmu maybeEliminee maybeTyEliminee eliminator opts =
+  let prettyDmu = maybeDmu & \case
+        Just dmu -> fine2pretty gamma dmu opts
+        Nothing -> ribbon "_"
+      eliminee = fromMaybe (Expr2 TermWildcard) maybeEliminee
+      tyEliminee = Type $ fromMaybe (Expr2 TermWildcard) $ hs2term <$> maybeTyEliminee
+  in  case eliminator of
+        (App arg) ->
+          "(" ++| typed2pretty gamma eliminee tyEliminee opts |++ ")" \\\
+            [
+              " .{" ++| fine2pretty gamma arg opts |++ "}"
             ]
-        ]
-    ] ///
-  "} in f .{" ++| fine2pretty gamma eliminee |++ "}"
-  -}
-elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimBox clauseBox)) opts =
-  ribbon "indBox " \\\ [
-      fine2pretty gamma dmu opts,
-      "(" ++| fine2pretty gamma motive opts |++ ") ",
-      "(" ++| fine2pretty gamma clauseBox opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
-    ]
-elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimEmpty)) opts =
-  ribbon "indEmpty " \\\ [
-      fine2pretty gamma dmu opts,
-      "(" ++| fine2pretty gamma motive opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
-    ]
-elimination2pretty gamma dmu eliminee tyEliminee (ElimDep motive (ElimNat clauseZero clauseSuc)) opts =
-  ribbon "indNat " \\\ [
-      fine2pretty gamma dmu opts,
-      "(" ++| fine2pretty gamma motive opts |++ ") ",
-      "(" ++| fine2pretty gamma clauseZero opts |++ ") ",
-      "(" ++| fine2pretty gamma clauseSuc opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (hs2type $ tyEliminee) opts |++ ") "
-    ]
-elimination2pretty gamma dmu eliminee tyEliminee (ElimEq motive crefl) opts =
-  ribbon "ind== " \\\ [
-      fine2pretty gamma dmu opts,
-      "(" ++| fine2pretty gamma motive opts |++ ") ",
-      "(" ++| fine2pretty gamma crefl opts |++ ") ",
-      "(" ++| typed2pretty gamma eliminee (hs2type tyEliminee) opts |++ ") "
-    ]
---elimination2pretty gamma dmu eliminee tyEliminee eliminator = todo
+        (Fst) -> "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") .1 "
+        (Snd) -> "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") ..2 "
+        (Unbox) -> "unbox (" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
+        (Funext) -> "funext (" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
+        (ElimDep motive (ElimSigma clausePair)) ->
+          ribbon "indSigma " \\\ [
+            prettyDmu,
+            "(" ++| fine2pretty gamma motive opts |++ ") ",
+            "(" ++| fine2pretty gamma clausePair opts |++ ") ",
+            "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
+          ]
+        (ElimDep motive (ElimBox clauseBox)) ->
+          ribbon "indBox " \\\ [
+            prettyDmu,
+            "(" ++| fine2pretty gamma motive opts |++ ") ",
+            "(" ++| fine2pretty gamma clauseBox opts |++ ") ",
+            "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
+          ]
+        (ElimDep motive (ElimEmpty)) ->
+          ribbon "indEmpty " \\\ [
+            prettyDmu,
+            "(" ++| fine2pretty gamma motive opts |++ ") ",
+            "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
+          ]
+        (ElimDep motive (ElimNat clauseZero clauseSuc)) ->
+          ribbon "indNat " \\\ [
+            prettyDmu,
+            "(" ++| fine2pretty gamma motive opts |++ ") ",
+            "(" ++| fine2pretty gamma clauseZero opts |++ ") ",
+            "(" ++| fine2pretty gamma clauseSuc opts |++ ") ",
+            "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
+          ]
+        (ElimEq motive crefl) ->
+          ribbon "ind== " \\\ [
+            prettyDmu,
+            "(" ++| fine2pretty gamma motive opts |++ ") ",
+            "(" ++| fine2pretty gamma crefl opts |++ ") ",
+            "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
+          ]
+
+
+
+{-
+instance (SysPretty sys,
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+         Fine2Pretty sys (DependentEliminator sys) where
+  fine2pretty gamma clauses opts =
+    fine2pretty gamma (ElimDep (NamedBinding Nothing $ Type $ Expr2 TermWildcard) clauses) opts
+instance (SysPretty sys,
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+         Show (DependentEliminator sys Void) where
+  show clauses = "[DependentEliminator|\n" ++ fine2string ScCtxEmpty clauses omit ++ "\n|]"
+
+instance (SysPretty sys,
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+         Fine2Pretty sys (Eliminator sys) where
+  fine2pretty gamma elim opts = elimination2pretty gamma _
+-}
 
 {-
 instance (SysPretty sys,
@@ -360,7 +327,7 @@ instance (SysPretty sys,
          Fine2Pretty sys (TermNV sys) where
   fine2pretty gamma (TermCons consTerm) opts = fine2pretty gamma consTerm opts
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) opts =
-    elimination2pretty gamma mod eliminee tyEliminee eliminator opts
+    elimination2pretty gamma (Just mod) (Just eliminee) (Just tyEliminee) eliminator opts
   fine2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)) opts =
     meta2pretty gamma tMeta opts
   fine2pretty gamma TermWildcard opts = ribbon "_"
