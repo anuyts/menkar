@@ -119,10 +119,10 @@ instance SysAnalyzer Trivial where
 
 instance SysWHN Trivial where
   whnormalizeSys parent gamma t reason = case t of {}
-  leqMod parent gamma U1 U1 U1 U1 reason = return $ Just True
-  leqDeg parent gamma U1 U1 U1 reason = return $ Just True
-  isEqDeg parent gamma U1 U1 reason = return $ Just True
-  isTopDeg parent gamma U1 U1 reason = return $ Just False
+  leqMod parent gamma TrivModality TrivModality TrivMode TrivMode reason = return $ Just True
+  leqDeg parent gamma TrivDegree TrivDegree TrivMode reason = return $ Just True
+  isEqDeg parent gamma TrivDegree TrivMode reason = return $ Just True
+  isTopDeg parent gamma TrivDegree TrivMode reason = return $ Just False
 
 instance SysTC Trivial where
   checkTermSys parent gamma t ty = absurd1 t
