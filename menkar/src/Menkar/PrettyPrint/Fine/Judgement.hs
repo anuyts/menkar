@@ -18,6 +18,7 @@ import Menkar.Analyzer.Class
 
 import Text.PrettyPrint.Tree
 import Data.Omissible
+import Data.Functor.Functor1
 
 import Data.Void
 import Data.Maybe
@@ -81,6 +82,10 @@ token2string token = case token of
   AnTokenConst1 token -> "const-boxed:" ++ token2string token
   AnTokenSys systoken -> "system-boxed:" ++ sysToken2string systoken
 
+modrel2pretty :: ModRel -> PrettyTree String
+modrel2pretty ModLeq = ribbon "\8804"
+modrel2pretty ModEq  = ribbon "="
+
 relation2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
@@ -90,7 +95,33 @@ relation2pretty :: forall sys t v .
   Relation t v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
-relation2pretty token gamma extraT1 extraT2 relT opts = _
+relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
+  (AnTokenModedModality, Const modrel) -> modrel2pretty modrel
+  (AnTokenBinding token, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenNamedBinding token, Comp1 rel) ->
+    let seg1 :*: Comp1 extraBody1 = extraT1
+        seg2 :*: Comp1 extraBody2 = extraT2
+    in  -- it would be cleaner to actually print the variable binding here.
+        relation2pretty token (gamma ::.. VarFromCtx <$> segment2scSegment seg1) extraBody1 extraBody2 rel opts
+  (AnTokenUniHSConstructor, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenConstructorTerm, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenType, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenDependentEliminator, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenEliminator, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenTermNV, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenTerm, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenDeclaration token, rel) -> relation2pretty token gamma extraT1 extraT2 rel opts
+  (AnTokenTelescoped token, relTy :*: relRHS) ->
+    relation2pretty AnTokenType gamma U1 U1 relTy opts |++ "|-" |+|
+    relation2pretty token gamma U1 U1 relRHS opts
+  (AnTokenValRHS, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenModuleRHS, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenEntry, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenU1, U1) -> ribbon "[]"
+  (AnTokenPair1 tokenL tokenR, relL :*: relR) ->
+    relation2pretty tokenL gamma (fst1 extraT1) (fst1 extraT2) relL opts |++ "," |+|
+    relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts
+  (AnTokenConst1 token, rel) -> relation2pretty token gamma extraT1 extraT2 rel opts
 
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>

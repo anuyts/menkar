@@ -51,7 +51,7 @@ data AnalyzableToken sys (ast :: * -> *) where
   AnTokenTerm :: AnalyzableToken sys (Term sys)
   AnTokenDeclaration :: (Analyzable sys (rhs sys)) =>
     AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Declaration declSort rhs sys)
-  AnTokenTelescoped :: (Analyzable sys (rhs sys)) =>
+  AnTokenTelescoped :: (Analyzable sys (rhs sys), ClassifExtraInput (rhs sys) ~ U1) =>
     AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Telescoped Type rhs sys)
   AnTokenValRHS :: AnalyzableToken sys (ValRHS sys)
   AnTokenModuleRHS :: AnalyzableToken sys (ModuleRHS sys)
