@@ -138,5 +138,26 @@ instance SysTC Trivial where
   etaExpandSysType parent gamma t sysType = case sysType of {}
   checkSysJudgement parent jud = case jud of {}
 
+----------------------------------
+
+instance Fine2Pretty Trivial TrivMode where
+  fine2pretty gamma TrivMode opts = ribbon "*"
+
+instance Fine2Pretty Trivial TrivModality where
+  fine2pretty gamma TrivModality opts = ribbon "*"
+
+instance Fine2Pretty Trivial TrivDegree where
+  fine2pretty gamma TrivDegree opts = ribbon "*"
+
+instance Fine2Pretty Trivial TrivTerm where
+  fine2pretty gamma t opts = case t of {}
+
+instance Fine2Pretty Trivial TrivUniHSConstructor where
+  fine2pretty gamma ty opts = case ty of {}
+
 instance SysPretty Trivial where
   sysJud2pretty jud opts = case jud of {}
+  sysToken2string token = case token of {}
+  sysClassif2pretty token = case token of {}
+  sysRelation2pretty token = case token of {}
+  sysHaveFine2Pretty token = case token of {}
