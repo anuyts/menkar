@@ -28,6 +28,7 @@ import Control.Lens
 import Control.Monad
 import Data.Number.Nat
 import Data.IntMap.Lazy hiding (map, size)
+import GHC.Generics
 
 charYielding :: Char
 charYielding = '\x2198'
@@ -44,7 +45,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ModedModality sys Void) where
-  show dmu = "[ModedModality|\n" ++ fine2string ScCtxEmpty dmu omit ++ "\n|]"
+  show dmu = "[ModedModality|\n" ++ fine2string @sys ScCtxEmpty dmu omit ++ "\n|]"
 
 deriving instance (Show (Mode sys v), Show (Modality sys v)) => Show (ModedContramodality sys v)
 
@@ -64,7 +65,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Show (Binding Type rhs sys Void) where
-  show binding = "[Binding|\n" ++ fine2string ScCtxEmpty binding omit ++ "\n|]"
+  show binding = "[Binding|\n" ++ fine2string @sys ScCtxEmpty binding omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -89,7 +90,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (UniHSConstructor sys Void) where
-  show typeterm = "[UniHSConstructor|\n" ++ fine2string ScCtxEmpty typeterm omit ++ "\n|]"
+  show typeterm = "[UniHSConstructor|\n" ++ fine2string @sys ScCtxEmpty typeterm omit ++ "\n|]"
   
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -118,7 +119,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ConstructorTerm sys Void) where
-  show consTerm = "[ConstructorTerm|\n" ++ fine2string ScCtxEmpty consTerm omit ++ "\n|]"
+  show consTerm = "[ConstructorTerm|\n" ++ fine2string @sys ScCtxEmpty consTerm omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -135,7 +136,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (SmartEliminator sys Void) where
-  show smartElim = "[SmartEliminator|\n" ++ fine2string ScCtxEmpty smartElim omit ++ "\n|]"
+  show smartElim = "[SmartEliminator|\n" ++ fine2string @sys ScCtxEmpty smartElim omit ++ "\n|]"
 
 typed2pretty' ::
   PrettyTree String ->
@@ -176,7 +177,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Show (NamedBinding rhs sys Void) where
-  show binding = "[NamedBinding|\n" ++ fine2string ScCtxEmpty binding omit ++ "\n|]"
+  show binding = "[NamedBinding|\n" ++ fine2string @sys ScCtxEmpty binding omit ++ "\n|]"
 
 elimination2pretty :: (DeBruijnLevel v,
                        SysPretty sys,
@@ -248,7 +249,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (DependentEliminator sys Void) where
-  show clauses = "[DependentEliminator|\n" ++ fine2string ScCtxEmpty clauses omit ++ "\n|]"
+  show clauses = "[DependentEliminator|\n" ++ fine2string @sys ScCtxEmpty clauses omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -258,7 +259,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Eliminator sys Void) where
-  show elim = "[Eliminator|\n" ++ fine2string ScCtxEmpty elim omit ++ "\n|]"
+  show elim = "[Eliminator|\n" ++ fine2string @sys ScCtxEmpty elim omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -272,7 +273,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Algorithm sys Void) where
-  show alg = "[Algorithm|\n" ++ fine2string ScCtxEmpty alg omit ++ "\n|]"
+  show alg = "[Algorithm|\n" ++ fine2string @sys ScCtxEmpty alg omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -354,7 +355,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (TermNV sys Void) where
-  show t = "[TermNV|\n" ++ fine2string ScCtxEmpty t omit ++ "\n|]"
+  show t = "[TermNV|\n" ++ fine2string @sys ScCtxEmpty t omit ++ "\n|]"
 
 toSubscript :: String -> String
 toSubscript = map (\ char -> toEnum $ fromEnum char - 48 + 8320)
@@ -367,7 +368,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (termNV sys)) =>
          Show (Expr2 termNV sys Void) where
-  show e = "[Expr2|\n" ++ fine2string ScCtxEmpty e omit ++ "\n|]"
+  show e = "[Expr2|\n" ++ fine2string @sys ScCtxEmpty e omit ++ "\n|]"
 
 ----------------------
 
@@ -380,7 +381,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Annotation sys Void) where
-  show annot = "[Annotation|\n" ++ fine2string ScCtxEmpty annot omit ++ "\n|]"
+  show annot = "[Annotation|\n" ++ fine2string @sys ScCtxEmpty annot omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -391,7 +392,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Plicity sys Void) where
-  show plic = "[Plicity|\n" ++ fine2string ScCtxEmpty plic omit ++ "\n|]"
+  show plic = "[Plicity|\n" ++ fine2string @sys ScCtxEmpty plic omit ++ "\n|]"
 
 declName2pretty :: forall v sys declSort . DeBruijnLevel v =>
   ScCtx sys v Void -> DeclName declSort -> Fine2PrettyOptions sys -> PrettyTree String
@@ -423,7 +424,7 @@ instance (SysPretty sys, Functor (ty sys),
 instance (SysPretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Show (Telescope ty sys Void) where
-  show theta = "[Telescope|\n" ++ fine2string ScCtxEmpty theta omit ++ "\n|]"
+  show theta = "[Telescope|\n" ++ fine2string @sys ScCtxEmpty theta omit ++ "\n|]"
 
 declAnnots2pretties :: (DeBruijnLevel v,
          SysPretty sys,
@@ -478,7 +479,7 @@ instance (SysPretty sys, Functor (ty sys),
 instance (SysPretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Show (Segment ty sys Void) where
-  show seg = "[Segment|\n" ++ fine2string ScCtxEmpty seg omit ++ "\n|]"
+  show seg = "[Segment|\n" ++ fine2string @sys ScCtxEmpty seg omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -490,7 +491,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ValRHS sys Void) where
-  show valRHS = "[ValRHS|\n" ++ fine2string ScCtxEmpty valRHS omit ++ "\n|]"
+  show valRHS = "[ValRHS|\n" ++ fine2string @sys ScCtxEmpty valRHS omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -512,7 +513,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Val sys Void) where
-  show val = "[Val|\n" ++ fine2string ScCtxEmpty val omit ++ "\n|]"
+  show val = "[Val|\n" ++ fine2string @sys ScCtxEmpty val omit ++ "\n|]"
 
 moduleContents2pretty ::
   (SysPretty sys, DeBruijnLevel v,
@@ -539,7 +540,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ModuleRHS sys Void) where
-  show moduleRHS = "[ModuleRHS|\n" ++ fine2string ScCtxEmpty moduleRHS omit ++ "\n|]"
+  show moduleRHS = "[ModuleRHS|\n" ++ fine2string @sys ScCtxEmpty moduleRHS omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -561,7 +562,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Module sys Void) where
-  show modul = "[Module|\n" ++ fine2string ScCtxEmpty modul omit ++ "\n|]"
+  show modul = "[Module|\n" ++ fine2string @sys ScCtxEmpty modul omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -571,7 +572,7 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Entry sys Void) where
-  show entry = "[Entry|\n" ++ fine2string ScCtxEmpty entry omit ++ "\n|]"
+  show entry = "[Entry|\n" ++ fine2string @sys ScCtxEmpty entry omit ++ "\n|]"
 
 twice2pretty gamma ty1 ty2 opts =
     ribbonEmpty \\\ [fine2pretty gamma ty1 opts, ribbon " =[]= ", fine2pretty gamma ty2 opts]
@@ -580,3 +581,12 @@ instance (SysPretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
          Fine2Pretty sys (Twice2 ty sys) where
   fine2pretty gamma (Twice2 ty1 ty2) opts = twice2pretty gamma ty1 ty2 opts
+
+--------------------------------------------------
+
+instance Fine2Pretty sys U1 where
+  fine2pretty gamma U1 opts = ribbonEmpty
+
+instance (Fine2Pretty sys f, Fine2Pretty sys g) => Fine2Pretty sys (f :*: g) where
+  fine2pretty gamma (a :*: b) opts =
+    "(" ++| fine2pretty gamma a opts |++ ", " |+| fine2pretty gamma b opts |++ ")"
