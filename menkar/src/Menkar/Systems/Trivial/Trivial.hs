@@ -162,6 +162,13 @@ instance SysScoper Trivial where
 
   newMetaModtyNoCheck maybeParent gamma reason = return TrivModality
 
+  newMetaClassif4sysASTNoCheck token maybeParent gamma t extraT reason = case token of
+    AnTokenMode -> return $ U1
+    AnTokenModality -> return $ TrivMode :*: TrivMode
+    AnTokenDegree -> return $ TrivMode
+    AnTokenTrivTerm -> case t of {}
+    AnTokenTrivUniHSConstructor -> case t of {}
+
 instance SysAnalyzer Trivial where
   quickEqSysUnanalyzable sysErr = case sysErr of {}
 
