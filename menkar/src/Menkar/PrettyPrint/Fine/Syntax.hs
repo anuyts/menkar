@@ -41,11 +41,17 @@ instance (SysPretty sys,
   fine2pretty gamma (ModedModality dom cod mu) opts = ribbonEmpty \\\ [
                 "d " ++| fine2pretty gamma dom opts |++ " | ",
                 "m " ++| fine2pretty gamma mu opts |++ " | "
+                -- todo add cod
               ]
 instance (SysPretty sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (ModedModality sys Void) where
   show dmu = "[ModedModality|\n" ++ fine2string @sys ScCtxEmpty dmu omit ++ "\n|]"
+
+instance (SysPretty sys,
+          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+          Fine2Pretty sys (ModedDegree sys) where
+  fine2pretty gamma (ModedDegree d deg) opts = fine2pretty gamma deg opts
 
 deriving instance (Show (Mode sys v), Show (Modality sys v)) => Show (ModedContramodality sys v)
 
@@ -590,3 +596,6 @@ instance Fine2Pretty sys U1 where
 instance (Fine2Pretty sys f, Fine2Pretty sys g) => Fine2Pretty sys (f :*: g) where
   fine2pretty gamma (a :*: b) opts =
     "(" ++| fine2pretty gamma a opts |++ ", " |+| fine2pretty gamma b opts |++ ")"
+
+instance (Fine2Pretty sys t) => Fine2Pretty sys (Const1 t a) where
+  fine2pretty gamma (Const1 t) opts = fine2pretty gamma t opts
