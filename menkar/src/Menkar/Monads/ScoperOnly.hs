@@ -57,4 +57,4 @@ instance MonadScoper Trivial SimpleScoper where
 testscope :: String -> IO (Either _ (Either String (Entry Trivial Void)))
 testscope filename = do
   errorOrRawFile <- P.testparse filename
-  return $ evalSimpleScoper . file (CtxEmpty U1) <$> errorOrRawFile
+  return $ evalSimpleScoper . file (CtxEmpty TrivMode) <$> errorOrRawFile
