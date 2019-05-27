@@ -1,7 +1,9 @@
 module Menkar.Systems.Trivial.Trivial where
 
 import Menkar.Fine.Syntax
+import Menkar.Analyzer
 import Menkar.System.Scoper
+import Menkar.System.Analyzer
 import Menkar.System.Fine
 import Menkar.System.WHN
 import Menkar.System.TC
@@ -15,47 +17,89 @@ import qualified Menkar.PrettyPrint.Raw as Raw
 import Text.PrettyPrint.Tree
 import Data.Omissible
 
-import GHC.Generics (U1 (..), V1 (..))
+import GHC.Generics
 import Data.Void
 import Data.Maybe
+import Data.Functor.Const
 
 data Trivial :: KSys where
 
-type instance Mode Trivial = U1
-type instance Modality Trivial = U1
-type instance Degree Trivial = U1
-type instance SysTerm Trivial = V1
-type instance SysUniHSConstructor Trivial = V1
-type instance SysJudgement Trivial = Void
+data TrivMode v = TrivMode
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
+data TrivModality v = TrivModality
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
+data TrivDegree v = TrivDegree
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
+data TrivTerm v
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
+data TrivUniHSConstructor v
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
+data TrivJud
+data TrivAnalyzerError
+
+type instance Mode Trivial = TrivMode
+type instance Modality Trivial = TrivModality
+type instance Degree Trivial = TrivDegree
+type instance SysTerm Trivial = TrivTerm
+type instance SysUniHSConstructor Trivial = TrivUniHSConstructor
+type instance SysJudgement Trivial = TrivJud
+type instance SysAnalyzerError Trivial = TrivAnalyzerError
+
+instance Analyzable Trivial TrivMode where
+  type Classif TrivMode = U1
+  type Relation TrivMode = U1
+  type ClassifExtraInput TrivMode = U1
+
+instance Analyzable Trivial TrivModality where
+  type Classif TrivModality = TrivMode :*: TrivMode
+  type Relation TrivModality = Const ModRel
+  type ClassifExtraInput TrivModality = U1
+  
+instance Analyzable Trivial TrivDegree where
+  type Classif TrivDegree = TrivMode
+  type Relation TrivDegree = Const ModRel
+  type ClassifExtraInput TrivDegree = U1
+
+instance Analyzable Trivial TrivTerm where
+  type Classif TrivTerm = Type Trivial
+  type Relation TrivTerm = ModedDegree Trivial
+  type ClassifExtraInput TrivTerm = U1
+  
+instance Analyzable Trivial TrivUniHSConstructor where
+  type Classif TrivUniHSConstructor = Classif (UniHSConstructor Trivial)
+  type Relation TrivUniHSConstructor = ModedDegree Trivial
+  type ClassifExtraInput TrivUniHSConstructor = U1
 
 instance SysTrav Trivial where
 
 instance SysSyntax (Term Trivial) Trivial where
-  
+
+  {-
 instance Fine2Pretty Trivial U1 where
   fine2pretty gamma U1 opts = ribbon "*"
 --instance Fine2Pretty Trivial U1 where
 --  fine2pretty gamma U1 = ribbon "hoc"
-  
+-}
+
 instance Multimode Trivial where
   idMod U1 = U1
   compMod U1 U1 U1 = U1
-  divMod (ModedModality U1 U1) (ModedModality U1 U1) = U1
+  divMod (ModedModality U1 U1 U1) (ModedModality U1 U1 U1) = U1
   crispMod U1 = U1
   dataMode = U1
-  approxLeftAdjointProj (ModedModality U1 U1) U1 = U1
+  approxLeftAdjointProj (ModedModality U1 U1 U1) = U1
   --term2mode t = U1
   --term2modty t = U1
 
 absurd1 :: V1 x -> a
 absurd1 v = undefined
 
-trivModedModality = ModedModality U1 U1
+trivModedModality = ModedModality U1 U1 U1
 
 instance Degrees Trivial where
   eqDeg = U1
   maybeTopDeg = Nothing
-  divDeg (ModedModality U1 U1) (ModedDegree U1 U1) = U1
+  divDeg (ModedModality U1 U1 U1) (ModedDegree U1 U1) = U1
 
 instance SysScoper Trivial where
   scopeAnnotation gamma qstring maybeRawArg = scopeFail $ "Illegal annotation: " ++ (render
@@ -67,6 +111,9 @@ instance SysScoper Trivial where
 
   newMetaModtyNoCheck maybeParent gamma reason = return U1
 
+instance SysAnalyzer Trivial where
+  quickEqSysUnanalyzable sysErr _ _ _ _ = absurd sysErr
+
 instance SysWHN Trivial where
   whnormalizeSys parent gamma t reason = absurd1 t
   leqMod parent gamma U1 U1 U1 U1 reason = return $ Just True
@@ -76,8 +123,8 @@ instance SysWHN Trivial where
 
 instance SysTC Trivial where
   checkTermSys parent gamma t ty = absurd1 t
-  newRelatedSysTerm parent deg gammaOrig gamma subst partialInv t ty1 ty2 alternative = absurd1 t
-  checkTermRelSysTermWHNTermNoEta parent deg gamma t1 t2 ty1 ty2 = absurd1 t1
+  --newRelatedSysTerm parent deg gammaOrig gamma subst partialInv t ty1 ty2 alternative = absurd1 t
+  --checkTermRelSysTermWHNTermNoEta parent deg gamma t1 t2 ty1 ty2 = absurd1 t1
   checkEtaWHNSysTy parent gamma t1 t2 = absurd1 t2
   checkSysUniHSConstructor parent gamma t ty = absurd1 t
   newRelatedSysUniHSConstructor parent deg gammaOrig gamma subst partialInv t = absurd1 t
