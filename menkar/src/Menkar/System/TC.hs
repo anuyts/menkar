@@ -29,13 +29,13 @@ class SysWHN sys => SysTC sys where
     ClassifExtraInput t v ->
     ClassifInfo (Classif t v) ->
     tc (Classif t v)
-  checkTermSys :: forall tc v .
+  {-checkTermSys :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     SysTerm sys v ->
     Type sys v ->
-    tc ()
+    tc ()-}
   {- -- see Menkar.TC.Solve.solveMetaAgainstWHNF
   newRelatedUnanalyzableSysTerm :: forall tc v vOrig .
     (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
@@ -111,14 +111,14 @@ class SysWHN sys => SysTC sys where
     SysTerm sys v {-^ The type -} ->
     tc Bool
 
-  checkSysUniHSConstructor :: forall tc v .
+  {-checkSysUniHSConstructor :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     Ctx Type sys v Void ->
     SysUniHSConstructor sys v ->
     Type sys v ->
-    tc ()
-  -- | See Menkar.TC.Solve
+    tc ()-}
+  {- -- | See Menkar.TC.Solve
   newRelatedSysUniHSConstructor :: forall tc v vOrig .
     (MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
     Constraint sys ->
@@ -128,7 +128,7 @@ class SysWHN sys => SysTC sys where
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     SysUniHSConstructor sys v ->
-    tc (SysUniHSConstructor sys vOrig)
+    tc (SysUniHSConstructor sys vOrig) -}
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
@@ -136,7 +136,7 @@ class SysWHN sys => SysTC sys where
     Term sys v ->
     SysUniHSConstructor sys v ->
     tc (Maybe (Maybe (Term sys v)))
-  checkSysUniHSConstructorRel :: forall tc v .
+  {-checkSysUniHSConstructorRel :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
     ModedDegree sys v ->
@@ -147,9 +147,9 @@ class SysWHN sys => SysTC sys where
     Type sys v ->
     [Int] ->
     [Int] ->
-    tc ()
+    tc ()-}
     
-  -- | Check @'JudMode'@.
+  {--- | Check @'JudMode'@.
   checkMode :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Constraint sys ->
@@ -181,7 +181,7 @@ class SysWHN sys => SysTC sys where
     Modality sys v ->
     Mode sys v ->
     Mode sys v ->
-    tc ()
+    tc ()-}
   checkSysJudgement :: forall tc .
     (MonadTC sys tc) =>
     Constraint sys ->
