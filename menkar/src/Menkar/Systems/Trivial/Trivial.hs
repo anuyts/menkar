@@ -21,6 +21,7 @@ import GHC.Generics
 import Data.Void
 import Data.Maybe
 import Data.Functor.Const
+import Data.Kind hiding (Type)
 
 data Trivial :: KSys where
 
@@ -36,6 +37,7 @@ data TrivUniHSConstructor v
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
 data TrivJud
 data TrivAnalyzerError
+data TrivAnalyzableToken (t :: * -> *)
 
 type instance Mode Trivial = TrivMode
 type instance Modality Trivial = TrivModality
@@ -44,6 +46,8 @@ type instance SysTerm Trivial = TrivTerm
 type instance SysUniHSConstructor Trivial = TrivUniHSConstructor
 type instance SysJudgement Trivial = TrivJud
 type instance SysAnalyzerError Trivial = TrivAnalyzerError
+
+type instance SysAnalyzableToken Trivial = TrivAnalyzableToken
 
 instance Analyzable Trivial TrivMode where
   type Classif TrivMode = U1
@@ -115,7 +119,7 @@ instance SysScoper Trivial where
   newMetaModtyNoCheck maybeParent gamma reason = return TrivModality
 
 instance SysAnalyzer Trivial where
-  quickEqSysUnanalyzable sysErr _ _ _ _ = case sysErr of {}
+  quickEqSysUnanalyzable sysErr = case sysErr of {}
 
 instance SysWHN Trivial where
   whnormalizeSys parent gamma t reason = case t of {}
@@ -125,22 +129,14 @@ instance SysWHN Trivial where
   isTopDeg parent gamma TrivDegree TrivMode reason = return $ Just False
 
 instance SysTC Trivial where
-  --checkTermSys parent gamma t ty = absurd1 t
-  --newRelatedSysTerm parent deg gammaOrig gamma subst partialInv t ty1 ty2 alternative = absurd1 t
-  --checkTermRelSysTermWHNTermNoEta parent deg gamma t1 t2 ty1 ty2 = absurd1 t1
-  checkEtaWHNSysTy parent gamma t1 t2 = absurd1 t2
-  --checkSysUniHSConstructor parent gamma t ty = absurd1 t
-  --newRelatedSysUniHSConstructor parent deg gammaOrig gamma subst partialInv t = absurd1 t
-  etaExpandSysType parent gamma t sysType = absurd1 sysType
-  --checkSysUniHSConstructorRel parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 = absurd1 t1
-  --checkMode parent gamma U1 = return ()
-  --checkModeRel parent gamma U1 U1 = return ()
-  --checkModality parent gamma U1 U1 U1 = return ()
-  --checkModalityRel parent modrel gamma U1 U1 U1 U1 = return ()
-  checkSysJudgement parent jud = absurd jud
-
-instance Fine2Pretty Trivial V1 where
-  fine2pretty gamma t opts = absurd1 t
+  checkSysASTUnanalyzable sysError = case sysError of {}
+  newRelatedSysASTUnanalyzable' sysError = case sysError of {}
+  newRelatedSysAST token = case token of {}
+  checkUnanalyzableSysASTRel' sysError = case sysError of {}
+  checkSysASTRel token = case token of {}
+  checkEtaWHNSysTy parent gamma t1 syst2 = case syst2 of {}
+  etaExpandSysType parent gamma t sysType = case sysType of {}
+  checkSysJudgement parent jud = case jud of {}
 
 instance SysPretty Trivial where
-  sysJud2pretty jud opts = absurd jud
+  sysJud2pretty jud opts = case jud of {}

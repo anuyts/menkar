@@ -36,6 +36,23 @@ class SysWHN sys => SysTC sys where
     ClassifExtraInput t v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     tc (t vOrig)
+  -- | See Menkar.TC.ASTRel.newRelatedAST
+  newRelatedSysAST :: forall tc t v vOrig .
+    (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
+    SysAnalyzableToken sys t ->
+    Constraint sys ->
+    Eta ->
+    Relation t v ->
+    Ctx Type sys vOrig Void ->
+    Ctx (Twice2 Type) sys v Void ->
+    (vOrig -> v) ->
+    (v -> Maybe vOrig) ->
+    t v ->
+    ClassifExtraInput t vOrig ->
+    ClassifExtraInput t v ->
+    ClassifInfo (Twice1 (Classif t) v) ->
+    String ->
+    tc (t vOrig)
   checkUnanalyzableSysASTRel' :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzerError sys ->
@@ -83,23 +100,6 @@ class SysWHN sys => SysTC sys where
     SysJudgement sys ->
     tc ()
 
-  -- | See Menkar.TC.ASTRel.newRelatedAST
-  newRelatedSysAST :: forall tc t v vOrig .
-    (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
-    SysAnalyzableToken sys t ->
-    Constraint sys ->
-    Eta ->
-    Relation t v ->
-    Ctx Type sys vOrig Void ->
-    Ctx (Twice2 Type) sys v Void ->
-    (vOrig -> v) ->
-    (v -> Maybe vOrig) ->
-    t v ->
-    ClassifExtraInput t vOrig ->
-    ClassifExtraInput t v ->
-    ClassifInfo (Twice1 (Classif t) v) ->
-    String ->
-    tc (t vOrig)
 
 newMetaClassif4ast :: forall sys tc t v .
   (MonadTC sys tc,
