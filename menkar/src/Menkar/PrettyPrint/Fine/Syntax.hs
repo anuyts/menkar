@@ -240,9 +240,6 @@ elimination2pretty gamma maybeDmu maybeEliminee maybeTyEliminee eliminator opts 
             "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
           ]
 
-
-
-{-
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (DependentEliminator sys) where
@@ -256,15 +253,12 @@ instance (SysPretty sys,
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Eliminator sys) where
-  fine2pretty gamma elim opts = elimination2pretty gamma _
--}
+  fine2pretty gamma elim opts = elimination2pretty gamma Nothing Nothing Nothing elim opts
 
-{-
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Eliminator sys Void) where
-  show elim = "[Eliminator| x > " ++ render defaultRenderState (elimination2pretty ScCtxEmpty (ribbon "x") elim)
--}
+  show elim = "[Eliminator|\n" ++ fine2string ScCtxEmpty elim omit ++ "\n|]"
 
 instance (SysPretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
