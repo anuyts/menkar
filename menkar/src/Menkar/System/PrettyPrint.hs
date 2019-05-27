@@ -29,4 +29,13 @@ class (SysAnalyzer sys,
     ClassifExtraInput (Classif t) v ->
     Fine2PrettyOptions sys ->
     PrettyTree String
+  sysRelation2pretty :: forall t v .
+    (DeBruijnLevel v, Multimode sys,Analyzable sys t) =>
+    SysAnalyzableToken sys t ->
+    ScCtx sys v Void ->
+    ClassifExtraInput t v ->
+    ClassifExtraInput t v ->
+    Relation t v ->
+    Fine2PrettyOptions sys ->
+    PrettyTree String
   sysHaveFine2Pretty :: forall t a . SysAnalyzableToken sys t -> (Fine2Pretty sys t => a) -> a

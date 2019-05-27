@@ -122,6 +122,7 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
     relation2pretty tokenL gamma (fst1 extraT1) (fst1 extraT2) relL opts |++ "," |+|
     relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts
   (AnTokenConst1 token, rel) -> relation2pretty token gamma extraT1 extraT2 rel opts
+  (AnTokenSys systoken, rel) -> sysRelation2pretty systoken gamma extraT1 extraT2 rel opts
 
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
