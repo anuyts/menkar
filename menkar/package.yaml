@@ -86,6 +86,7 @@ default-extensions:
 - PartialTypeSignatures
 - PatternSynonyms
 - LambdaCase
+- EmptyCase
 - ScopedTypeVariables
 - TemplateHaskell
 - TupleSections
