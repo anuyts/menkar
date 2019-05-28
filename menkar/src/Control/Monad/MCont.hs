@@ -13,12 +13,23 @@ data MContT r m a = MContT {
 evalMContT :: MContT r m r -> m r
 evalMContT cmr = cmr `runMContT` id
 
-instance (Applicative m) => Applicative (MContT r m) where
+instance (Monad m) => Applicative (MContT r m) where
   pure a = MContT $ \ kma -> kma $ pure a
-  cmf <*> cma = MContT $ \ kmb ->
+  cmf <*> cma = cmf >>= \ f -> f <$> cma
+  {-
+  (cmg :: MContT r m (t -> b)) <*> (cmt :: MContT r m t) =
+    MContT $ \ kmb ->
+      let f :: (t -> b) -> MContT r m b
+          f g' = g' <$> cmt
+          kg :: (t -> b) -> m r b
+          kg = \ g' -> f g' `runMContT` kmb
+      in  cmg `runMContT` (>>= kg)
+-}
+
+    {-MContT $ \ kmb ->
     let appk mf ma = kmb $ mf <*> ma
         kma ma = cmf `runMContT` (flip appk ma)
-    in  cma `runMContT` kma
+    in  cma `runMContT` kma-}
 
 instance (Monad m) => Monad (MContT r m) where
   cma >>= f = MContT $ \ kmb ->
