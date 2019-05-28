@@ -6,6 +6,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.State
 import Control.Monad.Except
 
+-- | THIS THING DOESN'T EVEN SATISFY THE RIGHT UNIT LAW FOR MONADS!!!!!!!!!
 data MContT r m a = MContT {
   runMContT :: (m a -> m r) -> m r
   } deriving Functor
