@@ -314,6 +314,7 @@ jud2pretty (JudVal gamma val) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <val
 jud2pretty (JudModule gamma modul) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <module> " ++| fine2pretty (ctx2scCtx gamma) modul opts]
 jud2pretty (JudEntry gamma entry) opts = ctx2pretty gamma opts \\\ [_vdash ++ " <declaration> " ++| fine2pretty (ctx2scCtx gamma) entry opts]
 --jud2pretty jud = _jud2pretty
+-}
 
 jud2string :: forall sys .
   (Multimode sys,
@@ -325,4 +326,3 @@ instance (Multimode sys,
           SysPretty sys)
          => Show (Judgement sys) where
   show jud = render (jud2pretty jud $? id) $? id
--}

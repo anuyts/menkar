@@ -9,6 +9,7 @@ import Menkar.Systems.Trivial.Trivial
 import Menkar.Systems.Trivial.MagicContext
 import Menkar.TC
 import Menkar.Monad.Monad
+import Menkar.Analyzer
 
 import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
@@ -403,7 +404,7 @@ mainArgs args = do
   interactAfterTask $ do
     fineModule <- S.bulk magicContext rawEntries
     addNewConstraint
-      (JudEntry magicContext fineModule)
+      (Jud AnTokenEntry magicContext fineModule U1 (ClassifWillBe U1))
       Nothing
       "Type-checking everything."
     typeCheck
