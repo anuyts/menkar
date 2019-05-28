@@ -9,6 +9,7 @@ import Menkar.Fine.Judgement
 --import Menkar.Fine.Multimode
 import Menkar.Systems.Trivial.Trivial
 import Menkar.Basic.Context
+import Menkar.Analyzer
 
 import Control.Exception.AssertFalse
 
@@ -32,9 +33,9 @@ val op str rhs = EntryVal $ Declaration
   rhs
 
 pi :: Segment Type Trivial v -> Type Trivial (VarExt v) -> UniHSConstructor Trivial v
-pi aSeg cod = Pi $ Binding aSeg (unType cod)
+pi aSeg cod = Pi $ Binding aSeg cod
 sigma :: Segment Type Trivial v -> Type Trivial (VarExt v) -> UniHSConstructor Trivial v
-sigma aSeg cod = Sigma $ Binding aSeg (unType cod)
+sigma aSeg cod = Sigma $ Binding aSeg cod
 arrow :: Segment Type Trivial v -> Type Trivial v -> UniHSConstructor Trivial v
 arrow aSeg cod = pi aSeg (VarWkn <$> cod)
 
@@ -63,7 +64,7 @@ valNat = val NonOp "Nat" $
   Telescoped (
     ValRHS
       (hs2term NatType)
-      (hs2type $ UniHS U1)
+      (hs2type $ UniHS TrivMode)
   )
 
 -- | @suc {n : Nat} : Nat = suc n@
@@ -104,7 +105,7 @@ valIndNat = val NonOp "indNat" $
   )
   where
     tyMotive :: DeBruijnLevel v => UniHSConstructor Trivial v
-    tyMotive = (segEx NonOp "n" $ hs2type NatType) `arrow` (hs2type $ UniHS U1)
+    tyMotive = (segEx NonOp "n" $ hs2type NatType) `arrow` (hs2type $ UniHS TrivMode)
     appMotive :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
     appMotive arg = Type $ app (var 0) tyMotive arg
     tyCZ :: DeBruijnLevel v => Type Trivial v
@@ -121,8 +122,8 @@ valUniHS :: Entry Trivial Void
 valUniHS = val NonOp "UniHS" $
   Telescoped (
     ValRHS
-      (hs2term $ UniHS U1)
-      (hs2type $ UniHS U1)
+      (hs2term $ UniHS TrivMode)
+      (hs2type $ UniHS TrivMode)
   )
 
 -- | @Unit : Set = Unit@
@@ -131,7 +132,7 @@ valUnitType = val NonOp "Unit" $
   Telescoped (
     ValRHS
       (hs2term UnitType)
-      (hs2type $ UniHS U1)
+      (hs2type $ UniHS TrivMode)
   )
 
 -- | @unit : Unit = unit@
@@ -141,17 +142,17 @@ valUnitTerm = val NonOp "unit" $ Telescoped $ ValRHS (Expr2 $ TermCons $ ConsUni
 -- | @Box {X : UniHS} : UniHS l = Box {x : X}@
 valBoxType :: Entry Trivial Void
 valBoxType = val NonOp "Box" $
-  segEx NonOp "X" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segEx NonOp "X" {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   Telescoped (
     ValRHS
       (hs2term $ BoxType $ segEx NonOp "x" $ Type $ var 0)
-      (hs2type $ UniHS U1)
+      (hs2type $ UniHS TrivMode)
   )
 
 -- | @box {~ | X : UniHS} {x : X} : Box X = box x@
 valBoxTerm :: Entry Trivial Void
 valBoxTerm = val NonOp "box" $
-  segIm NonOp "X" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "X" {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segEx NonOp "x" {- var 1 -} (Type $ var 0) :|-
   Telescoped (
     ValRHS
@@ -170,7 +171,7 @@ valBoxTerm = val NonOp "box" $
 -}
 valIndBox :: Entry Trivial Void
 valIndBox = val NonOp "indBox" $
-  segEx NonOp "X"  {- var 0 -} (hs2type $ UniHS U1) :|-
+  segEx NonOp "X"  {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segEx NonOp "C"  {- var 1 -} (hs2type tyMotive) :|-
   segEx NonOp "cbox" {- var 2 -} (hs2type $ tyCBox) :|-
   segEx NonOp "b*" {- var 3 -} (hs2type $ BoxType $ boxSeg) :|-
@@ -190,7 +191,7 @@ valIndBox = val NonOp "indBox" $
     boxSeg :: DeBruijnLevel v => Segment Type Trivial v
     boxSeg = segEx NonOp "x" $ Type $ var 0
     tyMotive :: DeBruijnLevel v => UniHSConstructor Trivial v
-    tyMotive = (segEx NonOp "b" (hs2type $ BoxType $ boxSeg)) `arrow` (hs2type $ UniHS U1)
+    tyMotive = (segEx NonOp "b" (hs2type $ BoxType $ boxSeg)) `arrow` (hs2type $ UniHS TrivMode)
     appMotive :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
     appMotive arg = Type $ app (var 1) tyMotive arg
     tyCBox :: DeBruijnLevel v => UniHSConstructor Trivial v
@@ -206,20 +207,20 @@ valIndBox = val NonOp "indBox" $
 -}
 valPair :: Entry Trivial Void
 valPair = val Op "," $
-  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segIm NonOp "B" {- var 1 -} (hs2type $ tyCod) :|-
   segEx NonOp "x" {- var 2 -} (Type $ var 0) :|-
   segEx NonOp "y" {- var 3 -} (appCod $ var 2) :|-
   Telescoped (
     ValRHS
-      (Expr2 $ TermCons $ Pair (Binding segA $ unType $ appCod $ Var2 VarLast) (var 2) (var 3))
+      (Expr2 $ TermCons $ Pair (Binding segA $ appCod $ Var2 VarLast) (var 2) (var 3))
       (hs2type $ sigma segA (appCod $ var 4))
   )
   where
     segA :: DeBruijnLevel v => Segment Type Trivial v
     segA = segEx NonOp "x" (Type $ var 0)
     tyCod :: DeBruijnLevel v => UniHSConstructor Trivial v
-    tyCod = segA `arrow` (hs2type $ UniHS U1)
+    tyCod = segA `arrow` (hs2type $ UniHS TrivMode)
     appCod :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
     appCod arg = Type $ app (var 1) tyCod arg
 
@@ -234,7 +235,7 @@ valPair = val Op "," $
 -}
 valIndPair :: Entry Trivial Void
 valIndPair = val NonOp "indPair" $
-  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segIm NonOp "B" {- var 1 -} (hs2type $ tyCod) :|-
   segEx NonOp "C" {- var 2 -} (hs2type $ tyMotive) :|-
   segEx NonOp "cpair" {- var 3 -} (hs2type $ tyCPair) :|-
@@ -254,19 +255,19 @@ valIndPair = val NonOp "indPair" $
     segA :: DeBruijnLevel v => Segment Type Trivial v
     segA = segEx NonOp "x" (Type $ var 0)
     tyCod :: DeBruijnLevel v => UniHSConstructor Trivial v
-    tyCod = segA `arrow` (hs2type $ UniHS U1)
+    tyCod = segA `arrow` (hs2type $ UniHS TrivMode)
     appCod :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
     appCod arg = Type $ app (var 1) tyCod arg
     tyPair :: DeBruijnLevel v => UniHSConstructor Trivial v
     tyPair = sigma segA $ appCod $ Var2 $ VarLast
     tyMotive :: DeBruijnLevel v => UniHSConstructor Trivial v
-    tyMotive = (segEx NonOp "p" $ hs2type tyPair) `arrow` (hs2type $ UniHS U1)
+    tyMotive = (segEx NonOp "p" $ hs2type tyPair) `arrow` (hs2type $ UniHS TrivMode)
     appMotive :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
     appMotive arg = Type $ app (var 2) tyMotive arg
     tyCPair' :: DeBruijnLevel v => Term Trivial v -> UniHSConstructor Trivial v
     tyCPair' x = pi
       (segEx NonOp "y" $ appCod $ x)
-      (appMotive $ Expr2 $ TermCons $ Pair (Binding segA $ unType $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
+      (appMotive $ Expr2 $ TermCons $ Pair (Binding segA $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
     tyCPair :: DeBruijnLevel v => UniHSConstructor Trivial v
     tyCPair = pi segA $ hs2type $ tyCPair' $ Var2 $ VarLast
 
@@ -276,7 +277,7 @@ valEmpty = val NonOp "Empty" $
   Telescoped (
     ValRHS
       (hs2term EmptyType)
-      (hs2type $ UniHS U1)
+      (hs2type $ UniHS TrivMode)
   )
 
 {-| @indEmpty {C : Empty -> UniHS} {e0 : Empty} : C e0 = indEmpty (e > C e) e*@
@@ -295,7 +296,7 @@ valIndEmpty = val NonOp "indEmpty" $
   )
   where
     tyMotive :: DeBruijnLevel v => UniHSConstructor Trivial v
-    tyMotive = (segEx NonOp "e" $ hs2type EmptyType) `arrow` (hs2type $ UniHS U1)
+    tyMotive = (segEx NonOp "e" $ hs2type EmptyType) `arrow` (hs2type $ UniHS TrivMode)
     appMotive :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
     appMotive arg = Type $ app (var 0) tyMotive arg
 
@@ -303,24 +304,24 @@ valIndEmpty = val NonOp "indEmpty" $
 -}
 valEqType :: Entry Trivial Void
 valEqType = val Op "==" $
-  segIm NonOp "A"  {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "A"  {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segEx NonOp "aL" {- var 1 -} (Type $ var 0) :|-
   segEx NonOp "aR" {- var 2 -} (Type $ var 0) :|-
   Telescoped (
     ValRHS
       (hs2term $ EqType (Type $ var 0) (var 1) (var 2))
-      (hs2type $ UniHS U1)
+      (hs2type $ UniHS TrivMode)
     )
 
 {-| @refl {~| A : UniHS} {~| a : A} : a == .{A} a = refl@
 -}
 valRefl :: Entry Trivial Void
 valRefl = val NonOp "refl" $
-  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segIm NonOp "a" {- var 1 -} (Type $ var 0) :|-
   Telescoped (
     ValRHS
-      (Expr2 $ TermCons $ ConsRefl)
+      (Expr2 $ TermCons $ ConsRefl (Type $ var 0) (var 1))
       (hs2type $ EqType (Type $ var 0) (var 1) (var 1))
   )
 
@@ -336,10 +337,10 @@ valRefl = val NonOp "refl" $
 -}
 valIndEq :: Entry Trivial Void
 valIndEq = val NonOp "ind==" $
-  segIm NonOp "A"  {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "A"  {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segIm NonOp "aL" {- var 1 -} (Type $ var 0) :|-
   segEx NonOp "C"  {- var 2 -} (hs2type $ tyMotive) :|-
-  segEx NonOp "crefl" {- var 3 -} (appMotive (var 1) (Expr2 $ TermCons $ ConsRefl)) :|-
+  segEx NonOp "crefl" {- var 3 -} (appMotive (var 1) (Expr2 $ TermCons $ ConsRefl (Type $ var 0) (var 1))) :|-
   segIm NonOp "aR*" {- var 4 -} (Type $ var 0) :|-
   segEx NonOp "eq*" {- var 5 -} (hs2type $ EqType (Type $ var 0) (var 1) (var 4)) :|-
   Telescoped (
@@ -350,7 +351,7 @@ valIndEq = val NonOp "ind==" $
   )
   where
     tyMotive' :: DeBruijnLevel v => Term Trivial v -> UniHSConstructor Trivial v
-    tyMotive' aR = (segEx NonOp "eq" $ hs2type $ EqType (Type $ var 0) (var 1) aR) `arrow` (hs2type $ UniHS U1)
+    tyMotive' aR = (segEx NonOp "eq" $ hs2type $ EqType (Type $ var 0) (var 1) aR) `arrow` (hs2type $ UniHS TrivMode)
     tyMotive :: DeBruijnLevel v => UniHSConstructor Trivial v
     tyMotive = pi (segEx NonOp "aR" $ Type $ var 0) (hs2type $ tyMotive' $ Var2 VarLast)
     appMotive :: DeBruijnLevel v => Term Trivial v -> Term Trivial v -> Type Trivial v
@@ -360,7 +361,7 @@ valIndEq = val NonOp "ind==" $
 -}
 valFunext :: Entry Trivial Void
 valFunext = val NonOp "funext" $
-  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS U1) :|-
+  segIm NonOp "A" {- var 0 -} (hs2type $ UniHS TrivMode) :|-
   segIm NonOp "B" {- var 1 -} (hs2type $ tyCod) :|-
   segIm NonOp "f" {- var 2 -} (hs2type $ tyPi) :|-
   segIm NonOp "g" {- var 3 -} (hs2type $ tyPi) :|-
@@ -374,7 +375,7 @@ valFunext = val NonOp "funext" $
     segA :: DeBruijnLevel v => Segment Type Trivial v
     segA = segEx NonOp "x" (Type $ var 0)
     tyCod :: DeBruijnLevel v => UniHSConstructor Trivial v
-    tyCod = segA `arrow` (hs2type $ UniHS U1)
+    tyCod = segA `arrow` (hs2type $ UniHS TrivMode)
     appCod :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
     appCod arg = Type $ app (var 1) tyCod arg
     appEqCod :: DeBruijnLevel v => Term Trivial v -> Type Trivial v
@@ -408,18 +409,21 @@ magicEntries =
   []
 
 magicContext :: Ctx Type Trivial (VarInModule Void) Void
-magicContext = CtxEmpty U1 :<...> ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
+magicContext = CtxEmpty TrivMode :<...> ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
 
 ----------------------------------------------
 
 magicModuleCorrect :: Judgement Trivial
-magicModuleCorrect = 
-    (JudModule
-      (CtxEmpty U1)
-      (Declaration
-        (DeclNameModule "magic")
-        trivModedModality
-        Explicit $
-       Telescoped $ ModuleRHS $ absurd <$> (Compose $ reverse magicEntries)
-      )
+magicModuleCorrect =
+  (Jud
+    (AnTokenDeclaration $ AnTokenTelescoped $ AnTokenModuleRHS)
+    (CtxEmpty TrivMode)
+    (Declaration
+      (DeclNameModule "magic")
+      TrivModedModality
+      Explicit
+      (Telescoped $ ModuleRHS $ absurd <$> (Compose $ reverse magicEntries))
     )
+    U1
+    (ClassifWillBe U1)
+  )
