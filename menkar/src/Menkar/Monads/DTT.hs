@@ -167,6 +167,7 @@ typeCheck = do
   case tasks of
     [] -> return ()
     ((_, task) : moreTasks) -> do
+      todo
       tcState'tasks .= moreTasks
       task
       typeCheck
@@ -209,6 +210,7 @@ catchBlocks action = resetDC $ action `catchError` \case
 
 checkConstraintTC :: (SysTC sys, Degrees sys, Monad m) => Constraint sys -> TCT sys m ()
 checkConstraintTC c = catchBlocks $ do
+  todo
   checkConstraint c
   commitTasks
 
@@ -253,8 +255,11 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
   addConstraint constraint = addTask (getConstraintPriority constraint) $ checkConstraintTC constraint
 
   addNewConstraint jud maybeParent reason = addTask (getJudgementPriority jud) $ do
+    todo
     constraint <- defConstraint jud maybeParent reason
+    todo
     checkConstraintTC constraint
+    todo
 
   addConstraintReluctantly constraint = todo
 
