@@ -368,7 +368,7 @@ interactAfterTask task = do
 checkMagic :: IO ()
 checkMagic = interactAfterTask $ do
   addNewConstraint
-    todo {-magicModuleCorrect-}
+    magicModuleCorrect
     Nothing
     "Checking the magic module."
   typeCheck
