@@ -198,7 +198,7 @@ instance Fine2Pretty Trivial TrivModality where
   fine2pretty gamma TrivModality opts = ribbon "*"
 
 instance Fine2Pretty Trivial TrivDegree where
-  fine2pretty gamma TrivDegree opts = ribbon "*"
+  fine2pretty gamma TrivDegree opts = ribbon "="
 
 instance Fine2Pretty Trivial TrivTerm where
   fine2pretty gamma t opts = case t of {}

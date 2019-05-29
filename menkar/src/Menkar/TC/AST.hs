@@ -115,7 +115,7 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
         (Jud analyzableToken gamma t' extraT maybeCT)
         (Just parent)
         "Look up meta."
-      checkAST childConstraint gamma t' U1 maybeCT
+      checkAST childConstraint gamma t' U1 (classifMust2will maybeCT)
     (AnErrorTermMeta, _, _) -> unreachable
     (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
     (AnErrorTermWildcard, _, _) -> unreachable
@@ -235,6 +235,24 @@ checkAST parent gamma t extraT maybeCT = do
             (Just parent)
             ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
           return cs
+  ctInferred <- case maybeCTInferred of
+    Right ctInferred -> return ctInferred
+    Left anErr -> checkSpecialAST parent gamma anErr t extraT maybeCT
+  case maybeCT of
+        ClassifMustBe ct -> addNewConstraint
+          (JudRel analyzableToken (Eta True)
+            (convRel (analyzableToken :: AnalyzableToken sys t) $ unVarFromCtx <$> ctx'mode gamma)
+            (duplicateCtx gamma)
+            (Twice1 ctInferred ct)
+            (Twice1 (extraClassif @sys t extraT) (extraClassif @sys t extraT))
+            ClassifUnknown)
+          (Just parent)
+          ("Checking whether actual classifier equals expected classifier.")
+        _ -> return ()
+  return ctInferred
+
+
+          
   case maybeCTInferred of
     Right ctInferred -> do
       case maybeCT of
