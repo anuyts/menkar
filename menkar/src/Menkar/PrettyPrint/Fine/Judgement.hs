@@ -120,7 +120,7 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
   (AnTokenU1, U1) -> ribbon "[]"
   (AnTokenPair1 tokenL tokenR, relL :*: relR) -> "(" ++|
     relation2pretty tokenL gamma (fst1 extraT1) (fst1 extraT2) relL opts |++ "," |+|
-    relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts |+| ")"
+    relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts |++ ")"
   (AnTokenConst1 token, rel) -> relation2pretty token gamma extraT1 extraT2 rel opts
   (AnTokenSys systoken, rel) -> sysRelation2pretty systoken gamma extraT1 extraT2 rel opts
 
@@ -140,13 +140,17 @@ classif2pretty token gamma extraT ct extraCT opts =
       |++ " -> " |+|
       fine2pretty gamma cod opts
     (AnTokenBinding token, U1, _ :*: boundCRHS, _ :*: seg :*: Comp1 extraCRHS) ->
-      "_ -> " ++| classif2pretty token
-        (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
-        U1 (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
+      (nameWithIndex (_namedBinding'name boundCRHS) (size $ _scCtx'sizeProxy gamma))
+        |++ " -> " |+|
+        classif2pretty token
+          (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
+          U1 (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
     (AnTokenNamedBinding token, seg :*: Comp1 extraRHS, boundCRHS, seg' :*: Comp1 extraCRHS) ->
-      "_ -> " ++| classif2pretty token
-        (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
-        extraRHS (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
+      (nameWithIndex (_namedBinding'name boundCRHS) (size $ _scCtx'sizeProxy gamma))
+        |++ " -> " |+|
+        classif2pretty token
+          (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
+          extraRHS (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
     (AnTokenUniHSConstructor, U1, d, U1) -> "UniHS " ++| fine2pretty gamma d opts
     (AnTokenConstructorTerm, U1, ty, U1) -> fine2pretty gamma ty opts
     (AnTokenType, U1, U1, U1) -> ribbon "<n/a>"
