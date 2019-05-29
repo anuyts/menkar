@@ -181,7 +181,7 @@ instance (SysAnalyzer sys,
          )
       )
       unComp1
-      (AddressInfo ["body"] FocusWrapped EntirelyBoring)
+      (AddressInfo ["body"] FocusWrapped WorthMentioning)
     return $ case token of
       TokenTrav -> AnalysisTrav $ NamedBinding name $ getAnalysisTrav rbody
       TokenTC -> AnalysisTC $ NamedBinding name (Const1 $ getAnalysisTC rbody)
