@@ -66,14 +66,14 @@ printConstraint ref c = do
 
 printTrace :: IORef MainState -> Constraint Trivial -> IO ()
 printTrace ref c = do
-  printConstraint ref c
-  putStrLn ""
-  putStrLn $ constraint'reason c
   case constraint'parent c of
     Nothing -> return ()
     Just parent -> do
-      putStrLn ""
       printTrace ref parent
+      putStrLn ""
+  putStrLn $ constraint'reason c
+  putStrLn ""
+  printConstraint ref c
 
 printBlockInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> ([Int], BlockInfo Trivial m v) -> IO ()
 printBlockInfo ref s (blockingMetas, blockInfo) = do
