@@ -167,7 +167,7 @@ instance SysScoper Trivial where
     AnTokenModality -> return $ TrivMode :*: TrivMode
     AnTokenDegree -> return $ TrivMode
     AnTokenTrivTerm -> case t of {}
-    AnTokenTrivUniHSConstructor -> case t of {}
+    AnTokenTrivUniHSConstructor -> case t of {} 
 
 instance SysAnalyzer Trivial where
   quickEqSysUnanalyzable sysErr = case sysErr of {}
@@ -208,7 +208,27 @@ instance Fine2Pretty Trivial TrivUniHSConstructor where
 
 instance SysPretty Trivial where
   sysJud2pretty jud opts = case jud of {}
-  sysToken2string token = case token of {}
-  sysClassif2pretty token = case token of {}
-  sysRelation2pretty token = case token of {}
-  sysHaveFine2Pretty token = case token of {}
+  sysToken2string token = case token of
+    AnTokenMode -> "mode"
+    AnTokenModality -> "modality"
+    AnTokenDegree -> "degree"
+    AnTokenTrivTerm -> "system-specific-term_(impossible)"
+    AnTokenTrivUniHSConstructor -> "system-specific-UniHS-constructor_(impossible)"
+  sysClassif2pretty token gamma extraT ct extraCT opts = case token of
+    AnTokenMode -> ribbon "mode"
+    AnTokenModality -> ribbon "modality"
+    AnTokenDegree -> ribbon "degree"
+    AnTokenTrivTerm -> fine2pretty gamma ct opts
+    AnTokenTrivUniHSConstructor -> fine2pretty gamma ct opts
+  sysRelation2pretty token gamma extraT1 extraT2 rel opts = case token of
+    AnTokenMode -> ribbon "="
+    AnTokenModality -> modrel2pretty $ getConst rel
+    AnTokenDegree -> modrel2pretty $ getConst rel
+    AnTokenTrivTerm -> "[" ++| fine2pretty gamma rel opts |++ "]"
+    AnTokenTrivUniHSConstructor -> "[" ++| fine2pretty gamma rel opts |++ "]"
+  sysHaveFine2Pretty token a = case token of
+    AnTokenMode -> a
+    AnTokenModality -> a
+    AnTokenDegree -> a
+    AnTokenTrivTerm -> a
+    AnTokenTrivUniHSConstructor -> a
