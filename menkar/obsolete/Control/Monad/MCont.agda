@@ -38,9 +38,36 @@ record Applic (A : Set → Set) : Set₁ where
 open Applic {{...}} public
 
 record Sense (M : Set → Set) {{monadM : Monad M}} {{applicM : Applic M}} : Set₁ where
-  pureAM : ∀{X} → return {M} {X} ≡ pure
-  ⊚AM : ∀{X Y} {mf : M (X → Y)} {mx : M X} → mf ⊚ mx ≡ (mf >>= λ f → mx >>= λ x → return (f x))
+  field
+    pureAM : ∀{X} → return {M} {X} ≡ pure
+    ⊚AM : ∀{X Y} {mf : M (X → Y)} {mx : M X} → mf ⊚ mx ≡ (mf >>= λ f → mx >>= λ x → return (f x))
 
+Cont : (R : Set) → (M : Set → Set) → Set → Set
+Cont R M X = (X → M R) → M R
+
+monadCont : ∀{R M} → Monad (Cont R M)
+--monadCont {R}{M} = {!!}
+Monad.return (monadCont {R} {M}) x x* = x* x
+Monad._>>=_ (monadCont {R} {M}) x** x↦y** y* = x** (λ x → x↦y** x y*)
+Monad.lunitM (monadCont {R} {M}) = refl
+Monad.runitM (monadCont {R} {M}) = refl
+Monad.assocM (monadCont {R} {M}) = refl
+
+applicCont : ∀{R M} → Applic (Cont R M)
+Applic.pure (applicCont {R} {M}) {X} x x* = x* x 
+Applic._⊚_ (applicCont {R} {M}) f** x** y* = f** (λ f → x** (λ x → y* (f x)))
+Applic.identA (applicCont {R} {M}) = refl
+Applic.compA (applicCont {R} {M}) = refl
+Applic.homA (applicCont {R} {M}) = refl
+Applic.intchA (applicCont {R} {M}) = refl
+
+senseCont : ∀{R M} → Sense (Cont R M) {{monadCont {R}{M}}} {{applicCont {R}{M}}}
+Sense.pureAM (senseCont {R} {M}) = refl
+Sense.⊚AM (senseCont {R} {M}) = refl
+
+
+
+{-
 MCont : (R : Set) → (M : Set → Set) → Set → Set
 MCont R M X = (M X → M R) → M R
 
@@ -59,3 +86,4 @@ Monad.runitM (monadMCont {R} {M} ⦃ monadM ⦄) {X}{Y}{f} = λ= x , λ= my* , c
   (my >>= λ y → my* (return y)) ∎
   ))
 Monad.assocM (monadMCont {R} {M} ⦃ monadM ⦄) = {!!}
+-}
