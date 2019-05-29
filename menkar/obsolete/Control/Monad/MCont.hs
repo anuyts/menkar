@@ -5,7 +5,9 @@ module Control.Monad.MCont where
 import Control.Monad.Trans.Class
 import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.Trans.Cont
 
+{-
 -- | THIS THING DOESN'T EVEN SATISFY THE RIGHT UNIT LAW FOR MONADS!!!!!!!!!
 data MContT r m a = MContT {
   runMContT :: (m a -> m r) -> m r
@@ -44,6 +46,7 @@ instance MonadTrans (MContT r) where
 class Monad m => MonadDC r m | m -> r where
   shiftDC :: ((a -> m r) -> m r) -> m a
   resetDC :: m r -> m r
+
 class MonadDC r m => MonadMDC r m | m -> r where
   shiftMDC :: ((m a -> m r) -> m r) -> m a
   resetMDC :: m r -> m r
@@ -68,7 +71,6 @@ instance (MonadError e m) => MonadError e (MContT r m) where
   -- CAREFUL: this also catches errors thrown in the future, i.e. by the continuation!!!
   catchError cma handle = MContT $ \kma -> catchError (runMContT cma kma) (\e -> runMContT (handle e) kma)
 
-{-
 instance Monad m => MonadDC r (ContT r m) where
   shiftDC f = ContT $ \ k -> f (lift . k) `runContT` return
   resetDC = lift . evalContT

@@ -16,7 +16,7 @@ import Menkar.System
 
 import Text.PrettyPrint.Tree
 import Control.Exception.AssertFalse
-import Control.Monad.MCont
+--import Control.Monad.MCont
 import Data.Omissible
 
 import GHC.Generics (U1 (..))
@@ -30,7 +30,7 @@ import Data.IntMap.Strict
 import Data.Foldable
 import Data.Monoid
 import Control.Monad.Cont
---import Control.Monad.Trans.Cont
+import Control.Monad.Trans.Cont
 import Control.Monad.State.Lazy
 import Control.Monad.List
 import Control.Monad.Except
@@ -97,7 +97,6 @@ data TCState sys m = TCState {
 initTCState :: TCState sys m
 initTCState = TCState 0 empty 0 empty [] [] []
 
-{-
 -- | delimited continuation monad class
 class Monad m => MonadDC r m | m -> r where
   shiftDC :: ((a -> m r) -> m r) -> m a
@@ -105,7 +104,6 @@ class Monad m => MonadDC r m | m -> r where
 instance Monad m => MonadDC r (ContT r m) where
   shiftDC f = ContT $ \ k -> f (lift . k) `runContT` return
   resetDC = lift . evalContT
--}
 
 instance (MonadError e m) => MonadError e (ContT r m) where
   throwError e = lift $ throwError e
@@ -121,15 +119,15 @@ data TCError sys m =
   TCErrorInternal (Maybe (Constraint sys)) String
 
 newtype TCT (sys :: KSys) (m :: * -> *)  (a :: *) =
-  TCT {unTCT :: MContT (TCResult sys) (ExceptT (TCError sys m) (StateT (TCState sys m) ({-ListT-}  m))) a}
+  TCT {unTCT :: ContT (TCResult sys) (ExceptT (TCError sys m) (StateT (TCState sys m) ({-ListT-}  m))) a}
   deriving (Functor, Applicative, Monad, MonadState (TCState sys m), MonadError (TCError sys m), MonadDC (TCResult sys))
 
 instance (Monad m) => MonadFail (TCT sys m) where
   fail s = unreachable
 
 getTCT :: (Monad m) => TCT sys m () -> TCState sys m -> m (Either (TCError sys m) (TCResult sys), TCState sys m)
-getTCT program initState = flip runStateT initState $ runExceptT $ evalMContT $ unTCT program
---getTCT program initState = flip runStateT initState $ evalMContT $ unTCT program
+getTCT program initState = flip runStateT initState $ runExceptT $ evalContT $ unTCT program
+--getTCT program initState = flip runStateT initState $ evalContT $ unTCT program
 
 type TC sys = TCT sys Identity
 
@@ -327,7 +325,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
 
 selfcontainedNoSched :: (Monad m) =>
   Constraint sys -> TCT sys m a -> TCT sys m a
-selfcontainedNoSched parent (TCT ma) = TCT $ mapMContT (selfcontainedNoContNoSched parent) ma
+selfcontainedNoSched parent (TCT ma) = TCT $ mapContT (selfcontainedNoContNoSched parent) ma
 
 selfcontainedNoContNoSched :: (Monad m) =>
   Constraint sys ->
