@@ -74,7 +74,7 @@ token2string token = case token of
   AnTokenTerm -> "term"
   AnTokenDeclaration token -> "declaration/segment"
   AnTokenTelescoped token -> "telescoped:" ++ token2string token
-  AnTokenValRHS -> "typed-term"
+  AnTokenValRHS -> "value-typing-and-definition"
   AnTokenModuleRHS -> "module-definition"
   AnTokenEntry -> "entry"
   AnTokenU1 -> "0-tuple"
@@ -118,9 +118,9 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
   (AnTokenModuleRHS, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
   (AnTokenEntry, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
   (AnTokenU1, U1) -> ribbon "[]"
-  (AnTokenPair1 tokenL tokenR, relL :*: relR) ->
+  (AnTokenPair1 tokenL tokenR, relL :*: relR) -> "(" ++|
     relation2pretty tokenL gamma (fst1 extraT1) (fst1 extraT2) relL opts |++ "," |+|
-    relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts
+    relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts |+| ")"
   (AnTokenConst1 token, rel) -> relation2pretty token gamma extraT1 extraT2 rel opts
   (AnTokenSys systoken, rel) -> sysRelation2pretty systoken gamma extraT1 extraT2 rel opts
 

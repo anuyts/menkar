@@ -566,7 +566,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
            (ClassifMustBe $ hs2type $ UniHS $ unVarFromCtx <$> ctx'mode gamma'))
       extCtxId
       (fmapCoe Identity)
-      (AddressInfo ["code"] FocusWrapped WorthMentioning)
+      (AddressInfo ["type code in universe"] FocusWrapped WorthMentioning)
     return $ case token of
       TokenTrav -> AnalysisTrav $ Type $ runIdentity !<$> getAnalysisTrav rt
       TokenTC -> AnalysisTC U1
@@ -1075,7 +1075,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
          Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
       )
       (fmapCoe Identity)
-      (AddressInfo ["type"] FocusWrapped omit)
+      (AddressInfo ["content/type"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ Declaration name (getAnalysisTrav rdmu) (plicOut) (getAnalysisTrav rcontent)
       TokenTC -> AnalysisTC $ getAnalysisTC rcontent
@@ -1129,7 +1129,7 @@ instance (SysAnalyzer sys,
           )
           extCtxId
           (fmapCoe Identity . snd1)
-          (AddressInfo ["rhs"] FocusWrapped omit)
+          (AddressInfo ["rhs of telescope"] FocusWrapped omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ Telescoped $ runIdentity !<$> getAnalysisTrav rrhs
           TokenTC -> AnalysisTC U1
@@ -1227,7 +1227,7 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
          Just $ Identity !<$> Classification t' U1 (ClassifMustBe ty'))
       extCtxId
       (fmapCoe Identity)
-      (AddressInfo ["RHS"] FocusWrapped omit)
+      (AddressInfo ["definition"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ ValRHS (getAnalysisTrav rt) (getAnalysisTrav rty)
       TokenTC -> AnalysisTC $ U1
