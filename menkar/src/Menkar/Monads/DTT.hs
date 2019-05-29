@@ -245,7 +245,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
     i <- tcState'constraintCounter <<%= (+1)
     let constraint = Constraint jud maybeParent reason i
     tcState'constraintMap %= insert i constraint
-    when (i > 1000000) $ tcFail constraint "I may be stuck in a loop."
+    when (i > 100000) $ tcFail constraint "I may be stuck in a loop."
     return constraint
 
   -- Constraints are saved upon creation, not now.

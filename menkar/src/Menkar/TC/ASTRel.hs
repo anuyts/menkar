@@ -57,7 +57,7 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
             EntirelyBoring -> checkASTRel parent eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs
             WorthMentioning -> do
               virtualConstraint <- defConstraint
-                (JudRel (analyzableToken @sys @s) (Eta True) relS gammadelta
+                (JudRel (analyzableToken @sys @s) eta relS gammadelta
                   (Twice1 s1 s2)
                   (Twice1 extraS1 extraS2)
                   (classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2)
@@ -66,7 +66,7 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
                 ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
               checkASTRel virtualConstraint eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs
             WorthScheduling -> addNewConstraint
-              (JudRel (analyzableToken @sys @s) (Eta True) relS gammadelta
+              (JudRel (analyzableToken @sys @s) eta relS gammadelta
                 (Twice1 s1 s2)
                 (Twice1 extraS1 extraS2)
                 (classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2)
