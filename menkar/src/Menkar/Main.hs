@@ -256,7 +256,7 @@ runCommandSet ref s ("print-entries" : args) = forceLength 1 args $ \[str] -> re
     1 -> setVerbosity PrintEntryNameAnnots
     2 -> setVerbosity PrintEntryEntirely
     _ -> putStrLn $ "Integer argument should be in [0..2]."
-runCommandSet ref s ("print-meta-algoriths" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
+runCommandSet ref s ("print-meta-algorithms" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
     modifyIORef ref $ main'fine2prettyOptions . fine2pretty'humanReadableMetas .~ bool
 runCommandSet ref s ("print-modules" : args) = forceLength 1 args $ \[str] -> readInt str $ \int -> do
   let setVerbosity v = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printModule .~ PrintModuleVerbosity v

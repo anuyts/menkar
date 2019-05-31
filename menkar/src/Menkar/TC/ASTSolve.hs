@@ -199,7 +199,9 @@ solveMetaImmediately parent gammaOrig gamma subst partialInv t2 nonwhnt2 ty1 ty2
   let maybeT2orig = (sequenceA $ partialInv <$> nonwhnt2) <|> (sequenceA $ partialInv <$> t2)
   case maybeT2orig of
     -- If it works, return that.
-    Just t2orig -> return $ t2orig
+    Just t2orig -> case (sequenceA $ partialInv <$> ty1) of
+      Nothing -> return $ t2orig
+      Just ty1orig -> return $ Expr2 $ TermAlreadyChecked t2orig ty1orig
     -- If t2 contains variables not in gammaOrig: solve against WHNF
     Nothing ->
       solveMetaAgainstWHNF parent (modedEqDeg dgamma) gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
