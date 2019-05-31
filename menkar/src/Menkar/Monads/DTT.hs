@@ -177,7 +177,8 @@ typeCheck = do
 
 instance {-# OVERLAPPING #-} (Monad m, SysScoper sys, Degrees sys) => MonadScoper sys (TCT sys m) where
 
-  newMetaID maybeParent gamma reason = do
+  newMetaID gamma reason = do
+    maybeParent = useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = Var2 <$> listAll Proxy
@@ -225,13 +226,13 @@ checkConstraintTC c = catchBlocks $ do
 
 instance {-# OVERLAPPING #-} (SysWHN sys, Degrees sys, Monad m) => MonadWHN sys (TCT sys m) where
 
-  awaitMeta parent reasonAwait meta depcies = do
+  awaitMeta reasonAwait meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
     case maybeMetaInfo of
       Nothing -> unreachable
-      Just (ForSomeDeBruijnLevel (MetaInfo maybeParent gamma reasonMeta maybeSolution)) -> do
+      Just (ForSomeDeBruijnLevel (MetaInfo _ gamma reasonMeta maybeSolution)) -> do
         case maybeSolution of
-          Right (SolutionInfo parent solution) -> do
+          Right (SolutionInfo _ solution) -> do
             return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
           Left blocks -> shiftDC $ \ k -> do
             -- Try to continue with an unsolved meta

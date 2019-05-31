@@ -25,7 +25,6 @@ import Data.Maybe
 
 checkASTRel' :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
-  Constraint sys ->
   Eta ->
   Relation t v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -33,7 +32,7 @@ checkASTRel' :: forall sys tc t v .
   Twice1 (ClassifExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
-checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = do
+checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = do
   let maybeCT1 = fstTwice1 <$> maybeCTs
   let maybeCT2 = sndTwice1 <$> maybeCTs
   let inputT1 = (Classification t1 extraT1 maybeCT1)
@@ -42,7 +41,7 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
     $ \ wkn _ extract extCtx extractRel addressInfo ->
       case (extract gamma inputT1, extract gamma inputT2) of
         (Nothing, _) -> unreachable
-        (Just _, Nothing) -> tcFail parent "False"
+        (Just _, Nothing) -> tcFail  "False"
         (Just (Classification (s1 :: s _) extraS1 maybeCS1),
          Just (Classification (s2 :: s _) extraS2 maybeCS2)) -> do
           let relS = extractRel relT
@@ -54,7 +53,7 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
                 NoFocus -> Eta True
           let maybeCSs = classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2
           case _addressInfo'boredom addressInfo of
-            EntirelyBoring -> checkASTRel parent eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs
+            EntirelyBoring -> checkASTRel eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs
             WorthMentioning -> do
               virtualConstraint <- defConstraint
                 (JudRel (analyzableToken @sys @s) eta relS gammadelta
@@ -62,16 +61,15 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
                   (Twice1 extraS1 extraS2)
                   (classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2)
                 )
-                (Just parent)
                 ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
-              checkASTRel virtualConstraint eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs
+              withParent virtualConstraint $
+                checkASTRel eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs
             WorthScheduling -> addNewConstraint
               (JudRel (analyzableToken @sys @s) eta relS gammadelta
                 (Twice1 s1 s2)
                 (Twice1 extraS1 extraS2)
                 (classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2)
               )
-              (Just parent)
               ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
           return AnalysisRel
   case attempt of
@@ -92,21 +90,20 @@ checkASTRel' parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybe
            unreachable -- terms are neutral at this point
          (AnErrorTermAlgorithm, _, _) -> unreachable
          --(AnErrorTermSys sysErr, _, _) ->
-         --  checkUnanalyzableSysASTRel sysErr parent eta relT gamma t1 t2 maybeCTs
-         (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent "False"
+         --  checkUnanalyzableSysASTRel sysErr eta relT gamma t1 t2 maybeCTs
+         (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail "False"
          (AnErrorTermProblem, _, _) -> unreachable
          (AnErrorVar, AnTokenTerm, Var2 v1) -> case t2 of
            (Var2 v2) -> if v1 == v2
              then return ()
-             else tcFail parent "Cannot relate different variables."
-           _ -> tcFail parent "False"
+             else tcFail "Cannot relate different variables."
+           _ -> tcFail "False"
          (AnErrorVar, _, _) -> unreachable
          (AnErrorSys sysErr, _, _) ->
-           checkUnanalyzableSysASTRel' sysErr parent eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs
+           checkUnanalyzableSysASTRel' sysErr eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs
 
 checkASTRel :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
-  Constraint sys ->
   Eta ->
   Relation t v ->
   Ctx (Twice2 Type) sys v Void ->
@@ -114,18 +111,17 @@ checkASTRel :: forall sys tc t v .
   Twice1 (ClassifExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
   tc ()
-checkASTRel parent eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs =
+checkASTRel eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs =
   if quickEq @sys t1 t2 extraT1 extraT2
   then return ()
   else case analyzableToken @sys @t of
-    AnTokenTerm -> checkTermRel parent eta relT gamma ts maybeCTs
-    AnTokenSys sysToken -> checkSysASTRel sysToken parent eta relT gamma ts extraTs maybeCTs
-    _ -> checkASTRel' parent eta relT gamma ts extraTs maybeCTs
+    AnTokenTerm -> checkTermRel eta relT gamma ts maybeCTs
+    AnTokenSys sysToken -> checkSysASTRel sysToken eta relT gamma ts extraTs maybeCTs
+    _ -> checkASTRel' eta relT gamma ts extraTs maybeCTs
 
 ---------------------------------------------------
 
 checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
@@ -135,11 +131,10 @@ checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   [Int] ->
   tc ()
-checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 =
-  checkASTRel' parent (Eta False) deg gamma (Twice1 t1 t2) (Twice1 U1 U1) (ClassifWillBe $ Twice1 ty1 ty2)
+checkTermRelWHNTermsNoEta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 =
+  checkASTRel' (Eta False) deg gamma (Twice1 t1 t2) (Twice1 U1 U1) (ClassifWillBe $ Twice1 ty1 ty2)
 
 checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
@@ -153,17 +148,17 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   [Int] ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
+checkTermRelNoEta deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     -- Both are whnormal
-    (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2
+    (False, False) -> checkTermRelWHNTermsNoEta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2
     -- Only one is whnormal: whsolve or block
-    (True , False) -> tryToSolveTerm parent (Eta False) deg          gamma  t1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2
-      $ tcBlock parent
-    (False, True ) -> tryToSolveTerm parent (Eta False) deg (flipCtx gamma) t2 t1 nonwhnt1 ty2 ty1 metasTy2 metasTy1
-      $ tcBlock parent
+    (True , False) -> tryToSolveTerm (Eta False) deg          gamma  t1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2
+      $ tcBlock
+    (False, True ) -> tryToSolveTerm (Eta False) deg (flipCtx gamma) t2 t1 nonwhnt1 ty2 ty1 metasTy2 metasTy1
+      $ tcBlock
     -- Neither is whnormal: block
-    (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
+    (True , True ) -> tcBlock "Cannot solve relation: both sides are blocked on a meta-variable."
 
 --------------------------------------------------------
 -- MAYBE ETA --
@@ -171,7 +166,6 @@ checkTermRelNoEta parent deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 t
 
 -- | This should preferrably be implemented using TC.ASTSolve.etaExpand
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
@@ -183,10 +177,10 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-etaExpandIfApplicable parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
+etaExpandIfApplicable ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  let giveUp = checkTermRelNoEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
+  let giveUp = checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
   maybeExpansions <- case (ty1, ty2) of
     -- Pi-types: eta-expand
     (Pi piBinding1, Pi piBinding2) -> do
@@ -198,12 +192,12 @@ etaExpandIfApplicable parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 
             (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
       return $ Just (Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding1) $ ValRHS app1 $ binding'body piBinding1,
                      Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding2) $ ValRHS app2 $ binding'body piBinding2)
-    (Pi _, _) -> tcFail parent "Types are presumed to be related."
-    (_, Pi _) -> tcFail parent "Types are presumed to be related."
+    (Pi _, _) -> tcFail "Types are presumed to be related."
+    (_, Pi _) -> tcFail "Types are presumed to be related."
     -- Sigma types: eta expand if allowed
     (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
       let dmu = _segment'modty $ binding'segment $ sigmaBinding1
-      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu
+      etaAllowed <- allowsEta (crispModedModality dgamma' :\\ fstCtx gamma) dmu
         "Need to know if eta is allowed."
       case etaAllowed of
         Just True -> do
@@ -214,18 +208,18 @@ etaExpandIfApplicable parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 
           return $ Just (Expr2 $ TermCons $ Pair sigmaBinding1 fst1 snd1,
                          Expr2 $ TermCons $ Pair sigmaBinding2 fst2 snd2)
         Just False -> Nothing <$ giveUp
-        Nothing -> tcBlock parent $ "Need to know if sigma-type has eta."
-    (Sigma _, _) -> tcFail parent "Types are presumed to be related."
-    (_, Sigma _) -> tcFail parent "Types are presumed to be related."
+        Nothing -> tcBlock $ "Need to know if sigma-type has eta."
+    (Sigma _, _) -> tcFail "Types are presumed to be related."
+    (_, Sigma _) -> tcFail "Types are presumed to be related."
     -- Unit type: eta-expand
     (UnitType, UnitType) -> return $ Just (Expr2 $ TermCons $ ConsUnit,
                                            Expr2 $ TermCons $ ConsUnit)
-    (UnitType, _) -> tcFail parent "Types are presumed to be related."
-    (_, UnitType) -> tcFail parent "Types are presumed to be related."
+    (UnitType, _) -> tcFail "Types are presumed to be related."
+    (_, UnitType) -> tcFail "Types are presumed to be related."
     -- Box type: eta-expand
     (BoxType boxSeg1, BoxType boxSeg2) -> do
       let dmu = _segment'modty $ boxSeg1
-      etaAllowed <- allowsEta parent (crispModedModality dgamma' :\\ fstCtx gamma) dmu
+      etaAllowed <- allowsEta (crispModedModality dgamma' :\\ fstCtx gamma) dmu
         "Need to know if eta is allowed."
       case etaAllowed of
         Just True -> do
@@ -234,9 +228,9 @@ etaExpandIfApplicable parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 
           return $ Just $ (Expr2 $ TermCons $ ConsBox boxSeg1 unbox1,
                            Expr2 $ TermCons $ ConsBox boxSeg2 unbox2)
         Just False -> Nothing <$ giveUp
-        Nothing -> tcBlock parent $ "Need to know if sigma-type has eta."
-    (BoxType _, _) -> tcFail parent "Types are presumed to be related."
-    (_, BoxType _) -> tcFail parent "Types are presumed to be related."
+        Nothing -> tcBlock $ "Need to know if sigma-type has eta."
+    (BoxType _, _) -> tcFail "Types are presumed to be related."
+    (_, BoxType _) -> tcFail "Types are presumed to be related."
     (_, _) -> Nothing <$ giveUp
   case maybeExpansions of
     Just (expandT1, expandT2) ->
@@ -248,12 +242,10 @@ etaExpandIfApplicable parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 
           (Twice2 expandT1 expandT2)
           (Twice2 (hs2type ty1) (hs2type ty2))
         )
-        (Just parent)
         "Eta-expand."
     Nothing -> return ()
 
 checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
@@ -265,48 +257,47 @@ checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-checkTermRelMaybeEta parent deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
-  let callEtaExpandIfApplicable = etaExpandIfApplicable parent deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2
+checkTermRelMaybeEta deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
+  let callEtaExpandIfApplicable = etaExpandIfApplicable deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     (False, False) -> callEtaExpandIfApplicable
     (True , False) ->
-      tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 nonwhnt2 (hs2type ty1) (hs2type ty2) [] []
+      tryToSolveTerm (Eta True) deg          gamma  t1 t2 nonwhnt2 (hs2type ty1) (hs2type ty2) [] []
       $ const callEtaExpandIfApplicable
     (False, True ) ->
-      tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 nonwhnt1 (hs2type ty2) (hs2type ty1) [] []
+      tryToSolveTerm (Eta True) deg (flipCtx gamma) t2 t1 nonwhnt1 (hs2type ty2) (hs2type ty1) [] []
       $ const callEtaExpandIfApplicable
-    (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
+    (True , True ) -> tcBlock "Cannot solve relation: both sides are blocked on a meta-variable."
 
 ---------------------------------------------------
 
 checkTermRel :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Constraint sys ->
   Eta ->
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Twice1 (Term sys) v ->
   ClassifInfo (Twice1 (Type sys) v) ->
   tc ()
-checkTermRel parent eta ddeg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
+checkTermRel eta ddeg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
   let Twice1 ty1 ty2 = fromClassifInfo unreachable maybeTys
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   -- Top-relatedness is always ok.
-  itIsTopDeg <- isTopDeg parent (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg ddeg) dgamma
+  itIsTopDeg <- isTopDeg (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg ddeg) dgamma
     "Need to know whether required ddegree of relatedness is Top."
   case itIsTopDeg of
     -- It's certainly about top-relatedness
     Just True -> return ()
     -- We don't know
-    Nothing -> tcBlock parent $ "Need to know whether required ddegree of relatedness is Top."
+    Nothing -> tcBlock $ "Need to know whether required ddegree of relatedness is Top."
     -- It's certainly not about top-relatedness
     Just False -> do
       -- purposefully shadowing (redefining)
-      (ty1, metasTy1) <- runWriterT $ whnormalizeType parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
-      (ty2, metasTy2) <- runWriterT $ whnormalizeType parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
-      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) nonwhnt1 ty1 "Weak-head-normalizing first term."
-      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) nonwhnt2 ty2 "Weak-head-normalizing second term."
+      (ty1, metasTy1) <- runWriterT $ whnormalizeType (fstCtx gamma) ty1 "Weak-head-normalizing first type."
+      (ty2, metasTy2) <- runWriterT $ whnormalizeType (sndCtx gamma) ty2 "Weak-head-normalizing second type."
+      (t1, metasT1) <- runWriterT $ whnormalize (fstCtx gamma) nonwhnt1 ty1 "Weak-head-normalizing first term."
+      (t2, metasT2) <- runWriterT $ whnormalize (sndCtx gamma) nonwhnt2 ty2 "Weak-head-normalizing second term."
       parent <- defConstraint
             (JudTermRel
               eta
@@ -315,15 +306,14 @@ checkTermRel parent eta ddeg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
               (Twice2 t1 t2)
               (Twice2 ty1 ty2)
             )
-            (Just parent)
             "Weak-head-normalize everything"
 
-      if unEta eta
+      withParent parent $ if unEta eta
         then case (unType ty1, unType ty2) of
                (Expr2 (TermCons (ConsUniHS tycode1)), Expr2 (TermCons (ConsUniHS tycode2))) ->
-                 checkTermRelMaybeEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 tycode1 tycode2
+                 checkTermRelMaybeEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 tycode1 tycode2
                (_, _) -> case (isBlockedOrMeta (unType ty1) metasTy1, isBlockedOrMeta (unType ty2) metasTy2) of
-                 (False, False) -> checkTermRelNoEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
+                 (False, False) -> checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
                  (_    , _    ) ->
-                   tcBlock parent $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
-        else checkTermRelNoEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
+                   tcBlock $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
+        else checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
