@@ -375,7 +375,6 @@ checkMagic :: IO ()
 checkMagic = interactAfterTask $ do
   addNewConstraint
     magicModuleCorrect
-    Nothing
     "Checking the magic module."
   typeCheck
 
@@ -411,7 +410,6 @@ mainArgs args = do
     fineModule <- S.bulk magicContext rawEntries
     addNewConstraint
       (Jud AnTokenEntry magicContext fineModule U1 (ClassifWillBe U1))
-      Nothing
       "Type-checking everything."
     typeCheck
 {-

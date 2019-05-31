@@ -158,11 +158,11 @@ instance SysScoper Trivial where
              $? id
            )
 
-  newMetaModeNoCheck maybeParent gamma reason = return TrivMode
+  newMetaModeNoCheck gamma reason = return TrivMode
 
-  newMetaModtyNoCheck maybeParent gamma reason = return TrivModality
+  newMetaModtyNoCheck gamma reason = return TrivModality
 
-  newMetaClassif4sysASTNoCheck token maybeParent gamma t extraT reason = case token of
+  newMetaClassif4sysASTNoCheck token gamma t extraT reason = case token of
     AnTokenMode -> return $ U1
     AnTokenModality -> return $ TrivMode :*: TrivMode
     AnTokenDegree -> return $ TrivMode
@@ -173,11 +173,11 @@ instance SysAnalyzer Trivial where
   quickEqSysUnanalyzable sysErr = case sysErr of {}
 
 instance SysWHN Trivial where
-  whnormalizeSys parent gamma t reason = case t of {}
-  leqMod parent gamma TrivModality TrivModality TrivMode TrivMode reason = return $ Just True
-  leqDeg parent gamma TrivDegree TrivDegree TrivMode reason = return $ Just True
-  isEqDeg parent gamma TrivDegree TrivMode reason = return $ Just True
-  isTopDeg parent gamma TrivDegree TrivMode reason = return $ Just False
+  whnormalizeSys gamma t reason = case t of {}
+  leqMod gamma TrivModality TrivModality TrivMode TrivMode reason = return $ Just True
+  leqDeg gamma TrivDegree TrivDegree TrivMode reason = return $ Just True
+  isEqDeg gamma TrivDegree TrivMode reason = return $ Just True
+  isTopDeg gamma TrivDegree TrivMode reason = return $ Just False
 
 instance SysTC Trivial where
   checkSysASTUnanalyzable sysError = case sysError of {}
@@ -185,9 +185,9 @@ instance SysTC Trivial where
   newRelatedSysAST token = case token of {}
   checkUnanalyzableSysASTRel' sysError = case sysError of {}
   checkSysASTRel token = case token of {}
-  checkEtaWHNSysTy parent gamma t1 syst2 = case syst2 of {}
-  etaExpandSysType parent gamma t sysType = case sysType of {}
-  checkSysJudgement parent jud = case jud of {}
+  checkEtaWHNSysTy gamma t1 syst2 = case syst2 of {}
+  etaExpandSysType gamma t sysType = case sysType of {}
+  checkSysJudgement jud = case jud of {}
 
 ----------------------------------
 

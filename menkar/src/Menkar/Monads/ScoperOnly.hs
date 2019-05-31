@@ -47,7 +47,7 @@ instance MonadFail SimpleScoper where
   fail s = unreachable
 
 instance MonadScoper Trivial SimpleScoper where
-  newMetaID maybeParent gamma reason = do
+  newMetaID gamma reason = do
     i <- fresh
     return (i, Var2 <$> scListVariables (ctx2scCtx gamma))
   scopeFail msg = SimpleScoper $ lift $ Left msg
