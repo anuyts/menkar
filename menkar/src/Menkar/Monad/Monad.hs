@@ -94,6 +94,8 @@ class (
     Degrees sys,
     MonadWHN sys tc
   ) => MonadTC sys tc | tc -> sys where
+  withParent :: forall a . Constraint sys -> tc a -> tc a
+  useMaybeParent :: tc (Maybe (Constraint sys))
   --term4newImplicit :: Ctx ty sys v Void -> tc (Term sys v)
   --mode4newImplicit :: Ctx ty sys v Void -> tc (mode v)
   --modty4newImplicit :: Ctx ty sys v Void -> tc (modty v)

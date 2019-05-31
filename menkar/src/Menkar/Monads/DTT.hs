@@ -96,11 +96,12 @@ data TCState sys m = TCState {
   _tcState'reports :: [(TCReport sys)],
   _tcState'newTasks :: [(PriorityConstraint, TCT sys m ())],
     -- ^ always empty unless during constraint check; to be run from back to front
-  _tcState'tasks :: [(PriorityConstraint, TCT sys m ())]
+  _tcState'tasks :: [(PriorityConstraint, TCT sys m ())],
     -- ^ to be run from front to back
+  _tcState'maybeParent :: Maybe (Constraint sys)
   }
 initTCState :: TCState sys m
-initTCState = TCState 0 empty 0 empty [] [] []
+initTCState = TCState 0 empty 0 empty [] [] [] Nothing
 
 -- | delimited continuation monad class
 class Monad m => MonadDC r m | m -> r where
@@ -249,6 +250,14 @@ instance {-# OVERLAPPING #-} (SysWHN sys, Degrees sys, Monad m) => MonadWHN sys 
               e -> throwError e
   
 instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (TCT sys m) where
+
+  withParent parent action = do
+    maybeOuterParent <- tcState'maybeParent <.= Just parent
+    result <- action
+    tcState'maybeParent .= maybeOuterParent
+    return result
+
+  useMaybeParent = use tcState'maybeParent
   
   --newConstraintID = tcState'constraintCounter <<%= (+1)
   defConstraint jud maybeParent reason = do
