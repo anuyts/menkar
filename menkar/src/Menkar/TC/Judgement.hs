@@ -29,7 +29,7 @@ import Control.Monad.Writer.Lazy
 checkConstraint ::
   (SysTC sys, MonadTC sys tc) =>
   Constraint sys -> tc ()
-checkConstraint parent = case _constraint'judgement parent of
+checkConstraint parent = withParent parent $ case _constraint'judgement parent of
   
   {-
   JudCtx gamma d -> case gamma of
@@ -51,9 +51,9 @@ checkConstraint parent = case _constraint'judgement parent of
     _ -> _checkJudCtx
   -} -- contexts start empty and grow only in well-typed ways.
 
-  Jud token gamma t extraT classifT -> void $ checkAST parent gamma t extraT classifT
+  Jud token gamma t extraT classifT -> void $ checkAST gamma t extraT classifT
 
-  JudRel token eta rel gamma ts extraTs maybeCTs -> checkASTRel parent eta rel gamma ts extraTs maybeCTs
+  JudRel token eta rel gamma ts extraTs maybeCTs -> checkASTRel eta rel gamma ts extraTs maybeCTs
 
   {-
   JudType gamma (Type ty) -> do
@@ -81,17 +81,17 @@ checkConstraint parent = case _constraint'judgement parent of
 
   JudEta gamma t tyT -> case t of
     Expr2 (TermMeta MetaBlocked meta (Compose depcies) maybeAlg) -> do
-      maybeT <- awaitMeta parent "If it's solved, then I needn't bother." meta depcies
+      maybeT <- awaitMeta "If it's solved, then I needn't bother." meta depcies
       case maybeT of
-        Nothing -> void $ checkEta parent gamma t tyT
+        Nothing -> void $ checkEta gamma t tyT
         Just _ -> return () -- every known term is obviously equal to its eta-expansion.
     _ -> unreachable
 
   JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
-    checkSmartElim parent gamma eliminee tyEliminee eliminators result tyResult
+    checkSmartElim gamma eliminee tyEliminee eliminators result tyResult
 
   -- keep this until the end of time
-  JudGoal gamma goalname t tyT -> tcReport parent "This isn't my job; delegating to a human."
+  JudGoal gamma goalname t tyT -> tcReport "This isn't my job; delegating to a human."
 
   JudResolve gamma t ty -> todo
 
@@ -113,7 +113,7 @@ checkConstraint parent = case _constraint'judgement parent of
     addNewConstraint (JudModalityRel modrel gamma mu1 mu2 ddom1 dcod) (Just parent) "Relating modalities."
   -}
 
-  JudSys jud -> checkSysJudgement parent jud
+  JudSys jud -> checkSysJudgement jud
 
   {-
   JudSegment gamma seg -> checkSegment parent gamma seg
@@ -126,5 +126,5 @@ checkConstraint parent = case _constraint'judgement parent of
   -}
   --_ -> _checkConstraint
 
-  JudBlock metasWithRequestingReasons blockingReason -> tcFail parent
+  JudBlock metasWithRequestingReasons blockingReason -> tcFail
     "This is a bug: I'm being asked to check a blocking judgement, but these are only for informative purposes."
