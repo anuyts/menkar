@@ -12,7 +12,6 @@ import Control.Monad.Writer
 class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   whnormalizeSys :: forall whn v .
     (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     SysTerm sys v ->
     Type sys v ->
@@ -26,7 +25,6 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   -}
   leqMod :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     Modality sys v -> Modality sys v ->
     Mode sys v -> Mode sys v ->
@@ -38,7 +36,6 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   -}
   leqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     Degree sys v -> 
     Degree sys v -> 
@@ -48,39 +45,36 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     
   isEqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     Degree sys v -> 
     Mode sys v ->
     String ->
     whn (Maybe Bool)
-  isEqDeg parent gamma deg d reason = leqDeg parent gamma deg eqDeg d reason
+  isEqDeg gamma deg d reason = leqDeg gamma deg eqDeg d reason
 
   isTopDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     Degree sys v -> 
     Mode sys v ->
     String ->
     whn (Maybe Bool)
-  isTopDeg parent gamma deg d reason = case maybeTopDeg of
+  isTopDeg gamma deg d reason = case maybeTopDeg of
     Nothing -> return $ Just False
-    Just topDeg -> leqDeg parent gamma topDeg deg d reason
+    Just topDeg -> leqDeg gamma topDeg deg d reason
 
   -- | True if @id <= mu . nu@, where nu is the @approxLeftAdjointProj@.
   -- | Should at least imply that @nu . mu <= id@ as a judgemental inequality.
   allowsEta :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     ModedModality sys v ->
     --Mode sys v {-^ the codomain -} ->
     String ->
     whn (Maybe Bool)
-  allowsEta parent gamma dmu@(ModedModality ddom dcod' mu) {-dcod-} reason = do
+  allowsEta gamma dmu@(ModedModality ddom dcod' mu) {-dcod-} reason = do
     let dnu = modedApproxLeftAdjointProj dmu
-    leqMod parent gamma (idMod dcod') (modality'mod $ compModedModality dmu dnu) dcod' dcod' reason
+    leqMod gamma (idMod dcod') (modality'mod $ compModedModality dmu dnu) dcod' dcod' reason
 
   {- Use the inequality judgement instead!
   -- | True if @nu . mu <= id@, where nu is the @approxLeftAdjointProj@.
