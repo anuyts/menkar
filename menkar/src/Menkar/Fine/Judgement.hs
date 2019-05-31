@@ -158,8 +158,8 @@ data Judgement (sys :: KSys) where
 -}
 
   JudBlock ::
-    [(Int {- all metas blocking this thing -}, String {- Reason for blocking -})] ->
-    String {-^ Reason for requesting -} ->
+    [(Int {- all metas blocking this thing -}, String {- Reason for requesting those metas -})] ->
+    String {-^ Reason for blocking -} ->
     Judgement sys
 
 -- | @'JudType' gamma tyT@ means @gamma |- tyT type@

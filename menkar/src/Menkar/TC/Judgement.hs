@@ -126,5 +126,5 @@ checkConstraint parent = case constraint'judgement parent of
   -}
   --_ -> _checkConstraint
 
-  JudBlock metasWithBlockingReasons requestingReason -> tcFail parent
+  JudBlock metasWithRequestingReasons blockingReason -> tcFail parent
     "This is a bug: I'm being asked to check a blocking judgement, but these are only for informative purposes."

@@ -13,6 +13,7 @@ import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
 import Menkar.System
+import Menkar.Fine.Judgement
 
 import Text.PrettyPrint.Tree
 import Control.Exception.AssertFalse
@@ -188,11 +189,18 @@ instance {-# OVERLAPPING #-} (Monad m, SysScoper sys, Degrees sys) => MonadScope
   --scopeFail reason = TCT . lift . lift . throwError $ TCErrorScopeFail reason
   scopeFail reason = throwError $ TCErrorScopeFail reason
 
-catchBlocks :: (Monad m) => TCT sys m (TCResult sys) -> TCT sys m (TCResult sys)
+catchBlocks :: (Monad m, SysTC sys) => TCT sys m (TCResult sys) -> TCT sys m (TCResult sys)
 catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blocks -> do
     let blockingMetas = fst <$> blocks
     -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
+    c <- defConstraint
+      (JudBlock
+        (blocks <&> \ (meta, ForSomeDeBruijnLevel blockInfo) -> (meta, _blockInfo'reasonAwait blockInfo))
+        blockReason
+      )
+      (Just blockParent)
+      "Postponing..."
     sequenceA_ $ reverse blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
       tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
         ForSomeDeBruijnLevel $ over (metaInfo'maybeSolution . _LeftUnsafe)
