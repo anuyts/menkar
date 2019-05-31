@@ -18,10 +18,10 @@ import Control.Monad.Fail
 import Data.Kind hiding (Type, Constraint)
 
 data Constraint sys = Constraint {
-    constraint'judgement :: Judgement sys,
-    constraint'parent :: Maybe (Constraint sys),
-    constraint'reason :: String,
-    constraint'id :: Int
+    _constraint'judgement :: Judgement sys,
+    _constraint'parent :: Maybe (Constraint sys),
+    _constraint'reason :: String,
+    _constraint'id :: Int
   }
 
 data PriorityConstraint = PriorityDefault | PriorityFork | PriorityEta deriving (Eq, Ord)
@@ -29,7 +29,7 @@ getJudgementPriority :: Judgement sys -> PriorityConstraint
 getJudgementPriority (JudEta gamma t ty) = PriorityEta
 getJudgementPriority _ = PriorityDefault
 getConstraintPriority :: Constraint sys -> PriorityConstraint
-getConstraintPriority = getJudgementPriority . constraint'judgement
+getConstraintPriority = getJudgementPriority . _constraint'judgement
 
 class (
     MonadFail sc,

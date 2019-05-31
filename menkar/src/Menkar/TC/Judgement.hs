@@ -29,7 +29,7 @@ import Control.Monad.Writer.Lazy
 checkConstraint ::
   (SysTC sys, MonadTC sys tc) =>
   Constraint sys -> tc ()
-checkConstraint parent = case constraint'judgement parent of
+checkConstraint parent = case _constraint'judgement parent of
   
   {-
   JudCtx gamma d -> case gamma of

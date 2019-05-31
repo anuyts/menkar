@@ -66,7 +66,11 @@ data MetaInfo (sys :: KSys) m v = MetaInfo {
   {-| If solved, info about the solution.
       If unsolved, a list of blocked problems, from new to old, from outermost to innermost.
   -}
-  _metaInfo'maybeSolution :: Either [([Int {- all metas blocking this thing -}], BlockInfo sys m v)] (SolutionInfo sys m v)
+  _metaInfo'maybeSolution :: Either
+    [([Int] {- all metas blocking this thing -},
+      BlockInfo sys m v,
+      Constraint sys {- the @'JudBlock'@ constraint. -})]
+    (SolutionInfo sys m v)
   }
 isDormant :: MetaInfo sys m v -> Bool
 isDormant metaInfo = case _metaInfo'maybeSolution metaInfo of
@@ -200,11 +204,11 @@ catchBlocks action = resetDC $ action `catchError` \case
         blockReason
       )
       (Just blockParent)
-      "Postponing..."
+      "Can't do this now."
     sequenceA_ $ reverse blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
       tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
         ForSomeDeBruijnLevel $ over (metaInfo'maybeSolution . _LeftUnsafe)
-          ((blockingMetas, unsafeCoerce blockInfo) :) metaInfo
+          ((blockingMetas, unsafeCoerce blockInfo, c) :) metaInfo
       {-
       maybeMetaInfo <- use $ tcState'metaMap . at meta
       case maybeMetaInfo of
@@ -274,7 +278,8 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
           Nothing -> return ()
           Just solution -> do
             -- Unblock blocked constraints
-            sequenceA_ $ blocks <&> \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k) -> do
+            sequenceA_ $ blocks <&>
+              \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) -> do
               {- @meta@ is currently being solved.
                  @block@ represents a problem blocked by this meta.
                  @k@ expresses how to unblock the problem if THIS meta is solved.

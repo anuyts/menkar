@@ -61,26 +61,32 @@ class WithMainState where
 printConstraint :: IORef MainState -> Constraint Trivial -> IO ()
 printConstraint ref c = do
   mainState <- readIORef ref
-  putStrLn $ "Constraint " ++ show (constraint'id c) ++ ":"
-  putStr $ jud2string (constraint'judgement c) $ _main'fine2prettyOptions mainState
+  putStrLn $ "Constraint " ++ show (_constraint'id c) ++ ":"
+  putStr $ jud2string (_constraint'judgement c) $ _main'fine2prettyOptions mainState
 
 printTrace :: IORef MainState -> Constraint Trivial -> IO ()
 printTrace ref c = do
-  case constraint'parent c of
+  case _constraint'parent c of
     Nothing -> return ()
     Just parent -> do
       printTrace ref parent
       putStrLn ""
-  putStrLn $ constraint'reason c
+  putStrLn $ _constraint'reason c
   putStrLn ""
   printConstraint ref c
 
-printBlockInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> ([Int], BlockInfo Trivial m v) -> IO ()
-printBlockInfo ref s (blockingMetas, blockInfo) = do
+printBlockInfo :: DeBruijnLevel v =>
+  IORef MainState ->
+  TCState Trivial m ->
+  ([Int], BlockInfo Trivial m v, Constraint Trivial) ->
+  IO ()
+printBlockInfo ref s (blockingMetas, blockInfo, constraintJudBlock) = do
   putStrLn $ ""
-  putStrLn $ "Reason for blocking: " ++ _blockInfo'reasonBlock blockInfo
+  printConstraint ref $ constraintJudBlock
+  {-putStrLn $ "Reason for blocking: " ++ _blockInfo'reasonBlock blockInfo
   putStrLn $ "Reason for requesting: " ++ _blockInfo'reasonAwait blockInfo -- not super-useful.
   putStrLn $ "Blocked on:" ++ (fold $ (" ?" ++) . show <$> blockingMetas)
+  putStrLn $ "See constraint: " ++ show (_constraint'id constraintJudBlock)-}
   printConstraint ref $ _blockInfo'parent blockInfo
 
 printMetaInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m v -> IO ()
