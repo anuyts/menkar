@@ -14,11 +14,14 @@ import Data.Monoid
 import Data.Functor.Const
 import Control.Lens
 import GHC.Generics
+import Control.Monad.Trans.Writer.Lazy
 
+{-
 instance Monoid a => Monad (Const a) where
   return = pure
   Const a >>= f = let Const b = f unreachable
                   in  Const $ a <> b
+-}
 
 quickEq :: forall sys t v .
   (SysAnalyzer sys, Analyzable sys t, DeBruijnLevel v) =>
@@ -28,15 +31,15 @@ quickEq :: forall sys t v .
   ClassifExtraInput t v ->
   Bool
 quickEq t t' extraT extraT' =
-  let result = fmap getConst $ analyze @sys @t @_ @_ @v TokenRel unreachable
+  let result = fmap execWriter $ analyze @sys @t @_ @_ @v TokenRel unreachable
         (Classification t extraT ClassifUnknown)
         $ \ wkn _ extract extCtx extractRel addressInfo ->
           case (extract unreachable (Classification t  extraT  ClassifUnknown),
                 extract unreachable (Classification t' extraT' ClassifUnknown)) of
             (Nothing, _) -> unreachable
-            (Just _, Nothing) -> Const $ All False
+            (Just _, Nothing) -> writer (AnalysisRel, All False)
             (Just (Classification s  extraS  _),
-             Just (Classification s' extraS' _)) -> Const $ All $ quickEq @sys s s' extraS extraS'
+             Just (Classification s' extraS' _)) -> writer (AnalysisRel, All $ quickEq @sys s s' extraS extraS')
   in case result of
        Right (All b) -> b
        Left anErr -> case (anErr, analyzableToken @sys @t, t) of
