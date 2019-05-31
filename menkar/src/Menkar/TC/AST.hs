@@ -79,18 +79,17 @@ quickInfer parent gamma t extraT address = do
 
 checkSpecialAST :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
-  Constraint sys ->
   Ctx Type sys v Void ->
   AnalyzerError sys ->
   t v ->
   ClassifExtraInput t v ->
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
-checkSpecialAST parent gamma anErr t extraT maybeCT = do
+checkSpecialAST gamma anErr t extraT maybeCT = do
   let ty = fromClassifInfo unreachable maybeCT
   case (anErr, analyzableToken @sys @t, t) of
     (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> do
-      maybeT <- awaitMeta parent "I want to know what I'm supposed to type-check." meta depcies
+      maybeT <- awaitMeta "I want to know what I'm supposed to type-check." meta depcies
       t' <- case maybeT of
         Nothing -> do
           -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
@@ -98,10 +97,9 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
           case neutrality of
             MetaBlocked -> addNewConstraint
               (JudEta gamma (Expr2 t) ty)
-              (Just parent)
               "Eta-expand meta if possible."
             MetaNeutral -> return ()
-          tcBlock parent "I want to know what I'm supposed to type-check."
+          tcBlock "I want to know what I'm supposed to type-check."
           {-
           -- The meta may now have a solution.
           maybeT' <- awaitMeta parent
@@ -113,9 +111,8 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
         Just t' -> return t'
       childConstraint <- defConstraint
         (Jud analyzableToken gamma t' extraT maybeCT)
-        (Just parent)
         "Look up meta."
-      checkAST childConstraint gamma t' U1 (classifMust2will maybeCT)
+      withParent childConstraint $ checkAST gamma t' U1 (classifMust2will maybeCT)
     (AnErrorTermMeta, _, _) -> unreachable
     (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
     (AnErrorTermWildcard, _, _) -> unreachable
@@ -132,7 +129,6 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
           (Twice1 U1 U1)
           ClassifUnknown
         )
-        (Just parent)
         "Checking that definition is accessible."
       return $ _val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedValRHS
     (AnErrorTermQName, _, _) -> unreachable
@@ -142,37 +138,33 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
       --tyResult <- newMetaType (Just parent) gamma "Infer type of result."
       addNewConstraint
         (Jud AnTokenTerm gamma tResult U1 (ClassifWillBe ty))
-        (Just parent)
         "Type-check the result."
       case alg of
         AlgSmartElim eliminee (Compose eliminators) -> do
           let dgamma = unVarFromCtx <$> ctx'mode gamma
           let dmuElim = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
-          tyEliminee <- newMetaType (Just parent) {-(eqDeg :: Degree sys _)-}
+          tyEliminee <- newMetaType {-(eqDeg :: Degree sys _)-}
                         (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
           -----
           addNewConstraint
             (JudTerm (VarFromCtx <$> dmuElim :\\ gamma) eliminee tyEliminee)
-            (Just parent)
             "Type-check the eliminee."
           -----
           -----
           addNewConstraint
             (JudSmartElim gamma {-dmuElim-} eliminee tyEliminee eliminators tResult ty)
-            (Just parent)
             "Smart elimination should reduce to its result."
         AlgGoal goalname depcies -> do
           goalConstraint <- defConstraint
             (JudGoal gamma goalname tResult ty)
-            (Just parent)
             "Goal should take some value."
-          tcReport goalConstraint "This isn't my job; delegating to a human."
+          withParent goalConstraint $ tcReport "This isn't my job; delegating to a human."
           -----
       return ty
     (AnErrorTermAlgorithm, _, _) -> unreachable
     --(AnErrorTermSys sysError, AnTokenTermNV, TermSys syst) -> inferTermSys sysError parent gamma syst
     --(AnErrorTermSys sysError, _, _) -> unreachable
-    (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail parent $ "Erroneous term."
+    (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail $ "Erroneous term."
     (AnErrorTermProblem, _, _) -> unreachable
     (AnErrorVar, AnTokenTerm, Var2 v) -> do
       let ldivSeg = unVarFromCtx <$> lookupVar gamma v
@@ -186,36 +178,33 @@ checkSpecialAST parent gamma anErr t extraT maybeCT = do
           (Twice1 U1 U1)
           ClassifUnknown
         )
-        (Just parent)
         "Checking that variable is accessible."
       return $ _decl'content . _leftDivided'content $ ldivSeg
     (AnErrorVar, _, _) -> unreachable
-    (AnErrorSys sysError, _, _) -> checkSysASTUnanalyzable sysError parent gamma anErr t extraT maybeCT
+    (AnErrorSys sysError, _, _) -> checkSysASTUnanalyzable sysError gamma anErr t extraT maybeCT
     -- _ -> _ 
 
 {-| Equality of expected and actual classifier is checked on the outside IF requested. -}
 checkAST :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
-  Constraint sys ->
   Ctx Type sys v Void ->
   t v ->
   ClassifExtraInput t v ->
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
-checkAST parent gamma t extraT maybeCT = do
+checkAST gamma t extraT maybeCT = do
   maybeCTInferred <- sequenceA $ typetrick gamma (Classification t extraT maybeCT) $
     \ wkn gammadelta (Classification (s :: s w) extraS maybeCS) addressInfo ->
       haveClassif @sys @s $
       case _addressInfo'boredom addressInfo of
         -- entirely boring: pass on and return inferred and certified type. 
-        EntirelyBoring -> checkAST parent gammadelta s extraS maybeCS
+        EntirelyBoring -> checkAST gammadelta s extraS maybeCS
         -- worth mentioning: pass on and return inferred and certified type.
         WorthMentioning -> do
           virtualConstraint <- defConstraint
             (Jud analyzableToken gammadelta s extraS maybeCS)
-            (Just parent)
             ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
-          checkAST virtualConstraint gammadelta s extraS maybeCS
+          withParent virtualConstraint $ checkAST gammadelta s extraS maybeCS
         -- worth scheduling: schedule.
         WorthScheduling -> do
           (cs, maybeCS) <- case maybeCS of
@@ -225,17 +214,16 @@ checkAST parent gamma t extraT maybeCT = do
             ClassifMustBe cs -> return $ (cs, ClassifMustBe cs)
             -- if no type is given, write a meta in judgement (thus certifying it) and pass it back.
             ClassifUnknown -> do
-              cs <- newMetaClassif4ast (Just parent) gammadelta s extraS $
+              cs <- newMetaClassif4ast gammadelta s extraS $
                 "Inferring classifier " ++ (join $ (" > " ++) <$> _addressInfo'address addressInfo)
               return $ (cs, ClassifMustBe cs)
           addNewConstraint
             (Jud analyzableToken gammadelta s extraS maybeCS)
-            (Just parent)
             ("Typecheck: " ++ (join $ _addressInfo'address addressInfo))
           return cs
   ctInferred <- case maybeCTInferred of
     Right ctInferred -> return ctInferred
-    Left anErr -> checkSpecialAST parent gamma anErr t extraT maybeCT
+    Left anErr -> checkSpecialAST gamma anErr t extraT maybeCT
   case maybeCT of
         ClassifMustBe ct -> addNewConstraint
           (JudRel analyzableToken (Eta True)
@@ -244,7 +232,6 @@ checkAST parent gamma t extraT maybeCT = do
             (Twice1 ctInferred ct)
             (Twice1 (extraClassif @sys t extraT) (extraClassif @sys t extraT))
             ClassifUnknown)
-          (Just parent)
           ("Checking whether actual classifier equals expected classifier.")
         _ -> return ()
   return ctInferred
