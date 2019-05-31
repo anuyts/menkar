@@ -38,7 +38,7 @@ class (
     (sys :: KSys)
     (sc :: * -> *)
     | sc -> sys where
-  newMetaID :: (DeBruijnLevel v) => Maybe (Constraint sys) -> Ctx Type sys v Void -> String -> sc (Int, [Term sys v])
+  newMetaID :: (DeBruijnLevel v) => Ctx Type sys v Void -> String -> sc (Int, [Term sys v])
   scopeFail :: String -> sc a
 
   {-| After scoping, before type-checking, metas are put to sleep.
@@ -48,29 +48,27 @@ class (
       later on.
   -}
 newMetaTermNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
-    Maybe (Constraint sys)
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
-    -> Ctx Type sys v Void
-    -> MetaNeutrality
-    -> Maybe (Algorithm sys v)
-    -> String
-    -> sc (Term sys v)
-newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
-  (meta, depcies) <- newMetaID maybeParent gamma reason
+    Ctx Type sys v Void ->
+    MetaNeutrality ->
+    Maybe (Algorithm sys v) ->
+    String ->
+    sc (Term sys v)
+newMetaTermNoCheck gamma neutrality maybeAlg reason = do
+  (meta, depcies) <- newMetaID gamma reason
   return $ Expr2 $ TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)
   
 newMetaTypeNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
-    Maybe (Constraint sys)
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
-    -> Ctx Type sys v Void
-    -> String
-    -> sc (Type sys v)
-newMetaTypeNoCheck maybeParent gamma reason =
-  Type <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+    Ctx Type sys v Void ->
+    String ->
+    sc (Type sys v)
+newMetaTypeNoCheck gamma reason =
+  Type <$> newMetaTermNoCheck gamma MetaBlocked Nothing reason
 
 instance (MonadScoper sys sc, MonadTrans mT, MonadFail (mT sc)) => MonadScoper sys (mT sc) where
-  newMetaID maybeParent gamma reason =
-    lift $ newMetaID maybeParent gamma reason
+  newMetaID gamma reason =
+    lift $ newMetaID gamma reason
   scopeFail msg = lift $ scopeFail msg
 
 class (
@@ -85,10 +83,10 @@ class (
          are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
          run with the soluiton.
       It is an error to await the same meta twice. -}
-  awaitMeta :: Constraint sys -> String -> Int -> [Term sys v] -> whn (Maybe (Term sys v))
+  awaitMeta :: String -> Int -> [Term sys v] -> whn (Maybe (Term sys v))
 
 instance (MonadWHN sys whn, MonadTrans mT, MonadFail (mT whn)) => MonadWHN sys (mT whn) where
-  awaitMeta parent reason meta depcies = lift $ awaitMeta parent reason meta depcies
+  awaitMeta reason meta depcies = lift $ awaitMeta reason meta depcies
 
 class (
     Degrees sys,
@@ -104,22 +102,19 @@ class (
   {-| Create and register a new constraint. -}
   defConstraint ::
     Judgement sys ->
-    Maybe (Constraint sys) ->
     String ->
     tc (Constraint sys)
   {-| Add a check for this constraint to the task stack. -}
   addConstraint :: Constraint sys -> tc ()
   addNewConstraint ::
     Judgement sys ->
-    Maybe (Constraint sys) ->
     String ->
-    tc()
+    tc ()
   {-| For instances. Will only be considered if all nice constraints have been considered. -}
   addConstraintReluctantly :: Constraint sys -> tc ()
   {-| Provide a solution for the meta. All continuations thus unblocked are added to the task stack.
       Return @'Nothing'@ if you don't want to solve the meta. -}
   solveMeta ::
-    Constraint sys ->
     Int ->
     (forall v .
       (Eq v, DeBruijnLevel v) =>
@@ -134,19 +129,19 @@ class (
   {-| Aborts (rather than cancels) computation.
       For every call to @'awaitMeta'@ that didn't yield a result, the continuation as of that point
       is saved. The first time one of the corresponding metas is resolved, the continuation from that point will be run. -}
-  tcBlock :: Constraint sys -> String -> tc a
-  tcReport :: Constraint sys -> String -> tc ()
-  tcFail :: Constraint sys -> String -> tc a
+  tcBlock :: String -> tc a
+  tcReport :: String -> tc ()
+  tcFail :: String -> tc a
   --leqMod :: Modality sys v -> Modality sys v -> tc Bool
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
   --selfcontained :: Constraint sys -> tc () -> tc ()
 
 await :: (MonadWHN sys whn) =>
-  Constraint sys -> String -> Term sys v -> whn (Maybe (Term sys v))
-await parent reason (Expr2 (TermMeta flagEta meta (Compose depcies) alg)) = runMaybeT $ do
-  term <- MaybeT $ awaitMeta parent reason meta depcies
-  MaybeT $ await parent reason term
-await parent reason t = return $ Just t
+  String -> Term sys v -> whn (Maybe (Term sys v))
+await reason (Expr2 (TermMeta flagEta meta (Compose depcies) alg)) = runMaybeT $ do
+  term <- MaybeT $ awaitMeta reason meta depcies
+  MaybeT $ await reason term
+await reason t = return $ Just t
 
 {-
 addNewConstraint :: MonadTC sys tc =>
@@ -161,17 +156,15 @@ addNewConstraint judgement parent reason = addConstraint =<< defConstraint judge
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
-  Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   Type sys v ->
   MetaNeutrality ->
   String ->
   tc (Term sys v)
-newMetaTerm maybeParent gamma ty neutrality reason = do
-  t <- newMetaTermNoCheck maybeParent gamma neutrality Nothing reason
+newMetaTerm gamma ty neutrality reason = do
+  t <- newMetaTermNoCheck gamma neutrality Nothing reason
   addNewConstraint
     (JudTerm gamma t ty)
-    maybeParent
     reason
   {- --The term judgement will trigger eta-expansion.
   addNewConstraint
@@ -185,15 +178,13 @@ newMetaTerm maybeParent gamma ty neutrality reason = do
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaType :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
-  Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   String ->
   tc (Type sys v)
-newMetaType maybeParent gamma reason = do
-  t <- Type <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+newMetaType gamma reason = do
+  t <- Type <$> newMetaTermNoCheck gamma MetaBlocked Nothing reason
   addNewConstraint
     (JudType gamma t)
-    maybeParent
     reason
   return t
 
@@ -201,17 +192,15 @@ newMetaType maybeParent gamma reason = do
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
-  Maybe (Constraint sys) ->
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Type sys v ->
   String ->
   tc (Type sys v)
-newMetaTypeRel maybeParent ddeg gamma ty2 reason = do
-  ty1 <- Type <$> newMetaTermNoCheck maybeParent (fstCtx gamma) MetaBlocked Nothing reason
+newMetaTypeRel ddeg gamma ty2 reason = do
+  ty1 <- Type <$> newMetaTermNoCheck (fstCtx gamma) MetaBlocked Nothing reason
   addNewConstraint
     (JudTypeRel ddeg gamma (Twice2 ty1 ty2))
-    maybeParent
     reason
   return ty1
 
