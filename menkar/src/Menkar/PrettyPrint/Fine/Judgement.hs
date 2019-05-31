@@ -246,6 +246,9 @@ jud2pretty (JudGoal gamma goalName t ty) opts =
     " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
 jud2pretty (JudResolve gamma t ty) opts = todo
 jud2pretty (JudSys jud) opts = sysJud2pretty jud opts
+jud2pretty (JudBlock metasWithBlockingReasons requestingReason) opts =
+  ribbon ("Blocked: " ++ requestingReason) \\\
+    (metasWithBlockingReasons <&> \ (meta, blockingReason) -> ribbon ("?" ++ show meta ++ "  :  " ++ blockingReason))
 
 
 {-
