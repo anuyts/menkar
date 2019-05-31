@@ -308,7 +308,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
                   tcState'metaMap . at blockingMeta . _JustUnsafe
               if allAreUnsolved
               -- If so, then unblock with the solution just provided
-              then addTask PriorityDefault $ catchBlocks $ k $ Just $ solution
+              then addTask PriorityDefault $ withParent constraintJudBlock $ catchBlocks $ k $ Just $ solution
               -- Else forget about this blocked constraint, it has been unblocked already.
               else return ()
             -- Save the solution
