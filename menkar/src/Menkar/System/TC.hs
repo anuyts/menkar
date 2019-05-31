@@ -15,7 +15,6 @@ class SysWHN sys => SysTC sys where
   checkSysASTUnanalyzable :: forall tc v t .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
     SysAnalyzerError sys ->
-    Constraint sys ->
     Ctx Type sys v Void ->
     AnalyzerError sys ->
     t v ->
@@ -25,7 +24,6 @@ class SysWHN sys => SysTC sys where
   newRelatedSysASTUnanalyzable' :: forall tc t v vOrig .
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     SysAnalyzerError sys ->
-    Constraint sys ->
     Relation t v ->
     Ctx Type sys vOrig Void ->
     Ctx (Twice2 Type) sys v Void ->
@@ -40,7 +38,6 @@ class SysWHN sys => SysTC sys where
   newRelatedSysAST :: forall tc t v vOrig .
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     SysAnalyzableToken sys t ->
-    Constraint sys ->
     Eta ->
     Relation t v ->
     Ctx Type sys vOrig Void ->
@@ -56,7 +53,6 @@ class SysWHN sys => SysTC sys where
   checkUnanalyzableSysASTRel' :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzerError sys ->
-    Constraint sys ->
     Eta ->
     Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
@@ -67,7 +63,6 @@ class SysWHN sys => SysTC sys where
   checkSysASTRel :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzableToken sys t ->
-    Constraint sys ->
     Eta ->
     Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
@@ -80,7 +75,6 @@ class SysWHN sys => SysTC sys where
   -- | ABOLISH THIS: eta isn't supported for non-universe types.
   checkEtaWHNSysTy :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     Term sys v ->
     SysTerm sys v {-^ The type -} ->
@@ -88,7 +82,6 @@ class SysWHN sys => SysTC sys where
 
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
-    Constraint sys ->
     Ctx Type sys v Void ->
     Term sys v ->
     SysUniHSConstructor sys v ->
@@ -96,7 +89,6 @@ class SysWHN sys => SysTC sys where
     
   checkSysJudgement :: forall tc .
     (MonadTC sys tc) =>
-    Constraint sys ->
     SysJudgement sys ->
     tc ()
 
@@ -108,21 +100,19 @@ newMetaClassif4ast :: forall sys tc t v .
    SysAnalyzer sys,
    Analyzable sys t) =>
   --AnalyzableToken sys t ->
-  Maybe (Constraint sys) ->
   Ctx Type sys v Void ->
   t v ->
   ClassifExtraInput t v ->
   String ->
   tc (Classif t v)
-newMetaClassif4ast maybeParent gamma t extraT reason =
+newMetaClassif4ast gamma t extraT reason =
   haveClassif @sys @t $
   haveClassif @sys @(Classif t) $
   do
-    ct <- newMetaClassif4astNoCheck maybeParent gamma t extraT reason
-    cct <- newMetaClassif4astNoCheck maybeParent gamma ct (extraClassif @sys @t t extraT) reason
+    ct <- newMetaClassif4astNoCheck gamma t extraT reason
+    cct <- newMetaClassif4astNoCheck gamma ct (extraClassif @sys @t t extraT) reason
       -- It is assumed that a classifier's classifier needs no metas.
     addNewConstraint
       (Jud (analyzableToken @sys @(Classif t)) gamma ct (extraClassif @sys @t t extraT) (ClassifWillBe cct))
-      maybeParent
       reason
     return ct
