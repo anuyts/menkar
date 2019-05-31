@@ -25,6 +25,7 @@ import Data.Proxy
 import Data.Maybe
 import Control.Monad.Trans.Maybe
 import GHC.Generics
+import Control.Applicative
 
 ---------------------------------------------------
 
@@ -185,16 +186,17 @@ solveMetaImmediately :: (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBru
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   Term sys v ->
+  Term sys v ->
   Type sys v ->
   Type sys v ->
   [Int] ->
   [Int] ->
   tc (Term sys vOrig)
-solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2 = do
+solveMetaImmediately parent gammaOrig gamma subst partialInv t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2 = do
   -- Try to write t2 in gammaOrig
   let dgamma' = ctx'mode gamma
       dgamma = unVarFromCtx <$> dgamma'
-  let maybeT2orig = sequenceA $ partialInv <$> t2
+  let maybeT2orig = (sequenceA $ partialInv <$> nonwhnt2) <|> (sequenceA $ partialInv <$> t2)
   case maybeT2orig of
     -- If it works, return that.
     Just t2orig -> return $ t2orig
@@ -342,13 +344,15 @@ tryToSolveMeta :: forall sys tc v .
   Ctx (Twice2 Type) sys v Void ->
   MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
   Term sys v ->
+  Term sys v ->
   Type sys v ->
   Type sys v ->
   [Int] ->
   [Int] ->
   (String -> tc ()) {-^ Either block or resort to eta-equality. -} ->
   tc ()
-tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 metasTy1 metasTy2 alternative = do
+tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2
+  alternative = do
   let getVar2 :: Term sys v -> Maybe v
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
@@ -374,7 +378,7 @@ tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 
             solution <- case itIsEqDeg of
               -- We're certainly checking equality: solve the meta immediately.
               Just True ->
-                Just <$> solveMetaImmediately parent gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
+                Just <$> solveMetaImmediately parent gammaOrig gamma subst partialInv t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2
               -- We may not be checking equality.
               _ -> -- Check if eta is allowed.
                    if unEta eta
@@ -414,13 +418,14 @@ tryToSolveTerm :: forall sys tc v .
   Ctx (Twice2 Type) sys v Void ->
   Term sys v {-^ Blocked. -} ->
   Term sys v ->
+  Term sys v ->
   Type sys v ->
   Type sys v ->
   [Int] ->
   [Int] ->
   (String -> tc ()) ->
   tc ()
-tryToSolveTerm parent eta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 alternative = case t1 of
+tryToSolveTerm parent eta deg gamma t1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2 alternative = case t1 of
   (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) (Compose maybeAlg1))) ->
-    tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 metasTy1 metasTy2 alternative
+    tryToSolveMeta parent eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2 alternative
   _ -> alternative "Cannot solve relation: one side is blocked on a meta-variable."

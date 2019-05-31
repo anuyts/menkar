@@ -144,6 +144,8 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
+  Term sys v ->
+  Term sys v ->
   [Int] ->
   [Int] ->
   Type sys v ->
@@ -151,13 +153,15 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   [Int] ->
   tc ()
-checkTermRelNoEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
+checkTermRelNoEta parent deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     -- Both are whnormal
     (False, False) -> checkTermRelWHNTermsNoEta parent deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2
     -- Only one is whnormal: whsolve or block
-    (True , False) -> tryToSolveTerm parent (Eta False) deg          gamma  t1 t2 ty1 ty2 metasTy1 metasTy2 $ tcBlock parent
-    (False, True ) -> tryToSolveTerm parent (Eta False) deg (flipCtx gamma) t2 t1 ty2 ty1 metasTy2 metasTy1 $ tcBlock parent
+    (True , False) -> tryToSolveTerm parent (Eta False) deg          gamma  t1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2
+      $ tcBlock parent
+    (False, True ) -> tryToSolveTerm parent (Eta False) deg (flipCtx gamma) t2 t1 nonwhnt1 ty2 ty1 metasTy2 metasTy1
+      $ tcBlock parent
     -- Neither is whnormal: block
     (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
@@ -172,15 +176,17 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
+  Term sys v ->
+  Term sys v ->
   [Int] ->
   [Int] ->
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-etaExpandIfApplicable parent ddeg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
+etaExpandIfApplicable parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  let giveUp = checkTermRelNoEta parent ddeg gamma t1 t2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
+  let giveUp = checkTermRelNoEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
   maybeExpansions <- case (ty1, ty2) of
     -- Pi-types: eta-expand
     (Pi piBinding1, Pi piBinding2) -> do
@@ -252,20 +258,22 @@ checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
   Term sys v ->
+  Term sys v ->
+  Term sys v ->
   [Int] ->
   [Int] ->
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-checkTermRelMaybeEta parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
-  let callEtaExpandIfApplicable = etaExpandIfApplicable parent deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+checkTermRelMaybeEta parent deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
+  let callEtaExpandIfApplicable = etaExpandIfApplicable parent deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     (False, False) -> callEtaExpandIfApplicable
     (True , False) ->
-      tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 (hs2type ty1) (hs2type ty2) [] []
+      tryToSolveTerm parent (Eta True) deg          gamma  t1 t2 nonwhnt2 (hs2type ty1) (hs2type ty2) [] []
       $ const callEtaExpandIfApplicable
     (False, True ) ->
-      tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 (hs2type ty2) (hs2type ty1) [] []
+      tryToSolveTerm parent (Eta True) deg (flipCtx gamma) t2 t1 nonwhnt1 (hs2type ty2) (hs2type ty1) [] []
       $ const callEtaExpandIfApplicable
     (True , True ) -> tcBlock parent "Cannot solve relation: both sides are blocked on a meta-variable."
 
@@ -280,7 +288,7 @@ checkTermRel :: forall sys tc v .
   Twice1 (Term sys) v ->
   ClassifInfo (Twice1 (Type sys) v) ->
   tc ()
-checkTermRel parent eta ddeg gamma (Twice1 t1 t2) maybeTys = do
+checkTermRel parent eta ddeg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
   let Twice1 ty1 ty2 = fromClassifInfo unreachable maybeTys
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
@@ -297,8 +305,8 @@ checkTermRel parent eta ddeg gamma (Twice1 t1 t2) maybeTys = do
       -- purposefully shadowing (redefining)
       (ty1, metasTy1) <- runWriterT $ whnormalizeType parent (fstCtx gamma) ty1 "Weak-head-normalizing first type."
       (ty2, metasTy2) <- runWriterT $ whnormalizeType parent (sndCtx gamma) ty2 "Weak-head-normalizing second type."
-      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) t1 ty1 "Weak-head-normalizing first term."
-      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) t2 ty2 "Weak-head-normalizing second term."
+      (t1, metasT1) <- runWriterT $ whnormalize parent (fstCtx gamma) nonwhnt1 ty1 "Weak-head-normalizing first term."
+      (t2, metasT2) <- runWriterT $ whnormalize parent (sndCtx gamma) nonwhnt2 ty2 "Weak-head-normalizing second term."
       parent <- defConstraint
             (JudTermRel
               eta
@@ -313,9 +321,9 @@ checkTermRel parent eta ddeg gamma (Twice1 t1 t2) maybeTys = do
       if unEta eta
         then case (unType ty1, unType ty2) of
                (Expr2 (TermCons (ConsUniHS tycode1)), Expr2 (TermCons (ConsUniHS tycode2))) ->
-                 checkTermRelMaybeEta parent ddeg gamma t1 t2 metasT1 metasT2 tycode1 tycode2
+                 checkTermRelMaybeEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 tycode1 tycode2
                (_, _) -> case (isBlockedOrMeta (unType ty1) metasTy1, isBlockedOrMeta (unType ty2) metasTy2) of
-                 (False, False) -> checkTermRelNoEta parent ddeg gamma t1 t2 metasT1 metasT2 ty1 ty2 [] []
+                 (False, False) -> checkTermRelNoEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
                  (_    , _    ) ->
                    tcBlock parent $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
-        else checkTermRelNoEta parent ddeg gamma t1 t2 metasT1 metasT2 ty1 ty2 [] []
+        else checkTermRelNoEta parent ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
