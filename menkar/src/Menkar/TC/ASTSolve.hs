@@ -311,8 +311,8 @@ checkEta ::
   tc Bool
 checkEta parent gamma t ty = do
   (whnTy, metas) <- runWriterT $ whnormalizeType parent gamma ty "Normalizing type."
-  case metas of
-    [] -> do
+  case isBlockedOrMeta (unType whnTy) metas of
+    False -> do
       parent' <- defConstraint
                    (JudEta gamma t whnTy)
                    (Just parent)
@@ -323,15 +323,14 @@ checkEta parent gamma t ty = do
           TermCons (ConsUniHS whnTyCons) -> checkEtaForNormalType parent' gamma t whnTyCons
           TermCons _ -> tcFail parent' $ "Type is not a type."
           TermElim _ _ _ _ -> return False
-          TermMeta MetaBlocked _ _ _ -> unreachable
-          TermMeta MetaNeutral _ _ _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
+          TermMeta _ _ _ _ -> unreachable
           TermWildcard -> unreachable
           TermQName _ _ -> unreachable
           TermAlreadyChecked _ _ -> unreachable
           TermAlgorithm _ _ -> unreachable
           TermSys whnSysTy -> checkEtaWHNSysTy parent' gamma t whnSysTy
           TermProblem _ -> tcFail parent' $ "Nonsensical type."
-    _ -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
+    True -> tcBlock parent "Need to weak-head-normalize type before I can eta-expand."
 
 --------------------------------------------------------
 -- MAYBE ETA IF SPECIFIED --
