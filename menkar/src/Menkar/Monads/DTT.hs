@@ -175,10 +175,10 @@ typeCheck = do
       task
       typeCheck
 
-instance {-# OVERLAPPING #-} (Monad m, SysScoper sys, Degrees sys) => MonadScoper sys (TCT sys m) where
+instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sys (TCT sys m) where
 
   newMetaID gamma reason = do
-    maybeParent = useMaybeParent
+    maybeParent <- useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = Var2 <$> listAll Proxy
@@ -200,12 +200,11 @@ catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blocks -> do
     let blockingMetas = fst <$> blocks
     -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
-    c <- defConstraint
+    c <- withParent blockParent $ defConstraint
       (JudBlock
         (blocks <&> \ (meta, ForSomeDeBruijnLevel blockInfo) -> (meta, _blockInfo'reasonAwait blockInfo))
         blockReason
       )
-      (Just blockParent)
       "Can't do this now."
     sequenceA_ $ reverse blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
       tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
@@ -224,7 +223,7 @@ checkConstraintTC c = catchBlocks $ do
   checkConstraint c
   commitTasks
 
-instance {-# OVERLAPPING #-} (SysWHN sys, Degrees sys, Monad m) => MonadWHN sys (TCT sys m) where
+instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (TCT sys m) where
 
   awaitMeta reasonAwait meta depcies = do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
@@ -249,39 +248,47 @@ instance {-# OVERLAPPING #-} (SysWHN sys, Degrees sys, Monad m) => MonadWHN sys 
                 --tcState'metaMap . at meta .=
                 --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
               e -> throwError e
-  
-instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (TCT sys m) where
 
-  withParent parent action = do
-    maybeOuterParent <- tcState'maybeParent <.= Just parent
+withMaybeParent :: (Monad m) => Maybe (Constraint sys) -> TCT sys m a -> TCT sys m a
+withMaybeParent maybeParent action = do
+    maybeOuterParent <- tcState'maybeParent <.= maybeParent
     result <- action
     tcState'maybeParent .= maybeOuterParent
     return result
+  
+instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (TCT sys m) where
+
+  withParent parent action = withMaybeParent (Just parent) action
 
   useMaybeParent = use tcState'maybeParent
   
   --newConstraintID = tcState'constraintCounter <<%= (+1)
-  defConstraint jud maybeParent reason = do
+  defConstraint jud reason = do
+    maybeParent <- useMaybeParent
     i <- tcState'constraintCounter <<%= (+1)
     let constraint = Constraint jud maybeParent reason i
     tcState'constraintMap %= insert i constraint
-    when (i > 100000) $ tcFail constraint "I may be stuck in a loop."
+    when (i > 100000) $ withParent constraint $ tcFail "I may be stuck in a loop."
     return constraint
 
   -- Constraints are saved upon creation, not now.
   -- In fact, addConstraint is not even called on all created constraints.
   addConstraint constraint = addTask (getConstraintPriority constraint) $ checkConstraintTC constraint
 
-  addNewConstraint jud maybeParent reason = addTask (getJudgementPriority jud) $ do
-    constraint <- defConstraint jud maybeParent reason
-    checkConstraintTC constraint
+  addNewConstraint jud reason = do
+    maybeParent <- useMaybeParent
+    addTask (getJudgementPriority jud) $ do
+      constraint <- withMaybeParent maybeParent $ defConstraint jud reason
+      checkConstraintTC constraint
 
   addConstraintReluctantly constraint = todo
 
-  solveMeta parent meta getSolution = do
+  solveMeta meta getSolution = do
     ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
+    parent <- fromMaybe unreachable <$> useMaybeParent
     case _metaInfo'maybeSolution metaInfo of
-      Right _ -> throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
+      Right _ -> do
+        throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
       Left blocks -> do
         maybeSolution <- getSolution $ _metaInfo'context metaInfo
         case maybeSolution of
@@ -333,11 +340,17 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
               Just (ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Right $ SolutionInfo parent solution))
 -}
   
-  tcBlock parent reason = throwError $ TCErrorBlocked parent reason []
+  tcBlock reason = do
+    parent <- fromMaybe unreachable <$> useMaybeParent
+    throwError $ TCErrorBlocked parent reason []
 
-  tcReport parent reason = tcState'reports %= (TCReport parent reason :)
+  tcReport reason = do
+    parent <- fromMaybe unreachable <$> useMaybeParent
+    tcState'reports %= (TCReport parent reason :)
   
-  tcFail parent reason = throwError $ TCErrorTCFail (TCReport parent reason)
+  tcFail reason = do
+    parent <- fromMaybe unreachable <$> useMaybeParent
+    throwError $ TCErrorTCFail (TCReport parent reason)
 
   --leqMod U1 U1 = return True
 
