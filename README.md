@@ -29,7 +29,7 @@ A **resolution** is essentially a user-defined open ad-hoc function which takes 
 * the resolution-features necessary to implement a relatedness-checker *within* Menkar,
 * non-recursive HITs via a type former for pushouts along `ΣBφ -> B` (a codependent coproduct),
 * non-recursive QITs via a type former for pushouts along `B + B -> B`,
-* recursive HITs and QITs via a type former for taking the least fixpoint of a polynomial quotient of a pointed indexed polynomial functor (a very fancy W-type),
+* recursive HITs and QITs via a type former for taking the least fixpoint of (a polynomial quotient of?) a pointed indexed polynomial functor (a very fancy W-type),
 * support for context exponentiation (for working with dependably [atomic][nlab-tiny] objects),
 *  internal presheaf operators, to wit:
 
