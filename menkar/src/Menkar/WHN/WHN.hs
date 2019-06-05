@@ -31,7 +31,7 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
 tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  let returnElim = (Expr2 $ TermElim dmu whnEliminee tyEliminee e) <$ tell metasEliminee
+  let returnElim = (Expr2 $ TermElim dmu whnEliminee tyEliminee e) -- <$ tell metasEliminee
   case e of
     ElimDep motive clauses -> case clauses of
       ElimSigma pairClause -> case tyEliminee of
