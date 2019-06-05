@@ -25,12 +25,13 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   UniHSConstructor sys v {-^ eliminee's type -} ->
   Eliminator sys v ->
   Type sys v {-^ type of the result -} ->
+  [Int] {-^ the metas to block on when eta is unavailable. -} ->
   String ->
   whn (Term sys v)
-tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult reason = do
+tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  let returnElim = return $ Expr2 $ TermElim dmu whnEliminee tyEliminee e
+  let returnElim = (Expr2 $ TermElim dmu whnEliminee tyEliminee e) <$ tell metasEliminee
   case e of
     ElimDep motive clauses -> case clauses of
       ElimSigma pairClause -> case tyEliminee of
@@ -82,9 +83,11 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
 -- careful with glue/weld!
 whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
   let dgamma = unVarFromCtx <$> ctx'mode gamma
-  -- WHNormalize the eliminee
-  --(whnEliminee, metas) <- listen $ whnormalize parent ((VarFromCtx <$> dmu) :\\ gamma) eliminee (hs2type tyEliminee) reason
-  let useDependentEta = tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult reason
+  -- -- WHNormalize the eliminee
+  -- -- The following line SHOULDN'T BE NECESSARY!
+  -- (whnEliminee, metasEliminee)
+  --     <- listen $ whnormalize ((VarFromCtx <$> dmu) :\\ gamma) whnEliminee (hs2type tyEliminee) reason
+  let useDependentEta = tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
   case metasEliminee of
     -- The eliminee is blocked: Try to rely on eta instead
     _:_ -> useDependentEta
