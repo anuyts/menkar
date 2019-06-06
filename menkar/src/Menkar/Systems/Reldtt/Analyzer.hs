@@ -48,4 +48,4 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
   type Relation ReldttUniHSConstructor = Relation (UniHSConstructor Reldtt)
 
 instance SysAnalyzer Reldtt where
-  quickEqSysUnanalyzable sysError t1 t2 extraT1 extraT2 = _
+  quickEqSysUnanalyzable sysError t1 t2 extraT1 extraT2 = case sysError of {}
