@@ -4,10 +4,18 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
-*  Major refactoring: weak-head-normalizer, type-checker, relatedness-checker, meta-resolver are now all based on a universal syntax traversal operation called `analyze`.
-*  Added a syntactic equality checker `QuickEq` based on `analyze`.
-*  Blocking on a meta, now leaves a blocking constraint to inform the user of what is happening.
+## v0.200: Analyzer
+
+*  Fixed long-standing bug:
+
+   After solving a metavariable, constraints might be unblocked. However, these constraints might have previously queried
+   the solution of yet unsolved metavariables and may therefore reblock on those. However, the system would forget these
+   previous queries, resulting in derivation branches blocking on nothing and therefore never resuming!
+
 *  Instead of passing around the parent constraint **everywhere**, it is now part of the type-checking state.
+*  Blocking on a meta, now leaves a blocking constraint to inform the user of what is happening.
+*  Added a syntactic equality checker `QuickEq` based on `analyze`.
+*  **Major refactoring:** weak-head-normalizer, type-checker, relatedness-checker, meta-resolver are now all based on a universal syntax traversal operation called `analyze`.
 
 #### v0.101.4: Performance tweaks
 *  Smart arguments are now checked only once, causing enormous performance gain.
