@@ -33,12 +33,12 @@ data TrivModality v = TrivModality
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
 data TrivDegree v = TrivDegree
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
-data TrivTerm v
+data TrivTerm v where
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
-data TrivUniHSConstructor v
+data TrivUniHSConstructor v where
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
-data TrivJud
-data TrivAnalyzerError
+data TrivJud where
+data TrivAnalyzerError where
 data TrivAnalyzableToken (t :: * -> *) where
   AnTokenMode :: TrivAnalyzableToken TrivMode
   AnTokenModality :: TrivAnalyzableToken TrivModality
@@ -166,8 +166,8 @@ instance SysScoper Trivial where
     AnTokenMode -> return $ U1
     AnTokenModality -> return $ TrivMode :*: TrivMode
     AnTokenDegree -> return $ TrivMode
-    AnTokenTrivTerm -> case t of {}
-    AnTokenTrivUniHSConstructor -> case t of {} 
+    AnTokenTrivTerm -> case (t :: TrivTerm _) of {}
+    AnTokenTrivUniHSConstructor -> case (t :: TrivUniHSConstructor _) of {} 
 
 instance SysAnalyzer Trivial where
   quickEqSysUnanalyzable sysErr = case sysErr of {}
@@ -182,9 +182,19 @@ instance SysWHN Trivial where
 instance SysTC Trivial where
   checkSysASTUnanalyzable sysError = case sysError of {}
   newRelatedSysASTUnanalyzable' sysError = case sysError of {}
-  newRelatedSysAST token = case token of {}
+  newRelatedSysAST token eta rel gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason = case token of
+    AnTokenMode -> return TrivMode
+    AnTokenModality -> return TrivModality
+    AnTokenDegree -> return TrivDegree
+    AnTokenTrivTerm -> case (t2 :: TrivTerm _) of {}
+    AnTokenTrivUniHSConstructor -> case (t2 :: TrivUniHSConstructor _) of {} 
   checkUnanalyzableSysASTRel' sysError = case sysError of {}
-  checkSysASTRel token = case token of {}
+  checkSysASTRel token eta rel gamma ts extraTs maybeCTs = case token of
+    AnTokenMode -> return ()
+    AnTokenModality -> return ()
+    AnTokenDegree -> return ()
+    AnTokenTrivTerm -> case (fstTwice1 ts :: TrivTerm _) of {}
+    AnTokenTrivUniHSConstructor -> case (fstTwice1 ts :: TrivUniHSConstructor _) of {} 
   checkEtaWHNSysTy gamma t1 syst2 = case syst2 of {}
   etaExpandSysType gamma t sysType = case sysType of {}
   checkSysJudgement jud = case jud of {}

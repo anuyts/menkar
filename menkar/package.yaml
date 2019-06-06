@@ -1,7 +1,7 @@
 name:                menkar
 version:             0.200.0.0
 github:              "anuyts/menkar"
-license:             "GNU GPLv3"
+license:             "GNUGPLv3"
 author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2019 Author name here"
@@ -23,16 +23,16 @@ dependencies:
 - base >= 4.9 && < 5
 - lens == 4.17
 - nat == 0.3
-- Unique == 0.4.7.1
+- Unique # == 0.4.7.1
 - megaparsec == 7.0.4
-- hashable == 1.2.6.1
-- MissingH == 1.4.0.1
-- transformers == 0.5.2.0
-- mtl == 2.2.1
-- unordered-containers == 0.2.8.0
-- containers == 0.5.7.1
+- hashable # == 1.2.6.1
+- MissingH # == 1.4.0.1
+- transformers # == 0.5.2.0
+- mtl # == 2.2.1
+- unordered-containers # == 0.2.8.0
+- containers # == 0.5.7.1
 - terminal-size == 0.3.2.1
-- ghc == 8.0.2
+- ghc == 8.6.5
 # - bifunctors == 5.4.2
 # - hs-functors == 0.1.3.0
 
@@ -96,3 +96,4 @@ default-extensions:
 # - ApplicativeDo
 - ViewPatterns
 - ConstraintKinds
+- EmptyDataDecls

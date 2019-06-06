@@ -232,7 +232,7 @@ type IfTrue cond = Conditional (cond ~ True)
 type IfDoubledT option m = IfTrueT (CheckDoubled option) m
 type IfDoubled option = IfTrue (CheckDoubled option)
 
-typesArentDoubledT :: forall m a . IfTrueT False m a
+typesArentDoubledT :: forall (m :: * -> *) a . (Monad m) => IfTrueT False m a
 typesArentDoubledT = ConditionalT $ return unreachable
 typesArentDoubled :: forall a . IfTrue False a
 typesArentDoubled = typesArentDoubledT -- conditional unreachable

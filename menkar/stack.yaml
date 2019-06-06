@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-9.21
+resolver: lts-13.24
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -38,12 +38,13 @@ packages:
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
 extra-deps:
+- Unique-0.4.7.6@sha256:a1ff411f4d68c756e01e8d532fbe8e57f1ac77f2cc0ee8a999770be2bca185c5
 - extra-1.6.14@sha256:e3e1f379bdef036033ac59ac68e92cb03f88efa9aee448597c44e1a8ae96e779
 - parser-combinators-1.0.1@sha256:c28576a0851300fdbd9ffa9970c305eb879dc3f7c36907a667233a0fef4268dc
 - lens-4.17@sha256:534febcd710980b3c30efe12813e865b09fc6086a4ed6b7a6a8885f27caee3a6
 - megaparsec-7.0.4@sha256:a7397151601cbe6b8f831f8bdad1a10118dcd6d9a7ee50d6bbdcfbd1181b4ba2
 - nat-0.3@sha256:1cae8ee8eaf875351b68909b2d9433af0d0b98efc0d49e46079076d34ca190b8
-- hs-functors-0.1.3.0@sha256:036e72232f7eb056da5df537b2d5ae7bf6881afd21f5a39891ff321b10a2aac8
+# - hs-functors-0.1.3.0@sha256:036e72232f7eb056da5df537b2d5ae7bf6881afd21f5a39891ff321b10a2aac8
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
