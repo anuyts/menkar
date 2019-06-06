@@ -56,6 +56,22 @@ Some type systems that we aim to support, are:
 
 Where applicable, the user may ask to include/exclude/agnosticlude diagonals, symmetries and connections in the base category, as well as generalize from binary to n-ary systems.
 
+## Quick start guide
+
+### Installation
+```
+git clone <...> menkar
+cd menkar/menkar
+stack install
+```
+Menkar is now installed as `menkar-exe`.
+
+### Running
+Type-check the concatenation of three files:
+```
+menkar-exe path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
+```
+
 ## Other remarks
 Menkar is still in early development. We absolutely do not guarantee any form of backwards compatibility at this stage.
 
