@@ -8,6 +8,7 @@ import Menkar.Systems.Reldtt.Fine
 import Menkar.Analyzer
 
 import Control.Exception.AssertFalse
+import Data.Constraint.Witness
 
 import GHC.Generics
 import Util
@@ -32,30 +33,35 @@ instance Analyzable Reldtt ReldttMode where
   type Classif ReldttMode = U1
   type Relation ReldttMode = U1
   analyzableToken = AnTokenSys $ AnTokenReldttMode
+  witClassif token = Witness
 
 instance Analyzable Reldtt ChainModty where
   type ClassifExtraInput ChainModty = U1
   type Classif ChainModty = ReldttMode :*: ReldttMode
   type Relation ChainModty = Const ModRel
   analyzableToken = AnTokenSys $ AnTokenChainModty
+  witClassif token = Witness
 
 instance Analyzable Reldtt ReldttDegree where
   type ClassifExtraInput ReldttDegree = U1
   type Classif ReldttDegree = ReldttMode
   type Relation ReldttDegree = Const ModRel
   analyzableToken = AnTokenSys $ AnTokenReldttDegree
+  witClassif token = Witness
 
 instance Analyzable Reldtt ReldttSysTerm where
   type ClassifExtraInput ReldttSysTerm = ClassifExtraInput (Term Reldtt)
   type Classif ReldttSysTerm = Classif (Term Reldtt)
   type Relation ReldttSysTerm = Relation (Term Reldtt)
   analyzableToken = AnTokenSys $ AnTokenReldttSysTerm
+  witClassif token = Witness
 
 instance Analyzable Reldtt ReldttUniHSConstructor where
   type ClassifExtraInput ReldttUniHSConstructor = ClassifExtraInput (UniHSConstructor Reldtt)
   type Classif ReldttUniHSConstructor = Classif (UniHSConstructor Reldtt)
   type Relation ReldttUniHSConstructor = Relation (UniHSConstructor Reldtt)
   analyzableToken = AnTokenSys $ AnTokenReldttUniHSConstructor
+  witClassif token = Witness
 
 instance SysAnalyzer Reldtt where
   quickEqSysUnanalyzable sysError t1 t2 extraT1 extraT2 = case sysError of {}
