@@ -99,7 +99,7 @@ numberfyOmegasForDomainlessTail mu@(ModtySnout idom icod krevdegs) = ModtySnout 
   kdeg -> kdeg
 -}
 
-{-| Precondition: Tails start at the same point and have the same (co)domain.
+{-| Precondition: Tails start at the same point and have the same neutral (co)domain.
     Precondition for correct result: The snouts are leq. -} 
 relTail_ :: ModRel -> ModtySnout -> ModtySnout -> ModtyTail v -> ModtyTail v -> Bool
 relTail_ rel _ _ TailProblem _ = False
@@ -161,7 +161,7 @@ data ChainModty v =
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
-wrapInChainModty ddom dcod t = ChainModtyLink (idKnownModty dcod) t $ ChainModtyKnown $ idKnownModty ddom
+wrapInChainModty dom cod t = ChainModtyLink (idKnownModty cod) t $ ChainModtyKnown $ idKnownModty dom
 
 _chainModty'cod :: ChainModty v -> Term Reldtt v
 _chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
@@ -238,7 +238,7 @@ _modtyTail'dom (TailForget ddom) = ddom
 _modtyTail'dom (TailDiscForget ddom dcod) = ddom
 --_modtyTail'dom (TailCodiscForget ddom dcod) = ddom
 _modtyTail'dom (TailCont d) = d
-_modtyTail'dom (TailProblem) = Expr2 $ TermProblem $ BareMode $ ModeTermZero
+_modtyTail'dom (TailProblem) = Expr2 $ TermProblem $ Expr2 $ TermWildcard
 
 _modtyTail'cod :: ModtyTail v -> Term Reldtt v
 _modtyTail'cod TailEmpty = BareMode $ ModeTermZero
@@ -248,7 +248,7 @@ _modtyTail'cod (TailForget ddom) = BareMode $ ModeTermZero
 _modtyTail'cod (TailDiscForget ddom dcod) = dcod
 --_modtyTail'cod (TailCodiscForget ddom dcod) = dcod
 _modtyTail'cod (TailCont d) = d
-_modtyTail'cod (TailProblem) = Expr2 $ TermProblem $ BareMode $ ModeTermZero
+_modtyTail'cod (TailProblem) = Expr2 $ TermProblem $ Expr2 $ TermWildcard
 
 data ModtyTerm v =
  --ModtyTerm ModtySnout (ModtyTail v) |
@@ -306,18 +306,18 @@ instance Multimode Reldtt where
     ChainModtyLink (idKnownModty $ _chainModty'cod mu2) (BareChainModty mu2) $
     ChainModtyLink (idKnownModty $ dmid) (BareChainModty mu1) $
     ChainModtyKnown (idKnownModty $ _chainModty'dom mu1)
-  divMod (ModedModality d' mu') (ModedModality d mu) =
-    ChainModtyLink (idKnownModty d') (BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu))) $
-    ChainModtyKnown (idKnownModty d)
+  divMod (ModedModality dom' cod' mu') (ModedModality dom cod mu) =
+    ChainModtyLink (idKnownModty dom') (BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu))) $
+    ChainModtyKnown (idKnownModty dom)
   crispMod d = ChainModtyKnown (KnownModty (ModtySnout 0 0 []) $ TailDisc d)
   dataMode = BareMode $ ModeTermZero
-  approxLeftAdjointProj (ModedModality d mu) dcod =
-    ChainModtyLink (idKnownModty d) (BareModty (ModtyTermApproxLeftAdjointProj dcod d $ BareChainModty mu)) $
-    ChainModtyKnown (idKnownModty dcod)
+  approxLeftAdjointProj (ModedModality dom cod mu) =
+    ChainModtyLink (idKnownModty dom) (BareModty (ModtyTermApproxLeftAdjointProj cod dom $ BareChainModty mu)) $
+    ChainModtyKnown (idKnownModty cod)
 
 instance Degrees Reldtt where
   eqDeg = DegKnown $ KnownDegEq
   maybeTopDeg = Just $ DegKnown $ KnownDegTop
-  divDeg (ModedModality ddom mu) (ModedDegree dcod i) = DegGet i (BareChainModty mu) ddom dcod
+  divDeg (ModedModality dom cod mu) (ModedDegree cod' i) = DegGet i (BareChainModty mu) dom cod
 
 ------------------------------
