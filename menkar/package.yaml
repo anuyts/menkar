@@ -93,7 +93,7 @@ default-extensions:
 - ExistentialQuantification
 - TypeInType
 - TypeFamilyDependencies
-# - ApplicativeDo
+- ApplicativeDo
 - ViewPatterns
 - ConstraintKinds
 - EmptyDataDecls
