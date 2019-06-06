@@ -17,7 +17,7 @@ snd1 (a :*: b) = b
 
 data Reldtt :: KSys where
 
-type instance Mode Reldtt = Term Reldtt
+type instance Mode Reldtt = ReldttMode
 type instance Modality Reldtt = ChainModty
 type instance Degree Reldtt = DegTerm
 type instance SysTerm Reldtt = ReldttSysTerm
@@ -57,6 +57,14 @@ pattern BareSysType systy = TypeHS (SysType (systy :: ReldttUniHSConstructor v))
 data ModeTerm v = ModeTermZero | ModeTermSuc (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
+newtype ReldttMode v = ReldttMode {getReldttMode :: Term Reldtt v}
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+deriving instance Generic (ReldttMode v)
+deriving instance Wrapped (ReldttMode v)
+--instance Wrapped (ReldttMode v) where
+--  Unwrapped (ReldttMode v) = Term Reldtt v
+--  _Wrapped f = dimap _ _
+
 data KnownDeg =
   KnownDegEq |
   KnownDeg Int |
@@ -75,14 +83,14 @@ data ModtySnout = ModtySnout
 data ModtyTail v =
   TailEmpty |
 
-  TailDisc   (Term Reldtt v) {-^ Tail codomain, can be omega -} |
+  TailDisc   (Mode Reldtt v) {-^ Tail codomain, can be omega -} |
   --TailCodisc (Term Reldtt v) {-^ Tail codomain, can be omega -} |
 
-  TailForget (Term Reldtt v) {-^ Tail domain, can be omega -} |
+  TailForget (Mode Reldtt v) {-^ Tail domain, can be omega -} |
 
-  TailDiscForget   (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
+  TailDiscForget   (Mode Reldtt v) {-^ Tail domain, can be omega -} (Mode Reldtt v) {-^ Tail codomain, can be omega -} |
   --TailCodiscForget (Term Reldtt v) {-^ Tail domain, can be omega -} (Term Reldtt v) {-^ Tail codomain, can be omega -} |
-  TailCont (Term Reldtt v) {-^ Tail domain and codomain, can be omega -} |
+  TailCont (Mode Reldtt v) {-^ Tail domain and codomain, can be omega -} |
 
   TailProblem
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
@@ -139,35 +147,37 @@ relTail rel (KnownModty snoutL tailL) (KnownModty snoutR tailR) = relTail_ rel s
 data KnownModty v = KnownModty {_knownModty'snout :: ModtySnout, _knownModty'tail :: ModtyTail v}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-idKnownModty :: Term Reldtt v -> KnownModty v
+idKnownModty :: Mode Reldtt v -> KnownModty v
 idKnownModty d = KnownModty (ModtySnout 0 0 []) (TailCont d)
 
 problemKnownModty :: KnownModty v
 problemKnownModty = KnownModty (ModtySnout 0 0 []) TailProblem
 
-_knownModty'dom :: KnownModty v -> Term Reldtt v
-_knownModty'dom (KnownModty snout tail) = nTimes (_modtySnout'dom snout) (BareMode . ModeTermSuc) $ _modtyTail'dom tail
-_knownModty'cod :: KnownModty v -> Term Reldtt v
-_knownModty'cod (KnownModty snout tail) = nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc) $ _modtyTail'cod tail
+_knownModty'dom :: KnownModty v -> Mode Reldtt v
+_knownModty'dom (KnownModty snout tail) =
+  _modtyTail'dom tail & _Wrapped' %~ nTimes (_modtySnout'dom snout) (BareMode . ModeTermSuc)
+_knownModty'cod :: KnownModty v -> Mode Reldtt v
+_knownModty'cod (KnownModty snout tail) =
+  _modtyTail'cod tail & _Wrapped' %~ nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc)
 
 data ChainModty v =
   ChainModtyKnown (KnownModty v) |
   ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
   ChainModtyMeta
-    (Term Reldtt v) {-^ domain -}
-    (Term Reldtt v) {-^ codomain -}
+    (Mode Reldtt v) {-^ domain -}
+    (Mode Reldtt v) {-^ codomain -}
     Int {-^ meta index -}
     (Compose [] (Term Reldtt) v) {-^ dependencies -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-wrapInChainModty :: Term Reldtt v -> Term Reldtt v -> Term Reldtt v -> ChainModty v
+wrapInChainModty :: Mode Reldtt v -> Mode Reldtt v -> Term Reldtt v -> ChainModty v
 wrapInChainModty dom cod t = ChainModtyLink (idKnownModty cod) t $ ChainModtyKnown $ idKnownModty dom
 
-_chainModty'cod :: ChainModty v -> Term Reldtt v
+_chainModty'cod :: ChainModty v -> Mode Reldtt v
 _chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyLink kmu termNu chainRho) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyMeta dom cod meta depcies) = cod
-_chainModty'dom :: ChainModty v -> Term Reldtt v
+_chainModty'dom :: ChainModty v -> Mode Reldtt v
 _chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
 _chainModty'dom (ChainModtyLink kmu termNu chainRho) = _chainModty'dom $ chainRho
 _chainModty'dom (ChainModtyMeta dom cod meta depcies) = dom
@@ -186,7 +196,7 @@ forceDom :: forall v .
   ModtySnout ->
   ModtyTail v ->
   Int ->
-  Term Reldtt v ->
+  Mode Reldtt v ->
   Maybe (KnownModty v)
 forceDom snoutOrig tailOrig snoutDomNew tailDomNew
   | _modtySnout'dom snoutOrig >  snoutDomNew = unreachable
@@ -210,7 +220,7 @@ forceCod :: forall v .
   ModtySnout ->
   ModtyTail v ->
   Int ->
-  Term Reldtt v ->
+  Mode Reldtt v ->
   Maybe (KnownModty v)
 forceCod snoutOrig tailOrig snoutCodNew tailCodNew
   | _modtySnout'cod snoutOrig >  snoutCodNew = unreachable
@@ -230,25 +240,25 @@ forceCod snoutOrig tailOrig snoutCodNew tailCodNew
   | otherwise = unreachable
     where n = snoutCodNew - _modtySnout'cod snoutOrig
 
-_modtyTail'dom :: ModtyTail v -> Term Reldtt v
-_modtyTail'dom TailEmpty = BareMode $ ModeTermZero
-_modtyTail'dom (TailDisc dcod) = BareMode $ ModeTermZero
+_modtyTail'dom :: ModtyTail v -> Mode Reldtt v
+_modtyTail'dom TailEmpty = ReldttMode $ BareMode $ ModeTermZero
+_modtyTail'dom (TailDisc dcod) = ReldttMode $ BareMode $ ModeTermZero
 --_modtyTail'dom (TailCodisc dcod) = BareFinMode $ ConsZero
 _modtyTail'dom (TailForget ddom) = ddom
 _modtyTail'dom (TailDiscForget ddom dcod) = ddom
 --_modtyTail'dom (TailCodiscForget ddom dcod) = ddom
 _modtyTail'dom (TailCont d) = d
-_modtyTail'dom (TailProblem) = Expr2 $ TermProblem $ Expr2 $ TermWildcard
+_modtyTail'dom (TailProblem) = ReldttMode $ Expr2 $ TermProblem $ Expr2 $ TermWildcard
 
-_modtyTail'cod :: ModtyTail v -> Term Reldtt v
-_modtyTail'cod TailEmpty = BareMode $ ModeTermZero
+_modtyTail'cod :: ModtyTail v -> Mode Reldtt v
+_modtyTail'cod TailEmpty = ReldttMode $ BareMode $ ModeTermZero
 _modtyTail'cod (TailDisc dcod) = dcod
 --_modtyTail'cod (TailCodisc dcod) = dcod
-_modtyTail'cod (TailForget ddom) = BareMode $ ModeTermZero
+_modtyTail'cod (TailForget ddom) = ReldttMode $ BareMode $ ModeTermZero
 _modtyTail'cod (TailDiscForget ddom dcod) = dcod
 --_modtyTail'cod (TailCodiscForget ddom dcod) = dcod
 _modtyTail'cod (TailCont d) = d
-_modtyTail'cod (TailProblem) = Expr2 $ TermProblem $ Expr2 $ TermWildcard
+_modtyTail'cod (TailProblem) = ReldttMode $ Expr2 $ TermProblem $ Expr2 $ TermWildcard
 
 data ModtyTerm v =
  --ModtyTerm ModtySnout (ModtyTail v) |
@@ -260,8 +270,8 @@ data ModtyTerm v =
       If @mu : d1 -> dcod@ and @rho : d2 -> dcod@, then @'ModtyTermDiv' rho mu@ denotes @rho \ mu : d1 -> d2@ -} 
   ModtyTermDiv (Term Reldtt v) (Term Reldtt v) |
   ModtyTermApproxLeftAdjointProj
-    (Term Reldtt v) {-^ Domain of result -}
-    (Term Reldtt v) {-^ Codomain of result -}
+    (Mode Reldtt v) {-^ Domain of result -}
+    (Mode Reldtt v) {-^ Codomain of result -}
     (Term Reldtt v) {-^ The argument modality -} |
   
   {-| Only for prettyprinting. -} 
@@ -273,8 +283,8 @@ data DegTerm v =
   DegGet
     (DegTerm v) {-^ Degree -}
     (Term Reldtt v) {-^ Modality -}
-    (Term Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
-    (Term Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
+    (Mode Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
+    (Mode Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ReldttSysTerm v =
@@ -310,7 +320,7 @@ instance Multimode Reldtt where
     ChainModtyLink (idKnownModty dom') (BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu))) $
     ChainModtyKnown (idKnownModty dom)
   crispMod d = ChainModtyKnown (KnownModty (ModtySnout 0 0 []) $ TailDisc d)
-  dataMode = BareMode $ ModeTermZero
+  dataMode = ReldttMode $ BareMode $ ModeTermZero
   approxLeftAdjointProj (ModedModality dom cod mu) =
     ChainModtyLink (idKnownModty dom) (BareModty (ModtyTermApproxLeftAdjointProj cod dom $ BareChainModty mu)) $
     ChainModtyKnown (idKnownModty cod)
