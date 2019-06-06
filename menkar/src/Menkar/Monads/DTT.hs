@@ -233,21 +233,32 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
             return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
-          Left blocks -> shiftDC $ \ k -> do
+          Left blocksOfConstraintsOnCurrentMeta -> shiftDC $ \ k -> do
+            let allowContinuationToBlockOnCurrentMeta :: forall u . (DeBruijnLevel u) =>
+                  (Maybe (Term sys u) -> TCT sys m (TCResult sys)) ->
+                  (Maybe (Term sys u) -> TCT sys m (TCResult sys))
+                allowContinuationToBlockOnCurrentMeta k x =
+                  k x `catchError` \case
+                    TCErrorBlocked blockParent blockReason blocks -> do
+                      -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
+                      -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
+                      let blocks' = Prelude.filter (\(blockMeta, blockInfo) -> blockMeta /= meta) blocks
+                      -- allow continuations for enclosed @awaitMeta@s to block on the current meta as well!
+                      let blocks'' = blocks' <&>
+                            _2 %~ mapDeBruijnLevel (blockInfo'cont %~ allowContinuationToBlockOnCurrentMeta)
+                      -- append the current meta and continuation as a means to fix the situation in the future.
+                      let blockInfo = BlockInfo blockParent blockReason reasonAwait k
+                      -- rethrow
+                      throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks'')
+                      -- throwError $ TCErrorBlocked blockParent blockReason
+                      --                (blocks ++ [(meta, ForSomeDeBruijnLevel blockInfo)])
+                      --tcState'metaMap . at meta .=
+                      --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
+                    e -> throwError e
             -- Try to continue with an unsolved meta
-            k Nothing `catchError` \case
-              TCErrorBlocked blockParent blockReason blocks -> do
-                -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
-                -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
-                let blocks' = Prelude.filter (\(blockMeta, blockInfo) -> blockMeta /= meta) blocks
-                let blockInfo = BlockInfo blockParent blockReason reasonAwait $
-                      k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
-                -- append the current meta and continuation as a means to fix the situation in the future, and rethrow.
-                throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks')
-                -- throwError $ TCErrorBlocked blockParent blockReason (blocks ++ [(meta, ForSomeDeBruijnLevel blockInfo)])
-                --tcState'metaMap . at meta .=
-                --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
-              e -> throwError e
+            allowContinuationToBlockOnCurrentMeta
+              (k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma))))
+              Nothing
 
 withMaybeParent :: (Monad m) => Maybe (Constraint sys) -> TCT sys m a -> TCT sys m a
 withMaybeParent maybeParent action = do
