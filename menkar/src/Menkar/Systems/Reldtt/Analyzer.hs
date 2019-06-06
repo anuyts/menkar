@@ -36,6 +36,7 @@ instance Analyzable Reldtt ReldttMode where
   witClassif token = Witness
 
   convRel token d = U1
+  extraClassif t extraT = U1
 
 instance Analyzable Reldtt ChainModty where
   type ClassifExtraInput ChainModty = U1
@@ -45,6 +46,7 @@ instance Analyzable Reldtt ChainModty where
   witClassif token = Witness
 
   convRel token d = U1 :*: U1
+  extraClassif t extraT = U1 :*: U1
 
 instance Analyzable Reldtt ReldttDegree where
   type ClassifExtraInput ReldttDegree = U1
@@ -54,6 +56,7 @@ instance Analyzable Reldtt ReldttDegree where
   witClassif token = Witness
 
   convRel token d = U1
+  extraClassif t extraT = U1
 
 instance Analyzable Reldtt ReldttSysTerm where
   type ClassifExtraInput ReldttSysTerm = ClassifExtraInput (Term Reldtt)
@@ -63,6 +66,7 @@ instance Analyzable Reldtt ReldttSysTerm where
   witClassif token = Witness
 
   convRel token d = modedEqDeg d
+  extraClassif t extraT = U1
 
 instance Analyzable Reldtt ReldttUniHSConstructor where
   type ClassifExtraInput ReldttUniHSConstructor = ClassifExtraInput (UniHSConstructor Reldtt)
@@ -72,6 +76,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
   witClassif token = Witness
 
   convRel token d = U1
+  extraClassif t extraT = U1
 
 instance SysAnalyzer Reldtt where
   quickEqSysUnanalyzable sysError t1 t2 extraT1 extraT2 = case sysError of {}
