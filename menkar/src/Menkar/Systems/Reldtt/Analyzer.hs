@@ -21,31 +21,41 @@ type instance SysAnalyzableToken Reldtt = ReldttAnalyzableToken
 
 data ReldttAnalyzerError where
 data ReldttAnalyzableToken (t :: * -> *) where
+  AnTokenReldttMode :: ReldttAnalyzableToken ReldttMode
+  AnTokenChainModty :: ReldttAnalyzableToken ChainModty
+  AnTokenReldttDegree :: ReldttAnalyzableToken ReldttDegree
+  AnTokenReldttSysTerm :: ReldttAnalyzableToken ReldttSysTerm
+  AnTokenReldttUniHSConstructor :: ReldttAnalyzableToken ReldttUniHSConstructor
 
 instance Analyzable Reldtt ReldttMode where
   type ClassifExtraInput ReldttMode = U1
   type Classif ReldttMode = U1
   type Relation ReldttMode = U1
+  analyzableToken = AnTokenSys $ AnTokenReldttMode
 
 instance Analyzable Reldtt ChainModty where
   type ClassifExtraInput ChainModty = U1
   type Classif ChainModty = ReldttMode :*: ReldttMode
   type Relation ChainModty = Const ModRel
+  analyzableToken = AnTokenSys $ AnTokenChainModty
 
 instance Analyzable Reldtt ReldttDegree where
   type ClassifExtraInput ReldttDegree = U1
   type Classif ReldttDegree = ReldttMode
   type Relation ReldttDegree = Const ModRel
+  analyzableToken = AnTokenSys $ AnTokenReldttDegree
 
 instance Analyzable Reldtt ReldttSysTerm where
   type ClassifExtraInput ReldttSysTerm = ClassifExtraInput (Term Reldtt)
   type Classif ReldttSysTerm = Classif (Term Reldtt)
   type Relation ReldttSysTerm = Relation (Term Reldtt)
+  analyzableToken = AnTokenSys $ AnTokenReldttSysTerm
 
 instance Analyzable Reldtt ReldttUniHSConstructor where
   type ClassifExtraInput ReldttUniHSConstructor = ClassifExtraInput (UniHSConstructor Reldtt)
   type Classif ReldttUniHSConstructor = Classif (UniHSConstructor Reldtt)
   type Relation ReldttUniHSConstructor = Relation (UniHSConstructor Reldtt)
+  analyzableToken = AnTokenSys $ AnTokenReldttUniHSConstructor
 
 instance SysAnalyzer Reldtt where
   quickEqSysUnanalyzable sysError t1 t2 extraT1 extraT2 = case sysError of {}
