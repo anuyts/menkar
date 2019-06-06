@@ -1,7 +1,7 @@
 name:                menkar
 version:             0.200.0.0
-github:              "githubuser/menkar"
-license:             BSD3
+github:              "anuyts/menkar"
+license:             "GNU GPLv3"
 author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2019 Author name here"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/menkar#readme>
+description:         Please see the README on GitHub at <https://github.com/anuyts/menkar#readme>
 
 dependencies:
 - base >= 4.9 && < 5
