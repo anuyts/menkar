@@ -233,12 +233,14 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
             return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
-          Left blocksOfConstraintsOnCurrentMeta -> shiftDC $ \ k -> do
+          Left blocksOfConstraintsOnCurrentMeta -> shiftDC $ \ kCurrent -> do
+            let kCurrentAdjusted =
+                  kCurrent . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
             let allowContinuationToBlockOnCurrentMeta :: forall u . (DeBruijnLevel u) =>
                   (Maybe (Term sys u) -> TCT sys m (TCResult sys)) ->
                   (Maybe (Term sys u) -> TCT sys m (TCResult sys))
-                allowContinuationToBlockOnCurrentMeta k x =
-                  k x `catchError` \case
+                allowContinuationToBlockOnCurrentMeta kEnclosed x =
+                  kEnclosed x `catchError` \case
                     TCErrorBlocked blockParent blockReason blocks -> do
                       -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
                       -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
@@ -247,7 +249,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
                       let blocks'' = blocks' <&>
                             _2 %~ mapDeBruijnLevel (blockInfo'cont %~ allowContinuationToBlockOnCurrentMeta)
                       -- append the current meta and continuation as a means to fix the situation in the future.
-                      let blockInfo = BlockInfo blockParent blockReason reasonAwait k
+                      let blockInfo = BlockInfo blockParent blockReason reasonAwait kCurrentAdjusted
                       -- rethrow
                       throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks'')
                       -- throwError $ TCErrorBlocked blockParent blockReason
@@ -256,9 +258,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
                       --  (Just $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason $ Left $ block : blocks)
                     e -> throwError e
             -- Try to continue with an unsolved meta
-            allowContinuationToBlockOnCurrentMeta
-              (k . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma))))
-              Nothing
+            allowContinuationToBlockOnCurrentMeta kCurrentAdjusted Nothing
 
 withMaybeParent :: (Monad m) => Maybe (Constraint sys) -> TCT sys m a -> TCT sys m a
 withMaybeParent maybeParent action = do
