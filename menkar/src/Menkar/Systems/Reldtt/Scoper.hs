@@ -25,18 +25,20 @@ instance SysScoper Reldtt where
         Nothing -> scopeFail $ "Annotation `m` requires an argument."
         Just rawArg -> do
           mu <- expr (crispModedModality dgamma' :\\ gamma) rawArg
-          ddom <- newMetaModeNoCheck Nothing gamma "Inferring domain of modality."
-          dcod <- newMetaModeNoCheck Nothing gamma "Inferring codomain of modality."
+          ddom <- newMetaModeNoCheck gamma "Inferring domain of modality."
+          dcod <- newMetaModeNoCheck gamma "Inferring codomain of modality."
           return $ AnnotModality $ wrapInChainModty ddom dcod mu
       _   -> scopeFail $ "Illegal annotation: " ++ (render
                (Raw.unparse' qstring \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
                $? id
              )
-  newMetaModeNoCheck maybeParent gamma reason = newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
-  newMetaModtyNoCheck maybeParent gamma reason = do
-    ddom <- newMetaModeNoCheck Nothing gamma "Inferring domain of modality."
-    dcod <- newMetaModeNoCheck Nothing gamma "Inferring codomain of modality."
-    (meta, depcies) <- newMetaID maybeParent gamma reason
+  newMetaModeNoCheck gamma reason = newMetaTermNoCheck gamma MetaBlocked Nothing reason
+  newMetaModtyNoCheck gamma reason = do
+    ddom <- newMetaModeNoCheck gamma "Inferring domain of modality."
+    dcod <- newMetaModeNoCheck gamma "Inferring codomain of modality."
+    (meta, depcies) <- newMetaID gamma reason
     return $ ChainModtyMeta ddom dcod meta (Compose depcies)
     --Expr2 (TermMeta )
     --wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+
+  newMetaClassif4sysASTNoCheck token gamma t extraT reason = _
