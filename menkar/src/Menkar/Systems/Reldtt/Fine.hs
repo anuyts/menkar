@@ -19,7 +19,7 @@ data Reldtt :: KSys where
 
 type instance Mode Reldtt = ReldttMode
 type instance Modality Reldtt = ChainModty
-type instance Degree Reldtt = DegTerm
+type instance Degree Reldtt = ReldttDegree
 type instance SysTerm Reldtt = ReldttSysTerm
 type instance SysUniHSConstructor Reldtt = ReldttUniHSConstructor
 
@@ -46,8 +46,8 @@ pattern BareModty mu = Expr2 (TermSys (SysTermModty (mu :: ModtyTerm v))) :: Ter
 pattern BareChainModty mu = BareModty (ModtyTermChain (mu :: ChainModty v)) :: Term Reldtt v
 --pattern BareKnownModty :: KnownModty v -> Term Reldtt v
 pattern BareKnownModty mu = BareChainModty (ChainModtyKnown (mu :: KnownModty v)) :: Term Reldtt v
---pattern BareDeg i :: DegTerm v -> Term Reldtt v
---pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: DegTerm v))) :: Term Reldtt v
+--pattern BareDeg i :: ReldttDegree v -> Term Reldtt v
+--pattern BareDeg i = Expr2 (TermSys (SysTermDeg (i :: ReldttDegree v))) :: Term Reldtt v
 --pattern BareKnownDeg i :: KnownDeg -> Term Reldtt v
 --pattern BareKnownDeg i = BareDeg (DegKnown (i :: KnownDeg)) :: Term Reldtt v
 --pattern BareSysType :: ReldttUniHSConstructor v -> Type Reldtt v
@@ -163,11 +163,13 @@ _knownModty'cod (KnownModty snout tail) =
 data ChainModty v =
   ChainModtyKnown (KnownModty v) |
   ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
-  ChainModtyMeta
+  -- | This hack allows us to consider modality metavariables.
+  ChainModtyDisguisedAsTerm
     (Mode Reldtt v) {-^ domain -}
     (Mode Reldtt v) {-^ codomain -}
-    Int {-^ meta index -}
-    (Compose [] (Term Reldtt) v) {-^ dependencies -}
+    (Term Reldtt v) {-^ the disguised modality -}
+    --Int {-^ meta index -}
+    --(Compose [] (Term Reldtt) v) {-^ dependencies -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 wrapInChainModty :: Mode Reldtt v -> Mode Reldtt v -> Term Reldtt v -> ChainModty v
@@ -176,11 +178,11 @@ wrapInChainModty dom cod t = ChainModtyLink (idKnownModty cod) t $ ChainModtyKno
 _chainModty'cod :: ChainModty v -> Mode Reldtt v
 _chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyLink kmu termNu chainRho) = _knownModty'cod $ kmu
-_chainModty'cod (ChainModtyMeta dom cod meta depcies) = cod
+_chainModty'cod (ChainModtyDisguisedAsTerm dom cod t) = cod
 _chainModty'dom :: ChainModty v -> Mode Reldtt v
 _chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
 _chainModty'dom (ChainModtyLink kmu termNu chainRho) = _chainModty'dom $ chainRho
-_chainModty'dom (ChainModtyMeta dom cod meta depcies) = dom
+_chainModty'dom (ChainModtyDisguisedAsTerm dom cod t) = dom
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])
@@ -278,10 +280,10 @@ data ModtyTerm v =
   ModtyTermUnavailable (Term Reldtt v) {-^ The domain, can be omega -} (Term Reldtt v) {-^ The codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
-data DegTerm v =
+data ReldttDegree v =
   DegKnown KnownDeg |
   DegGet
-    (DegTerm v) {-^ Degree -}
+    (ReldttDegree v) {-^ Degree -}
     (Term Reldtt v) {-^ Modality -}
     (Mode Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
     (Mode Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
@@ -292,7 +294,7 @@ data ReldttSysTerm v =
   SysTermModty (ModtyTerm v) |
    -- | This is a hack so that we can have metas for @'ChainModty'@
   SysTermChainModtyInDisguise (ChainModty v)
-  --SysTermDeg (DegTerm v)
+  --SysTermDeg (ReldttDegree v)
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ReldttUniHSConstructor v =
