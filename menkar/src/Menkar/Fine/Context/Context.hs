@@ -62,6 +62,7 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) (w :: *) where
   {-| Pleasing GHC -}
   CtxId :: Ctx t sys v w -> Ctx t sys (Identity v) w
   CtxComp :: Ctx t sys (f (g v)) w -> Ctx t sys (Compose f g v) w
+--type role Ctx representational nominal nominal representational
 infixr 3 :\\
 infixl 3 :.., :^^, :<...>
 deriving instance (SysTrav sys, Functor (t sys)) => Functor (Ctx t sys v)
