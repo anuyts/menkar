@@ -36,7 +36,7 @@ data Judgement (sys :: KSys) where
     Ctx Type sys v Void ->
     t v ->
     ClassifExtraInput t v ->
-    ClassifInfo (Classif t v) {-^ Will or must, not unknown. -} ->
+    ClassifInfo (Classif t v) {-^ Unknown not allowed for AnalyzerError cases. -} ->
     Judgement sys
   JudRel :: (DeBruijnLevel v, Analyzable sys t) =>
     AnalyzableToken sys t ->
@@ -45,7 +45,7 @@ data Judgement (sys :: KSys) where
     Ctx (Twice2 Type) sys v Void ->
     Twice1 t v ->
     Twice1 (ClassifExtraInput t) v ->
-    ClassifInfo (Twice1 (Classif t) v) {-^ Will or unknown; not must. If unknown, we can't do eta. -} ->
+    ClassifInfo (Twice1 (Classif t) v) {-^ Will or unknown; not must. Unknown not allowed for terms. -} ->
     Judgement sys
     
   -- | @'JudEta' gamma t tyT@ means @gamma |- t == some-eta-expansion : tyT@.

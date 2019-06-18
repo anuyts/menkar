@@ -114,7 +114,7 @@ instance Analyzable Reldtt ChainModty where
         )
         extCtxId
         extRelId
-        (AddressInfo ["tail component"] NoFocus omit)
+        (AddressInfo ["trailing component"] NoFocus omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
           ChainModtyLink (getAnalysisTrav rkmu) (getAnalysisTrav rtermNu) (getAnalysisTrav rchainRho)
@@ -168,7 +168,18 @@ instance Analyzable Reldtt KnownModty where
   type Relation KnownModty = Const ModRel
   analyzableToken = AnTokenSys $ AnTokenKnownModty
   witClassif token = Witness
-
+  analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h = Right $ do
+    rtail <- fmapCoe runIdentity <$> h Identity
+      (conditional $ KnownModty snout unreachable)
+      (\ gamma' (Classification kmu'@(KnownModty snout' tail') U1 maybeDomCod') ->
+           Just $ Identity !<$> Classification tail' snout' (ClassifWillBe U1))
+      extCtxId
+      _
+      (AddressInfo ["tail of modality"] FocusWrapped omit)
+    return $ case token of
+      TokenTrav -> AnalysisTrav $ KnownModty snout $ getAnalysisTrav rtail
+      TokenTC -> AnalysisTC $ _knownModty'dom kmu :*: _knownModty'cod kmu
+      TokenRel -> _AnalysisRel
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
 
