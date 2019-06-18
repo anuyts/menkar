@@ -301,9 +301,10 @@ data ReldttUniHSConstructor v =
   {-| Type of modes. -}
   SysTypeMode |
   {-| Type of degrees. -}
-  SysTypeDeg (Term Reldtt v) {-^ Mode, can be omega. -} |
+  SysTypeDeg (ReldttMode v) {-^ Mode, can be omega. -} |
   {-| Type of modalities. -}
-  SysTypeModty (Term Reldtt v) {-^ Domain, can be omega -} (Term Reldtt v) {-^ Codomain, can be omega -}
+  SysTypeModty (ReldttMode v) {-^ Domain, can be omega -} (ReldttMode v) {-^ Codomain, can be omega -} |
+  SysTypeChainModtyDisguisedAsTerm
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 ------------------------------

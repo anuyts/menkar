@@ -277,6 +277,7 @@ class (Functor t,
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => u -> ext u) ->
       {-| The result as hitherto composed. Contains 'undefined' parts wherever necessary,
           though it shall at all times match the structure of the analyzee.
+          Serves to generate extraInput and classifier for subsequent subASTs (in solver).
       -}
       (IfTrav option (t vOut)) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
@@ -310,12 +311,12 @@ extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) =>
         IfTrue doubled (Classification t u) ->
         Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
 extCtxId token gamma _ _ = Just $ CtxId gamma
-extCtxRel :: forall sys r v .
+extRelId :: forall sys r v .
   (Functor r) =>
   Mode sys v ->
   r v ->
   r (Identity v)
-extCtxRel = const $ fmapCoe Identity
+extRelId = const $ fmapCoe Identity
 crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys) => 
         BoolToken doubled ->
         Ctx (TypeMaybeTwice doubled) sys u Void ->
