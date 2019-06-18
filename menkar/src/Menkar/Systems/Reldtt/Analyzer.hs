@@ -24,7 +24,7 @@ import Data.Kind hiding (Type)
 type instance SysAnalyzerError Reldtt = ReldttAnalyzerError
 type instance SysAnalyzableToken Reldtt = ReldttAnalyzableToken
 
-data ReldttAnalyzerError where
+data ReldttAnalyzerError = AnErrorKnownModty
 data ReldttAnalyzableToken (t :: * -> *) where
   AnTokenReldttMode :: ReldttAnalyzableToken ReldttMode
   AnTokenChainModty :: ReldttAnalyzableToken ChainModty
@@ -162,12 +162,17 @@ instance Analyzable Reldtt ChainModty where
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
 
+{-| This doesn't handle relations properly.
+-}
 instance Analyzable Reldtt KnownModty where
   type ClassifExtraInput KnownModty = U1
   type Classif KnownModty = ReldttMode :*: ReldttMode
   type Relation KnownModty = Const ModRel
   analyzableToken = AnTokenSys $ AnTokenKnownModty
   witClassif token = Witness
+  analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h =
+    Left $ AnErrorSys $ AnErrorKnownModty
+  {-
   analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h = Right $ do
     rtail <- fmapCoe runIdentity <$> h Identity
       (conditional $ KnownModty snout unreachable)
@@ -179,7 +184,8 @@ instance Analyzable Reldtt KnownModty where
     return $ case token of
       TokenTrav -> AnalysisTrav $ KnownModty snout $ getAnalysisTrav rtail
       TokenTC -> AnalysisTC $ _knownModty'dom kmu :*: _knownModty'cod kmu
-      TokenRel -> _AnalysisRel
+      TokenRel -> AnalysisRel
+  -}
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
 

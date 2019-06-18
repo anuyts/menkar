@@ -26,7 +26,8 @@ import Data.Functor.Compose
 import Data.Maybe
 
 {-| Compare known modalities, assuming they have the same type.
-    Return a boolean if they compare, or @Nothing@ in case of problems.
+    Return a boolean if they compare, or @Nothing@ in case of problems
+    (not metavariable-related problems, but ACTUAL problems).
 -}
 relKnownModty :: forall v . ModRel -> KnownModty v -> KnownModty v -> Maybe Bool
 relKnownModty rel kmu1@(KnownModty snout1 tail1) kmu2@(KnownModty snout2 tail2) = do
