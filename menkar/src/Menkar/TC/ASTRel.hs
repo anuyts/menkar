@@ -44,7 +44,7 @@ checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = d
         (Just _, Nothing) -> tcFail  "False"
         (Just (Classification (s1 :: s _) extraS1 maybeCS1),
          Just (Classification (s2 :: s _) extraS2 maybeCS2)) -> do
-          let relS = extractRel relT
+          let relS = extractRel (unVarFromCtx <$> ctx'mode gamma) relT
           let gammadelta = fromMaybe unreachable $ extCtx TokenTrue gamma inputT1 (conditional inputT2)
               -- Cannot fail because we already know that the shapes of t1 and t2 match.
           let eta = case _addressInfo'focus addressInfo of

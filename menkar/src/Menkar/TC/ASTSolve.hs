@@ -54,7 +54,7 @@ newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 mayb
       let inputT1 :: Classification t v = subst <$> inputT1orig
       let Classification _  extraS1orig maybeCS1orig = fromMaybe unreachable $ extract gammaOrig inputT1orig
       let Classification s2 extraS2     maybeCS2 = fromMaybe unreachable $ extract (sndCtx gamma) inputT2
-      let relS = extractRel relT
+      let relS = extractRel (unVarFromCtx <$> ctx'mode gamma) relT
       let gammadeltaOrig = fromMaybe unreachable $ extCtx TokenFalse gammaOrig inputT1orig typesArentDoubled
       let gammadelta     = fromMaybe unreachable $ extCtx TokenTrue  gamma     inputT1     (conditional inputT2)
       let eta = case _addressInfo'focus addressInfo of
