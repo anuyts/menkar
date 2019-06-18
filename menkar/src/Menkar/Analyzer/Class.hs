@@ -292,7 +292,7 @@ class (Functor t,
         Maybe (Ctx (TypeMaybeTwice doubled) sys (ext u) Void)
       ) ->
       ({-forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>-}
-        Relation t v -> Relation s (ext v)
+        Mode sys v -> Relation t v -> Relation s (ext v)
       ) ->
       AddressInfo ->
       f (Analysis option s (ext vOut))
@@ -357,7 +357,7 @@ makeLenses ''Classification
 -}
 analyzeOld :: forall sys t option f v .
     (Analyzable sys t, Monad f, DeBruijnLevel v, IsAnalyzerOption option sys,
-     AnalyzerAssumption option v v) =>
+     AnalyzerAssumption option v v, Multimode sys) =>
     AnalyzerToken option ->
     --{-| When AST-nodes do not have the same head. -}
     --(forall a . IfDoubled option (f a)) ->
@@ -386,12 +386,12 @@ analyzeOld token gamma inputT1 condInputT2 condRel h =
     (extendCtx (tokenCheckDoubled token) gamma inputT1 condInputT2)
     (fromMaybe unreachable $ extractT gamma inputT1)
     (extractT gamma <$> condInputT2)
-    (extractRel <$> condRel)
+    (extractRel (unVarFromCtx <$> ctx'mode gamma) <$> condRel)
     info
     (\ t1' -> _classification'get <$> extractT gamma (classification'get .~ t1' $ inputT1))
 
 subASTsTyped :: forall sys f t v .
-  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys, Multimode sys) =>
   Ctx Type sys v Void ->
   Classification t v ->
   (forall s w .
@@ -410,7 +410,7 @@ subASTsTyped gamma inputT h = fmap getAnalysisTrav <$>
   )
  
 subASTs :: forall sys f t v .
-  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys, Multimode sys) =>
   Ctx Type sys v Void ->
   t v ->
   ClassifExtraInput t v ->
@@ -430,7 +430,7 @@ subASTs gamma t extraInputT h = subASTsTyped gamma
      h wkn gamma (_classification'get inputS) (_classification'extra inputS) addressInfo
   
 typetrick :: forall sys f t v .
-  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys) =>
+  (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys, Multimode sys) =>
   Ctx Type sys v Void ->
   Classification t v ->
   (forall s w .
