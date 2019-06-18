@@ -44,7 +44,7 @@ instance Analyzable Reldtt ReldttMode where
       (\ gamma' (Classification (ReldttMode t') U1 maybeU1') ->
          Just $ Identity !<$> Classification t' U1 (ClassifMustBe $ BareSysType $ SysTypeMode))
       extCtxId
-      (\ U1 -> modedEqDeg $ Identity !<$> _d)
+      (\ d U1 -> modedEqDeg $ Identity !<$> d)
       (AddressInfo ["underlying term of modality"] FocusWrapped EntirelyBoring)
     return $ case token of
       TokenTrav -> AnalysisTrav $ ReldttMode $ getAnalysisTrav $ rt
