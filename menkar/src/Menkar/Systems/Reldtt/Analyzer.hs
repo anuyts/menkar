@@ -7,8 +7,12 @@ import Menkar.System
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Analyzer
 
+import Data.Functor.Functor1
+import Data.Omissible
 import Control.Exception.AssertFalse
 import Data.Constraint.Witness
+import Data.Constraint.Conditional
+import Data.Functor.Coerce
 
 import GHC.Generics
 import Util
@@ -34,7 +38,18 @@ instance Analyzable Reldtt ReldttMode where
   type Relation ReldttMode = U1
   analyzableToken = AnTokenSys $ AnTokenReldttMode
   witClassif token = Witness
-
+  analyze token gamma (Classification (ReldttMode t) U1 maybeU1) h = Right $ do
+    rt <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ReldttMode unreachable)
+      (\ gamma' (Classification (ReldttMode t') U1 maybeU1') ->
+         Just $ Identity !<$> Classification t' U1 (ClassifMustBe $ BareSysType $ SysTypeMode))
+      extCtxId
+      (\ U1 -> modedEqDeg $ Identity !<$> _d)
+      (AddressInfo ["underlying term of modality"] FocusWrapped EntirelyBoring)
+    return $ case token of
+      TokenTrav -> AnalysisTrav $ ReldttMode $ getAnalysisTrav $ rt
+      TokenTC -> AnalysisTC $ U1
+      TokenRel -> AnalysisRel
   convRel token d = U1
   extraClassif t extraT = U1
 
