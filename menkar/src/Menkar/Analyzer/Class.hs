@@ -310,6 +310,12 @@ extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) =>
         IfTrue doubled (Classification t u) ->
         Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
 extCtxId token gamma _ _ = Just $ CtxId gamma
+extCtxRel :: forall sys r v .
+  (Functor r) =>
+  Mode sys v ->
+  r v ->
+  r (Identity v)
+extCtxRel = const $ fmapCoe Identity
 crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys) => 
         BoolToken doubled ->
         Ctx (TypeMaybeTwice doubled) sys u Void ->

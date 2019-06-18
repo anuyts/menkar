@@ -43,21 +43,21 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
       (\ gamma' (Classification (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1))
       extCtxId
-      (const U1)
+      (const $ const U1)
       (AddressInfo ["domain"] FocusWrapped omit)
     rcod <- fmapCoe runIdentity <$> h Identity
       (conditional $ ModedModality unreachable unreachable unreachable)
       (\ gamma' (Classification (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1))
       extCtxId
-      (const U1)
+      (const $ const U1)
       (AddressInfo ["codomain"] FocusWrapped omit)
     rmu <- fmapCoe runIdentity <$> h Identity
       (conditional $ ModedModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) unreachable)
       (\ gamma' (Classification (ModedModality dom' cod' mu') U1 _) ->
          Just $ Identity !<$> Classification mu' U1 (ClassifWillBe $ dom' :*: cod'))
       extCtxId
-      (fmapCoe Identity)
+      extCtxRel
       (AddressInfo ["modality"] FocusWrapped omit)
     return $ case token of
         TokenTrav -> AnalysisTrav $ ModedModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rmu)
@@ -86,7 +86,7 @@ instance (SysAnalyzer sys,
       (\ gamma' (Classification (Binding seg' body') U1 maybeCl') ->
          Just $ Identity !<$> Classification seg' U1 (fst1 <$> classifMust2will maybeCl'))
       extCtxId
-      (fmapCoe Identity)
+      extCtxRel
       (AddressInfo ["segment"] FocusWrapped omit)
     rbody <- h VarWkn
       (conditional $ Binding (getAnalysisTrav rseg) unreachable)
@@ -100,7 +100,7 @@ instance (SysAnalyzer sys,
            )
            (VarFromCtx <$> seg1)
       )
-      (fmap VarWkn)
+      (const $ fmap VarWkn)
       (AddressInfo ["body"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ Binding (getAnalysisTrav rseg) (getAnalysisTrav rbody)
@@ -180,7 +180,7 @@ instance (SysAnalyzer sys,
            )
          )
       )
-      unComp1
+      (const $ unComp1)
       (AddressInfo ["body"] FocusWrapped WorthMentioning)
     return $ case token of
       TokenTrav -> AnalysisTrav $ NamedBinding name $ getAnalysisTrav rbody
@@ -217,7 +217,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (const U1)
+          (const $ const U1)
           (AddressInfo ["mode"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ UniHS (getAnalysisTrav rd)
@@ -237,7 +237,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
                   otherwise -> Nothing
               )
               extCtxId
-              (fmapCoe Identity)
+              extCtxRel
               (AddressInfo ["binding"] NoFocus EntirelyBoring)
             return $ case token of
               TokenTrav -> AnalysisTrav $ Pi $ getAnalysisTrav rbinding
@@ -254,7 +254,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
                   otherwise -> Nothing
               )
               extCtxId
-              (fmapCoe Identity)
+              extCtxRel
               (AddressInfo ["binding"] NoFocus EntirelyBoring)
             return $ case token of
               TokenTrav -> AnalysisTrav $ Sigma $ getAnalysisTrav rbinding
@@ -283,7 +283,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (\ gamma' (Classification ty' U1 maybeD') -> extract ty' <&> \ segment' ->
                   Identity !<$> Classification segment' U1 (ClassifWillBe $ U1))
               extCtxId
-              (fmapCoe Identity)
+              extCtxRel
               (AddressInfo ["segment"] NoFocus EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ BoxType $ getAnalysisTrav rsegment
@@ -301,7 +301,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["ambient type"] NoFocus omit)
         rtL <- fmapCoe runIdentity <$> h Identity
           (conditional $ EqType (getAnalysisTrav rtyAmbient) unreachable unreachable)
@@ -311,7 +311,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["left equand"] NoFocus omit)
         rtR <- fmapCoe runIdentity <$> h Identity
           (conditional $ EqType (getAnalysisTrav rtyAmbient) unreachable unreachable)
@@ -321,7 +321,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["right equand"] NoFocus omit)
         return $ case token of
           TokenTrav ->
@@ -338,7 +338,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["system-specific type"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ SysType $ getAnalysisTrav rsysty
@@ -398,7 +398,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["UniHS-constructor"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ConsUniHS $ getAnalysisTrav rty
@@ -416,7 +416,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["binding"] NoFocus EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ Lam $ getAnalysisTrav rbinding
@@ -438,7 +438,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["Sigma-type annotation"] NoFocus omit)
         rtFst <- fmapCoe runIdentity <$> h Identity
           (conditional $ Pair (getAnalysisTrav rsigmaBinding) unreachable unreachable)
@@ -449,7 +449,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["first component"] NoFocus omit)
         rtSnd <- fmapCoe runIdentity <$> h Identity
           (conditional $ Pair (getAnalysisTrav rsigmaBinding) (getAnalysisTrav rtFst) unreachable)
@@ -460,7 +460,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["second component"] NoFocus omit)
         return $ case token of
           TokenTrav ->
@@ -482,7 +482,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["Box-type annotation"] NoFocus omit)
         rtUnbox <- fmapCoe runIdentity <$> h Identity
           (conditional $ ConsBox (getAnalysisTrav rboxSeg) unreachable)
@@ -493,7 +493,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["box content"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ConsBox (getAnalysisTrav rboxSeg) (getAnalysisTrav rtUnbox)
@@ -514,7 +514,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["predecessor"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ConsSuc $ getAnalysisTrav rt
@@ -530,7 +530,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["ambient type"] NoFocus omit)
         rt <- fmapCoe runIdentity <$> h Identity
           (conditional $ ConsRefl (getAnalysisTrav rtyAmbient) unreachable)
@@ -540,7 +540,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["self-equand"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ConsRefl (getAnalysisTrav rtyAmbient) (getAnalysisTrav rt)
@@ -565,7 +565,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
          Just $ Identity !<$> Classification t' U1
            (ClassifMustBe $ hs2type $ UniHS $ unVarFromCtx <$> ctx'mode gamma'))
       extCtxId
-      (fmapCoe Identity)
+      extCtxRel
       (AddressInfo ["type code in universe"] FocusWrapped WorthMentioning)
     return $ case token of
       TokenTrav -> AnalysisTrav $ Type $ runIdentity !<$> getAnalysisTrav rt
@@ -630,7 +630,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
+          (const $ Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["pair clause"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ElimSigma $ getAnalysisTrav rboundBoundPairClause
@@ -663,7 +663,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (Comp1 . fmap (VarWkn . Identity))
+          (const $ Comp1 . fmap (VarWkn . Identity))
           (AddressInfo ["box clause"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ElimBox $ getAnalysisTrav rboundBoxClause
@@ -691,7 +691,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["zero clause"] NoFocus omit)
         rboundBoundSucClause <- fmapCoe runIdentity <$> h Identity
           (conditional $ ElimNat unreachable unreachable)
@@ -723,7 +723,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
+          (const $ Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["successor clause"] NoFocus omit)
         return $ case token of
           TokenTrav ->
@@ -768,7 +768,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                  Just $ CtxId $ VarFromCtx <$> _segment'modty (binding'segment binding') :\\ gamma'
                otherwise -> Nothing
           )
-          (fmapCoe Identity . modedDivDeg (_segment'modty $ binding'segment binding))
+          (const $ fmapCoe Identity . modedDivDeg (_segment'modty $ binding'segment binding))
           (AddressInfo ["argument"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ App $ runIdentity !<$> getAnalysisTrav rarg
@@ -827,7 +827,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (Comp1 . fmap (VarWkn . Identity))
+          (const $ Comp1 . fmap (VarWkn . Identity))
           (AddressInfo ["motive"] NoFocus omit)
         rclauses <- fmapCoe runIdentity <$> h Identity
           (conditional $ ElimDep (getAnalysisTrav rboundMotive) unreachable)
@@ -840,7 +840,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["clauses"] NoFocus EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ElimDep (getAnalysisTrav rboundMotive) (getAnalysisTrav rclauses)
@@ -865,7 +865,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
+          (const $ Comp1 . Comp1 . fmap (VarWkn . VarWkn . Identity))
           (AddressInfo ["motive"] NoFocus omit)
         rclauseRefl <- fmapCoe runIdentity <$> h Identity
           (conditional $ ElimEq (getAnalysisTrav rboundBoundMotive) unreachable)
@@ -881,7 +881,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity)
+          extCtxRel
           (AddressInfo ["refl clause"] NoFocus omit)
         return $ case token of
            TokenTrav -> AnalysisTrav $ ElimEq (getAnalysisTrav rboundBoundMotive) (getAnalysisTrav rclauseRefl)
@@ -913,7 +913,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
             otherwise -> Nothing
         )
         extCtxId
-        (fmapCoe Identity)
+        extCtxRel
         (AddressInfo ["underlying constructor"] FocusWrapped EntirelyBoring)
       return $ case token of
         TokenTrav -> AnalysisTrav $ TermCons $ getAnalysisTrav rc
@@ -930,7 +930,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
             otherwise -> Nothing
         )
         crispExtCtxId
-        (const $ Const ModEq)
+        (const $ const $ Const ModEq)
         (AddressInfo ["modality of elimination"] NoFocus omit)
       rtyEliminee <- fmapCoe runIdentity <$> h Identity
         (conditional $ TermElim (getAnalysisTrav rdmuElim) unreachable unreachable unreachable)
@@ -944,7 +944,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
               Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
             otherwise -> Nothing
         )
-        (fmapCoe Identity . modedDivDeg dmuElim)
+        (const $ fmapCoe Identity . modedDivDeg dmuElim)
         (AddressInfo ["type of eliminee"] NoFocus omit)
       reliminee <- fmapCoe runIdentity <$> h Identity
         (conditional $ TermElim (getAnalysisTrav rdmuElim) unreachable (getAnalysisTrav rtyEliminee) unreachable)
@@ -958,7 +958,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
               Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
             otherwise -> Nothing
         )
-        (fmapCoe Identity . modedDivDeg dmuElim)
+        (const $ fmapCoe Identity . modedDivDeg dmuElim)
         (AddressInfo ["eliminee"] FocusEliminee omit)
       reliminator <- fmapCoe runIdentity <$> h Identity
         (conditional $
@@ -972,7 +972,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
             otherwise -> Nothing
         )
         extCtxId
-        (fmapCoe Identity)
+        extCtxRel
         (AddressInfo ["eliminator"] NoFocus EntirelyBoring)
       return $ case token of
         TokenTrav ->
@@ -1004,7 +1004,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
             otherwise -> Nothing
         )
         extCtxId
-        (fmapCoe Identity)
+        extCtxRel
         (AddressInfo ["system-specific term"] FocusWrapped EntirelyBoring)
       return $ case token of
         TokenTrav -> AnalysisTrav $ TermSys $ runIdentity !<$> getAnalysisTrav rsyst
@@ -1034,7 +1034,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
             otherwise -> Nothing
         )
         extCtxId
-        (fmapCoe Identity)
+        extCtxRel
         (AddressInfo ["non-variable"] FocusWrapped EntirelyBoring)
       return $ case token of
         TokenTrav -> AnalysisTrav $ Expr2 $ runIdentity !<$> getAnalysisTrav rtnv
@@ -1059,7 +1059,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
          Just $ Identity !<$>
          Classification dmu' U1 (ClassifMustBe $ modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma')))
       crispExtCtxId
-      (const $ Const $ ModEq)
+      (const $ const $ Const $ ModEq)
       (AddressInfo ["modality"] FocusWrapped omit)
     let plicOut :: forall v' . Plicity sys v'
         plicOut = case plic of
@@ -1074,7 +1074,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       (\ token' gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') _ ->
          Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
       )
-      (fmapCoe Identity)
+      extCtxRel
       (AddressInfo ["content/type"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ Declaration name (getAnalysisTrav rdmu) (plicOut) (getAnalysisTrav rcontent)
@@ -1128,7 +1128,7 @@ instance (SysAnalyzer sys,
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity . snd1)
+          (const $ fmapCoe Identity . snd1)
           (AddressInfo ["rhs of telescope"] FocusWrapped omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ Telescoped $ runIdentity !<$> getAnalysisTrav rrhs
@@ -1144,7 +1144,7 @@ instance (SysAnalyzer sys,
               otherwise -> Nothing
           )
           extCtxId
-          (fmapCoe Identity . fst1)
+          (const $ fmapCoe Identity . fst1)
           (AddressInfo ["a segment"] FocusWrapped omit)
         rtelescopedRHS <- h VarWkn
           (conditional $ getAnalysisTrav rseg :|- unreachable)
@@ -1164,7 +1164,7 @@ instance (SysAnalyzer sys,
                   otherwise -> Nothing
               otherwise -> Nothing
           )
-          (fmap VarWkn)
+          (const $ fmap VarWkn)
           (AddressInfo ["tail"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ getAnalysisTrav rseg :|- getAnalysisTrav rtelescopedRHS
@@ -1181,7 +1181,7 @@ instance (SysAnalyzer sys,
               otherwise -> Nothing
           )
           crispExtCtxId
-          (const $ Const ModEq)
+          (const $ const $ Const ModEq)
           (AddressInfo ["applied modality"] FocusWrapped omit)
         rtelescopedRHS <- fmapCoe runIdentity <$> h Identity
           (conditional $ getAnalysisTrav rdmu :** unreachable)
@@ -1195,7 +1195,7 @@ instance (SysAnalyzer sys,
                 Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
               otherwise -> Nothing
           )
-          (fmapCoe Identity . (\ (ddegSeg :*: ddegRHS) -> modedDivDeg dmu ddegSeg :*: modedDivDeg dmu ddegRHS))
+          (const $ fmapCoe Identity . (\ (ddegSeg :*: ddegRHS) -> modedDivDeg dmu ddegSeg :*: modedDivDeg dmu ddegRHS))
           (AddressInfo ["tail"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ getAnalysisTrav rdmu :** getAnalysisTrav rtelescopedRHS
@@ -1219,14 +1219,14 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
       (\ gamma' (Classification valRHS@(ValRHS t' ty') U1 maybeU1') ->
          Just $ Identity !<$> Classification ty' U1 (ClassifWillBe U1))
       extCtxId
-      (fmapCoe Identity)
+      extCtxRel
       (AddressInfo ["type"] FocusWrapped omit)
     rt <- fmapCoe runIdentity <$> h Identity
       (conditional $ ValRHS unreachable (getAnalysisTrav rty))
       (\ gamma' (Classification valRHS@(ValRHS t' ty') U1 maybeU1') ->
          Just $ Identity !<$> Classification t' U1 (ClassifMustBe ty'))
       extCtxId
-      (fmapCoe Identity)
+      extCtxRel
       (AddressInfo ["definition"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ ValRHS (getAnalysisTrav rt) (getAnalysisTrav rty)
@@ -1255,7 +1255,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
            Just $ Classification (revEntries' !! indexRev) U1 (ClassifWillBe U1))
         (\ token' gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') _ ->
            Just $ gamma' :<...> VarFromCtx <$> ModuleRHS (Compose $ tails revEntries' !! indexRev))
-        (fmapCoe VarInModule)
+        (const $ fmapCoe VarInModule)
         (AddressInfo [show (index + 1) ++ "th entry"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ ModuleRHS $ Compose $ getAnalysisTrav <$> rrevEntries
@@ -1294,7 +1294,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
               otherwise -> Nothing
           )
           extCtxId
-          ((\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
+          (const $ (\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
           (AddressInfo ["val"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ EntryVal $ runIdentity !<$> getAnalysisTrav rval
@@ -1309,7 +1309,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
               otherwise -> Nothing
           )
           extCtxId
-          ((\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
+          (const $ (\ ddeg -> ddeg :*: ddeg) . fmapCoe Identity)
           (AddressInfo ["module"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ EntryModule $ runIdentity !<$> getAnalysisTrav rmodul
@@ -1355,14 +1355,14 @@ instance (SysAnalyzer sys,
       (\ gamma' (Classification (fv' :*: gv') (extraF' :*: extraG') maybeClassifs') ->
          Just $ Identity !<$> Classification fv' extraF' (fst1 <$> maybeClassifs'))
       extCtxId
-      (fmapCoe Identity . fst1)
+      (const $ fmapCoe Identity . fst1)
       (AddressInfo ["first component"] FocusWrapped omit)
     rgv <- h Identity
       (conditional $ unreachable :*: unreachable)
       (\ gamma' (Classification (fv' :*: gv') (extraF' :*: extraG') maybeClassifs') ->
          Just $ Identity !<$> Classification gv' extraG' (snd1 <$> maybeClassifs'))
       extCtxId
-      (fmapCoe Identity . snd1)
+      (const $ fmapCoe Identity . snd1)
       (AddressInfo ["second component"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ runIdentity !<$> getAnalysisTrav rfv :*: getAnalysisTrav rgv
@@ -1388,7 +1388,7 @@ instance (SysAnalyzer sys,
       (\ gamma' (Classification (Const1 t') extraT' maybeCT') ->
          Just $ Identity !<$> Classification t' extraT' (classifMust2will maybeCT'))
       extCtxId
-      (fmapCoe Identity)
+      extCtxRel
       (AddressInfo ["it"] FocusWrapped EntirelyBoring)
     return $ case token of
       TokenTrav -> AnalysisTrav $ Const1 $ getAnalysisTrav rt
