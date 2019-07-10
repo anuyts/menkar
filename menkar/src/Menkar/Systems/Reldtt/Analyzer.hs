@@ -330,7 +330,7 @@ instance Analyzable Reldtt ModeTerm where
   analyzableToken = AnTokenSys $ AnTokenModeTerm
   witClassif token = Witness
 
-  analyze token gamma (Classification modeTerm U1 maybeTy) h = case modeTerm of
+  analyze token gamma (Classification modeTerm U1 maybeU1) h = case modeTerm of
     ModeTermZero -> Right $ do
       return $ case token of
         TokenTrav -> AnalysisTrav $ ModeTermZero
@@ -366,6 +366,62 @@ instance Analyzable Reldtt ModtyTerm where
   type Relation ModtyTerm = U1
   analyzableToken = AnTokenSys $ AnTokenModtyTerm
   witClassif token = Witness
+
+  analyze token gamma (Classification modtyTerm U1 maybeDomCod) h = case modtyTerm of
+    ModtyTermChain chmu -> Right $ do
+      rchmu <- fmapCoe runIdentity <$> h Identity
+        (conditional $ ModtyTermChain unreachable)
+        (\ gamma' -> \ case
+            Classification modtyTerm'@(ModtyTermChain chmu') U1 maybeDomCod' ->
+              Just $ Identity !<$> Classification chmu' U1 ClassifUnknown
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ d U1 -> Const ModEq)
+        (AddressInfo ["underlying chain modality"] FocusWrapped WorthMentioning)
+      return $ case token of 
+        TokenTrav -> AnalysisTrav $ ModtyTermChain $ getAnalysisTrav rchmu
+        TokenTC -> AnalysisTC $ dom :*: cod
+          where dom :*: cod = getAnalysisTC rchmu
+        TokenRel -> AnalysisRel
+    ModtyTermDiv rho mu -> unreachable -- only for prettyprinting
+    ModtyTermApproxLeftAdjointProj domResult codResult tmuArg -> Right $ do
+      rdomResult <- fmapCoe runIdentity <$> h Identity
+        (conditional $ ModtyTermApproxLeftAdjointProj unreachable unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj domResult' codResult' tmuArg') U1 maybeDomCod) ->
+              Just $ Identity !<$> Classification domResult' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\_ U1 -> U1)
+        (AddressInfo ["domain of result"] NoFocus omit)
+      rcodResult <- fmapCoe runIdentity <$> h Identity
+        (conditional $ ModtyTermApproxLeftAdjointProj unreachable unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj domResult' codResult' tmuArg') U1 maybeDomCod) ->
+              Just $ Identity !<$> Classification codResult' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\_ U1 -> U1)
+        (AddressInfo ["codomain of result"] NoFocus omit)
+      rtmuArg <- fmapCoe runIdentity <$> h Identity
+        (conditional $ ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) unreachable)
+        (\ gamma' -> \ case
+            (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj domResult' codResult' tmuArg') U1 maybeDomCod) ->
+              Just $ Identity !<$>
+                Classification tmuArg' U1 (ClassifMustBe $ BareSysType $ SysTypeModty codResult' domResult')
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\d U1 -> Identity !<$> modedEqDeg d)
+        (AddressInfo ["argument modality"] FocusEliminee omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ 
+          ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) (getAnalysisTrav rtmuArg)
+        TokenTC -> AnalysisTC $ domResult :*: codResult
+        TokenRel -> AnalysisRel
 
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
