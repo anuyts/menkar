@@ -31,6 +31,7 @@ data ReldttAnalyzableToken (t :: * -> *) where
   AnTokenReldttDegree :: ReldttAnalyzableToken ReldttDegree
   AnTokenReldttSysTerm :: ReldttAnalyzableToken ReldttSysTerm
   AnTokenModeTerm :: ReldttAnalyzableToken ModeTerm
+  AnTokenModtyTerm :: ReldttAnalyzableToken ModtyTerm
   AnTokenReldttUniHSConstructor :: ReldttAnalyzableToken ReldttUniHSConstructor
   AnTokenKnownModty :: ReldttAnalyzableToken KnownModty
 
@@ -286,8 +287,38 @@ instance Analyzable Reldtt ReldttSysTerm where
         TokenTrav -> AnalysisTrav $ SysTermMode $ getAnalysisTrav rmodeTerm
         TokenTC -> AnalysisTC $ BareSysType $ SysTypeMode
         TokenRel -> AnalysisRel
-    SysTermModty modtyTerm -> _
-    SysTermChainModtyInDisguise chmu -> _
+    SysTermModty modtyTerm -> Right $ do
+      rmodtyTerm <- fmapCoe runIdentity <$> h Identity
+        (conditional $ SysTermModty unreachable)
+        (\ gamma' -> \ case
+            Classification syst'@(SysTermModty modtyTerm') U1 maybeTy' ->
+              Just $ Identity !<$> Classification modtyTerm' U1 ClassifUnknown
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ d deg -> U1)
+        (AddressInfo ["underlying modality term"] FocusWrapped EntirelyBoring)
+      return $ case token of 
+        TokenTrav -> AnalysisTrav $ SysTermModty $ getAnalysisTrav rmodtyTerm
+        TokenTC -> AnalysisTC $ BareSysType $ SysTypeModty dom cod
+          where dom :*: cod = getAnalysisTC rmodtyTerm
+        TokenRel -> AnalysisRel
+    SysTermChainModtyInDisguise chmu -> Right $ do
+      rchmu <- fmapCoe runIdentity <$> h Identity
+        (conditional $ SysTermChainModtyInDisguise unreachable)
+        (\ gamma' -> \ case
+            Classification syst'@(SysTermChainModtyInDisguise chmu') U1 maybeTy' ->
+              Just $ Identity !<$> Classification chmu' U1 ClassifUnknown
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ d deg -> Const ModEq)
+        (AddressInfo ["underlying chain modality"] FocusWrapped EntirelyBoring)
+      return $ case token of 
+        TokenTrav -> AnalysisTrav $ SysTermChainModtyInDisguise $ getAnalysisTrav rchmu
+        TokenTC -> AnalysisTC $ BareSysType $ SysTypeModty dom cod
+          where dom :*: cod = getAnalysisTC rchmu
+        TokenRel -> AnalysisRel
 
   convRel token d = modedEqDeg d
   extraClassif t extraT = U1
@@ -301,6 +332,16 @@ instance Analyzable Reldtt ModeTerm where
 
   convRel token d = U1
   extraClassif t extraT = U1
+
+instance Analyzable Reldtt ModtyTerm where
+  type ClassifExtraInput ModtyTerm = U1
+  type Classif ModtyTerm = ReldttMode :*: ReldttMode
+  type Relation ModtyTerm = U1
+  analyzableToken = AnTokenSys $ AnTokenModtyTerm
+  witClassif token = Witness
+
+  convRel token d = U1 :*: U1
+  extraClassif t extraT = U1 :*: U1
 
 instance Analyzable Reldtt ReldttUniHSConstructor where
   type ClassifExtraInput ReldttUniHSConstructor = ClassifExtraInput (UniHSConstructor Reldtt)
