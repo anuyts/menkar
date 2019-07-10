@@ -30,6 +30,7 @@ data ReldttAnalyzableToken (t :: * -> *) where
   AnTokenChainModty :: ReldttAnalyzableToken ChainModty
   AnTokenReldttDegree :: ReldttAnalyzableToken ReldttDegree
   AnTokenReldttSysTerm :: ReldttAnalyzableToken ReldttSysTerm
+  AnTokenModeTerm :: ReldttAnalyzableToken ModeTerm
   AnTokenReldttUniHSConstructor :: ReldttAnalyzableToken ReldttUniHSConstructor
   AnTokenKnownModty :: ReldttAnalyzableToken KnownModty
 
@@ -269,7 +270,33 @@ instance Analyzable Reldtt ReldttSysTerm where
   analyzableToken = AnTokenSys $ AnTokenReldttSysTerm
   witClassif token = Witness
 
+  analyze token gamma (Classification syst U1 maybeTy) h = case syst of
+    SysTermMode modeTerm -> Right $ do
+      rmodeTerm <- fmapCoe runIdentity <$> h Identity
+        (conditional $ SysTermMode unreachable)
+        (\ gamma' -> \ case
+            Classification syst'@(SysTermMode modeTerm') U1 maybeTy' ->
+              Just $ Identity !<$> Classification modeTerm' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ d deg -> U1)
+        (AddressInfo ["underlying mode term"] FocusWrapped EntirelyBoring)
+      return $ _
+    SysTermModty modtyTerm -> _
+    SysTermChainModtyInDisguise chmu -> _
+
   convRel token d = modedEqDeg d
+  extraClassif t extraT = U1
+
+instance Analyzable Reldtt ModeTerm where
+  type ClassifExtraInput ModeTerm = U1
+  type Classif ModeTerm = U1
+  type Relation ModeTerm = U1
+  analyzableToken = AnTokenSys $ AnTokenModeTerm
+  witClassif token = Witness
+
+  convRel token d = U1
   extraClassif t extraT = U1
 
 instance Analyzable Reldtt ReldttUniHSConstructor where
