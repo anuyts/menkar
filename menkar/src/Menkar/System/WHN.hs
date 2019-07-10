@@ -50,7 +50,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     Mode sys v ->
     String ->
     whn (Maybe Bool)
-  isEqDeg gamma deg d reason = leqDeg gamma deg eqDeg d reason
+  isEqDeg gamma deg d reason = leqDeg gamma deg (eqDeg d) d reason
 
   isTopDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>

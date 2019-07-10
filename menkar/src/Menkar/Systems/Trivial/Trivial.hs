@@ -147,7 +147,7 @@ absurd1 v = undefined
 trivModedModality = TrivModedModality
 
 instance Degrees Trivial where
-  eqDeg = TrivDegree
+  eqDeg d = TrivDegree
   maybeTopDeg = Nothing
   divDeg TrivModedModality TrivModedDegree = TrivDegree
   divDeg _ _ = unreachable
