@@ -302,8 +302,8 @@ data ReldttSysTerm v =
 data ReldttUniHSConstructor v =
   {-| Type of modes. -}
   SysTypeMode |
-  {-| Type of degrees. -}
-  SysTypeDeg (ReldttMode v) {-^ Mode, can be omega. -} |
+  --{-| Type of degrees. -}
+  --SysTypeDeg (ReldttMode v) {-^ Mode, can be omega. -} |
   {-| Type of modalities. -}
   SysTypeModty (ReldttMode v) {-^ Domain, can be omega -} (ReldttMode v) {-^ Codomain, can be omega -} |
   SysTypeChainModtyDisguisedAsTerm

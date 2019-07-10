@@ -434,6 +434,43 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
   analyzableToken = AnTokenSys $ AnTokenReldttUniHSConstructor
   witClassif token = Witness
 
+  analyze token gamma (Classification ty U1 maybeD) h = case ty of
+    SysTypeMode -> Right $ do
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ SysTypeMode
+        TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
+        TokenRel -> AnalysisRel
+    SysTypeModty dom cod -> Right $ do
+      rdom <- fmapCoe runIdentity <$> h Identity
+        (conditional $ SysTypeModty unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification ty'@(SysTypeModty dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\d deg -> U1)
+        (AddressInfo ["domain"] FocusWrapped omit)
+      rcod <- fmapCoe runIdentity <$> h Identity
+        (conditional $ SysTypeModty unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification ty'@(SysTypeModty dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\d deg -> U1)
+        (AddressInfo ["codomain"] FocusWrapped omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ SysTypeModty (getAnalysisTrav rdom) (getAnalysisTrav rcod)
+        TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
+        TokenRel -> AnalysisRel
+    SysTypeChainModtyDisguisedAsTerm -> Right $ do
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ SysTypeChainModtyDisguisedAsTerm
+        TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
+        TokenRel -> AnalysisRel
+
   convRel token d = U1
   extraClassif t extraT = U1
 
