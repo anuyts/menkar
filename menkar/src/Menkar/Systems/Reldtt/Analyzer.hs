@@ -313,7 +313,7 @@ instance Analyzable Reldtt ReldttSysTerm where
         )
         extCtxId
         (\ d deg -> Const ModEq)
-        (AddressInfo ["underlying chain modality"] FocusWrapped EntirelyBoring)
+        (AddressInfo ["underlying chain modality"] FocusWrapped omit)
       return $ case token of 
         TokenTrav -> AnalysisTrav $ SysTermChainModtyInDisguise $ getAnalysisTrav rchmu
         TokenTC -> AnalysisTC $ BareSysType $ SysTypeModty dom cod
@@ -329,6 +329,33 @@ instance Analyzable Reldtt ModeTerm where
   type Relation ModeTerm = U1
   analyzableToken = AnTokenSys $ AnTokenModeTerm
   witClassif token = Witness
+
+  analyze token gamma (Classification modeTerm U1 maybeTy) h = case modeTerm of
+    ModeTermZero -> Right $ do
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ ModeTermZero
+        TokenTC -> AnalysisTC $ U1
+        TokenRel -> AnalysisRel
+    ModeTermSuc t -> Right $ do
+      rt <- fmapCoe runIdentity <$> h Identity
+        (conditional $ ModeTermSuc unreachable)
+        (\ gamma' -> \ case
+            Classification modeTerm'@(ModeTermSuc t') U1 maybeU1' ->
+              Just $ Identity !<$> Classification t' U1 (ClassifMustBe $ BareSysType $ SysTypeMode)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ d _ -> Identity !<$> modedEqDeg d)
+        (AddressInfo ["predecessor mode"] FocusWrapped omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ ModeTermSuc $ getAnalysisTrav rt
+        TokenTC -> AnalysisTC $ U1
+        TokenRel -> AnalysisRel
+    ModeTermOmega -> Right $ do
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ ModeTermOmega
+        TokenTC -> AnalysisTC $ U1
+        TokenRel -> AnalysisRel
 
   convRel token d = U1
   extraClassif t extraT = U1
