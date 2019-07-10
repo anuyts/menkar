@@ -19,7 +19,7 @@ class (SysSyntax (Term sys) sys) => Multimode sys where
 
 class (SysSyntax (Term sys) sys, Multimode sys) => Degrees sys where
   eqDeg :: Mode sys v -> (Degree sys) v
-  maybeTopDeg :: Maybe (Degree sys v)
+  maybeTopDeg :: Mode sys v -> Maybe (Degree sys v)
   divDeg :: ModedModality sys v -> ModedDegree sys v -> (Degree sys) v
   --These belong to type-checking and may get stuck on metas:
   --isTopDeg :: (Degree sys) v -> Bool
@@ -60,4 +60,4 @@ modedEqDeg :: Degrees sys => Mode sys v -> ModedDegree sys v
 modedEqDeg d = ModedDegree d (eqDeg d)
 
 maybeModedTopDeg :: Degrees sys => Mode sys v -> Maybe (ModedDegree sys v)
-maybeModedTopDeg d = ModedDegree d <$> maybeTopDeg
+maybeModedTopDeg d = ModedDegree d <$> maybeTopDeg d

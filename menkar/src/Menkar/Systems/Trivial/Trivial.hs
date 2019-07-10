@@ -148,7 +148,7 @@ trivModedModality = TrivModedModality
 
 instance Degrees Trivial where
   eqDeg d = TrivDegree
-  maybeTopDeg = Nothing
+  maybeTopDeg d = Nothing
   divDeg TrivModedModality TrivModedDegree = TrivDegree
   divDeg _ _ = unreachable
 

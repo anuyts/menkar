@@ -59,7 +59,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     Mode sys v ->
     String ->
     whn (Maybe Bool)
-  isTopDeg gamma deg d reason = case maybeTopDeg of
+  isTopDeg gamma deg d reason = case maybeTopDeg d of
     Nothing -> return $ Just False
     Just topDeg -> leqDeg gamma topDeg deg d reason
 
