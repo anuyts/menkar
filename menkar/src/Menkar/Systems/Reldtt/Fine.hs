@@ -281,7 +281,9 @@ data ModtyTerm v =
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ReldttDegree v =
-  DegKnown KnownDeg |
+  DegKnown
+    (Mode Reldtt v) {-^ Degree's mode -}
+    KnownDeg |
   DegGet
     (ReldttDegree v) {-^ Degree -}
     (Term Reldtt v) {-^ Modality -}
@@ -329,8 +331,8 @@ instance Multimode Reldtt where
     ChainModtyKnown (idKnownModty cod)
 
 instance Degrees Reldtt where
-  eqDeg = DegKnown $ KnownDegEq
-  maybeTopDeg = Just $ DegKnown $ KnownDegTop
+  eqDeg d = DegKnown d KnownDegEq
+  maybeTopDeg d = Just $ DegKnown d KnownDegTop
   divDeg (ModedModality dom cod mu) (ModedDegree cod' i) = DegGet i (BareChainModty mu) dom cod
 
 ------------------------------

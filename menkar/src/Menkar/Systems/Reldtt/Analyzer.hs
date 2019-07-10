@@ -162,8 +162,6 @@ instance Analyzable Reldtt ChainModty where
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
 
-{-| This doesn't handle relations properly.
--}
 instance Analyzable Reldtt KnownModty where
   type ClassifExtraInput KnownModty = U1
   type Classif KnownModty = ReldttMode :*: ReldttMode
@@ -172,7 +170,7 @@ instance Analyzable Reldtt KnownModty where
   witClassif token = Witness
   analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h =
     Left $ AnErrorSys $ AnErrorKnownModty
-  {-
+  {- -- This doesn't handle relations properly.
   analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h = Right $ do
     rtail <- fmapCoe runIdentity <$> h Identity
       (conditional $ KnownModty snout unreachable)
@@ -195,6 +193,71 @@ instance Analyzable Reldtt ReldttDegree where
   type Relation ReldttDegree = Const ModRel
   analyzableToken = AnTokenSys $ AnTokenReldttDegree
   witClassif token = Witness
+
+  analyze token gamma (Classification deg U1 maybeD) h = case deg of
+
+    DegKnown d kdeg -> Right $ do
+      rd <- fmapCoe runIdentity <$> h Identity
+        (conditional $ DegKnown unreachable kdeg)
+        (\ gamma' -> \ case
+            (Classification deg'@(DegKnown d' kdeg') U1 maybeD') ->
+              Just $ Identity !<$> Classification d' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\_ _ -> U1)
+        (AddressInfo ["mode"] FocusWrapped omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ DegKnown (getAnalysisTrav rd) kdeg
+        TokenTC -> AnalysisTC $ d
+        TokenRel -> AnalysisRel
+
+    DegGet degArg tmu dom cod -> Right $ do
+      rdegArg <- fmapCoe runIdentity <$> h Identity
+        (conditional $ DegGet unreachable unreachable unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification deg'@(DegGet degArg' tmu' dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification degArg' U1 (ClassifMustBe cod')
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\_ (Const modrel) -> Const modrel)
+        (AddressInfo ["argument degree"] NoFocus omit)
+      rdom <- fmapCoe runIdentity <$> h Identity
+        (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification deg'@(DegGet degArg' tmu' dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\_ _ -> U1)
+        (AddressInfo ["domain"] FocusWrapped omit)
+      rcod <- fmapCoe runIdentity <$> h Identity
+        (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification deg'@(DegGet degArg' tmu' dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\_ _ -> U1)
+        (AddressInfo ["codomain"] FocusWrapped omit)
+      rtmu <- fmapCoe runIdentity <$> h Identity
+        (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable (getAnalysisTrav rdom) (getAnalysisTrav rcod))
+        (\ gamma' -> \ case
+            (Classification deg'@(DegGet degArg' tmu' dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification tmu' U1 (ClassifMustBe $ BareSysType $ SysTypeModty dom' cod')
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\d _ -> Identity !<$> modedEqDeg d)
+        (AddressInfo ["modality"] FocusEliminee omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $
+          DegGet (getAnalysisTrav rdegArg) (getAnalysisTrav rtmu) (getAnalysisTrav rdom) (getAnalysisTrav rcod)
+        TokenTC -> AnalysisTC $ dom
+        TokenRel -> AnalysisRel
 
   convRel token d = U1
   extraClassif t extraT = U1
