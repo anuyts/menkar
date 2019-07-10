@@ -76,4 +76,5 @@ quickEq t t' extraT extraT' =
            (Var2 v') -> v == v'
            _ -> False
          (AnErrorVar, _, _) -> unreachable
-         (AnErrorSys sysError, _, _) -> quickEqSysUnanalyzable sysError t t' extraT extraT'
+         (AnErrorSys sysError, AnTokenSys sysToken, _) -> quickEqSysUnanalyzable sysError sysToken t t' extraT extraT'
+         (AnErrorSys sysError, _, _) -> unreachable

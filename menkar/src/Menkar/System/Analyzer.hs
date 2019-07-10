@@ -37,6 +37,7 @@ class (SysSyntax (Term sys) sys,
   quickEqSysUnanalyzable :: forall t v . 
     (Analyzable sys t, DeBruijnLevel v) =>
     SysAnalyzerError sys ->
+    SysAnalyzableToken sys t ->
     t v ->
     t v ->
     ClassifExtraInput t v ->

@@ -79,7 +79,7 @@ data ModtySnout = ModtySnout
    _modtySnout'cod :: Int,
    {-| Degrees in REVERSE ORDER. -}
    _modtySnout'degreesReversed :: [KnownDeg]
-  }
+  } deriving Eq
 data ModtyTail v =
   TailEmpty |
 

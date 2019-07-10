@@ -172,7 +172,7 @@ instance Analyzable Reldtt KnownModty where
   witClassif token = Witness
   analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h =
     Left $ AnErrorSys $ AnErrorKnownModty
-  {- -- This doesn't handle relations properly.
+  {- -- This doesn't handle relations properly. THEN CHECK EQUALITY OF SNOUTS
   analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h = Right $ do
     rtail <- fmapCoe runIdentity <$> h Identity
       (conditional $ KnownModty snout unreachable)
@@ -477,4 +477,11 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
 --------------------------------
 
 instance SysAnalyzer Reldtt where
-  quickEqSysUnanalyzable sysError t1 t2 extraT1 extraT2 = case sysError of {}
+  quickEqSysUnanalyzable sysError sysToken t1 t2 extraT1 extraT2 = case (sysError, sysToken) of {}
+    {-(AnErrorKnownModty, AnTokenKnownModty) -> case (t1, t2) of
+      (KnownModty snout1 tail1, KnownModty snout2 tail2) ->
+        (snout1 == snout2) && case (tail1, tail2) of
+          (TailEmpty, TailEmpty) -> True
+          (TailDisc cod1, TailDisc cod2) -> quickEq cod1 cod2 U1 U1
+          --()
+    -}
