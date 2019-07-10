@@ -282,7 +282,10 @@ instance Analyzable Reldtt ReldttSysTerm where
         extCtxId
         (\ d deg -> U1)
         (AddressInfo ["underlying mode term"] FocusWrapped EntirelyBoring)
-      return $ _
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ SysTermMode $ getAnalysisTrav rmodeTerm
+        TokenTC -> AnalysisTC $ BareSysType $ SysTypeMode
+        TokenRel -> AnalysisRel
     SysTermModty modtyTerm -> _
     SysTermChainModtyInDisguise chmu -> _
 
