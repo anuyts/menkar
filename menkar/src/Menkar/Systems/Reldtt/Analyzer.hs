@@ -418,10 +418,11 @@ instance Analyzable Reldtt ModtyTerm where
         (\d U1 -> Identity !<$> modedEqDeg d)
         (AddressInfo ["argument modality"] FocusEliminee omit)
       return $ case token of
-        TokenTrav -> AnalysisTrav $ 
+        TokenTrav -> AnalysisTrav $
           ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) (getAnalysisTrav rtmuArg)
         TokenTC -> AnalysisTC $ domResult :*: codResult
         TokenRel -> AnalysisRel
+    ModtyTermUnavailable dom cod -> unreachable -- only for prettyprinting
 
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
