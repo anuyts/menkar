@@ -183,15 +183,16 @@ knownGetDeg (KnownDeg i) (KnownModty snout@(ModtySnout idom icod krevdegs) tail)
   where snoutMax = _snout'max snout
 knownGetDeg KnownDegOmega mu@(KnownModty snout@(ModtySnout idom icod krevdegs) tail) = case tail of
   TailEmpty -> KnownDegProblem
-  TailDisc dcod -> knownGetDeg (KnownDeg $ idom - 1) mu
+  TailDisc dcod -> snoutMax
   TailForget ddom -> KnownDegProblem
-  TailDiscForget ddom dcod -> knownGetDeg (KnownDeg $ idom - 1) mu
+  TailDiscForget ddom dcod -> snoutMax
   TailCont d -> KnownDegOmega
   TailProblem -> KnownDegProblem
+  where snoutMax = _snout'max snout
 
 ---------------------
 
-{-| Fails for modalities with a discrete tail of neutral length.
+{-| Fails (returns Nothing) for modalities with a discrete tail of neutral length.
     Precondition: argument has been whnormalized to the extent possible.
 -}
 knownApproxLeftAdjointProj :: KnownModty v -> Maybe (KnownModty v)
@@ -206,26 +207,21 @@ knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs)
         doUntilFail $ do
           remainingTail <- use _2
           threshold <- use _4
-          case remainingTail of
-            nextDeg : remainingTail' -> if nextDeg <= KnownDeg threshold
-              then do -- Write a degree, increase the length
-                nextDeg' <- use _1
-                _3 %= (nextDeg' :)
-                _4 += 1
-                return True
-              else do -- Pop a degree, increase the pop-counter
-                _2 .= remainingTail'
-                _1 += 1
-                return True
-            [] -> do
-              currentLength <- use _4
-              if currentLength < idom
+          if threshold == idom
+            then return False
+            else True <$ case remainingTail of
+              nextDeg : remainingTail' -> if nextDeg > KnownDeg threshold
                 then do -- Write a degree, increase the length
                   nextDeg' <- use _1
                   _3 %= (nextDeg' :)
                   _4 += 1
-                  return True
-                else return False
+                else do -- Pop a degree, increase the pop-counter
+                  _2 .= remainingTail'
+                  _1 += 1
+              [] -> do -- Write a degree, increase the length
+                nextDeg' <- use _1
+                _3 %= (nextDeg' :)
+                _4 += 1
       snout' = ModtySnout icod idom (int2deg <$> krevdegs')
       snoutCohpi' = ModtySnout icod idom $ krevdegs' <&> \ i -> if i == (idom - 1) then KnownDegOmega else int2deg i
   in  case tail of
@@ -333,8 +329,8 @@ whnormalizeChainModty :: forall whn v .
 whnormalizeChainModty gamma mu@(ChainModtyKnown knownMu) reason =
   ChainModtyKnown <$> whnormalizeKnownModty gamma knownMu reason
 whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = do
-  knownMu <- whnormalizeKnownModty gamma knownMu reason
   -- mu . nu . rho
+  knownMu <- whnormalizeKnownModty gamma knownMu reason
   termNu <- whnormalize gamma termNu
     (BareSysType $ SysTypeModty (_chainModty'cod chainRho) (_knownModty'dom knownMu)) reason
   case termNu of
@@ -348,7 +344,7 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
                 ChainModtyLink knownSigma termTau chainUpsilon ->
                   -- mu . nu . sigma . tau . upsilon
                   ChainModtyLink (knownMu `compKnownModty` knownNu `compKnownModty` knownSigma) termTau chainUpsilon
-                ChainModtyDisguisedAsTerm ddom dcod tmu ->
+                ChainModtyDisguisedAsTerm ddom dcod trho ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
                     ChainModtyKnown $ idKnownModty ddom
           whnormalizeChainModty gamma composite reason
@@ -397,17 +393,17 @@ whnormalizeModtyTerm :: forall whn v .
   String ->
   whn (ModtyTerm v)
 whnormalizeModtyTerm gamma mu reason = case mu of
-        -- ModtyTermChain is a constructor, don't normalize under it!
-        ModtyTermChain chmu -> return mu
-        ModtyTermDiv rho nu -> todo
-        ModtyTermApproxLeftAdjointProj ddom dcod rho -> do
-          rho <- whnormalize gamma rho (BareSysType $ SysTypeModty dcod ddom) reason
-          case rho of
-            BareKnownModty krho -> case knownApproxLeftAdjointProj krho of
-              Just kmu -> return $ ModtyTermChain $ ChainModtyKnown $ kmu
-              Nothing -> return mu
-            _ -> return mu
-        ModtyTermUnavailable ddom dcod -> return mu
+  -- ModtyTermChain is a constructor, don't normalize under it!
+  ModtyTermChain chmu -> return mu
+  ModtyTermDiv rho nu -> todo -- only for prettyprinting
+  ModtyTermApproxLeftAdjointProj ddom dcod rho -> do
+    rho <- whnormalize gamma rho (BareSysType $ SysTypeModty dcod ddom) reason
+    case rho of
+      BareKnownModty krho -> case knownApproxLeftAdjointProj krho of
+        Just kmu -> return $ ModtyTermChain $ ChainModtyKnown $ kmu
+        Nothing -> return mu
+      _ -> return mu
+  ModtyTermUnavailable ddom dcod -> return mu
   
 instance SysWHN Reldtt where
   whnormalizeSysTerm gamma sysT ty reason = do

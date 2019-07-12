@@ -98,7 +98,7 @@ data ModtyTail v =
 _snout'max :: ModtySnout -> KnownDeg
 _snout'max (ModtySnout idom icod krevdegs) = case krevdegs of
   [] -> KnownDegEq
-  krevdegs -> last krevdegs
+  krevdegs -> head krevdegs
 
 {-
 numberfyOmegasForDomainlessTail :: ModtySnout -> ModtySnout
