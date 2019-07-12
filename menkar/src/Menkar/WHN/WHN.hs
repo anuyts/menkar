@@ -242,8 +242,8 @@ whnormalizeNV gamma (TermQName qname leftDividedTelescopedVal) ty metas reason =
 whnormalizeNV gamma (TermAlreadyChecked t ty) ty' metas reason = whnormalize gamma t ty' reason
 -- Results annotated with an algorithm for solving them: whnormalize the result.
 whnormalizeNV gamma (TermAlgorithm alg result) ty metas reason = whnormalize gamma result ty reason
--- System specific terms: call whnormalizeSys, a method of SysWHN.
-whnormalizeNV gamma (TermSys t) ty metas reason = whnormalizeSys gamma t ty reason
+-- System specific terms: call whnormalizeSysTerm, a method of SysWHN.
+whnormalizeNV gamma (TermSys t) ty metas reason = whnormalizeSysTerm gamma t ty reason
 -- Bogus terms: return them.
 whnormalizeNV gamma t@(TermProblem _) ty metas reason = return $ Expr2 t
 
@@ -267,6 +267,7 @@ whnormalizeAST' gamma t extraT classifT reason =
                  case _addressInfo'focus addressInfo of
                    NoFocus -> return s
                    otherwise -> whnormalizeAST gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
+         -- Whnormalization simply gives up on AnalyzerErrors!
          in fromRight (return t) attempt
 
 whnormalizeAST :: forall sys whn v t .

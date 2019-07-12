@@ -10,13 +10,14 @@ import Data.Void
 import Control.Monad.Writer
 
 class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
-  whnormalizeSys :: forall whn v .
+  whnormalizeSysTerm :: forall whn v .
     (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
     Ctx Type sys v Void ->
     SysTerm sys v ->
     Type sys v ->
     String ->
     whn (Term sys v)
+    
   {-| @'leqMod' ddom dcod mu1 mu2@ returns whether @mu1 <= mu2@, or
       @'Nothing'@ if it is presently unclear.
       This method may call @'awaitMeta'@.
@@ -30,6 +31,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     Mode sys v -> Mode sys v ->
     String ->
     whn (Maybe Bool)
+    
   {-| @'leqDeg' d deg1 deg2@ returns whether @deg1 <= deg2@ (the equality-degree is the least), or
       @'Nothing'@ if it is presently unclear but may become clear.
       This method may call @'awaitMeta'@.
