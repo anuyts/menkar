@@ -8,6 +8,7 @@ import Menkar.System.WHN
 import Menkar.Fine
 import Menkar.Monad
 import Menkar.Systems.Reldtt.Fine
+import Menkar.Systems.Reldtt.Analyzer
 import Menkar.Systems.Reldtt.Scoper
 
 import Control.Monad.DoUntilFail
@@ -259,11 +260,30 @@ whnormalizeModtyTail :: forall whn v .
 whnormalizeModtyTail gamma tail reason =
   case tail of
     TailEmpty -> return TailEmpty
-    TailDisc   dcod -> TailDisc   <$> whnormalizeMode gamma dcod reason
-    TailForget ddom -> TailForget <$> whnormalizeMode gamma ddom reason
-    TailDiscForget ddom dcod -> TailDiscForget <$> whnormalizeMode gamma ddom reason
-                                               <*> whnormalizeMode gamma dcod reason
-    TailCont   d    -> TailCont   <$> whnormalizeMode gamma d    reason
+    TailDisc   dcod -> do
+      dcod <- whnormalizeMode gamma dcod reason
+      case dcod of
+        ReldttMode (BareMode ModeTermZero) -> return TailEmpty
+        otherwise -> return $ TailDisc dcod
+    TailForget ddom -> do
+      ddom <- whnormalizeMode gamma ddom reason
+      case ddom of
+        ReldttMode (BareMode ModeTermZero) -> return TailEmpty
+        otherwise -> return $ TailForget ddom
+    TailDiscForget ddom dcod -> do
+      ddom <- whnormalizeMode gamma ddom reason
+      dcod <- whnormalizeMode gamma dcod reason
+      case (ddom, dcod) of
+        (ReldttMode (BareMode ModeTermZero),
+         ReldttMode (BareMode ModeTermZero)) -> return TailEmpty
+        (ReldttMode (BareMode ModeTermZero), _) -> return $ TailDisc dcod
+        (_, ReldttMode (BareMode ModeTermZero)) -> return $ TailForget ddom
+        (_, _) -> return $ TailDiscForget ddom dcod
+    TailCont d -> do
+      d <- whnormalizeMode gamma d reason
+      case d of
+        ReldttMode (BareMode ModeTermZero) -> return TailEmpty
+        otherwise -> return $ TailCont d
     TailProblem -> return TailProblem
 
 whnormalizeKnownModty :: forall whn v .
@@ -339,7 +359,11 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
           whnormalizeChainModty gamma composite reason
         ChainModtyDisguisedAsTerm ddom dcod tmu -> return $ ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
-whnormalizeChainModty gamma mu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = _
+whnormalizeChainModty gamma chmu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = do
+  tmu <- whnormalize gamma tmu (BareSysType $ SysTypeChainModtyDisguisedAsTerm) reason
+  case tmu of
+    Expr2 (TermSys (SysTermChainModtyInDisguise chmu')) -> whnormalizeChainModty gamma chmu' reason
+    otherwise -> return chmu
 
   {-do
   maybeSolution <- awaitMeta reason meta (getCompose depcies)
@@ -350,34 +374,50 @@ whnormalizeChainModty gamma mu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason 
         whnormalizeChainModty gamma chainNu reason
       _ -> unreachable -- ChainModty-meta is solved with something of a different syntax class!-}
 
+whnormalizeModeTerm :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Ctx Type Reldtt v Void ->
+  ModeTerm v ->
+  String ->
+  whn (ModeTerm v)
+whnormalizeModeTerm gamma d reason = case d of
+  ModeTermZero -> return $ ModeTermZero
+  --ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize gamma t (hs2type NatType) reason
+  ModeTermSuc d -> do
+    d <- whnormalize gamma d (BareSysType $ SysTypeMode) reason
+    case d of
+      BareMode ModeTermOmega -> return $ ModeTermOmega
+      _ -> return $ ModeTermSuc d
+  ModeTermOmega -> return $ ModeTermOmega
+
+whnormalizeModtyTerm :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Ctx Type Reldtt v Void ->
+  ModtyTerm v ->
+  String ->
+  whn (ModtyTerm v)
+whnormalizeModtyTerm gamma mu reason = case mu of
+        -- ModtyTermChain is a constructor, don't normalize under it!
+        ModtyTermChain chmu -> return mu
+        ModtyTermDiv rho nu -> todo
+        ModtyTermApproxLeftAdjointProj ddom dcod rho -> do
+          rho <- whnormalize gamma rho (BareSysType $ SysTypeModty dcod ddom) reason
+          case rho of
+            BareKnownModty krho -> case knownApproxLeftAdjointProj krho of
+              Just kmu -> return $ ModtyTermChain $ ChainModtyKnown $ kmu
+              Nothing -> return mu
+            _ -> return mu
+        ModtyTermUnavailable ddom dcod -> return mu
+  
 instance SysWHN Reldtt where
   whnormalizeSysTerm gamma sysT ty reason = do
-    let returnSysT = return $ Expr2 $ TermSys $ sysT
+    --let returnSysT = return $ Expr2 $ TermSys $ sysT
     --let returnProblem = return $ Expr2 $ TermProblem $ Expr2 $ TermSys $ sysT
     case sysT of
-      SysTermMode d -> case d of
-        ModeTermZero -> return $ BareMode $ ModeTermZero
-        --ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize gamma t (hs2type NatType) reason
-        ModeTermSuc d -> do
-          d <- whnormalize gamma d (BareSysType $ SysTypeMode) reason
-          case d of
-            BareMode ModeTermOmega -> return $ BareMode $ ModeTermOmega
-            _ -> return $ BareMode $ ModeTermSuc d
-        ModeTermOmega -> return $ BareMode $ ModeTermOmega
-      SysTermModty mu -> case mu of
-        ModtyTermChain mu -> returnSysT
-          -- ModtyTermChain is a constructor, don't normalize under it!
-          --BareChainModty <$> whnormalizeChainModty gamma mu reason
-        ModtyTermDiv rho mu -> returnSysT -- TODO
-        ModtyTermApproxLeftAdjointProj ddom dcod mu -> do
-          mu <- whnormalize gamma mu (BareSysType $ SysTypeModty dcod ddom) reason
-          case mu of
-            BareKnownModty kmu -> case knownApproxLeftAdjointProj kmu of
-              Just knu -> return $ BareKnownModty $ knu
-              Nothing -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
-            _ -> return $ BareModty $ ModtyTermApproxLeftAdjointProj ddom dcod mu
-        ModtyTermUnavailable ddom dcod -> returnSysT
-      SysTermChainModtyInDisguise _ -> unreachable
+      SysTermMode d -> BareMode <$> whnormalizeModeTerm gamma d reason
+      SysTermModty mu -> BareModty <$> whnormalizeModtyTerm gamma mu reason
+      -- This is a constructor, don't normalize under it!
+      SysTermChainModtyInDisguise chmu -> return $ Expr2 $ TermSys $ sysT
 {-      SysTermDeg i -> case i of
         DegKnown _ -> return $ BareDeg i
         DegGet j mu ddom dcod -> do
@@ -414,6 +454,13 @@ instance SysWHN Reldtt where
               BareKnownModty mu' -> return $ DegKnown ddom $ knownGetDeg j' mu' 
               _ -> return $ DegGet j mu ddom dcod
           _ -> return $ DegGet j mu ddom dcod
+
+  whnormalizeSys sysToken gamma t extraT classifT reason = case sysToken of
+    AnTokenModeTerm -> whnormalizeModeTerm gamma t reason
+    AnTokenModtyTerm -> whnormalizeModtyTerm gamma t reason
+    AnTokenKnownModty -> whnormalizeKnownModty gamma t reason
+    AnTokenModtySnout -> return t
+    AnTokenModtyTail -> whnormalizeModtyTail gamma t reason
 
   leqMod gamma mu1 mu2 ddom dcod reason = do
     -- You need to normalize: a tail might become empty!
