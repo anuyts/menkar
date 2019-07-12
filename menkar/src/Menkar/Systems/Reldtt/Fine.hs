@@ -153,12 +153,15 @@ idKnownModty d = KnownModty (ModtySnout 0 0 []) (TailCont d)
 problemKnownModty :: KnownModty v
 problemKnownModty = KnownModty (ModtySnout 0 0 []) TailProblem
 
+addIntToMode :: Int -> Mode Reldtt v -> Mode Reldtt v
+addIntToMode i d = d & _Wrapped' %~ nTimes i (BareMode . ModeTermSuc)
+
 _knownModty'dom :: KnownModty v -> Mode Reldtt v
-_knownModty'dom (KnownModty snout tail) =
-  _modtyTail'dom tail & _Wrapped' %~ nTimes (_modtySnout'dom snout) (BareMode . ModeTermSuc)
+_knownModty'dom (KnownModty snout tail) = addIntToMode (_modtySnout'dom snout) (_modtyTail'dom tail)
+  --_modtyTail'dom tail & _Wrapped' %~ nTimes (_modtySnout'dom snout) (BareMode . ModeTermSuc)
 _knownModty'cod :: KnownModty v -> Mode Reldtt v
-_knownModty'cod (KnownModty snout tail) =
-  _modtyTail'cod tail & _Wrapped' %~ nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc)
+_knownModty'cod (KnownModty snout tail) = addIntToMode (_modtySnout'cod snout) (_modtyTail'cod tail)
+  --_modtyTail'cod tail & _Wrapped' %~ nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc)
 
 data ChainModty v =
   ChainModtyKnown (KnownModty v) |

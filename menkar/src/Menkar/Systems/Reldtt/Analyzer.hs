@@ -24,7 +24,7 @@ import Data.Kind hiding (Type)
 type instance SysAnalyzerError Reldtt = ReldttAnalyzerError
 type instance SysAnalyzableToken Reldtt = ReldttAnalyzableToken
 
-data ReldttAnalyzerError = AnErrorKnownModty
+data ReldttAnalyzerError = AnErrorModtySnout
 data ReldttAnalyzableToken (t :: * -> *) where
   AnTokenReldttMode :: ReldttAnalyzableToken ReldttMode
   AnTokenChainModty :: ReldttAnalyzableToken ChainModty
@@ -34,6 +34,8 @@ data ReldttAnalyzableToken (t :: * -> *) where
   AnTokenModtyTerm :: ReldttAnalyzableToken ModtyTerm
   AnTokenReldttUniHSConstructor :: ReldttAnalyzableToken ReldttUniHSConstructor
   AnTokenKnownModty :: ReldttAnalyzableToken KnownModty
+  AnTokenModtyTail :: ReldttAnalyzableToken ModtyTail
+  AnTokenModtySnout :: ReldttAnalyzableToken (Const ModtySnout)
 
 instance Analyzable Reldtt ReldttMode where
   type ClassifExtraInput ReldttMode = U1
@@ -170,22 +172,142 @@ instance Analyzable Reldtt KnownModty where
   type Relation KnownModty = Const ModRel
   analyzableToken = AnTokenSys $ AnTokenKnownModty
   witClassif token = Witness
-  analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h =
-    Left $ AnErrorSys $ AnErrorKnownModty
-  {- -- This doesn't handle relations properly. THEN CHECK EQUALITY OF SNOUTS
+  --analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h =
+  --  Left $ AnErrorSys $ AnErrorKnownModty
   analyze token gamma (Classification kmu@(KnownModty snout tail) U1 maybeDomCod) h = Right $ do
+    rsnout <- fmapCoe runIdentity <$> h Identity
+      (conditional $ KnownModty snout unreachable)
+      (\ gamma' (Classification kmu'@(KnownModty snout' tail') U1 maybeDomCod') ->
+           Just $ Identity !<$> Classification (Const snout') U1 (ClassifWillBe U1)
+      )
+      extCtxId
+      extRelId
+      (AddressInfo ["snout of modality"] FocusWrapped omit)
     rtail <- fmapCoe runIdentity <$> h Identity
       (conditional $ KnownModty snout unreachable)
       (\ gamma' (Classification kmu'@(KnownModty snout' tail') U1 maybeDomCod') ->
-           Just $ Identity !<$> Classification tail' snout' (ClassifWillBe U1))
+           Just $ Identity !<$> Classification tail' (Const snout') ClassifUnknown
+      )
       extCtxId
-      _
+      extRelId
       (AddressInfo ["tail of modality"] FocusWrapped omit)
     return $ case token of
       TokenTrav -> AnalysisTrav $ KnownModty snout $ getAnalysisTrav rtail
-      TokenTC -> AnalysisTC $ _knownModty'dom kmu :*: _knownModty'cod kmu
+      TokenTC -> AnalysisTC $ addIntToMode (_modtySnout'dom snout) domTail
+                          :*: addIntToMode (_modtySnout'cod snout) codTail
+        where domTail :*: codTail = getAnalysisTC rtail
       TokenRel -> AnalysisRel
-  -}
+  convRel token d = U1 :*: U1
+  extraClassif t extraT = U1 :*: U1
+
+instance Analyzable Reldtt (Const ModtySnout) where
+  type ClassifExtraInput (Const ModtySnout) = U1
+  type Classif (Const ModtySnout) = U1
+  type Relation (Const ModtySnout) = Const ModRel
+  analyzableToken = AnTokenSys $ AnTokenModtySnout
+  witClassif token = Witness
+  analyze token gamma (Classification (Const snout) U1 maybeU1) h = Left $ AnErrorSys $ AnErrorModtySnout
+  convRel token d = U1
+  extraClassif t extraT = U1
+
+instance Analyzable Reldtt ModtyTail where
+  type ClassifExtraInput ModtyTail = Const ModtySnout
+  type Classif ModtyTail = ReldttMode :*: ReldttMode -- domain and codomain of the TAIL
+  type Relation ModtyTail = Const ModRel
+  analyzableToken = AnTokenSys $ AnTokenModtyTail
+  witClassif token = Witness
+
+  analyze token gamma (Classification tail (Const snout) maybeDomCod) h = case tail of
+
+    TailEmpty -> Right $ do
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ TailEmpty
+        TokenTC -> AnalysisTC $ dzero :*: dzero
+        TokenRel -> AnalysisRel
+
+    TailDisc cod -> Right $ do
+      rcod <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TailDisc unreachable)
+        (\ gamma' (Classification tail' (Const snout') maybeDomCod') -> case tail' of
+            TailDisc cod' ->
+              Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ _ _ -> U1)
+        (AddressInfo ["codomain"] FocusWrapped omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ TailDisc $ getAnalysisTrav rcod
+        TokenTC -> AnalysisTC $ dzero :*: cod
+        TokenRel -> AnalysisRel
+
+    TailForget dom -> Right $ do
+      rdom <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TailForget unreachable)
+        (\ gamma' (Classification tail' (Const snout') maybeDomCod') -> case tail' of
+            TailForget dom' ->
+              Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ _ _ -> U1)
+        (AddressInfo ["domain"] FocusWrapped omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ TailForget $ getAnalysisTrav rdom
+        TokenTC -> AnalysisTC $ dom :*: dzero
+        TokenRel -> AnalysisRel
+
+    TailDiscForget dom cod -> Right $ do
+      rdom <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TailDiscForget unreachable unreachable)
+        (\ gamma' (Classification tail' (Const snout') maybeDomCod') -> case tail' of
+            TailDiscForget dom' cod' ->
+              Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ _ _ -> U1)
+        (AddressInfo ["domain"] FocusWrapped omit)
+      rcod <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TailDiscForget unreachable unreachable)
+        (\ gamma' (Classification tail' (Const snout') maybeDomCod') -> case tail' of
+            TailDiscForget dom' cod' ->
+              Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ _ _ -> U1)
+        (AddressInfo ["codomain"] FocusWrapped omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ TailDiscForget (getAnalysisTrav rdom) (getAnalysisTrav rcod)
+        TokenTC -> AnalysisTC $ dom :*: cod
+        TokenRel -> AnalysisRel
+
+    TailCont d -> Right $ do
+      rd <- fmapCoe runIdentity <$> h Identity
+        (conditional $ TailCont unreachable)
+        (\ gamma' (Classification tail' (Const snout') maybeDomCod') -> case tail' of
+            TailCont d' ->
+              Just $ Identity !<$> Classification d' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\ _ _ -> U1)
+        (AddressInfo ["mode"] FocusWrapped omit)
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ TailForget $ getAnalysisTrav rd
+        TokenTC -> AnalysisTC $ d :*: d
+        TokenRel -> AnalysisRel
+
+    TailProblem -> Right $ do
+      return $ case token of
+        TokenTrav -> AnalysisTrav $ TailEmpty
+        TokenTC -> AnalysisTC $ dproblem :*: dproblem
+        TokenRel -> AnalysisRel
+
+    where dzero = ReldttMode $ BareMode $ ModeTermZero
+          dproblem = ReldttMode $ Expr2 $ TermProblem $ Expr2 $ TermWildcard
+
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
 
@@ -477,7 +599,12 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
 --------------------------------
 
 instance SysAnalyzer Reldtt where
-  quickEqSysUnanalyzable sysError sysToken t1 t2 extraT1 extraT2 = case (sysError, sysToken) of {}
+  quickEqSysUnanalyzable sysError sysToken t1 t2 extraT1 extraT2 = case (sysError, sysToken) of
+    (AnErrorModtySnout, AnTokenModtySnout) ->
+      let Const snout1 = t1
+          Const snout2 = t2
+      in  snout1 == snout2
+    (AnErrorModtySnout, _) -> unreachable
     {-(AnErrorKnownModty, AnTokenKnownModty) -> case (t1, t2) of
       (KnownModty snout1 tail1, KnownModty snout2 tail2) ->
         (snout1 == snout2) && case (tail1, tail2) of
