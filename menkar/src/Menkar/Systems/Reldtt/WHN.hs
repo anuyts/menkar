@@ -12,6 +12,7 @@ import Menkar.Systems.Reldtt.Scoper
 
 import Control.Monad.DoUntilFail
 import Control.Exception.AssertFalse
+import Data.Functor.Coerce
 
 import Control.Monad.Trans.Class
 import Control.Monad.Writer.Class
@@ -125,13 +126,13 @@ whnormalizeComp :: forall whn v .
   Type Reldtt v ->
   String ->
   whn (Term Reldtt v)
-whnormalizeComp parent gamma mu2 dmid mu1 ty reason = do
-  whnTy <- whnormalizeType parent gamma ty reason
+whnormalizeComp gamma mu2 dmid mu1 ty reason = do
+  whnTy <- whnormalizeType gamma ty reason
   let giveUp = return $ BareModty $ ModtyTermComp mu2 dmid mu1
   case unType whnTy of
     Expr2 (TermSys (SysTypeModty ddom dcod)) -> do
-      whnMu1 <- whnormalize parent gamma mu1 (Type $ Expr2 $ TermSys $ SysTypeModty ddom dmid) reason
-      whnMu2 <- whnormalize parent gamma mu2 (Type $ Expr2 $ TermSys $ SysTypeModty dmid dcod) reason
+      whnMu1 <- whnormalize gamma mu1 (Type $ Expr2 $ TermSys $ SysTypeModty ddom dmid) reason
+      whnMu2 <- whnormalize gamma mu2 (Type $ Expr2 $ TermSys $ SysTypeModty dmid dcod) reason
       case (whnMu1, whnMu2) of
         (BareModty (ModtyTermUnavailable ddom' dmid'), _) ->
           return $ BareModty $ ModtyTermUnavailable ddom' dcod -- USING THE TYPE!
@@ -229,14 +230,14 @@ knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs)
   in  case tail of
         TailEmpty -> Just $ KnownModty snout' $ TailEmpty
         TailDisc dcod -> case dcod of
-          BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailForget dcod
+          ReldttMode BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailForget dcod
           _ -> case krevdegs of
             -- We can read the tail as TailCodisc
             KnownDegTop : _ -> Just $ KnownModty snout' $ TailForget dcod
             _ -> Nothing
         TailForget ddom -> Just $ KnownModty snout' $ TailDisc ddom
         TailDiscForget ddom dcod -> case dcod of
-          BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailDiscForget dcod ddom
+          ReldttMode BareModeOmega -> Just $ KnownModty snoutCohpi' $ TailDiscForget dcod ddom
           _ -> case krevdegs of
             -- We can read the tail as TailCodiscForget
             KnownDegTop : _ -> Just $ KnownModty snout' $ TailDiscForget dcod ddom
@@ -251,77 +252,74 @@ knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs)
 
 whnormalizeModtyTail :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
   ModtyTail v ->
   String ->
   whn (ModtyTail v)
-whnormalizeModtyTail parent gamma tail reason =
+whnormalizeModtyTail gamma tail reason =
   case tail of
     TailEmpty -> return TailEmpty
-    TailDisc   dcod -> TailDisc   <$> whnormalize parent gamma dcod (BareSysType $ SysTypeMode) reason
-    TailForget ddom -> TailForget <$> whnormalize parent gamma ddom (BareSysType $ SysTypeMode) reason
-    TailDiscForget ddom dcod -> TailDiscForget <$> whnormalize parent gamma ddom (BareSysType $ SysTypeMode) reason
-                                               <*> whnormalize parent gamma dcod (BareSysType $ SysTypeMode) reason
-    TailCont   d    -> TailCont   <$> whnormalize parent gamma d    (BareSysType $ SysTypeMode) reason
+    TailDisc   dcod -> TailDisc   <$> whnormalizeMode gamma dcod reason
+    TailForget ddom -> TailForget <$> whnormalizeMode gamma ddom reason
+    TailDiscForget ddom dcod -> TailDiscForget <$> whnormalizeMode gamma ddom reason
+                                               <*> whnormalizeMode gamma dcod reason
+    TailCont   d    -> TailCont   <$> whnormalizeMode gamma d    reason
     TailProblem -> return TailProblem
 
 whnormalizeKnownModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
   KnownModty v ->
   String ->
   whn (KnownModty v)
-whnormalizeKnownModty parent gamma mu@(KnownModty snout tail) reason = do
-  tail <- whnormalizeModtyTail parent gamma tail reason
+whnormalizeKnownModty gamma mu@(KnownModty snout tail) reason = do
+  tail <- whnormalizeModtyTail gamma tail reason
   case tail of
     TailEmpty -> return $ KnownModty snout TailEmpty
     TailDisc dcod -> case dcod of
-      BareMode ModeTermZero -> return $ KnownModty snout TailEmpty
-      BareMode (ModeTermSuc d) ->
-        whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDisc d) reason
+      ReldttMode (BareMode ModeTermZero) -> return $ KnownModty snout TailEmpty
+      ReldttMode (BareMode (ModeTermSuc d)) ->
+        whnormalizeKnownModty gamma (KnownModty (extDisc snout) $ TailDisc $ ReldttMode d) reason
       _ -> return $ KnownModty snout tail
     TailForget ddom -> case ddom of
-      BareMode ModeTermZero -> return $ KnownModty snout TailEmpty
-      BareMode (ModeTermSuc d) ->
-        whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailForget d) reason
+      ReldttMode (BareMode ModeTermZero) -> return $ KnownModty snout TailEmpty
+      ReldttMode (BareMode (ModeTermSuc d)) ->
+        whnormalizeKnownModty gamma (KnownModty (extForget snout) $ TailForget $ ReldttMode d) reason
       _ -> return $ KnownModty snout tail
     TailDiscForget ddom dcod -> case dcod of
-      BareMode ModeTermZero ->
-        whnormalizeKnownModty parent gamma (KnownModty snout $ TailForget ddom) reason
-      BareMode (ModeTermSuc d) ->
-        whnormalizeKnownModty parent gamma (KnownModty (extDisc snout) $ TailDiscForget ddom d) reason
+      ReldttMode (BareMode ModeTermZero) ->
+        whnormalizeKnownModty gamma (KnownModty snout $ TailForget ddom) reason
+      ReldttMode (BareMode (ModeTermSuc d)) ->
+        whnormalizeKnownModty gamma (KnownModty (extDisc snout) $ TailDiscForget ddom (ReldttMode d)) reason
       _ -> case ddom of
-        BareMode ModeTermZero ->
-          whnormalizeKnownModty parent gamma (KnownModty snout $ TailDisc dcod) reason
-        BareMode (ModeTermSuc d) ->
-          whnormalizeKnownModty parent gamma (KnownModty (extForget snout) $ TailDiscForget d dcod) reason
+        ReldttMode (BareMode ModeTermZero) ->
+          whnormalizeKnownModty gamma (KnownModty snout $ TailDisc dcod) reason
+        ReldttMode (BareMode (ModeTermSuc d)) ->
+          whnormalizeKnownModty gamma (KnownModty (extForget snout) $ TailDiscForget (ReldttMode d) dcod) reason
         _ -> return $ KnownModty snout tail
     TailCont d -> case d of
-      BareMode ModeTermZero -> return $ KnownModty snout TailEmpty
-      BareMode (ModeTermSuc dpred) ->
-        whnormalizeKnownModty parent gamma (KnownModty (extCont snout) $ TailCont dpred) reason
+      ReldttMode (BareMode ModeTermZero) -> return $ KnownModty snout TailEmpty
+      ReldttMode (BareMode (ModeTermSuc dpred)) ->
+        whnormalizeKnownModty gamma (KnownModty (extCont snout) $ TailCont $ ReldttMode dpred) reason
       _ -> return $ KnownModty snout tail
     TailProblem -> return $ KnownModty snout TailProblem
 
 whnormalizeChainModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
   ChainModty v ->
   String ->
   whn (ChainModty v)
-whnormalizeChainModty parent gamma mu@(ChainModtyKnown knownMu) reason =
-  ChainModtyKnown <$> whnormalizeKnownModty parent gamma knownMu reason
-whnormalizeChainModty parent gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = do
-  knownMu <- whnormalizeKnownModty parent gamma knownMu reason
+whnormalizeChainModty gamma mu@(ChainModtyKnown knownMu) reason =
+  ChainModtyKnown <$> whnormalizeKnownModty gamma knownMu reason
+whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = do
+  knownMu <- whnormalizeKnownModty gamma knownMu reason
   -- mu . nu . rho
-  termNu <- whnormalize parent gamma termNu
+  termNu <- whnormalize gamma termNu
     (BareSysType $ SysTypeModty (_chainModty'cod chainRho) (_knownModty'dom knownMu)) reason
   case termNu of
     BareChainModty chainNu -> do
-      chainNu <- whnormalizeChainModty parent gamma chainNu reason
+      chainNu <- whnormalizeChainModty gamma chainNu reason
       case chainNu of
         ChainModtyKnown knownNu -> do
           let composite = case chainRho of
@@ -333,55 +331,56 @@ whnormalizeChainModty parent gamma mu@(ChainModtyLink knownMu termNu chainRho) r
                 ChainModtyDisguisedAsTerm ddom dcod tmu ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
                     ChainModtyKnown $ idKnownModty ddom
-          whnormalizeChainModty parent gamma composite reason
+          whnormalizeChainModty gamma composite reason
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
           let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
                           compMod chainNuC (_chainModty'cod chainRho) chainRho
-          whnormalizeChainModty parent gamma composite reason
-        ChainModtyDisguisedAsTerm ddom dcod tmu -> ChainModtyLink knownMu termNu chainRho
+          whnormalizeChainModty gamma composite reason
+        ChainModtyDisguisedAsTerm ddom dcod tmu -> return $ ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
-whnormalizeChainModty parent gamma mu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = do
-  maybeSolution <- awaitMeta parent reason meta (getCompose depcies)
+whnormalizeChainModty gamma mu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = _
+
+  {-do
+  maybeSolution <- awaitMeta reason meta (getCompose depcies)
   case maybeSolution of
     Nothing -> return $ mu
     Just solution -> case solution of
       Expr2 (TermSys (SysTermChainModtyInDisguise chainNu)) ->
-        whnormalizeChainModty parent gamma chainNu reason
-      _ -> unreachable -- ChainModty-meta is solved with something of a different syntax class!
+        whnormalizeChainModty gamma chainNu reason
+      _ -> unreachable -- ChainModty-meta is solved with something of a different syntax class!-}
 
 whnormalizeDeg :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Constraint Reldtt ->
   Ctx Type Reldtt v Void ->
-  DegTerm v ->
+  ReldttDegree v ->
   String ->
-  whn (DegTerm v)
-whnormalizeDeg parent gamma i reason = do
+  whn (ReldttDegree v)
+whnormalizeDeg gamma i reason = do
   case i of
-    DegKnown _ -> return i
+    DegKnown _ _ -> return i
     DegGet j mu ddom dcod -> do
-      j <- whnormalizeDeg parent gamma j reason
+      j <- whnormalizeDeg gamma j reason
       case j of
-        DegKnown KnownDegEq -> return $ DegKnown KnownDegEq
-        DegKnown KnownDegTop -> return $ DegKnown KnownDegTop
-        DegKnown j' -> do
-          mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
+        DegKnown d KnownDegEq -> return $ DegKnown ddom KnownDegEq
+        DegKnown d KnownDegTop -> return $ DegKnown ddom KnownDegTop
+        DegKnown d j' -> do
+          mu <- whnormalize gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
           case mu of
-            BareKnownModty mu' -> return $ DegKnown $ knownGetDeg j' mu' 
+            BareKnownModty mu' -> return $ DegKnown ddom $ knownGetDeg j' mu' 
             _ -> return $ DegGet j mu ddom dcod
         _ -> return $ DegGet j mu ddom dcod
 
 instance SysWHN Reldtt where
-  whnormalizeSys parent gamma sysT ty reason = do
+  whnormalizeSysTerm gamma sysT ty reason = do
     let returnSysT = return $ Expr2 $ TermSys $ sysT
     --let returnProblem = return $ Expr2 $ TermProblem $ Expr2 $ TermSys $ sysT
     case sysT of
       SysTermMode d -> case d of
         ModeTermZero -> return $ BareMode $ ModeTermZero
-        --ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize parent gamma t (hs2type NatType) reason
+        --ModeTermFinite t -> BareMode . ModeTermFinite <$> whnormalize gamma t (hs2type NatType) reason
         ModeTermSuc d -> do
-          d <- whnormalize parent gamma d (BareSysType $ SysTypeMode) reason
+          d <- whnormalize gamma d (BareSysType $ SysTypeMode) reason
           case d of
             BareMode ModeTermOmega -> return $ BareMode $ ModeTermOmega
             _ -> return $ BareMode $ ModeTermSuc d
@@ -389,10 +388,10 @@ instance SysWHN Reldtt where
       SysTermModty mu -> case mu of
         ModtyTermChain mu -> returnSysT
           -- ModtyTermChain is a constructor, don't normalize under it!
-          --BareChainModty <$> whnormalizeChainModty parent gamma mu reason
+          --BareChainModty <$> whnormalizeChainModty gamma mu reason
         ModtyTermDiv rho mu -> returnSysT -- TODO
         ModtyTermApproxLeftAdjointProj ddom dcod mu -> do
-          mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty dcod ddom) reason
+          mu <- whnormalize gamma mu (BareSysType $ SysTypeModty dcod ddom) reason
           case mu of
             BareKnownModty kmu -> case knownApproxLeftAdjointProj kmu of
               Just knu -> return $ BareKnownModty $ knu
@@ -403,12 +402,12 @@ instance SysWHN Reldtt where
 {-      SysTermDeg i -> case i of
         DegKnown _ -> return $ BareDeg i
         DegGet j mu ddom dcod -> do
-          j <- whnormalize parent gamma j (BareSysType $ SysTypeDeg dcod) reason
+          j <- whnormalize gamma j (BareSysType $ SysTypeDeg dcod) reason
           case j of
             BareKnownDeg KnownDegEq -> return $ BareKnownDeg KnownDegEq
             BareKnownDeg KnownDegTop -> return $ BareKnownDeg KnownDegTop
             BareKnownDeg j' -> do
-              mu <- whnormalize parent gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
+              mu <- whnormalize gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
               case mu of
                 BareKnownModty mu' -> return $ BareKnownDeg $ knownGetDeg j' mu' 
                 _ -> return $ BareDeg $ DegGet j mu ddom dcod
@@ -418,10 +417,12 @@ instance SysWHN Reldtt where
       --SysTypeModty ddom dcod -> returnSysT
       --_ -> _whnormalizeSys
 
-  leqMod parent gamma mu1 mu2 ddom dcod reason = do
+  whnormalizeMode gamma (ReldttMode t) reason = ReldttMode !<$> whnormalize gamma t (BareSysType SysTypeMode) reason
+
+  leqMod gamma mu1 mu2 ddom dcod reason = do
     -- You need to normalize: a tail might become empty!
-    (mu1, metasMu1) <- runWriterT $ whnormalizeChainModty parent gamma mu1 reason
-    (mu2, metasMu2) <- runWriterT $ whnormalizeChainModty parent gamma mu2 reason
+    (mu1, metasMu1) <- runWriterT $ whnormalizeChainModty gamma mu1 reason
+    (mu2, metasMu2) <- runWriterT $ whnormalizeChainModty gamma mu2 reason
     case (metasMu1, metasMu2) of
       -- Both are normal
       ([], []) -> case (mu1, mu2) of
@@ -431,10 +432,10 @@ instance SysWHN Reldtt where
       -- Either is not normal
       (_ , _ ) -> return $ Nothing
 
-  leqDeg parent gamma deg1 deg2 d reason = do
-    (deg1, metasDeg1) <- runWriterT $ whnormalizeDeg parent gamma deg1 reason
-    (deg2, metasDeg2) <- runWriterT $ whnormalizeDeg parent gamma deg2 reason
+  leqDeg gamma deg1 deg2 d reason = do
+    (deg1, metasDeg1) <- runWriterT $ whnormalizeDeg gamma deg1 reason
+    (deg2, metasDeg2) <- runWriterT $ whnormalizeDeg gamma deg2 reason
     case (metasDeg1, deg1, metasDeg2, deg2) of
-      (_, DegKnown i1, _, DegKnown i2) -> return $ Just $ i1 <= i2
+      (_, DegKnown _ i1, _, DegKnown _ i2) -> return $ Just $ i1 <= i2
       ([], _, [], _) -> return $ Just False
       (_ , _, _ , _) -> return Nothing
