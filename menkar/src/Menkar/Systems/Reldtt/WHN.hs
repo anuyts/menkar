@@ -51,12 +51,14 @@ relKnownModty rel kmu1@(KnownModty snout1 tail1) kmu2@(KnownModty snout2 tail2) 
 
 ----------------------------------
 
+-- | composition
 compModtySnout :: ModtySnout -> KnownModty v -> ModtySnout
 compModtySnout (ModtySnout kmid kcod []) mu =
   ModtySnout (_modtySnout'dom $ _knownModty'snout $ mu) kcod []
 compModtySnout (ModtySnout kmid kcod krevdegs) mu =
   ModtySnout (_modtySnout'dom $ _knownModty'snout $ mu) kcod $ flip knownGetDeg mu <$> krevdegs
 
+-- | composition
 compModtyTail :: ModtyTail v -> ModtyTail v -> ModtyTail v
 compModtyTail (TailCont d) tail1 = tail1
 compModtyTail tail2 (TailCont d) = tail2
@@ -328,7 +330,7 @@ whnormalizeChainModty parent gamma mu@(ChainModtyLink knownMu termNu chainRho) r
                 ChainModtyLink knownSigma termTau chainUpsilon ->
                   -- mu . nu . sigma . tau . upsilon
                   ChainModtyLink (knownMu `compKnownModty` knownNu `compKnownModty` knownSigma) termTau chainUpsilon
-                ChainModtyMeta ddom dcod meta depcies ->
+                ChainModtyDisguisedAsTerm ddom dcod tmu ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
                     ChainModtyKnown $ idKnownModty ddom
           whnormalizeChainModty parent gamma composite reason
@@ -337,9 +339,9 @@ whnormalizeChainModty parent gamma mu@(ChainModtyLink knownMu termNu chainRho) r
           let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
                           compMod chainNuC (_chainModty'cod chainRho) chainRho
           whnormalizeChainModty parent gamma composite reason
-        ChainModtyMeta ddom dcod meta depcies -> unreachable
+        ChainModtyDisguisedAsTerm ddom dcod tmu -> ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
-whnormalizeChainModty parent gamma mu@(ChainModtyMeta ddom dcod meta depcies) reason = do
+whnormalizeChainModty parent gamma mu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = do
   maybeSolution <- awaitMeta parent reason meta (getCompose depcies)
   case maybeSolution of
     Nothing -> return $ mu

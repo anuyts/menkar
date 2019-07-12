@@ -285,6 +285,16 @@ whnormalizeAST :: forall sys whn v t .
 whnormalizeAST gamma t extraT classifT reason =
   case analyzableToken @sys @t of
     AnTokenTerm -> whnormalize gamma t classifT reason
+    AnTokenSys sysToken -> whnormalizeSys sysToken gamma t extraT classifT reason
+    AnTokenMode -> whnormalizeMode gamma t reason
+      where U1 = extraT
+            U1 = classifT
+    AnTokenModality -> whnormalizeModality gamma t dom cod reason
+      where U1 = extraT
+            dom :*: cod = classifT
+    AnTokenDegree -> whnormalizeDegree gamma t d reason
+      where U1 = extraT
+            d = classifT
     -- also special case for AnTokenSys!
     _ -> whnormalizeAST' gamma t extraT classifT reason
       {-case (anErr, analyzableToken :: AnalyzableToken sys t, t) of

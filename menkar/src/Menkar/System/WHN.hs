@@ -5,6 +5,7 @@ import Menkar.System.Scoper
 import Menkar.System.Analyzer
 import Menkar.Fine
 import Menkar.Monad.Monad
+import Menkar.Analyzer
 
 import Data.Void
 import Control.Monad.Writer
@@ -17,7 +18,37 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     Type sys v ->
     String ->
     whn (Term sys v)
-    
+  whnormalizeMode :: forall whn v .
+    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Mode sys v ->
+    String ->
+    whn (Mode sys v)
+  whnormalizeModality :: forall whn v .
+    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Modality sys v ->
+    Mode sys v ->
+    Mode sys v ->
+    String ->
+    whn (Modality sys v)
+  whnormalizeDegree :: forall whn v .
+    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Degree sys v ->
+    Mode sys v ->
+    String ->
+    whn (Degree sys v)
+  whnormalizeSys :: forall whn t v .
+    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+    SysAnalyzableToken sys t ->
+    Ctx Type sys v Void ->
+    t v ->
+    ClassifExtraInput t v ->
+    Classif t v ->
+    String ->
+    whn (t v)
+        
   {-| @'leqMod' ddom dcod mu1 mu2@ returns whether @mu1 <= mu2@, or
       @'Nothing'@ if it is presently unclear.
       This method may call @'awaitMeta'@.

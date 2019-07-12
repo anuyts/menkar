@@ -173,7 +173,11 @@ instance SysAnalyzer Trivial where
   quickEqSysUnanalyzable sysErr = case sysErr of {}
 
 instance SysWHN Trivial where
-  whnormalizeSysTerm gamma t reason = case t of {}
+  whnormalizeSysTerm gamma t ty reason = case t of {}
+  whnormalizeMode gamma TrivMode reason =  return TrivMode
+  whnormalizeModality gamma TrivModality TrivMode TrivMode reason = return TrivModality
+  whnormalizeDegree gamma TrivDegree TrivMode reason = return TrivDegree
+  whnormalizeSys sysToken gamma t extraT classifT reason = case sysToken of {}
   leqMod gamma TrivModality TrivModality TrivMode TrivMode reason = return $ Just True
   leqDeg gamma TrivDegree TrivDegree TrivMode reason = return $ Just True
   isEqDeg gamma TrivDegree TrivMode reason = return $ Just True
