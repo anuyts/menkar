@@ -350,27 +350,6 @@ whnormalizeChainModty gamma mu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason 
         whnormalizeChainModty gamma chainNu reason
       _ -> unreachable -- ChainModty-meta is solved with something of a different syntax class!-}
 
-whnormalizeDeg :: forall whn v .
-  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
-  ReldttDegree v ->
-  String ->
-  whn (ReldttDegree v)
-whnormalizeDeg gamma i reason = do
-  case i of
-    DegKnown _ _ -> return i
-    DegGet j mu ddom dcod -> do
-      j <- whnormalizeDeg gamma j reason
-      case j of
-        DegKnown d KnownDegEq -> return $ DegKnown ddom KnownDegEq
-        DegKnown d KnownDegTop -> return $ DegKnown ddom KnownDegTop
-        DegKnown d j' -> do
-          mu <- whnormalize gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
-          case mu of
-            BareKnownModty mu' -> return $ DegKnown ddom $ knownGetDeg j' mu' 
-            _ -> return $ DegGet j mu ddom dcod
-        _ -> return $ DegGet j mu ddom dcod
-
 instance SysWHN Reldtt where
   whnormalizeSysTerm gamma sysT ty reason = do
     let returnSysT = return $ Expr2 $ TermSys $ sysT
@@ -419,6 +398,23 @@ instance SysWHN Reldtt where
 
   whnormalizeMode gamma (ReldttMode t) reason = ReldttMode !<$> whnormalize gamma t (BareSysType SysTypeMode) reason
 
+  whnormalizeModality gamma chmu dom cod reason = whnormalizeChainModty gamma chmu reason
+
+  whnormalizeDegree gamma i d reason = do
+    case i of
+      DegKnown _ _ -> return i
+      DegGet j mu ddom dcod -> do
+        j <- whnormalizeDegree gamma j dcod reason
+        case j of
+          DegKnown d KnownDegEq -> return $ DegKnown ddom KnownDegEq
+          DegKnown d KnownDegTop -> return $ DegKnown ddom KnownDegTop
+          DegKnown d j' -> do
+            mu <- whnormalize gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
+            case mu of
+              BareKnownModty mu' -> return $ DegKnown ddom $ knownGetDeg j' mu' 
+              _ -> return $ DegGet j mu ddom dcod
+          _ -> return $ DegGet j mu ddom dcod
+
   leqMod gamma mu1 mu2 ddom dcod reason = do
     -- You need to normalize: a tail might become empty!
     (mu1, metasMu1) <- runWriterT $ whnormalizeChainModty gamma mu1 reason
@@ -433,8 +429,8 @@ instance SysWHN Reldtt where
       (_ , _ ) -> return $ Nothing
 
   leqDeg gamma deg1 deg2 d reason = do
-    (deg1, metasDeg1) <- runWriterT $ whnormalizeDeg gamma deg1 reason
-    (deg2, metasDeg2) <- runWriterT $ whnormalizeDeg gamma deg2 reason
+    (deg1, metasDeg1) <- runWriterT $ whnormalizeDegree gamma deg1 d reason
+    (deg2, metasDeg2) <- runWriterT $ whnormalizeDegree gamma deg2 d reason
     case (metasDeg1, deg1, metasDeg2, deg2) of
       (_, DegKnown _ i1, _, DegKnown _ i2) -> return $ Just $ i1 <= i2
       ([], _, [], _) -> return $ Just False
