@@ -7,12 +7,15 @@ import Menkar.Monad
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 import Menkar.Scoper
+import Menkar.Systems.Reldtt.Analyzer
 
 import Text.PrettyPrint.Tree
 import Data.Omissible
 
 import Data.Maybe
 import Data.Functor.Compose
+import Data.Functor.Coerce
+import GHC.Generics
 
 instance SysScoper Reldtt where
   scopeAnnotation gamma qstring maybeRawArg = do
@@ -20,7 +23,7 @@ instance SysScoper Reldtt where
     case qstring of
       Raw.Qualified [] "d" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `d` requires an argument."
-        Just rawArg -> AnnotMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
+        Just rawArg -> AnnotMode . ReldttMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
       Raw.Qualified [] "m" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `m` requires an argument."
         Just rawArg -> do
@@ -32,13 +35,30 @@ instance SysScoper Reldtt where
                (Raw.unparse' qstring \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
                $? id
              )
-  newMetaModeNoCheck gamma reason = newMetaTermNoCheck gamma MetaBlocked Nothing reason
+  newMetaModeNoCheck gamma reason = ReldttMode !<$> newMetaTermNoCheck gamma MetaBlocked Nothing reason
   newMetaModtyNoCheck gamma reason = do
-    ddom <- newMetaModeNoCheck gamma "Inferring domain of modality."
-    dcod <- newMetaModeNoCheck gamma "Inferring codomain of modality."
-    (meta, depcies) <- newMetaID gamma reason
-    return $ ChainModtyMeta ddom dcod meta (Compose depcies)
+    dom <- newMetaModeNoCheck gamma "Inferring domain of modality."
+    cod <- newMetaModeNoCheck gamma "Inferring codomain of modality."
+    tmu <- newMetaTermNoCheck gamma MetaBlocked Nothing reason
+    --(meta, depcies) <- newMetaID gamma reason
+    return $ ChainModtyDisguisedAsTerm dom cod tmu
+      --ChainModtyMeta ddom dcod meta (Compose depcies)
     --Expr2 (TermMeta )
     --wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
 
-  newMetaClassif4sysASTNoCheck token gamma t extraT reason = _
+  newMetaClassif4sysASTNoCheck sysToken gamma t extraT reason =
+    case (sysToken, t) of
+      (AnTokenModeTerm, _) -> return U1
+      (AnTokenModtyTerm, _) -> do
+        dom <- newMetaModeNoCheck gamma reason
+        cod <- newMetaModeNoCheck gamma reason
+        return $ dom :*: cod
+      (AnTokenKnownModty, _) -> do
+        dom <- newMetaModeNoCheck gamma reason
+        cod <- newMetaModeNoCheck gamma reason
+        return $ dom :*: cod
+      (AnTokenModtySnout, _) -> return U1
+      (AnTokenModtyTail, _) -> do
+        dom <- newMetaModeNoCheck gamma reason
+        cod <- newMetaModeNoCheck gamma reason
+        return $ dom :*: cod
