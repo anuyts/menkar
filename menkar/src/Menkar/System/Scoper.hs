@@ -85,4 +85,12 @@ newMetaClassif4astNoCheck gamma t extraT reason = do
             <*> newMetaClassif4astNoCheck gamma gv (snd1 extraT) reason
     (AnTokenConst1 token, Const1 t) -> newMetaClassif4astNoCheck gamma t extraT reason
     (AnTokenSys sysToken, _) -> newMetaClassif4sysASTNoCheck sysToken gamma t extraT reason
+    (AnTokenMode, _) -> return U1
+    (AnTokenModality, _) -> do
+      dom <- newMetaModeNoCheck gamma reason
+      cod <- newMetaModeNoCheck gamma reason
+      return $ dom :*: cod
+    (AnTokenDegree, _) -> newMetaModeNoCheck gamma reason
+    (AnTokenSysTerm, _) -> newMetaTypeNoCheck gamma reason
+    (AnTokenSysUniHSConstructor, _) -> newMetaModeNoCheck gamma reason
     --_ -> _newMetaClassifNoCheck

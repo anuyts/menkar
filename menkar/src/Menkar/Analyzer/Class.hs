@@ -61,6 +61,11 @@ data AnalyzableToken sys (ast :: * -> *) where
     AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
   AnTokenConst1 :: (Analyzable sys t) => AnalyzableToken sys t -> AnalyzableToken sys (Const1 t a)
   AnTokenSys :: SysAnalyzableToken sys t -> AnalyzableToken sys t
+  AnTokenMode :: AnalyzableToken sys (Mode sys)
+  AnTokenModality :: AnalyzableToken sys (Modality sys)
+  AnTokenDegree :: AnalyzableToken sys (Degree sys)
+  AnTokenSysTerm :: AnalyzableToken sys (SysTerm sys)
+  AnTokenSysUniHSConstructor :: AnalyzableToken sys (SysUniHSConstructor sys)
   --AnTokenCompose :: AnalyzableToken sys t -> AnalyzableToken sys (Compose f t)
 
 data AnalyzerError sys =

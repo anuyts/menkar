@@ -59,6 +59,11 @@ haveFine2Pretty token a = case token of
   AnTokenPair1 ltoken rtoken -> haveFine2Pretty ltoken $ haveFine2Pretty rtoken $ a
   AnTokenConst1 token -> haveFine2Pretty token a
   AnTokenSys systoken -> sysHaveFine2Pretty systoken a
+  AnTokenMode -> a
+  AnTokenModality -> a
+  AnTokenDegree -> a
+  AnTokenSysTerm -> a
+  AnTokenSysUniHSConstructor -> a
 
 token2string :: forall sys t . (SysPretty sys) => AnalyzableToken sys t -> String
 token2string token = case token of
@@ -81,6 +86,11 @@ token2string token = case token of
   AnTokenPair1 ltoken rtoken -> "pair:(" ++ token2string ltoken ++ ", " ++ token2string rtoken ++ ")"
   AnTokenConst1 token -> "const-boxed:" ++ token2string token
   AnTokenSys systoken -> "system-boxed:" ++ sysToken2string systoken
+  AnTokenMode -> "mode"
+  AnTokenModality -> "modality"
+  AnTokenDegree -> "degree"
+  AnTokenSysTerm -> "system-specific-term"
+  AnTokenSysUniHSConstructor -> "system-specific-UniHS-constructor"
 
 modrel2pretty :: ModRel -> PrettyTree String
 modrel2pretty ModLeq = ribbon "\8804"
@@ -123,6 +133,11 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
     relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts |++ ")"
   (AnTokenConst1 token, rel) -> relation2pretty token gamma extraT1 extraT2 rel opts
   (AnTokenSys systoken, rel) -> sysRelation2pretty systoken gamma extraT1 extraT2 rel opts
+  (AnTokenMode, U1) -> ribbon "="
+  (AnTokenModality, Const modrel) -> modrel2pretty modrel
+  (AnTokenDegree, Const modrel) -> modrel2pretty modrel
+  (AnTokenSysTerm, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenSysUniHSConstructor, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
 
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
@@ -177,7 +192,14 @@ classif2pretty token gamma extraT ct extraCT opts =
       ribbon ")"
     (AnTokenConst1 token, extraT, ct, extraCT) -> classif2pretty token gamma extraT ct extraCT opts
     (AnTokenSys systoken, extraT, ct, extraCT) -> sysClassif2pretty systoken gamma extraT ct extraCT opts
-    
+    (AnTokenMode, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenModality, U1, dom :*: cod, U1 :*: U1) ->
+      fine2pretty gamma dom opts
+      |++ " -> " |+|
+      fine2pretty gamma cod opts
+    (AnTokenDegree, U1, d, U1) -> fine2pretty gamma d opts
+    (AnTokenSysTerm, U1, ty, U1) -> fine2pretty gamma ty opts
+    (AnTokenSysUniHSConstructor, U1, d, U1) -> "UniHS " ++| fine2pretty gamma d opts
 
 maybeClassif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>

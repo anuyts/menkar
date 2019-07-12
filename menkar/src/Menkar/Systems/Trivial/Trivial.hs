@@ -40,11 +40,11 @@ data TrivUniHSConstructor v where
 data TrivJud where
 data TrivAnalyzerError where
 data TrivAnalyzableToken (t :: * -> *) where
-  AnTokenMode :: TrivAnalyzableToken TrivMode
-  AnTokenModality :: TrivAnalyzableToken TrivModality
-  AnTokenDegree :: TrivAnalyzableToken TrivDegree
-  AnTokenTrivTerm :: TrivAnalyzableToken TrivTerm
-  AnTokenTrivUniHSConstructor :: TrivAnalyzableToken TrivUniHSConstructor
+  --AnTokenMode :: TrivAnalyzableToken TrivMode
+  --AnTokenModality :: TrivAnalyzableToken TrivModality
+  --AnTokenDegree :: TrivAnalyzableToken TrivDegree
+  --AnTokenTrivTerm :: TrivAnalyzableToken TrivTerm
+  --AnTokenTrivUniHSConstructor :: TrivAnalyzableToken TrivUniHSConstructor
 
 type instance Mode Trivial = TrivMode
 type instance Modality Trivial = TrivModality
@@ -60,7 +60,7 @@ instance Analyzable Trivial TrivMode where
   type Classif TrivMode = U1
   type Relation TrivMode = U1
   type ClassifExtraInput TrivMode = U1
-  analyzableToken = AnTokenSys AnTokenMode
+  analyzableToken = AnTokenMode --AnTokenSys AnTokenMode
   witClassif token = Witness
   analyze token gamma (Classification TrivMode U1 maybeU1) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivMode
@@ -73,7 +73,7 @@ instance Analyzable Trivial TrivModality where
   type Classif TrivModality = TrivMode :*: TrivMode
   type Relation TrivModality = Const ModRel
   type ClassifExtraInput TrivModality = U1
-  analyzableToken = AnTokenSys AnTokenModality
+  analyzableToken = AnTokenModality --AnTokenSys AnTokenModality
   witClassif token = Witness
   analyze token gamma (Classification TrivModality U1 maybeTrivModes) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivModality
@@ -86,7 +86,7 @@ instance Analyzable Trivial TrivDegree where
   type Classif TrivDegree = TrivMode
   type Relation TrivDegree = Const ModRel
   type ClassifExtraInput TrivDegree = U1
-  analyzableToken = AnTokenSys AnTokenDegree
+  analyzableToken = AnTokenDegree --AnTokenSys AnTokenDegree
   witClassif token = Witness
   analyze token gamma (Classification TrivDegree U1 maybeTrivMode) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivDegree
@@ -99,7 +99,7 @@ instance Analyzable Trivial TrivTerm where
   type Classif TrivTerm = Type Trivial
   type Relation TrivTerm = ModedDegree Trivial
   type ClassifExtraInput TrivTerm = U1
-  analyzableToken = AnTokenSys AnTokenTrivTerm
+  analyzableToken = AnTokenSysTerm --AnTokenSys AnTokenTrivTerm
   witClassif token = Witness
   analyze token gamma (Classification syst _ _) h = case syst of {}
   convRel token TrivMode = TrivModedDegree
@@ -109,7 +109,7 @@ instance Analyzable Trivial TrivUniHSConstructor where
   type Classif TrivUniHSConstructor = Classif (UniHSConstructor Trivial)
   type Relation TrivUniHSConstructor = ModedDegree Trivial
   type ClassifExtraInput TrivUniHSConstructor = U1
-  analyzableToken = AnTokenSys AnTokenTrivUniHSConstructor
+  analyzableToken = AnTokenSysUniHSConstructor --AnTokenSys AnTokenTrivUniHSConstructor
   witClassif token = Witness
   analyze token gamma (Classification systy _ _) h = case systy of {}
   convRel token TrivMode = U1
@@ -162,12 +162,12 @@ instance SysScoper Trivial where
 
   newMetaModtyNoCheck gamma reason = return TrivModality
 
-  newMetaClassif4sysASTNoCheck token gamma t extraT reason = case token of
-    AnTokenMode -> return $ U1
+  newMetaClassif4sysASTNoCheck token gamma t extraT reason = case token of {}
+    {-AnTokenMode -> return $ U1
     AnTokenModality -> return $ TrivMode :*: TrivMode
     AnTokenDegree -> return $ TrivMode
     AnTokenTrivTerm -> case (t :: TrivTerm _) of {}
-    AnTokenTrivUniHSConstructor -> case (t :: TrivUniHSConstructor _) of {} 
+    AnTokenTrivUniHSConstructor -> case (t :: TrivUniHSConstructor _) of {} -}
 
 instance SysAnalyzer Trivial where
   quickEqSysUnanalyzable sysErr = case sysErr of {}
@@ -182,19 +182,19 @@ instance SysWHN Trivial where
 instance SysTC Trivial where
   checkSysASTUnanalyzable sysError = case sysError of {}
   newRelatedSysASTUnanalyzable' sysError = case sysError of {}
-  newRelatedSysAST token eta rel gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason = case token of
-    AnTokenMode -> return TrivMode
+  newRelatedSysAST token eta rel gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason = case token of {}
+    {-AnTokenMode -> return TrivMode
     AnTokenModality -> return TrivModality
     AnTokenDegree -> return TrivDegree
     AnTokenTrivTerm -> case (t2 :: TrivTerm _) of {}
-    AnTokenTrivUniHSConstructor -> case (t2 :: TrivUniHSConstructor _) of {} 
+    AnTokenTrivUniHSConstructor -> case (t2 :: TrivUniHSConstructor _) of {} -}
   checkUnanalyzableSysASTRel' sysError = case sysError of {}
-  checkSysASTRel token eta rel gamma ts extraTs maybeCTs = case token of
-    AnTokenMode -> return ()
+  checkSysASTRel token eta rel gamma ts extraTs maybeCTs = case token of {}
+    {-AnTokenMode -> return ()
     AnTokenModality -> return ()
     AnTokenDegree -> return ()
     AnTokenTrivTerm -> case (fstTwice1 ts :: TrivTerm _) of {}
-    AnTokenTrivUniHSConstructor -> case (fstTwice1 ts :: TrivUniHSConstructor _) of {} 
+    AnTokenTrivUniHSConstructor -> case (fstTwice1 ts :: TrivUniHSConstructor _) of {} -}
   checkEtaWHNSysTy gamma t1 syst2 = case syst2 of {}
   etaExpandSysType gamma t sysType = case sysType of {}
   checkSysJudgement jud = case jud of {}
@@ -218,27 +218,27 @@ instance Fine2Pretty Trivial TrivUniHSConstructor where
 
 instance SysPretty Trivial where
   sysJud2pretty jud opts = case jud of {}
-  sysToken2string token = case token of
-    AnTokenMode -> "mode"
+  sysToken2string token = case token of {}
+    {-AnTokenMode -> "mode"
     AnTokenModality -> "modality"
     AnTokenDegree -> "degree"
     AnTokenTrivTerm -> "system-specific-term_(impossible)"
-    AnTokenTrivUniHSConstructor -> "system-specific-UniHS-constructor_(impossible)"
-  sysClassif2pretty token gamma extraT ct extraCT opts = case token of
-    AnTokenMode -> ribbon "mode"
+    AnTokenTrivUniHSConstructor -> "system-specific-UniHS-constructor_(impossible)"-}
+  sysClassif2pretty token gamma extraT ct extraCT opts = case token of {}
+    {-AnTokenMode -> ribbon "mode"
     AnTokenModality -> ribbon "modality"
     AnTokenDegree -> ribbon "degree"
     AnTokenTrivTerm -> fine2pretty gamma ct opts
-    AnTokenTrivUniHSConstructor -> fine2pretty gamma ct opts
-  sysRelation2pretty token gamma extraT1 extraT2 rel opts = case token of
-    AnTokenMode -> ribbon "="
+    AnTokenTrivUniHSConstructor -> fine2pretty gamma ct opts-}
+  sysRelation2pretty token gamma extraT1 extraT2 rel opts = case token of {}
+    {-AnTokenMode -> ribbon "="
     AnTokenModality -> modrel2pretty $ getConst rel
     AnTokenDegree -> modrel2pretty $ getConst rel
     AnTokenTrivTerm -> "[" ++| fine2pretty gamma rel opts |++ "]"
-    AnTokenTrivUniHSConstructor -> "[" ++| fine2pretty gamma rel opts |++ "]"
-  sysHaveFine2Pretty token a = case token of
-    AnTokenMode -> a
+    AnTokenTrivUniHSConstructor -> "[" ++| fine2pretty gamma rel opts |++ "]"-}
+  sysHaveFine2Pretty token a = case token of {}
+    {-AnTokenMode -> a
     AnTokenModality -> a
     AnTokenDegree -> a
     AnTokenTrivTerm -> a
-    AnTokenTrivUniHSConstructor -> a
+    AnTokenTrivUniHSConstructor -> a-}
