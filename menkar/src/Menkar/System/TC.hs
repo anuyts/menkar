@@ -48,9 +48,9 @@ class SysWHN sys => SysTC sys where
     Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     tc ()
-  checkSysASTRel :: forall tc t v .
+  checkMultimodeOrSysASTRel :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
-    SysAnalyzableToken sys t ->
+    MultimodeOrSysAnalyzableToken sys t ->
     Eta ->
     Relation t v ->
     Ctx (Twice2 Type) sys v Void ->
@@ -77,9 +77,9 @@ class SysWHN sys => SysTC sys where
     ClassifInfo (Twice1 (Classif t) v) ->
     tc (t vOrig)
   -- | See Menkar.TC.ASTRel.newRelatedAST
-  newRelatedSysAST :: forall tc t v vOrig .
+  newRelatedMultimodeOrSysAST :: forall tc t v vOrig .
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
-    SysAnalyzableToken sys t ->
+    MultimodeOrSysAnalyzableToken sys t ->
     Eta ->
     Relation t v ->
     Ctx Type sys vOrig Void ->

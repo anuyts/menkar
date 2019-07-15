@@ -125,8 +125,10 @@ newRelatedAST eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 m
     AnTokenTerm ->
       newRelatedMetaTerm eta relT gammaOrig gamma subst partialInv t2 maybeCTs
         (if unEta eta then MetaBlocked else MetaNeutral) reason
-    AnTokenSys sysToken ->
-      newRelatedSysAST sysToken eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason
+    AnTokenSys sysToken -> newRelatedMultimodeOrSysAST (Right sysToken)
+      eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason
+    AnTokenMultimode multimodeToken -> newRelatedMultimodeOrSysAST (Left multimodeToken)
+      eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason
     _ -> newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs
 
 newRelatedMetaTerm :: forall sys tc v vOrig .

@@ -60,7 +60,7 @@ instance Analyzable Trivial TrivMode where
   type Classif TrivMode = U1
   type Relation TrivMode = U1
   type ClassifExtraInput TrivMode = U1
-  analyzableToken = AnTokenInterface AnTokenMode --AnTokenSys AnTokenMode
+  analyzableToken = AnTokenMultimode AnTokenMode --AnTokenSys AnTokenMode
   witClassif token = Witness
   analyze token gamma (Classification TrivMode U1 maybeU1) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivMode
@@ -73,7 +73,7 @@ instance Analyzable Trivial TrivModality where
   type Classif TrivModality = TrivMode :*: TrivMode
   type Relation TrivModality = Const ModRel
   type ClassifExtraInput TrivModality = U1
-  analyzableToken = AnTokenInterface AnTokenModality --AnTokenSys AnTokenModality
+  analyzableToken = AnTokenMultimode AnTokenModality --AnTokenSys AnTokenModality
   witClassif token = Witness
   analyze token gamma (Classification TrivModality U1 maybeTrivModes) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivModality
@@ -86,7 +86,7 @@ instance Analyzable Trivial TrivDegree where
   type Classif TrivDegree = TrivMode
   type Relation TrivDegree = Const ModRel
   type ClassifExtraInput TrivDegree = U1
-  analyzableToken = AnTokenInterface AnTokenDegree --AnTokenSys AnTokenDegree
+  analyzableToken = AnTokenMultimode AnTokenDegree --AnTokenSys AnTokenDegree
   witClassif token = Witness
   analyze token gamma (Classification TrivDegree U1 maybeTrivMode) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivDegree
@@ -99,7 +99,7 @@ instance Analyzable Trivial TrivTerm where
   type Classif TrivTerm = Type Trivial
   type Relation TrivTerm = ModedDegree Trivial
   type ClassifExtraInput TrivTerm = U1
-  analyzableToken = AnTokenInterface AnTokenSysTerm --AnTokenSys AnTokenTrivTerm
+  analyzableToken = AnTokenSysTerm --AnTokenSys AnTokenTrivTerm
   witClassif token = Witness
   analyze token gamma (Classification syst _ _) h = case syst of {}
   convRel token TrivMode = TrivModedDegree
@@ -109,7 +109,7 @@ instance Analyzable Trivial TrivUniHSConstructor where
   type Classif TrivUniHSConstructor = Classif (UniHSConstructor Trivial)
   type Relation TrivUniHSConstructor = ModedDegree Trivial
   type ClassifExtraInput TrivUniHSConstructor = U1
-  analyzableToken = AnTokenInterface AnTokenSysUniHSConstructor --AnTokenSys AnTokenTrivUniHSConstructor
+  analyzableToken = AnTokenSysUniHSConstructor --AnTokenSys AnTokenTrivUniHSConstructor
   witClassif token = Witness
   analyze token gamma (Classification systy _ _) h = case systy of {}
   convRel token TrivMode = U1
@@ -174,10 +174,14 @@ instance SysAnalyzer Trivial where
 
 instance SysWHN Trivial where
   whnormalizeSysTerm gamma t ty reason = case t of {}
-  whnormalizeMode gamma TrivMode reason =  return TrivMode
-  whnormalizeModality gamma TrivModality TrivMode TrivMode reason = return TrivModality
-  whnormalizeDegree gamma TrivDegree TrivMode reason = return TrivDegree
-  whnormalizeSys sysToken gamma t extraT classifT reason = case sysToken of {}
+  --whnormalizeMode gamma TrivMode reason =  return TrivMode
+  --whnormalizeModality gamma TrivModality TrivMode TrivMode reason = return TrivModality
+  --whnormalizeDegree gamma TrivDegree TrivMode reason = return TrivDegree
+  whnormalizeMultimodeOrSysAST token gamma t extraT classifT reason = case token of
+    Left AnTokenMode -> return TrivMode
+    Left AnTokenModality -> return TrivModality
+    Left AnTokenDegree -> return TrivDegree
+    Right sysToken -> case sysToken of {}
   leqMod gamma TrivModality TrivModality TrivMode TrivMode reason = return $ Just True
   leqDeg gamma TrivDegree TrivDegree TrivMode reason = return $ Just True
   isEqDeg gamma TrivDegree TrivMode reason = return $ Just True
@@ -186,19 +190,22 @@ instance SysWHN Trivial where
 instance SysTC Trivial where
   checkSysASTUnanalyzable sysError = case sysError of {}
   newRelatedSysASTUnanalyzable' sysError = case sysError of {}
-  newRelatedSysAST token eta rel gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason = case token of {}
-    {-AnTokenMode -> return TrivMode
-    AnTokenModality -> return TrivModality
-    AnTokenDegree -> return TrivDegree
-    AnTokenTrivTerm -> case (t2 :: TrivTerm _) of {}
-    AnTokenTrivUniHSConstructor -> case (t2 :: TrivUniHSConstructor _) of {} -}
+  newRelatedMultimodeOrSysAST token eta rel gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
+    case token of
+      Left AnTokenMode -> return TrivMode
+      Left AnTokenModality -> return TrivModality
+      Left AnTokenDegree -> return TrivDegree
+      Right sysToken -> case sysToken of {}
+      --Left AnTokenTrivTerm -> case (t2 :: TrivTerm _) of {}
+      --Left AnTokenTrivUniHSConstructor -> case (t2 :: TrivUniHSConstructor _) of {}
   checkUnanalyzableSysASTRel' sysError = case sysError of {}
-  checkSysASTRel token eta rel gamma ts extraTs maybeCTs = case token of {}
-    {-AnTokenMode -> return ()
-    AnTokenModality -> return ()
-    AnTokenDegree -> return ()
-    AnTokenTrivTerm -> case (fstTwice1 ts :: TrivTerm _) of {}
-    AnTokenTrivUniHSConstructor -> case (fstTwice1 ts :: TrivUniHSConstructor _) of {} -}
+  checkMultimodeOrSysASTRel token eta rel gamma ts extraTs maybeCTs = case token of
+    Left AnTokenMode -> return ()
+    Left AnTokenModality -> return ()
+    Left AnTokenDegree -> return ()
+    Right sysToken -> case sysToken of {}
+    --AnTokenTrivTerm -> case (fstTwice1 ts :: TrivTerm _) of {}
+    --AnTokenTrivUniHSConstructor -> case (fstTwice1 ts :: TrivUniHSConstructor _) of {}
   -- checkEtaWHNSysTy gamma t1 syst2 = case syst2 of {}
   etaExpandSysType gamma t sysType = case sysType of {}
   checkSysJudgement jud = case jud of {}

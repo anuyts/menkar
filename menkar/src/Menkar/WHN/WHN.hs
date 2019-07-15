@@ -285,18 +285,10 @@ whnormalizeAST :: forall sys whn v t .
 whnormalizeAST gamma t extraT classifT reason =
   case analyzableToken @sys @t of
     AnTokenTerm -> whnormalize gamma t classifT reason
-    AnTokenSys sysToken -> whnormalizeSys sysToken gamma t extraT classifT reason
-    AnTokenInterface AnTokenMode -> whnormalizeMode gamma t reason
-      where U1 = extraT
-            U1 = classifT
-    AnTokenInterface AnTokenModality -> whnormalizeModality gamma t dom cod reason
-      where U1 = extraT
-            dom :*: cod = classifT
-    AnTokenInterface AnTokenDegree -> whnormalizeDegree gamma t d reason
-      where U1 = extraT
-            d = classifT
-    -- SysTerm is supposed to be handled through whnormalize.
-    -- SysUniHSConstructor is supposed to be whnormal.
+    AnTokenSys sysToken ->
+      whnormalizeMultimodeOrSysAST (Right sysToken) gamma t extraT classifT reason
+    AnTokenMultimode multimodeToken ->
+      whnormalizeMultimodeOrSysAST (Left multimodeToken) gamma t extraT classifT reason
     _ -> whnormalizeAST' gamma t extraT classifT reason
       {-case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
       (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> return t

@@ -59,11 +59,11 @@ haveFine2Pretty token a = case token of
   AnTokenPair1 ltoken rtoken -> haveFine2Pretty ltoken $ haveFine2Pretty rtoken $ a
   AnTokenConst1 token -> haveFine2Pretty token a
   AnTokenSys systoken -> sysHaveFine2Pretty systoken a
-  AnTokenInterface AnTokenMode -> a
-  AnTokenInterface AnTokenModality -> a
-  AnTokenInterface AnTokenDegree -> a
-  AnTokenInterface AnTokenSysTerm -> a
-  AnTokenInterface AnTokenSysUniHSConstructor -> a
+  AnTokenMultimode AnTokenMode -> a
+  AnTokenMultimode AnTokenModality -> a
+  AnTokenMultimode AnTokenDegree -> a
+  AnTokenSysTerm -> a
+  AnTokenSysUniHSConstructor -> a
 
 token2string :: forall sys t . (SysPretty sys) => AnalyzableToken sys t -> String
 token2string token = case token of
@@ -86,11 +86,11 @@ token2string token = case token of
   AnTokenPair1 ltoken rtoken -> "pair:(" ++ token2string ltoken ++ ", " ++ token2string rtoken ++ ")"
   AnTokenConst1 token -> "const-boxed:" ++ token2string token
   AnTokenSys systoken -> "system-boxed:" ++ sysToken2string systoken
-  AnTokenInterface AnTokenMode -> "mode"
-  AnTokenInterface AnTokenModality -> "modality"
-  AnTokenInterface AnTokenDegree -> "degree"
-  AnTokenInterface AnTokenSysTerm -> "system-specific-term"
-  AnTokenInterface AnTokenSysUniHSConstructor -> "system-specific-UniHS-constructor"
+  AnTokenMultimode AnTokenMode -> "mode"
+  AnTokenMultimode AnTokenModality -> "modality"
+  AnTokenMultimode AnTokenDegree -> "degree"
+  AnTokenSysTerm -> "system-specific-term"
+  AnTokenSysUniHSConstructor -> "system-specific-UniHS-constructor"
 
 modrel2pretty :: ModRel -> PrettyTree String
 modrel2pretty ModLeq = ribbon "\8804"
@@ -133,11 +133,11 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
     relation2pretty tokenR gamma (snd1 extraT1) (snd1 extraT2) relR opts |++ ")"
   (AnTokenConst1 token, rel) -> relation2pretty token gamma extraT1 extraT2 rel opts
   (AnTokenSys systoken, rel) -> sysRelation2pretty systoken gamma extraT1 extraT2 rel opts
-  (AnTokenInterface AnTokenMode, U1) -> ribbon "="
-  (AnTokenInterface AnTokenModality, Const modrel) -> modrel2pretty modrel
-  (AnTokenInterface AnTokenDegree, Const modrel) -> modrel2pretty modrel
-  (AnTokenInterface AnTokenSysTerm, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
-  (AnTokenInterface AnTokenSysUniHSConstructor, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenMultimode AnTokenMode, U1) -> ribbon "="
+  (AnTokenMultimode AnTokenModality, Const modrel) -> modrel2pretty modrel
+  (AnTokenMultimode AnTokenDegree, Const modrel) -> modrel2pretty modrel
+  (AnTokenSysTerm, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
+  (AnTokenSysUniHSConstructor, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
 
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
@@ -192,14 +192,14 @@ classif2pretty token gamma extraT ct extraCT opts =
       ribbon ")"
     (AnTokenConst1 token, extraT, ct, extraCT) -> classif2pretty token gamma extraT ct extraCT opts
     (AnTokenSys systoken, extraT, ct, extraCT) -> sysClassif2pretty systoken gamma extraT ct extraCT opts
-    (AnTokenInterface AnTokenMode, U1, U1, U1) -> ribbon "<n/a>"
-    (AnTokenInterface AnTokenModality, U1, dom :*: cod, U1 :*: U1) ->
+    (AnTokenMultimode AnTokenMode, U1, U1, U1) -> ribbon "<n/a>"
+    (AnTokenMultimode AnTokenModality, U1, dom :*: cod, U1 :*: U1) ->
       fine2pretty gamma dom opts
       |++ " -> " |+|
       fine2pretty gamma cod opts
-    (AnTokenInterface AnTokenDegree, U1, d, U1) -> fine2pretty gamma d opts
-    (AnTokenInterface AnTokenSysTerm, U1, ty, U1) -> fine2pretty gamma ty opts
-    (AnTokenInterface AnTokenSysUniHSConstructor, U1, d, U1) -> "UniHS " ++| fine2pretty gamma d opts
+    (AnTokenMultimode AnTokenDegree, U1, d, U1) -> fine2pretty gamma d opts
+    (AnTokenSysTerm, U1, ty, U1) -> fine2pretty gamma ty opts
+    (AnTokenSysUniHSConstructor, U1, d, U1) -> "UniHS " ++| fine2pretty gamma d opts
 
 maybeClassif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>

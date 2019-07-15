@@ -9,6 +9,7 @@ import Menkar.Analyzer
 
 import Data.Void
 import Control.Monad.Writer
+import GHC.Generics
 
 class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   whnormalizeSysTerm :: forall whn v .
@@ -18,30 +19,9 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     Type sys v ->
     String ->
     whn (Term sys v)
-  whnormalizeMode :: forall whn v .
+  whnormalizeMultimodeOrSysAST :: forall whn t v .
     (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
-    Mode sys v ->
-    String ->
-    whn (Mode sys v)
-  whnormalizeModality :: forall whn v .
-    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
-    Modality sys v ->
-    Mode sys v ->
-    Mode sys v ->
-    String ->
-    whn (Modality sys v)
-  whnormalizeDegree :: forall whn v .
-    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
-    Degree sys v ->
-    Mode sys v ->
-    String ->
-    whn (Degree sys v)
-  whnormalizeSys :: forall whn t v .
-    (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    SysAnalyzableToken sys t ->
+    MultimodeOrSysAnalyzableToken sys t ->
     Ctx Type sys v Void ->
     t v ->
     ClassifExtraInput t v ->
@@ -125,3 +105,32 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     let dnu = modedApproxLeftAdjointProj dmu dcod
     leqMod parent gamma (modality'mod $ compModedModality dnu dmu) (idMod ddom) ddom ddom reason
   -}
+
+
+whnormalizeMode :: forall sys whn v .
+    (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Mode sys v ->
+    String ->
+    whn (Mode sys v)
+whnormalizeMode gamma d reason =
+  whnormalizeMultimodeOrSysAST (Left AnTokenMode) gamma d U1 U1 reason
+whnormalizeModality :: forall sys whn v .
+    (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Modality sys v ->
+    Mode sys v ->
+    Mode sys v ->
+    String ->
+    whn (Modality sys v)
+whnormalizeModality gamma mu dom cod reason =
+  whnormalizeMultimodeOrSysAST (Left AnTokenModality) gamma mu U1 (dom :*: cod) reason
+whnormalizeDegree :: forall sys whn v .
+    (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Degree sys v ->
+    Mode sys v ->
+    String ->
+    whn (Degree sys v)
+whnormalizeDegree gamma deg d reason =
+  whnormalizeMultimodeOrSysAST (Left AnTokenDegree) gamma deg U1 d reason

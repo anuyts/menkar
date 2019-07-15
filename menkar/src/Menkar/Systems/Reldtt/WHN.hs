@@ -1,6 +1,7 @@
 module Menkar.Systems.Reldtt.WHN where
 
 import Menkar.Basic
+import Menkar.Analyzer
 import Menkar.WHN
 import Menkar.System.Fine
 import Menkar.System.Scoper
@@ -405,6 +406,27 @@ whnormalizeModtyTerm gamma mu reason = case mu of
       _ -> return mu
   ModtyTermUnavailable ddom dcod -> return mu
   
+whnormalizeReldttDegree :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Ctx Type Reldtt v Void ->
+  ReldttDegree v ->
+  String ->
+  whn (ReldttDegree v)
+whnormalizeReldttDegree gamma i reason = do
+    case i of
+      DegKnown _ _ -> return i
+      DegGet j mu ddom dcod -> do
+        j <- whnormalizeReldttDegree gamma j reason
+        case j of
+          DegKnown d KnownDegEq -> return $ DegKnown ddom KnownDegEq
+          DegKnown d KnownDegTop -> return $ DegKnown ddom KnownDegTop
+          DegKnown d j' -> do
+            mu <- whnormalize gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
+            case mu of
+              BareKnownModty mu' -> return $ DegKnown ddom $ knownGetDeg j' mu' 
+              _ -> return $ DegGet j mu ddom dcod
+          _ -> return $ DegGet j mu ddom dcod
+  
 instance SysWHN Reldtt where
   whnormalizeSysTerm gamma sysT ty reason = do
     --let returnSysT = return $ Expr2 $ TermSys $ sysT
@@ -432,6 +454,7 @@ instance SysWHN Reldtt where
       --SysTypeModty ddom dcod -> returnSysT
       --_ -> _whnormalizeSys
 
+  {-
   whnormalizeMode gamma (ReldttMode t) reason = ReldttMode !<$> whnormalize gamma t (BareSysType SysTypeMode) reason
 
   whnormalizeModality gamma chmu dom cod reason = whnormalizeChainModty gamma chmu reason
@@ -450,13 +473,17 @@ instance SysWHN Reldtt where
               BareKnownModty mu' -> return $ DegKnown ddom $ knownGetDeg j' mu' 
               _ -> return $ DegGet j mu ddom dcod
           _ -> return $ DegGet j mu ddom dcod
+  -}
 
-  whnormalizeSys sysToken gamma t extraT classifT reason = case sysToken of
-    AnTokenModeTerm -> whnormalizeModeTerm gamma t reason
-    AnTokenModtyTerm -> whnormalizeModtyTerm gamma t reason
-    AnTokenKnownModty -> whnormalizeKnownModty gamma t reason
-    AnTokenModtySnout -> return t
-    AnTokenModtyTail -> whnormalizeModtyTail gamma t reason
+  whnormalizeMultimodeOrSysAST token gamma t extraT classifT reason = case token of
+    Left AnTokenMode -> ReldttMode !<$> whnormalize gamma (getReldttMode t) (BareSysType SysTypeMode) reason
+    Left AnTokenModality -> whnormalizeChainModty gamma t reason
+    Left AnTokenDegree -> whnormalizeReldttDegree gamma t reason
+    Right AnTokenModeTerm -> whnormalizeModeTerm gamma t reason
+    Right AnTokenModtyTerm -> whnormalizeModtyTerm gamma t reason
+    Right AnTokenKnownModty -> whnormalizeKnownModty gamma t reason
+    Right AnTokenModtySnout -> return t
+    Right AnTokenModtyTail -> whnormalizeModtyTail gamma t reason
 
   leqMod gamma mu1 mu2 ddom dcod reason = do
     -- You need to normalize: a tail might become empty!

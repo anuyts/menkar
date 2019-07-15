@@ -61,17 +61,17 @@ data AnalyzableToken sys (ast :: * -> *) where
     AnalyzableToken sys f -> AnalyzableToken sys g -> AnalyzableToken sys (f :*: g)
   AnTokenConst1 :: (Analyzable sys t) => AnalyzableToken sys t -> AnalyzableToken sys (Const1 t a)
   AnTokenSys :: SysAnalyzableToken sys t -> AnalyzableToken sys t
-  AnTokenInterface :: InterfaceAnalyzableToken sys t -> AnalyzableToken sys t
+  AnTokenMultimode :: MultimodeAnalyzableToken sys t -> AnalyzableToken sys t
+  AnTokenSysTerm :: AnalyzableToken sys (SysTerm sys)
+  AnTokenSysUniHSConstructor :: AnalyzableToken sys (SysUniHSConstructor sys)
   --AnTokenCompose :: AnalyzableToken sys t -> AnalyzableToken sys (Compose f t)
 
-data InterfaceAnalyzableToken sys (ast :: * -> *) where
-  AnTokenMode :: InterfaceAnalyzableToken sys (Mode sys)
-  AnTokenModality :: InterfaceAnalyzableToken sys (Modality sys)
-  AnTokenDegree :: InterfaceAnalyzableToken sys (Degree sys)
-  AnTokenSysTerm :: InterfaceAnalyzableToken sys (SysTerm sys)
-  AnTokenSysUniHSConstructor :: InterfaceAnalyzableToken sys (SysUniHSConstructor sys)
+data MultimodeAnalyzableToken sys (ast :: * -> *) where
+  AnTokenMode :: MultimodeAnalyzableToken sys (Mode sys)
+  AnTokenModality :: MultimodeAnalyzableToken sys (Modality sys)
+  AnTokenDegree :: MultimodeAnalyzableToken sys (Degree sys)
 
-type InterfaceOrSysAnalyzableToken sys t = Either (InterfaceAnalyzableToken sys t) (SysAnalyzableToken sys t)
+type MultimodeOrSysAnalyzableToken sys t = Either (MultimodeAnalyzableToken sys t) (SysAnalyzableToken sys t)
 
 data AnalyzerError sys =
   AnErrorTermMeta |

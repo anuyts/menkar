@@ -116,7 +116,8 @@ checkASTRel eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) ma
   then return ()
   else case analyzableToken @sys @t of
     AnTokenTerm -> checkTermRel eta relT gamma ts maybeCTs
-    AnTokenSys sysToken -> checkSysASTRel sysToken eta relT gamma ts extraTs maybeCTs
+    AnTokenSys sysToken ->             checkMultimodeOrSysASTRel (Right sysToken)      eta relT gamma ts extraTs maybeCTs
+    AnTokenMultimode multimodeToken -> checkMultimodeOrSysASTRel (Left multimodeToken) eta relT gamma ts extraTs maybeCTs
     _ -> checkASTRel' eta relT gamma ts extraTs maybeCTs
 
 ---------------------------------------------------
