@@ -81,6 +81,9 @@ data ModtySnout = ModtySnout
    {-| Degrees in REVERSE ORDER. -}
    _modtySnout'degreesReversed :: [KnownDeg]
   } deriving Eq
+instance Ord ModtySnout where
+  ModtySnout idom1 icod1 krevdegs1 <= ModtySnout idom2 icod2 krevdegs2 =
+    idom1 == idom2 && icod1 == icod2 && all (\ (i1, i2) -> i1 <= i2) (zip krevdegs1 krevdegs2)
 data ModtyTail v =
   TailEmpty |
 

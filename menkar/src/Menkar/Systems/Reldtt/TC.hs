@@ -34,7 +34,13 @@ import Data.List.Ordered
 
 instance SysTC Reldtt where
 
+  -- Judgement-checker --
+  -----------------------
+
   checkSysJudgement jud = case jud of {}
+
+  -- Type-checker --
+  ------------------
 
   checkSysASTUnanalyzable sysError gamma (t :: t v) extraT maybeCT = case (sysError, analyzableToken @Reldtt @t, t) of
     (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const (ModtySnout idom icod krevdegs)) -> do
@@ -45,3 +51,16 @@ instance SysTC Reldtt where
       when (any (== KnownDegProblem) krevdegs) $ tcFail "Problematic degree encountered."
       return U1
     (AnErrorModtySnout, _, _) -> unreachable
+
+  -- Relatedness-checker --
+  -------------------------
+
+  checkUnanalyzableSysASTRel' sysError eta rel gamma (Twice1 t1 t2:: Twice1 t v) (Twice1 extraT1 extraT2) maybeCTs =
+    case (sysError, analyzableToken @Reldtt @t, t1, t2) of
+      (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const snout1, Const snout2) -> do
+        let (==/<=) = case rel of
+              Const ModEq -> (==)
+              Const ModLeq -> (<=)
+        when (not $ snout1 ==/<= snout2) $ tcFail "False."
+      (AnErrorModtySnout, _, _, _) -> unreachable
+      
