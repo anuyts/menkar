@@ -32,6 +32,22 @@ import Data.Functor.Compose
 import Data.Maybe
 import Data.List.Ordered
 
+tryToSolveChainModty :: forall tc v .
+  (MonadTC Reldtt tc, DeBruijnLevel v) =>
+  Ctx (Twice2 Type) Reldtt v Void ->
+  ChainModty v ->
+  ChainModty v ->
+  ClassifInfo (Twice1 (ReldttMode :*: ReldttMode) v) ->
+  tc ()
+tryToSolveChainModty gamma chmu1blocked chmu2 maybeDomCods = case chmu1blocked of
+  ChainModtyDisguisedAsTerm dom cod t1 -> checkTermRel
+    (Eta False)
+    (modedEqDeg $ ReldttMode $ BareMode $ ModeTermZero)
+    gamma
+    (Twice1 t1 (Expr2 $ TermSys $ SysTermChainModtyInDisguise $ chmu2))
+    (maybeDomCods <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeChainModtyDisguisedAsTerm dom cod))
+  otherwise -> tcBlock "Cannot solve relation: one side is blocked on a meta-variable."
+
 instance SysTC Reldtt where
 
   -- Judgement-checker --
@@ -64,3 +80,24 @@ instance SysTC Reldtt where
         when (not $ snout1 ==/<= snout2) $ tcFail "False."
       (AnErrorModtySnout, _, _, _) -> unreachable
       
+  checkMultimodeOrSysASTRel token eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs = case token of
+    Left AnTokenMode -> byAnalysis
+    Left AnTokenModality -> do
+      (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
+      (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
+      case (metasT1, metasT2, getConst relT) of
+        ([], [], _) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
+        (_ , _ , ModLeq) -> tcBlock "Cannot solve inequality: one side is blocked on a meta-variable."
+        ([], _ , ModEq) -> tryToSolveChainModty (flipCtx gamma) t2 t1 (maybeCTs <&> flipTwice1)
+        (_ , [], ModEq) -> tryToSolveChainModty          gamma  t1 t2  maybeCTs
+        (_ , _ , ModEq) -> tcBlock "Cannot solve relation: both sides are blocked on a meta-variable."
+    Left AnTokenDegree -> do
+      (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
+      (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
+      case (metasT1, metasT2) of
+        ([], []) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
+        otherwise -> tcBlock "Cannot solve relation: one side is blocked on a meta-variable."
+    --Right AnTokenModeTerm -> _
+    where
+      byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc ()
+      byAnalysis = checkASTRel' eta relT gamma ts extraTs maybeCTs

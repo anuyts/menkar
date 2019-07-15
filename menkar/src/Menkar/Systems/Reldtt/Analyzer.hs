@@ -151,7 +151,7 @@ instance Analyzable Reldtt ChainModty where
         (\ gamma' -> \ case
             (Classification (ChainModtyDisguisedAsTerm dom' cod' t') U1 maybeDomCod') ->
               Just $ Identity !<$> Classification t' U1
-                (ClassifMustBe $ BareSysType $ SysTypeChainModtyDisguisedAsTerm)
+                (ClassifMustBe $ BareSysType $ SysTypeChainModtyDisguisedAsTerm dom' cod')
             otherwise -> Nothing
         )
         extCtxId
@@ -587,9 +587,29 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
         TokenTrav -> AnalysisTrav $ SysTypeModty (getAnalysisTrav rdom) (getAnalysisTrav rcod)
         TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
         TokenRel -> AnalysisRel
-    SysTypeChainModtyDisguisedAsTerm -> Right $ do
+    SysTypeChainModtyDisguisedAsTerm dom cod -> Right $ do
+      rdom <- fmapCoe runIdentity <$> h Identity
+        (conditional $ SysTypeChainModtyDisguisedAsTerm unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification ty'@(SysTypeChainModtyDisguisedAsTerm dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\d deg -> U1)
+        (AddressInfo ["domain"] FocusWrapped omit)
+      rcod <- fmapCoe runIdentity <$> h Identity
+        (conditional $ SysTypeChainModtyDisguisedAsTerm unreachable unreachable)
+        (\ gamma' -> \ case
+            (Classification ty'@(SysTypeChainModtyDisguisedAsTerm dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1)
+            otherwise -> Nothing
+        )
+        extCtxId
+        (\d deg -> U1)
+        (AddressInfo ["codomain"] FocusWrapped omit)
       return $ case token of
-        TokenTrav -> AnalysisTrav $ SysTypeChainModtyDisguisedAsTerm
+        TokenTrav -> AnalysisTrav $ SysTypeChainModtyDisguisedAsTerm (getAnalysisTrav rdom) (getAnalysisTrav rcod)
         TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
         TokenRel -> AnalysisRel
 

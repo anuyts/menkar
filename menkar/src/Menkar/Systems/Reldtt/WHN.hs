@@ -357,7 +357,7 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
         ChainModtyDisguisedAsTerm ddom dcod tmu -> return $ ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
 whnormalizeChainModty gamma chmu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = do
-  tmu <- whnormalize gamma tmu (BareSysType $ SysTypeChainModtyDisguisedAsTerm) reason
+  tmu <- whnormalize gamma tmu (BareSysType $ SysTypeChainModtyDisguisedAsTerm ddom dcod) reason
   case tmu of
     Expr2 (TermSys (SysTermChainModtyInDisguise chmu')) -> whnormalizeChainModty gamma chmu' reason
     otherwise -> return chmu

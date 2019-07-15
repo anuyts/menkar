@@ -313,7 +313,7 @@ data ReldttUniHSConstructor v =
   --SysTypeDeg (ReldttMode v) {-^ Mode, can be omega. -} |
   {-| Type of modalities. -}
   SysTypeModty (ReldttMode v) {-^ Domain, can be omega -} (ReldttMode v) {-^ Codomain, can be omega -} |
-  SysTypeChainModtyDisguisedAsTerm
+  SysTypeChainModtyDisguisedAsTerm (ReldttMode v) {-^ Domain, can be omega -} (ReldttMode v) {-^ Codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 data ReldttSysJudgement where

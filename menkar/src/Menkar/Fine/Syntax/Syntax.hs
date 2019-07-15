@@ -28,6 +28,10 @@ data Twice1 t (a :: ka) = Twice1 {fstTwice1 :: t a, sndTwice1 :: t a}
 deriving instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Twice1 t)
 twice1to2 :: Twice1 (t sys) v -> Twice2 t sys v
 twice1to2 (Twice1 a b) = Twice2 a b
+mapTwice1 :: (a v -> b v) -> Twice1 a v -> Twice1 b v
+mapTwice1 f (Twice1 a1 a2) = Twice1 (f a1) (f a2)
+flipTwice1 :: Twice1 t v -> Twice1 t v
+flipTwice1 (Twice1 t1 t2) = Twice1 t2 t1
   
 newtype Box2 t (a :: ka) (b :: kb) = Box2 {unbox2 :: t a b}
   deriving (Functor, Foldable, Traversable, Generic1)
