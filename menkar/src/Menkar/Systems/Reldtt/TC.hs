@@ -60,9 +60,9 @@ instance SysTC Reldtt where
 
   checkSysASTUnanalyzable sysError gamma (t :: t v) extraT maybeCT = case (sysError, analyzableToken @Reldtt @t, t) of
     (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const (ModtySnout idom icod krevdegs)) -> do
-      when (not (isSortedBy (>=) krevdegs)) $
+      unless (isSortedBy (>=) krevdegs) $
         tcFail "Degrees are not ordered."
-      when (any (\ kdeg -> (kdeg >= KnownDeg idom) && (kdeg < KnownDegOmega)) krevdegs) $
+      unless (all (\ kdeg -> (kdeg < KnownDeg idom) || (kdeg >= KnownDegOmega)) krevdegs) $
         tcFail "A degree is unavailable in the domain."
       when (any (== KnownDegProblem) krevdegs) $ tcFail "Problematic degree encountered."
       return U1
@@ -97,7 +97,16 @@ instance SysTC Reldtt where
       case (metasT1, metasT2) of
         ([], []) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
         otherwise -> tcBlock "Cannot solve relation: one side is blocked on a meta-variable."
-    --Right AnTokenModeTerm -> _
+    Right AnTokenModeTerm -> byAnalysis
+    Right AnTokenModtyTerm -> byAnalysis
+    Right AnTokenModtySnout -> unreachable
+    Right AnTokenModtyTail -> unreachable
+    Right AnTokenKnownModty -> do
+      case relKnownModty (getConst relT) t1 t2 of
+        Nothing -> -- This may occur when something is ill-typed.
+          tcFail "Modalities are presumed to have equal (co)domain."
+        Just True -> return ()
+        Just False -> tcFail "False."
     where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc ()
       byAnalysis = checkASTRel' eta relT gamma ts extraTs maybeCTs
