@@ -71,7 +71,7 @@ instance SysTC Reldtt where
   -- Relatedness-checker --
   -------------------------
 
-  checkUnanalyzableSysASTRel' sysError eta rel gamma (Twice1 t1 t2:: Twice1 t v) (Twice1 extraT1 extraT2) maybeCTs =
+  checkUnanalyzableSysASTRel' sysError eta rel gamma (Twice1 t1 t2 :: Twice1 t v) (Twice1 extraT1 extraT2) maybeCTs =
     case (sysError, analyzableToken @Reldtt @t, t1, t2) of
       (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const snout1, Const snout2) -> do
         let (==/<=) = case rel of
@@ -110,3 +110,31 @@ instance SysTC Reldtt where
     where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc ()
       byAnalysis = checkASTRel' eta relT gamma ts extraTs maybeCTs
+
+  -- Solver --
+  ------------
+
+  newRelatedSysASTUnanalyzable' sysError relT gammaOrig gamma subst partialInv (t2 :: t v) extraT1orig extraT2 maybeCTs =
+    case (sysError, analyzableToken @Reldtt @t, t2) of
+      (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const snout2) -> case getConst relT of
+        ModLeq -> unreachable -- There's no unique solution here and there are no metas.
+        ModEq -> return $ Const snout2
+      (AnErrorModtySnout, _, _) -> unreachable
+
+  newRelatedMultimodeOrSysAST token eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
+    case token of
+      Left AnTokenMode -> byAnalysis
+      Left AnTokenModality -> do
+        let tmu2 = Expr2 $ TermSys $ SysTermChainModtyInDisguise $ t2
+        tmu1orig <- newRelatedMetaTerm
+          (Eta False)
+          (modedEqDeg $ ReldttMode $ BareMode $ ModeTermZero)
+          gammaOrig gamma subst partialInv tmu2
+          (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeChainModtyDisguisedAsTerm dom cod))
+          MetaBlocked
+          reason
+        return $ ChainModtyDisguisedAsTerm _ _ tmu1orig
+        
+    where
+      byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc _
+      byAnalysis = newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs

@@ -57,7 +57,6 @@ class SysWHN sys => SysTC sys where
     Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     tc ()
-  -- other specific classes
 
   -- Solver --
   ------------
@@ -91,7 +90,6 @@ class SysWHN sys => SysTC sys where
     ClassifInfo (Twice1 (Classif t) v) ->
     String ->
     tc (t vOrig)
-  -- other specific classes
 
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
