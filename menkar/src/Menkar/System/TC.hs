@@ -28,7 +28,6 @@ class SysWHN sys => SysTC sys where
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
     SysAnalyzerError sys ->
     Ctx Type sys v Void ->
-    AnalyzerError sys ->
     t v ->
     ClassifExtraInput t v ->
     ClassifInfo (Classif t v) ->

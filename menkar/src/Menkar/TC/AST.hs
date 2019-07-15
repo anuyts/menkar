@@ -181,7 +181,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
         "Checking that variable is accessible."
       return $ _decl'content . _leftDivided'content $ ldivSeg
     (AnErrorVar, _, _) -> unreachable
-    (AnErrorSys sysError, _, _) -> checkSysASTUnanalyzable sysError gamma anErr t extraT maybeCT
+    (AnErrorSys sysError, _, _) -> checkSysASTUnanalyzable sysError gamma t extraT maybeCT
     -- _ -> _ 
 
 {-| Equality of expected and actual classifier is checked on the outside IF requested. -}

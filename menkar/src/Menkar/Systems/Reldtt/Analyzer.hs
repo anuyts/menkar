@@ -600,7 +600,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
 
 instance SysAnalyzer Reldtt where
   quickEqSysUnanalyzable sysError sysToken t1 t2 extraT1 extraT2 = case (sysError, sysToken) of
-    (AnErrorModtySnout, AnTokenModtySnout) ->
+    (AnErrorModtySnout, AnTokenSys AnTokenModtySnout) ->
       let Const snout1 = t1
           Const snout2 = t2
       in  snout1 == snout2

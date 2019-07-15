@@ -22,6 +22,7 @@ type instance Modality Reldtt = ChainModty
 type instance Degree Reldtt = ReldttDegree
 type instance SysTerm Reldtt = ReldttSysTerm
 type instance SysUniHSConstructor Reldtt = ReldttUniHSConstructor
+type instance SysJudgement Reldtt = ReldttSysJudgement
 
 {-
 {-| @ReldttModeOne@ and @ReldttModeNull@ are really just modes 1 and 0 (depth 0 and -1) but with a special treatment.
@@ -68,12 +69,12 @@ deriving instance Wrapped (ReldttMode v)
 data KnownDeg =
   KnownDegEq |
   KnownDeg Int |
-  KnownDegTop |
   KnownDegOmega {-^ Only allowed in infinite modes. -} |
+  KnownDegTop |
   KnownDegProblem
   deriving (Eq, Ord)
 
--- | It is an error to create a nonsensical @'ModtySnout'@.
+-- | It is an error to create a @'ModtySnout'@ whose length differs from its codomain.
 data ModtySnout = ModtySnout
   {_modtySnout'dom :: Int,
    _modtySnout'cod :: Int,
@@ -311,6 +312,8 @@ data ReldttUniHSConstructor v =
   SysTypeModty (ReldttMode v) {-^ Domain, can be omega -} (ReldttMode v) {-^ Codomain, can be omega -} |
   SysTypeChainModtyDisguisedAsTerm
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
+data ReldttSysJudgement where
 
 ------------------------------
 
