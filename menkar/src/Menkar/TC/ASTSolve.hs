@@ -313,7 +313,7 @@ checkEta gamma t ty = do
           TermQName _ _ -> unreachable
           TermAlreadyChecked _ _ -> unreachable
           TermAlgorithm _ _ -> unreachable
-          TermSys whnSysTy -> checkEtaWHNSysTy gamma t whnSysTy
+          TermSys whnSysTy -> return False -- checkEtaWHNSysTy gamma t whnSysTy
           TermProblem _ -> tcFail $ "Nonsensical type."
     True -> tcBlock "Need to weak-head-normalize type before I can eta-expand."
 

@@ -11,7 +11,19 @@ import Data.Void
 import Data.Constraint.Witness
 
 class SysWHN sys => SysTC sys where
-  -- See Menkar.TC.AST.checkASTSpecial
+
+  -- Judgement-checker --
+  -----------------------
+    
+  checkSysJudgement :: forall tc .
+    (MonadTC sys tc) =>
+    SysJudgement sys ->
+    tc ()
+
+  -- Type-checker --
+  ------------------
+  
+  -- | See Menkar.TC.AST.checkASTSpecial
   checkSysASTUnanalyzable :: forall tc v t .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
     SysAnalyzerError sys ->
@@ -21,6 +33,10 @@ class SysWHN sys => SysTC sys where
     ClassifExtraInput t v ->
     ClassifInfo (Classif t v) ->
     tc (Classif t v)
+  -- SysTerm, Mode, Modality, Degree, SysUniHSConstructor are handled via analyzer.
+
+  -- Relatedness-checker --
+  -------------------------
   newRelatedSysASTUnanalyzable' :: forall tc t v vOrig .
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     SysAnalyzerError sys ->
@@ -50,6 +66,8 @@ class SysWHN sys => SysTC sys where
     ClassifInfo (Twice1 (Classif t) v) ->
     String ->
     tc (t vOrig)
+  -- other specific classes
+    
   checkUnanalyzableSysASTRel' :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzerError sys ->
@@ -70,7 +88,19 @@ class SysWHN sys => SysTC sys where
     Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
     tc ()
-  -- | see Menkar.TC.Solve.checkEta.
+  -- other specific classes
+
+  -- Solver --
+  ------------
+
+  etaExpandSysType :: forall tc v .
+    (MonadTC sys tc, DeBruijnLevel v) =>
+    Ctx Type sys v Void ->
+    Term sys v ->
+    SysUniHSConstructor sys v ->
+    tc (Maybe (Maybe (Term sys v)))
+
+{--- | see Menkar.TC.Solve.checkEta.
   -- | This will generally yield false (true?), unless a system introduces types with eta via SysTerm.
   -- | ABOLISH THIS: eta isn't supported for non-universe types.
   checkEtaWHNSysTy :: forall tc v .
@@ -79,19 +109,7 @@ class SysWHN sys => SysTC sys where
     Term sys v ->
     SysTerm sys v {-^ The type -} ->
     tc Bool
-
-  etaExpandSysType :: forall tc v .
-    (MonadTC sys tc, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
-    Term sys v ->
-    SysUniHSConstructor sys v ->
-    tc (Maybe (Maybe (Term sys v)))
-    
-  checkSysJudgement :: forall tc .
-    (MonadTC sys tc) =>
-    SysJudgement sys ->
-    tc ()
-
+-}
 
 newMetaClassif4ast :: forall sys tc t v .
   (MonadTC sys tc,
