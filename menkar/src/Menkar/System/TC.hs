@@ -37,6 +37,32 @@ class SysWHN sys => SysTC sys where
 
   -- Relatedness-checker --
   -------------------------
+  
+  checkUnanalyzableSysASTRel' :: forall tc t v .
+    (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
+    SysAnalyzerError sys ->
+    Eta ->
+    Relation t v ->
+    Ctx (Twice2 Type) sys v Void ->
+    Twice1 t v ->
+    Twice1 (ClassifExtraInput t) v ->
+    ClassifInfo (Twice1 (Classif t) v) ->
+    tc ()
+  checkSysASTRel :: forall tc t v .
+    (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
+    SysAnalyzableToken sys t ->
+    Eta ->
+    Relation t v ->
+    Ctx (Twice2 Type) sys v Void ->
+    Twice1 t v ->
+    Twice1 (ClassifExtraInput t) v ->
+    ClassifInfo (Twice1 (Classif t) v) ->
+    tc ()
+  -- other specific classes
+
+  -- Solver --
+  ------------
+  
   newRelatedSysASTUnanalyzable' :: forall tc t v vOrig .
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     SysAnalyzerError sys ->
@@ -67,31 +93,6 @@ class SysWHN sys => SysTC sys where
     String ->
     tc (t vOrig)
   -- other specific classes
-    
-  checkUnanalyzableSysASTRel' :: forall tc t v .
-    (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
-    SysAnalyzerError sys ->
-    Eta ->
-    Relation t v ->
-    Ctx (Twice2 Type) sys v Void ->
-    Twice1 t v ->
-    Twice1 (ClassifExtraInput t) v ->
-    ClassifInfo (Twice1 (Classif t) v) ->
-    tc ()
-  checkSysASTRel :: forall tc t v .
-    (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
-    SysAnalyzableToken sys t ->
-    Eta ->
-    Relation t v ->
-    Ctx (Twice2 Type) sys v Void ->
-    Twice1 t v ->
-    Twice1 (ClassifExtraInput t) v ->
-    ClassifInfo (Twice1 (Classif t) v) ->
-    tc ()
-  -- other specific classes
-
-  -- Solver --
-  ------------
 
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>

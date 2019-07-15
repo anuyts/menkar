@@ -41,7 +41,7 @@ instance Analyzable Reldtt ReldttMode where
   type ClassifExtraInput ReldttMode = U1
   type Classif ReldttMode = U1
   type Relation ReldttMode = U1
-  analyzableToken = AnTokenMode --AnTokenSys $ AnTokenReldttMode
+  analyzableToken = AnTokenInterface AnTokenMode --AnTokenSys $ AnTokenReldttMode
   witClassif token = Witness
   analyze token gamma (Classification (ReldttMode t) U1 maybeU1) h = Right $ do
     rt <- fmapCoe runIdentity <$> h Identity
@@ -64,7 +64,7 @@ instance Analyzable Reldtt ChainModty where
   type ClassifExtraInput ChainModty = U1
   type Classif ChainModty = ReldttMode :*: ReldttMode
   type Relation ChainModty = Const ModRel
-  analyzableToken = AnTokenModality --AnTokenSys $ AnTokenChainModty
+  analyzableToken = AnTokenInterface AnTokenModality --AnTokenSys $ AnTokenChainModty
   witClassif token = Witness
   
   analyze token gamma (Classification chmu U1 maybeDomCod) h = case chmu of
@@ -315,7 +315,7 @@ instance Analyzable Reldtt ReldttDegree where
   type ClassifExtraInput ReldttDegree = U1
   type Classif ReldttDegree = ReldttMode
   type Relation ReldttDegree = Const ModRel
-  analyzableToken = AnTokenDegree --AnTokenSys $ AnTokenReldttDegree
+  analyzableToken = AnTokenInterface AnTokenDegree --AnTokenSys $ AnTokenReldttDegree
   witClassif token = Witness
 
   analyze token gamma (Classification deg U1 maybeD) h = case deg of
@@ -390,7 +390,7 @@ instance Analyzable Reldtt ReldttSysTerm where
   type ClassifExtraInput ReldttSysTerm = ClassifExtraInput (Term Reldtt)
   type Classif ReldttSysTerm = Classif (Term Reldtt)
   type Relation ReldttSysTerm = Relation (Term Reldtt)
-  analyzableToken = AnTokenSysTerm --AnTokenSys $ AnTokenReldttSysTerm
+  analyzableToken = AnTokenInterface AnTokenSysTerm --AnTokenSys $ AnTokenReldttSysTerm
   witClassif token = Witness
 
   analyze token gamma (Classification syst U1 maybeTy) h = case syst of
@@ -553,7 +553,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
   type ClassifExtraInput ReldttUniHSConstructor = ClassifExtraInput (UniHSConstructor Reldtt)
   type Classif ReldttUniHSConstructor = Classif (UniHSConstructor Reldtt)
   type Relation ReldttUniHSConstructor = Relation (UniHSConstructor Reldtt)
-  analyzableToken = AnTokenSysUniHSConstructor --AnTokenSys $ AnTokenReldttUniHSConstructor
+  analyzableToken = AnTokenInterface AnTokenSysUniHSConstructor --AnTokenSys $ AnTokenReldttUniHSConstructor
   witClassif token = Witness
 
   analyze token gamma (Classification ty U1 maybeD) h = case ty of

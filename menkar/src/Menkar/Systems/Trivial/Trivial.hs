@@ -60,7 +60,7 @@ instance Analyzable Trivial TrivMode where
   type Classif TrivMode = U1
   type Relation TrivMode = U1
   type ClassifExtraInput TrivMode = U1
-  analyzableToken = AnTokenMode --AnTokenSys AnTokenMode
+  analyzableToken = AnTokenInterface AnTokenMode --AnTokenSys AnTokenMode
   witClassif token = Witness
   analyze token gamma (Classification TrivMode U1 maybeU1) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivMode
@@ -73,7 +73,7 @@ instance Analyzable Trivial TrivModality where
   type Classif TrivModality = TrivMode :*: TrivMode
   type Relation TrivModality = Const ModRel
   type ClassifExtraInput TrivModality = U1
-  analyzableToken = AnTokenModality --AnTokenSys AnTokenModality
+  analyzableToken = AnTokenInterface AnTokenModality --AnTokenSys AnTokenModality
   witClassif token = Witness
   analyze token gamma (Classification TrivModality U1 maybeTrivModes) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivModality
@@ -86,7 +86,7 @@ instance Analyzable Trivial TrivDegree where
   type Classif TrivDegree = TrivMode
   type Relation TrivDegree = Const ModRel
   type ClassifExtraInput TrivDegree = U1
-  analyzableToken = AnTokenDegree --AnTokenSys AnTokenDegree
+  analyzableToken = AnTokenInterface AnTokenDegree --AnTokenSys AnTokenDegree
   witClassif token = Witness
   analyze token gamma (Classification TrivDegree U1 maybeTrivMode) h = Right $ case token of
     TokenTrav -> return $ AnalysisTrav TrivDegree
@@ -99,7 +99,7 @@ instance Analyzable Trivial TrivTerm where
   type Classif TrivTerm = Type Trivial
   type Relation TrivTerm = ModedDegree Trivial
   type ClassifExtraInput TrivTerm = U1
-  analyzableToken = AnTokenSysTerm --AnTokenSys AnTokenTrivTerm
+  analyzableToken = AnTokenInterface AnTokenSysTerm --AnTokenSys AnTokenTrivTerm
   witClassif token = Witness
   analyze token gamma (Classification syst _ _) h = case syst of {}
   convRel token TrivMode = TrivModedDegree
@@ -109,7 +109,7 @@ instance Analyzable Trivial TrivUniHSConstructor where
   type Classif TrivUniHSConstructor = Classif (UniHSConstructor Trivial)
   type Relation TrivUniHSConstructor = ModedDegree Trivial
   type ClassifExtraInput TrivUniHSConstructor = U1
-  analyzableToken = AnTokenSysUniHSConstructor --AnTokenSys AnTokenTrivUniHSConstructor
+  analyzableToken = AnTokenInterface AnTokenSysUniHSConstructor --AnTokenSys AnTokenTrivUniHSConstructor
   witClassif token = Witness
   analyze token gamma (Classification systy _ _) h = case systy of {}
   convRel token TrivMode = U1
