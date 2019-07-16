@@ -169,18 +169,29 @@ _knownModty'cod (KnownModty snout tail) = addIntToMode (_modtySnout'cod snout) (
 
 data ChainModty v =
   ChainModtyKnown (KnownModty v) |
-  ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v)
+  {-| It is an error to use this constructor on a term that is not whnormal. -}
+  ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
+  {-| Reduces for whnormal terms... (weird, I know) -}
+  ChainModtyTerm
+    (Mode Reldtt v) {-^ domain -}
+    (Mode Reldtt v) {-^ codomain -}
+    (Term Reldtt v) {-^ the modality -}
+    --Int {-^ meta index -}
+    --(Compose [] (Term Reldtt) v) {-^ dependencies -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 wrapInChainModty :: Mode Reldtt v -> Mode Reldtt v -> Term Reldtt v -> ChainModty v
-wrapInChainModty dom cod t = ChainModtyLink (idKnownModty cod) t $ ChainModtyKnown $ idKnownModty dom
+wrapInChainModty dom cod t = ChainModtyTerm dom cod t
+  --ChainModtyLink (idKnownModty cod) t $ ChainModtyKnown $ idKnownModty dom
 
-_chainModty'cod :: ChainModty v -> Mode Reldtt v
-_chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
-_chainModty'cod (ChainModtyLink kmu termNu chainRho) = _knownModty'cod $ kmu
 _chainModty'dom :: ChainModty v -> Mode Reldtt v
 _chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
 _chainModty'dom (ChainModtyLink kmu termNu chainRho) = _chainModty'dom $ chainRho
+_chainModty'dom (ChainModtyTerm dom cod tmu) = dom
+_chainModty'cod :: ChainModty v -> Mode Reldtt v
+_chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
+_chainModty'cod (ChainModtyLink kmu termNu chainRho) = _knownModty'cod $ kmu
+_chainModty'cod (ChainModtyTerm dom cod tmu) = cod
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])
