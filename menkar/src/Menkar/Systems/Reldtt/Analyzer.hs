@@ -32,7 +32,6 @@ data ReldttAnalyzableToken (t :: * -> *) where
   --AnTokenReldttSysTerm :: ReldttAnalyzableToken ReldttSysTerm
   AnTokenModeTerm :: ReldttAnalyzableToken ModeTerm
   AnTokenModtyTerm :: ReldttAnalyzableToken ModtyTerm
-  AnTokenChainModty :: ReldttAnalyzableToken ChainModty
   --AnTokenReldttUniHSConstructor :: ReldttAnalyzableToken ReldttUniHSConstructor
   AnTokenKnownModty :: ReldttAnalyzableToken KnownModty
   AnTokenModtySnout :: ReldttAnalyzableToken (Const ModtySnout)
@@ -65,7 +64,7 @@ instance Analyzable Reldtt ChainModty where
   type ClassifExtraInput ChainModty = U1
   type Classif ChainModty = ReldttMode :*: ReldttMode
   type Relation ChainModty = Const ModRel
-  analyzableToken = AnTokenSys AnTokenChainModty
+  analyzableToken = AnTokenMultimode AnTokenModality --AnTokenSys $ AnTokenChainModty
   witClassif token = Witness
   
   analyze token gamma (Classification chmu U1 maybeDomCod) h = case chmu of
@@ -126,7 +125,7 @@ instance Analyzable Reldtt ChainModty where
         TokenTC -> AnalysisTC $ _chainModty'dom chainRho :*: _knownModty'cod kmu
         TokenRel -> AnalysisRel
 
-    {-ChainModtyDisguisedAsTerm dom cod t -> Right $ do
+    ChainModtyDisguisedAsTerm dom cod t -> Right $ do
       rdom <- fmapCoe runIdentity <$> h Identity
         (conditional $ ChainModtyDisguisedAsTerm unreachable unreachable unreachable)
         (\ gamma' -> \ case
@@ -162,7 +161,7 @@ instance Analyzable Reldtt ChainModty where
         TokenTrav -> AnalysisTrav $
           ChainModtyDisguisedAsTerm (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rt)
         TokenTC -> AnalysisTC $ dom :*: cod
-        TokenRel -> AnalysisRel-}
+        TokenRel -> AnalysisRel
       
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
@@ -312,49 +311,6 @@ instance Analyzable Reldtt ModtyTail where
   convRel token d = U1 :*: U1
   extraClassif t extraT = U1 :*: U1
 
-instance Analyzable Reldtt ReldttModality where
-  type ClassifExtraInput ReldttModality = U1
-  type Classif ReldttModality = ReldttMode :*: ReldttMode
-  type Relation ReldttModality = Const ModRel
-  analyzableToken = AnTokenMultimode AnTokenModality
-  witClassif token = Witness
-
-  analyze token gamma (Classification (ReldttModality dom cod tmu) U1 maybeDomCod) h = Right $ do
-    rdom <- fmapCoe runIdentity <$> h Identity
-        (conditional $ ReldttModality unreachable unreachable unreachable)
-        (\ gamma' -> \ case
-            (Classification (ReldttModality dom' cod' tmu') U1 maybeDomCod') ->
-              Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1)
-        )
-        extCtxId
-        (\_ _ -> U1)
-        (AddressInfo ["domain"] FocusWrapped omit)
-    rcod <- fmapCoe runIdentity <$> h Identity
-        (conditional $ ReldttModality unreachable unreachable unreachable)
-        (\ gamma' -> \ case
-            (Classification (ReldttModality dom' cod' tmu') U1 maybeDomCod') ->
-              Just $ Identity !<$> Classification cod' U1 (ClassifWillBe U1)
-        )
-        extCtxId
-        (\_ _ -> U1)
-        (AddressInfo ["codomain"] FocusWrapped omit)
-    rtmu <- fmapCoe runIdentity <$> h Identity
-        (conditional $ ReldttModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) unreachable)
-        (\ gamma' -> \ case
-            (Classification (ReldttModality dom' cod' tmu') U1 maybeDomCod') ->
-              Just $ Identity !<$> Classification tmu' U1 (ClassifMustBe $ BareSysType $ SysTypeModty dom' cod')
-        )
-        extCtxId
-        (\_ _ -> modedEqDeg dataMode) -- This is extremely problematic!
-        (AddressInfo ["underlying term"] FocusWrapped omit)
-    return $ case token of
-      TokenTrav -> AnalysisTrav $ ReldttModality (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rtmu)
-      TokenTC -> AnalysisTC $ dom :*: cod
-      TokenRel -> AnalysisRel
-
-  convRel token mu = U1 :*: U1
-  extraClassif mu U1 = U1 :*: U1
-
 instance Analyzable Reldtt ReldttDegree where
   type ClassifExtraInput ReldttDegree = U1
   type Classif ReldttDegree = ReldttMode
@@ -380,7 +336,7 @@ instance Analyzable Reldtt ReldttDegree where
         TokenTC -> AnalysisTC $ d
         TokenRel -> AnalysisRel
 
-    DegGet degArg mu dom cod -> Right $ do
+    DegGet degArg tmu dom cod -> Right $ do
       rdegArg <- fmapCoe runIdentity <$> h Identity
         (conditional $ DegGet unreachable unreachable unreachable unreachable)
         (\ gamma' -> \ case
@@ -411,19 +367,19 @@ instance Analyzable Reldtt ReldttDegree where
         extCtxId
         (\_ _ -> U1)
         (AddressInfo ["codomain"] FocusWrapped omit)
-      rmu <- fmapCoe runIdentity <$> h Identity
+      rtmu <- fmapCoe runIdentity <$> h Identity
         (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable (getAnalysisTrav rdom) (getAnalysisTrav rcod))
         (\ gamma' -> \ case
-            (Classification deg'@(DegGet degArg' mu' dom' cod') U1 maybeD') ->
-              Just $ Identity !<$> Classification mu' U1 (ClassifMustBe $ dom' :*: cod')
+            (Classification deg'@(DegGet degArg' tmu' dom' cod') U1 maybeD') ->
+              Just $ Identity !<$> Classification tmu' U1 (ClassifMustBe $ BareSysType $ SysTypeModty dom' cod')
             otherwise -> Nothing
         )
         extCtxId
-        extRelId
+        (\d _ -> Identity !<$> modedEqDeg d)
         (AddressInfo ["modality"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
-          DegGet (getAnalysisTrav rdegArg) (getAnalysisTrav rmu) (getAnalysisTrav rdom) (getAnalysisTrav rcod)
+          DegGet (getAnalysisTrav rdegArg) (getAnalysisTrav rtmu) (getAnalysisTrav rdom) (getAnalysisTrav rcod)
         TokenTC -> AnalysisTC $ dom
         TokenRel -> AnalysisRel
 
@@ -469,11 +425,11 @@ instance Analyzable Reldtt ReldttSysTerm where
         TokenTC -> AnalysisTC $ BareSysType $ SysTypeModty dom cod
           where dom :*: cod = getAnalysisTC rmodtyTerm
         TokenRel -> AnalysisRel
-    SysTermChainModty chmu -> Right $ do
+    SysTermChainModtyInDisguise chmu -> Right $ do
       rchmu <- fmapCoe runIdentity <$> h Identity
-        (conditional $ SysTermChainModty unreachable)
+        (conditional $ SysTermChainModtyInDisguise unreachable)
         (\ gamma' -> \ case
-            Classification syst'@(SysTermChainModty chmu') U1 maybeTy' ->
+            Classification syst'@(SysTermChainModtyInDisguise chmu') U1 maybeTy' ->
               Just $ Identity !<$> Classification chmu' U1 ClassifUnknown
             otherwise -> Nothing
         )
@@ -481,7 +437,7 @@ instance Analyzable Reldtt ReldttSysTerm where
         (\ d deg -> Const ModEq)
         (AddressInfo ["underlying chain modality"] FocusWrapped omit)
       return $ case token of 
-        TokenTrav -> AnalysisTrav $ SysTermChainModty $ getAnalysisTrav rchmu
+        TokenTrav -> AnalysisTrav $ SysTermChainModtyInDisguise $ getAnalysisTrav rchmu
         TokenTC -> AnalysisTC $ BareSysType $ SysTypeModty dom cod
           where dom :*: cod = getAnalysisTC rchmu
         TokenRel -> AnalysisRel
@@ -551,7 +507,7 @@ instance Analyzable Reldtt ModtyTerm where
           where dom :*: cod = getAnalysisTC rchmu
         TokenRel -> AnalysisRel
     ModtyTermDiv rho mu -> unreachable -- only for prettyprinting
-    ModtyTermApproxLeftAdjointProj domResult codResult muArg -> Right $ do
+    ModtyTermApproxLeftAdjointProj domResult codResult tmuArg -> Right $ do
       rdomResult <- fmapCoe runIdentity <$> h Identity
         (conditional $ ModtyTermApproxLeftAdjointProj unreachable unreachable unreachable)
         (\ gamma' -> \ case
@@ -572,20 +528,20 @@ instance Analyzable Reldtt ModtyTerm where
         extCtxId
         (\_ U1 -> U1)
         (AddressInfo ["codomain of result"] NoFocus omit)
-      rmuArg <- fmapCoe runIdentity <$> h Identity
+      rtmuArg <- fmapCoe runIdentity <$> h Identity
         (conditional $ ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) unreachable)
         (\ gamma' -> \ case
-            (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj domResult' codResult' muArg') U1 maybeDomCod) ->
+            (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj domResult' codResult' tmuArg') U1 maybeDomCod) ->
               Just $ Identity !<$>
-                Classification muArg' U1 (ClassifMustBe $ codResult' :*: domResult')
+                Classification tmuArg' U1 (ClassifMustBe $ BareSysType $ SysTypeModty codResult' domResult')
             otherwise -> Nothing
         )
         extCtxId
-        (\d U1 -> Const ModEq)
+        (\d U1 -> Identity !<$> modedEqDeg d)
         (AddressInfo ["argument modality"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
-          ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) (getAnalysisTrav rmuArg)
+          ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) (getAnalysisTrav rtmuArg)
         TokenTC -> AnalysisTC $ domResult :*: codResult
         TokenRel -> AnalysisRel
     ModtyTermUnavailable dom cod -> unreachable -- only for prettyprinting
@@ -631,7 +587,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
         TokenTrav -> AnalysisTrav $ SysTypeModty (getAnalysisTrav rdom) (getAnalysisTrav rcod)
         TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
         TokenRel -> AnalysisRel
-    {-SysTypeChainModtyDisguisedAsTerm dom cod -> Right $ do
+    SysTypeChainModtyDisguisedAsTerm dom cod -> Right $ do
       rdom <- fmapCoe runIdentity <$> h Identity
         (conditional $ SysTypeChainModtyDisguisedAsTerm unreachable unreachable)
         (\ gamma' -> \ case
@@ -655,7 +611,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
       return $ case token of
         TokenTrav -> AnalysisTrav $ SysTypeChainModtyDisguisedAsTerm (getAnalysisTrav rdom) (getAnalysisTrav rcod)
         TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
-        TokenRel -> AnalysisRel-}
+        TokenRel -> AnalysisRel
 
   convRel token d = U1
   extraClassif t extraT = U1
