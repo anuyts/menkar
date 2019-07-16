@@ -280,6 +280,13 @@ data ModtyTerm v =
   {-| Only for prettypring.
       If @mu : d1 -> dcod@ and @rho : d2 -> dcod@, then @'ModtyTermDiv' rho mu@ denotes @rho \ mu : d1 -> d2@ -} 
   ModtyTermDiv (Term Reldtt v) (Term Reldtt v) |
+  
+  ModtyTermComp
+    (Mode Reldtt v) {-^ Codomain of result -}
+    (ChainModty v) {-^ The postcomposite -}
+    (Mode Reldtt v) {-^ Intermediate mode -}
+    (ChainModty v) {-^ The precomposite -}
+    (Mode Reldtt v) {-^ Domain of result -} |
   ModtyTermApproxLeftAdjointProj
     (Mode Reldtt v) {-^ Domain of result -}
     (Mode Reldtt v) {-^ Codomain of result -}
@@ -327,10 +334,12 @@ instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
   idMod d = ChainModtyKnown (idKnownModty d)
-  compMod mu2 dmid mu1 =
-    ChainModtyLink (idKnownModty $ _chainModty'cod mu2) (BareChainModty mu2) $
-    ChainModtyLink (idKnownModty $ dmid) (BareChainModty mu1) $
-    ChainModtyKnown (idKnownModty $ _chainModty'dom mu1)
+  compMod mu2 mid mu1 = ChainModtyTerm dom cod $ BareModty $ ModtyTermComp cod mu2 mid mu1 dom
+    where dom = _chainModty'dom mu1
+          cod = _chainModty'cod mu2
+    --ChainModtyLink (idKnownModty $ _chainModty'cod mu2) (BareChainModty mu2) $
+    --ChainModtyLink (idKnownModty $ dmid) (BareChainModty mu1) $
+    --ChainModtyKnown (idKnownModty $ _chainModty'dom mu1)
   divMod (ModedModality dom' cod' mu') (ModedModality dom cod mu) = wrapInChainModty dom dom' $
     BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu))
   crispMod d = ChainModtyKnown (KnownModty (ModtySnout 0 0 []) $ TailDisc d)
