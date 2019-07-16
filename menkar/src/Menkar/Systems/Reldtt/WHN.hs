@@ -345,31 +345,22 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
                 ChainModtyLink knownSigma termTau chainUpsilon ->
                   -- mu . nu . sigma . tau . upsilon
                   ChainModtyLink (knownMu `compKnownModty` knownNu `compKnownModty` knownSigma) termTau chainUpsilon
-                ChainModtyDisguisedAsTerm ddom dcod trho ->
+                {-ChainModtyDisguisedAsTerm ddom dcod trho ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
-                    ChainModtyKnown $ idKnownModty ddom
+                    ChainModtyKnown $ idKnownModty ddom-}
           whnormalizeChainModty gamma composite reason
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
           let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
                           compMod chainNuC (_chainModty'cod chainRho) chainRho
           whnormalizeChainModty gamma composite reason
-        ChainModtyDisguisedAsTerm ddom dcod tmu -> return $ ChainModtyLink knownMu termNu chainRho
+        --ChainModtyDisguisedAsTerm ddom dcod tmu -> return $ ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
-whnormalizeChainModty gamma chmu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = do
+{-whnormalizeChainModty gamma chmu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = do
   tmu <- whnormalize gamma tmu (BareSysType $ SysTypeChainModtyDisguisedAsTerm ddom dcod) reason
   case tmu of
     Expr2 (TermSys (SysTermChainModtyInDisguise chmu')) -> whnormalizeChainModty gamma chmu' reason
-    otherwise -> return chmu
-
-  {-do
-  maybeSolution <- awaitMeta reason meta (getCompose depcies)
-  case maybeSolution of
-    Nothing -> return $ mu
-    Just solution -> case solution of
-      Expr2 (TermSys (SysTermChainModtyInDisguise chainNu)) ->
-        whnormalizeChainModty gamma chainNu reason
-      _ -> unreachable -- ChainModty-meta is solved with something of a different syntax class!-}
+    otherwise -> return chmu-}
 
 whnormalizeModeTerm :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
@@ -397,13 +388,13 @@ whnormalizeModtyTerm gamma mu reason = case mu of
   -- ModtyTermChain is a constructor, don't normalize under it!
   ModtyTermChain chmu -> return mu
   ModtyTermDiv rho nu -> todo -- only for prettyprinting
-  ModtyTermApproxLeftAdjointProj ddom dcod rho -> do
-    rho <- whnormalize gamma rho (BareSysType $ SysTypeModty dcod ddom) reason
-    case rho of
-      BareKnownModty krho -> case knownApproxLeftAdjointProj krho of
+  ModtyTermApproxLeftAdjointProj ddom dcod chrho -> do
+    chrho <- whnormalizeChainModty gamma chrho reason
+    case chrho of
+      ChainModtyKnown krho -> case knownApproxLeftAdjointProj krho of
         Just kmu -> return $ ModtyTermChain $ ChainModtyKnown $ kmu
         Nothing -> return mu
-      _ -> return mu
+      otherwise -> return mu
   ModtyTermUnavailable ddom dcod -> return mu
   
 whnormalizeReldttDegree :: forall whn v .
@@ -415,17 +406,17 @@ whnormalizeReldttDegree :: forall whn v .
 whnormalizeReldttDegree gamma i reason = do
     case i of
       DegKnown _ _ -> return i
-      DegGet j mu ddom dcod -> do
+      DegGet j chmu ddom dcod -> do
         j <- whnormalizeReldttDegree gamma j reason
         case j of
           DegKnown d KnownDegEq -> return $ DegKnown ddom KnownDegEq
           DegKnown d KnownDegTop -> return $ DegKnown ddom KnownDegTop
           DegKnown d j' -> do
-            mu <- whnormalize gamma mu (BareSysType $ SysTypeModty ddom dcod) reason
-            case mu of
-              BareKnownModty mu' -> return $ DegKnown ddom $ knownGetDeg j' mu' 
-              _ -> return $ DegGet j mu ddom dcod
-          _ -> return $ DegGet j mu ddom dcod
+            chmu <- whnormalizeChainModty gamma chmu reason
+            case chmu of
+              ChainModtyKnown kmu -> return $ DegKnown ddom $ knownGetDeg j' kmu 
+              _ -> return $ DegGet j chmu ddom dcod
+          _ -> return $ DegGet j chmu ddom dcod
   
 instance SysWHN Reldtt where
   whnormalizeSysTerm gamma sysT ty reason = do
@@ -435,7 +426,7 @@ instance SysWHN Reldtt where
       SysTermMode d -> BareMode <$> whnormalizeModeTerm gamma d reason
       SysTermModty mu -> BareModty <$> whnormalizeModtyTerm gamma mu reason
       -- This is a constructor, don't normalize under it!
-      SysTermChainModtyInDisguise chmu -> return $ Expr2 $ TermSys $ sysT
+      -- SysTermChainModtyInDisguise chmu -> return $ Expr2 $ TermSys $ sysT
 {-      SysTermDeg i -> case i of
         DegKnown _ -> return $ BareDeg i
         DegGet j mu ddom dcod -> do
