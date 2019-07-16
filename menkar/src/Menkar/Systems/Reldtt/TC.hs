@@ -32,7 +32,7 @@ import Data.Functor.Compose
 import Data.Maybe
 import Data.List.Ordered
 
-tryToSolveChainModty :: forall tc v .
+{-tryToSolveChainModty :: forall tc v .
   (MonadTC Reldtt tc, DeBruijnLevel v) =>
   Ctx (Twice2 Type) Reldtt v Void ->
   ChainModty v ->
@@ -46,7 +46,7 @@ tryToSolveChainModty gamma chmu1blocked chmu2 maybeDomCods = case chmu1blocked o
     gamma
     (Twice1 t1 (Expr2 $ TermSys $ SysTermChainModtyInDisguise $ chmu2))
     (maybeDomCods <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeChainModtyDisguisedAsTerm dom cod))
-  otherwise -> tcBlock "Cannot solve relation: one side is blocked on a meta-variable."
+  otherwise -> tcBlock "Cannot solve relation: one side is blocked on a meta-variable."-}
 
 instance SysTC Reldtt where
 
@@ -85,12 +85,9 @@ instance SysTC Reldtt where
     Left AnTokenModality -> do
       (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
       (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
-      case (metasT1, metasT2, getConst relT) of
-        ([], [], _) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
-        (_ , _ , ModLeq) -> tcBlock "Cannot solve inequality: one side is blocked on a meta-variable."
-        ([], _ , ModEq) -> tryToSolveChainModty (flipCtx gamma) t2 t1 (maybeCTs <&> flipTwice1)
-        (_ , [], ModEq) -> tryToSolveChainModty          gamma  t1 t2  maybeCTs
-        (_ , _ , ModEq) -> tcBlock "Cannot solve relation: both sides are blocked on a meta-variable."
+      case (metasT1, metasT2) of
+        ([], []) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
+        (_ , _ ) -> tcBlock "Cannot solve inequality: one side is blocked on a meta-variable."
     Left AnTokenDegree -> do
       (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
       (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
@@ -124,16 +121,9 @@ instance SysTC Reldtt where
   newRelatedMultimodeOrSysAST token eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
     case token of
       Left AnTokenMode -> byAnalysis
-      Left AnTokenModality -> do
-        let tmu2 = Expr2 $ TermSys $ SysTermChainModtyInDisguise $ t2
-        tmu1orig <- newRelatedMetaTerm
-          (Eta False)
-          (modedEqDeg $ ReldttMode $ BareMode $ ModeTermZero)
-          gammaOrig gamma subst partialInv tmu2
-          (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeChainModtyDisguisedAsTerm dom cod))
-          MetaBlocked
-          reason
-        return $ ChainModtyDisguisedAsTerm _ _ tmu1orig
+      Left AnTokenModality -> case getConst relT of
+        ModEq -> byAnalysis
+        ModLeq -> _
         
     where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc _
