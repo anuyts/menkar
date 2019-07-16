@@ -18,7 +18,7 @@ import Data.Functor.Coerce
 
 import Control.Monad.Trans.Class
 import Control.Monad.Writer.Class
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Writer.Lazy hiding (listen)
 import Control.Monad.Trans.Maybe
 import Control.Monad.State.Lazy
 import Control.Applicative
@@ -345,22 +345,24 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
                 ChainModtyLink knownSigma termTau chainUpsilon ->
                   -- mu . nu . sigma . tau . upsilon
                   ChainModtyLink (knownMu `compKnownModty` knownNu `compKnownModty` knownSigma) termTau chainUpsilon
-                {-ChainModtyDisguisedAsTerm ddom dcod trho ->
+                ChainModtyTerm ddom dcod trho ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
-                    ChainModtyKnown $ idKnownModty ddom-}
+                    ChainModtyKnown $ idKnownModty ddom
           whnormalizeChainModty gamma composite reason
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
           let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
                           compMod chainNuC (_chainModty'cod chainRho) chainRho
           whnormalizeChainModty gamma composite reason
-        --ChainModtyDisguisedAsTerm ddom dcod tmu -> return $ ChainModtyLink knownMu termNu chainRho
+        ChainModtyTerm ddom dcod tnu -> return $ ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
-{-whnormalizeChainModty gamma chmu@(ChainModtyDisguisedAsTerm ddom dcod tmu) reason = do
-  tmu <- whnormalize gamma tmu (BareSysType $ SysTypeChainModtyDisguisedAsTerm ddom dcod) reason
-  case tmu of
-    Expr2 (TermSys (SysTermChainModtyInDisguise chmu')) -> whnormalizeChainModty gamma chmu' reason
-    otherwise -> return chmu-}
+whnormalizeChainModty gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
+  (tmu, metasTMu) <- listen $ whnormalize gamma tmu (BareSysType $ SysTypeModty dom cod) reason
+  case metasTMu of
+    [] -> whnormalizeChainModty gamma
+      (ChainModtyLink (idKnownModty cod) tmu $ ChainModtyKnown $ idKnownModty dom)
+      reason
+    otherwise -> return $ ChainModtyTerm dom cod tmu
 
 whnormalizeModeTerm :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
@@ -395,6 +397,15 @@ whnormalizeModtyTerm gamma mu reason = case mu of
         Just kmu -> return $ ModtyTermChain $ ChainModtyKnown $ kmu
         Nothing -> return mu
       otherwise -> return mu
+  ModtyTermComp cod chmu2 mid chmu1 dom -> do
+    (chmu1, metas1) <- listen $ whnormalizeChainModty gamma chmu1 reason
+    (chmu2, metas2) <- listen $ whnormalizeChainModty gamma chmu2 reason
+    case (metas1, metas2) of
+      ([], []) -> return $ ModtyTermChain $
+        ChainModtyLink (idKnownModty $ cod) (BareChainModty chmu2) $
+        ChainModtyLink (idKnownModty $ mid) (BareChainModty chmu1) $
+        ChainModtyKnown (idKnownModty $ dom)
+      (_, _) -> return $ ModtyTermComp cod chmu2 mid chmu1 dom
   ModtyTermUnavailable ddom dcod -> return mu
   
 whnormalizeReldttDegree :: forall whn v .
