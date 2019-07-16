@@ -41,7 +41,7 @@ instance SysScoper Reldtt where
     cod <- newMetaModeNoCheck gamma "Inferring codomain of modality."
     tmu <- newMetaTermNoCheck gamma MetaBlocked Nothing reason
     --(meta, depcies) <- newMetaID gamma reason
-    return $ ChainModtyDisguisedAsTerm dom cod tmu
+    return $ wrapInChainModty dom cod tmu
       --ChainModtyMeta ddom dcod meta (Compose depcies)
     --Expr2 (TermMeta )
     --wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
