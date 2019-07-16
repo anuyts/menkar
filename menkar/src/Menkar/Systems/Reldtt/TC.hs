@@ -83,11 +83,20 @@ instance SysTC Reldtt where
   checkMultimodeOrSysASTRel token eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs = case token of
     Left AnTokenMode -> byAnalysis
     Left AnTokenModality -> do
-      (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
-      (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
-      case (metasT1, metasT2) of
-        ([], []) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
-        (_ , _ ) -> tcBlock "Cannot solve inequality: one side is blocked on a meta-variable."
+      case (t1, t2) of
+        (ChainModtyTerm dom1 cod1 tmu1, _) -> checkTermRel
+          (Eta True)
+          (modedEqDeg dataMode)
+          gamma
+          (Twice1 tmu1 (BareChainModty $ t2))
+          (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
+        _ -- TODO
+        otherwise -> do
+          (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
+          (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
+          case (metasT1, metasT2) of
+            ([], []) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
+            (_ , _ ) -> tcBlock "Cannot solve inequality: one side is blocked on a meta-variable."
     Left AnTokenDegree -> do
       (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
       (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
@@ -121,10 +130,14 @@ instance SysTC Reldtt where
   newRelatedMultimodeOrSysAST token eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
     case token of
       Left AnTokenMode -> byAnalysis
-      Left AnTokenModality -> case getConst relT of
-        ModEq -> byAnalysis
-        ModLeq -> _
-        
+      Left AnTokenModality -> do
+        s1orig <- newMetaTermNoCheck gammaOrig MetaBlocked Nothing reason
+        let t1orig = ChainModtyTerm _ _ $ s1orig
+        let t1 = subst <$> t1orig
+        addNewConstraint
+          (JudRel (AnTokenMultimode AnTokenModality) eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs)
+          reason
+        return t1orig
     where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc _
       byAnalysis = newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs

@@ -586,7 +586,7 @@ instance Analyzable Reldtt ModtyTerm where
         )
         extCtxId
         (\_ U1 -> Const ModEq)
-        (AddressInfo ["precomposite"] NoFocus omit)
+        (AddressInfo ["precomposite"] FocusEliminee omit)
       rmu2 <- fmapCoe runIdentity <$> h Identity
         (conditional $ ModtyTermComp (getAnalysisTrav rcod)
                          unreachable (getAnalysisTrav rmid)
@@ -598,7 +598,7 @@ instance Analyzable Reldtt ModtyTerm where
         )
         extCtxId
         (\_ U1 -> Const ModEq)
-        (AddressInfo ["postcomposite"] NoFocus omit)
+        (AddressInfo ["postcomposite"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ ModtyTermComp (getAnalysisTrav rcod)
                            (getAnalysisTrav rmu2) (getAnalysisTrav rmid)
