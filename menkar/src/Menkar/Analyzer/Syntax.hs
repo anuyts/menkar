@@ -64,7 +64,7 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
         TokenTC -> AnalysisTC $ dom :*: cod
         TokenRel -> AnalysisRel
   convRel token d = U1 :*: U1
-  extraClassif t extraT = U1 :*: U1
+  extraClassif d t extraT = U1 :*: U1
 
 -------------------------
 
@@ -109,8 +109,8 @@ instance (SysAnalyzer sys,
         --ClassifBinding seg (getAnalysisTC rbody)
       TokenRel -> AnalysisRel
   convRel token d = U1 :*: Comp1 (convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d))
-  extraClassif (Binding seg body) extraT = U1 :*: seg :*: Comp1 U1
-    --U1 :*: Comp1 (extraClassif @sys @(rhs sys))
+  extraClassif d (Binding seg body) extraT = U1 :*: seg :*: Comp1 U1
+    --U1 :*: Comp1 (extraClassif d @sys @(rhs sys))
 
 -------------------------
 
@@ -147,7 +147,7 @@ instance (SysAnalyzer sys,
       TokenTC -> AnalysisTC $ ClassifBinding seg (getAnalysisTC rbody)
       TokenRel -> AnalysisRel
   convRel token d = Comp1 $ convRel (analyzableToken @sys @rhs) (VarWkn <$> d)
-  extraClassif = Comp1 $ extraClassif @sys @rhs
+  extraClassif d = Comp1 $ extraClassif d @sys @rhs
 -}
 
 -------------------------
@@ -187,15 +187,45 @@ instance (SysAnalyzer sys,
       TokenTC -> AnalysisTC $ NamedBinding name (Const1 $ getAnalysisTC rbody)
       TokenRel -> AnalysisRel
   convRel token d = Comp1 $ convRel (analyzableToken @sys @(rhs sys)) (VarWkn <$> d)
-  extraClassif (NamedBinding name body) (seg :*: (Comp1 extraBody)) =
-    seg :*: Comp1 (extraClassif @sys @(rhs sys) body extraBody)
-    --Comp1 $ extraClassif _ _ @sys @(rhs sys)
+  extraClassif d (NamedBinding name body) (seg :*: (Comp1 extraBody)) =
+    seg :*: Comp1 (extraClassif @sys @(rhs sys) (VarWkn <$> d) body extraBody)
+    --Comp1 $ extraClassif d _ _ @sys @(rhs sys)
+
+-------------------------
+
+instance (SysAnalyzer sys, Analyzable sys (content sys)) => Analyzable sys (ModalBox content sys) where
+  type Classif (ModalBox content sys) = ModalBox (Const1 (Classif (content sys))) sys
+  type Relation (ModalBox content sys) = Relation (content sys)
+  type ClassifExtraInput (ModalBox content sys) = ModedModality sys :*: ClassifExtraInput (content sys)
+  analyzableToken = AnTokenModalBox analyzableToken
+  witClassif token = haveClassif @sys @(content sys) Witness
+
+  analyze token gamma (Classification (ModalBox content) (dmu :*: extraContent) maybeCl) h = Right $ do
+    rcontent <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ModalBox unreachable)
+      (\ gamma' (Classification (ModalBox content') (dmu' :*: extraContent') maybeCl') ->
+         Just $ Identity !<$>
+           Classification content' extraContent' (classifMust2will maybeCl' <&> getConst1 . _modalBox'content)
+      )
+      (\ token' gamma' (Classification (ModalBox content') (dmu' :*: extraContent') maybeCl') condInput2 ->
+         Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
+      )
+      extRelId
+      (AddressInfo ["modal box content"] FocusWrapped WorthMentioning)
+    return $ case token of
+      TokenTrav -> AnalysisTrav $ ModalBox $ getAnalysisTrav rcontent
+      TokenTC -> AnalysisTC $ ModalBox $ Const1 $ getAnalysisTC rcontent
+      TokenRel -> AnalysisRel
+
+  convRel token d = convRel (analyzableToken @sys @(content sys)) d
+  extraClassif d (ModalBox content) (dmu :*: extraContent) =
+    dmu :*: extraClassif @sys @(content sys) (modality'dom dmu) content extraContent
 
 -------------------------
 
 instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
   
-  type Classif (UniHSConstructor sys) = Mode sys
+  type Classif (UniHSConstructor sys) = ModalBox (Const1 (Mode sys)) sys
   type Relation (UniHSConstructor sys) = ModedDegree sys
   type ClassifExtraInput (UniHSConstructor sys) = U1
   analyzableToken = AnTokenUniHSConstructor
@@ -221,7 +251,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
           (AddressInfo ["mode"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ UniHS (getAnalysisTrav rd)
-          TokenTC -> AnalysisTC $ d
+          TokenTC -> AnalysisTC $ ModalBox $ Const1 d
           TokenRel -> AnalysisRel
 
       -- Sorry for the code duplication; without type applications on the LHS, I couldn't get it to work
@@ -241,7 +271,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (AddressInfo ["binding"] NoFocus EntirelyBoring)
             return $ case token of
               TokenTrav -> AnalysisTrav $ Pi $ getAnalysisTrav rbinding
-              TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+              TokenTC -> AnalysisTC $ ModalBox $ Const1 $ unVarFromCtx <$> ctx'mode gamma
               TokenRel -> AnalysisRel
 
       Sigma binding -> do
@@ -258,7 +288,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (AddressInfo ["binding"] NoFocus EntirelyBoring)
             return $ case token of
               TokenTrav -> AnalysisTrav $ Sigma $ getAnalysisTrav rbinding
-              TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+              TokenTC -> AnalysisTC $ ModalBox $ Const1 $ unVarFromCtx <$> ctx'mode gamma
               TokenRel -> AnalysisRel
 
       {-
@@ -287,7 +317,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (AddressInfo ["segment"] NoFocus EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ BoxType $ getAnalysisTrav rsegment
-          TokenTC -> AnalysisTC $ dgamma
+          TokenTC -> AnalysisTC $ ModalBox $ Const1 $ dgamma
           TokenRel -> AnalysisRel
 
       NatType -> handleConstant
@@ -326,7 +356,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
         return $ case token of
           TokenTrav ->
             AnalysisTrav $ EqType (getAnalysisTrav rtyAmbient) (getAnalysisTrav rtL) (getAnalysisTrav rtR)
-          TokenTC -> AnalysisTC $ dgamma
+          TokenTC -> AnalysisTC $ ModalBox $ Const1 $ dgamma
           TokenRel -> AnalysisRel
 
       SysType systy -> do
@@ -347,7 +377,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
 
     where handleConstant = pure $ case token of
             TokenTrav -> AnalysisTrav $ const unreachable <$> ty
-            TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+            TokenTC -> AnalysisTC $ ModalBox $ Const1 $ unVarFromCtx <$> ctx'mode gamma
             TokenRel -> AnalysisRel
 
           {-handleBinder ::
@@ -372,7 +402,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               TokenRel -> AnalysisRel-}
             
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = crispModedModality d :*: U1
 
 -------------------------
 
@@ -402,7 +432,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           (AddressInfo ["UniHS-constructor"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ConsUniHS $ getAnalysisTrav rty
-          TokenTC -> AnalysisTC $ hs2type $ UniHS $ getAnalysisTC rty
+          TokenTC -> AnalysisTC $ hs2type $ UniHS $ getConst1 $ _modalBox'content $ getAnalysisTC rty
           TokenRel -> AnalysisRel
 
       Lam binding -> do
@@ -548,7 +578,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           TokenRel -> AnalysisRel
 
   convRel token d = modedEqDeg d
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -573,7 +603,7 @@ instance SysAnalyzer sys => Analyzable sys (Type sys) where
       TokenRel -> AnalysisRel
     
   convRel token gamma = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -733,7 +763,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
       (_, ElimNat _ _) -> unreachable
 
   convRel token gamma = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -891,7 +921,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
       (_, ElimEq _ _) -> unreachable
 
   convRel token d = modedEqDeg d
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -936,7 +966,8 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (conditional $ TermElim (getAnalysisTrav rdmuElim) unreachable unreachable unreachable)
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
-              Just $ Identity !<$> Classification tyEliminee' U1 (ClassifMustBe $ unVarFromCtx <$> ctx'mode gamma')
+              Just $ Identity !<$> Classification tyEliminee' U1
+                (ClassifMustBe $ ModalBox $ Const1 $ unVarFromCtx <$> ctx'mode gamma')
             otherwise -> Nothing
         )
         (\ token' gamma' input1 condInput2 -> case input1 of
@@ -1014,7 +1045,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
     TermProblem t -> Left AnErrorTermProblem
     
   convRel token d = modedEqDeg d
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -1042,7 +1073,7 @@ instance SysAnalyzer sys => Analyzable sys (Term sys) where
         TokenRel -> AnalysisRel
     Var2 v -> Left AnErrorVar
   convRel token d = modedEqDeg d
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -1101,7 +1132,8 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       TokenRel -> AnalysisRel
 -}
   convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
-  extraClassif decl extraDecl = extraClassif @sys @(rhs sys) (_decl'content decl) extraDecl
+  extraClassif d decl extraDecl =
+    extraClassif @sys @(rhs sys) (modality'dom $ _decl'modty $ decl) (_decl'content decl) extraDecl
 
 -------------------------
 
@@ -1203,7 +1235,7 @@ instance (SysAnalyzer sys,
           TokenRel -> AnalysisRel
 
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -1233,7 +1265,7 @@ instance SysAnalyzer sys => Analyzable sys (ValRHS sys) where
       TokenTC -> AnalysisTC $ U1
       TokenRel -> AnalysisRel
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -1263,7 +1295,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
       TokenRel -> AnalysisRel
       
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 -------------------------
 
@@ -1317,7 +1349,7 @@ instance SysAnalyzer sys => Analyzable sys (Entry sys) where
           TokenRel -> AnalysisRel
         
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 ------------------------
 ------------------------
@@ -1334,7 +1366,7 @@ instance (SysAnalyzer sys) => Analyzable sys U1 where
         TokenTC -> AnalysisTC $ U1
         TokenRel -> AnalysisRel
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 ------------------------
 
@@ -1370,8 +1402,9 @@ instance (SysAnalyzer sys,
       TokenRel -> AnalysisRel
   convRel token d = convRel (analyzableToken @sys @f) d :*:
                     convRel (analyzableToken @sys @g) d
-  extraClassif (fv :*: gv) (extraF :*: extraG) = extraClassif @sys @f fv extraF :*:
-                                                 extraClassif @sys @g gv extraG
+  extraClassif d (fv :*: gv) (extraF :*: extraG) =
+    extraClassif @sys @f d fv extraF :*:
+    extraClassif @sys @g d gv extraG
 
 ------------------------
 
@@ -1395,7 +1428,7 @@ instance (SysAnalyzer sys,
       TokenTC -> AnalysisTC $ getAnalysisTC rt
       TokenRel -> AnalysisRel
   convRel token d = convRel (analyzableToken @sys @t) d
-  extraClassif (Const1 t) extraT = extraClassif @sys @t t extraT
+  extraClassif d (Const1 t) extraT = extraClassif @sys @t d t extraT
 
 ------------------------
 

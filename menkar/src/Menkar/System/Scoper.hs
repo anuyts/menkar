@@ -66,7 +66,12 @@ newMetaClassif4astNoCheck gamma t extraT reason = do
         (gamma :.. VarFromCtx <$> seg) rhs extraRHS reason
       return $ NamedBinding (getDeclNameSegment . _decl'name $ seg) $ Const1 $ crhs
              --ClassifBinding seg crhs
-    (AnTokenUniHSConstructor, _) -> newMetaModeNoCheck gamma reason
+    (AnTokenModalBox tokenContent, ModalBox (content :: content sys v)) -> do
+      let dmu :*: extraContent = extraT
+      cContent <- newMetaClassif4astNoCheck @sys @sc @(content sys) @v
+        (VarFromCtx <$> dmu :\\ gamma) content extraContent reason
+      return $ ModalBox $ Const1 $ cContent
+    (AnTokenUniHSConstructor, _) -> ModalBox . Const1 <$> newMetaModeNoCheck gamma reason
     (AnTokenConstructorTerm, _) -> newMetaTypeNoCheck gamma reason
     (AnTokenType, _) -> return U1
     (AnTokenDependentEliminator, _) -> return U1
@@ -92,5 +97,5 @@ newMetaClassif4astNoCheck gamma t extraT reason = do
       return $ dom :*: cod
     (AnTokenMultimode AnTokenDegree, _) -> newMetaModeNoCheck gamma reason
     (AnTokenSysTerm, _) -> newMetaTypeNoCheck gamma reason
-    (AnTokenSysUniHSConstructor, _) -> newMetaModeNoCheck gamma reason
+    (AnTokenSysUniHSConstructor, _) -> ModalBox . Const1 <$> newMetaModeNoCheck gamma reason
     --_ -> _newMetaClassifNoCheck

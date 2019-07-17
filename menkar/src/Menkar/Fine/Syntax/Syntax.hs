@@ -249,6 +249,23 @@ deriving instance (
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (NamedBinding rhs sys)
 
+newtype ModalBox (content :: KSys -> * -> *) (sys :: KSys) (v :: *) =
+  ModalBox {_modalBox'content :: content sys v}
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (CanSwallow (Term sys) (content sys)) => CanSwallow (Term sys) (ModalBox content sys)
+{-deriving instance (SysTrav sys, Functor (content sys)) => Functor (ModalBox content sys)
+deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (ModalBox content sys)
+deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (ModalBox content sys)
+deriving instance (SysTrav sys, Functor (content sys)) => Generic1 (ModalBox content sys)
+deriving instance (
+    SysSyntax (Term sys) sys,
+    Functor (content sys),
+    CanSwallow (Term sys) (content sys)
+  ) => CanSwallow (Term sys) (ModalBox content sys)
+-}
+
+------------------------------------
+
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
 -}

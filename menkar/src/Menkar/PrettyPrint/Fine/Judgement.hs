@@ -43,6 +43,7 @@ haveFine2Pretty token a = case token of
   AnTokenModedModality -> a
   AnTokenBinding token -> haveFine2Pretty token a
   AnTokenNamedBinding token -> haveFine2Pretty token a
+  AnTokenModalBox token -> haveFine2Pretty token a
   AnTokenUniHSConstructor -> a
   AnTokenConstructorTerm -> a
   AnTokenType -> a
@@ -70,6 +71,7 @@ token2string token = case token of
   AnTokenModedModality -> "modality"
   AnTokenBinding token -> "binding:" ++ token2string token
   AnTokenNamedBinding token -> "name-only-binding:" ++ token2string token
+  AnTokenModalBox token -> "modal-box:" ++ token2string token
   AnTokenUniHSConstructor -> "UniHS-constructor"
   AnTokenConstructorTerm -> "constructor"
   AnTokenType -> "type"
@@ -113,6 +115,11 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
         seg2 :*: Comp1 extraBody2 = extraT2
     in  -- it would be cleaner to actually print the variable binding here.
         relation2pretty token (gamma ::.. VarFromCtx <$> segment2scSegment seg1) extraBody1 extraBody2 rel opts
+  (AnTokenModalBox token, rel) ->
+    let dmu1 :*: extraContent1 = extraT1
+        dmu2 :*: extraContent2 = extraT2
+    in  -- it would be cleaner to actually print the modality here.
+        relation2pretty token gamma extraContent1 extraContent2 rel opts
   (AnTokenUniHSConstructor, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
   (AnTokenConstructorTerm, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
   (AnTokenType, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
@@ -166,7 +173,9 @@ classif2pretty token gamma extraT ct extraCT opts =
         classif2pretty token
           (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
           extraRHS (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
-    (AnTokenUniHSConstructor, U1, d, U1) -> "UniHS " ++| fine2pretty gamma d opts
+    (AnTokenModalBox token, dmu :*: extraContent, ModalBox (Const1 cContent), dmu' :*: extraCContent) ->
+      fine2pretty gamma dmu opts |++ " @ " |+| classif2pretty token gamma extraContent cContent extraCContent opts
+    (AnTokenUniHSConstructor, U1, ModalBox (Const1 d), dcrisp :*: U1) -> "UniHS " ++| fine2pretty gamma d opts
     (AnTokenConstructorTerm, U1, ty, U1) -> fine2pretty gamma ty opts
     (AnTokenType, U1, U1, U1) -> ribbon "<n/a>"
     (AnTokenDependentEliminator, dmuElim :*: eliminee :*: tyEliminee :*: Comp1 motive, U1, U1) ->
@@ -199,7 +208,7 @@ classif2pretty token gamma extraT ct extraCT opts =
       fine2pretty gamma cod opts
     (AnTokenMultimode AnTokenDegree, U1, d, U1) -> fine2pretty gamma d opts
     (AnTokenSysTerm, U1, ty, U1) -> fine2pretty gamma ty opts
-    (AnTokenSysUniHSConstructor, U1, d, U1) -> "UniHS " ++| fine2pretty gamma d opts
+    (AnTokenSysUniHSConstructor, U1, ModalBox (Const1 d), dcrisp :*: U1) -> "UniHS " ++| fine2pretty gamma d opts
 
 maybeClassif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
@@ -220,12 +229,13 @@ classification2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t, Fine2Pretty sys t) =>
   ScCtx sys v Void ->
   Classification t v ->
+  ClassifExtraInput (Classif t) v ->
   Fine2PrettyOptions sys ->
   PrettyTree String
-classification2pretty gamma (Classification t extraT maybeCT) opts =
+classification2pretty gamma (Classification t extraT maybeCT) extraCT opts =
   let token = analyzableToken @sys @t
   in  "<" ++ token2string token ++ "> " ++| fine2pretty gamma t opts
-      |++ " " |+| maybeClassif2pretty token gamma extraT maybeCT (extraClassif @sys t extraT) opts
+      |++ " " |+| maybeClassif2pretty token gamma extraT maybeCT extraCT opts
          
 jud2pretty :: forall sys .
   (Multimode sys,
@@ -234,15 +244,31 @@ jud2pretty :: forall sys .
   Fine2PrettyOptions sys ->
   PrettyTree String
 jud2pretty (Jud token gamma t extraT maybeCT) opts = haveFine2Pretty token $
-  ctx2pretty gamma opts \\\ [_vdash_ ++| classification2pretty (ctx2scCtx gamma) (Classification t extraT maybeCT) opts]
+  ctx2pretty gamma opts \\\
+    [_vdash_ ++| classification2pretty (ctx2scCtx gamma) (Classification t extraT maybeCT) extraCT opts]
+  where dgamma' = ctx'mode gamma
+        dgamma = unVarFromCtx <$> dgamma'
+        extraCT = extraClassif @sys dgamma t extraT
 jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs) opts = haveFine2Pretty token $
   ctx2pretty gamma opts \\\ [
     ribbon (_vdash_ ++ (if unEta eta then "" else "<no-eta> ")) \\\
-      ["(" ++| classification2pretty (ctx2scCtx gamma) (Classification t1 extraT1 (fstTwice1 <$> maybeCTs)) opts |++ ")",
+      ["(" ++| classification2pretty
+                 (ctx2scCtx gamma)
+                 (Classification t1 extraT1 (fstTwice1 <$> maybeCTs))
+                 extraCT1 opts
+        |++ ")",
        relation2pretty token (ctx2scCtx gamma) extraT1 extraT2 relT opts,
-       "(" ++| classification2pretty (ctx2scCtx gamma) (Classification t2 extraT2 (sndTwice1 <$> maybeCTs)) opts |++ ")"
+       "(" ++| classification2pretty
+                 (ctx2scCtx gamma)
+                 (Classification t2 extraT2 (sndTwice1 <$> maybeCTs))
+                 extraCT2 opts
+        |++ ")"
       ]
   ]
+  where dgamma' = ctx'mode gamma
+        dgamma = unVarFromCtx <$> dgamma'
+        extraCT1 = extraClassif @sys dgamma t1 extraT1
+        extraCT2 = extraClassif @sys dgamma t2 extraT2
 jud2pretty (JudEta gamma t ty) opts =
   ctx2pretty gamma opts \\\ [
     _vdash_ ++| fine2pretty (ctx2scCtx gamma) t opts |++ " = eta-expansion",

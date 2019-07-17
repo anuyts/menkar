@@ -193,6 +193,8 @@ checkAST :: forall sys tc v t .
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
 checkAST gamma t extraT maybeCT = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   maybeCTInferred <- sequenceA $ typetrick gamma (Classification t extraT maybeCT) $
     \ wkn gammadelta (Classification (s :: s w) extraS maybeCS) addressInfo ->
       haveClassif @sys @s $
@@ -227,11 +229,12 @@ checkAST gamma t extraT maybeCT = do
   case maybeCT of
         ClassifMustBe ct -> addNewConstraint
           (JudRel analyzableToken (Eta True)
-            (convRel (analyzableToken :: AnalyzableToken sys t) $ unVarFromCtx <$> ctx'mode gamma)
+            (convRel (analyzableToken :: AnalyzableToken sys t) $ dgamma)
             (duplicateCtx gamma)
             (Twice1 ctInferred ct)
-            (Twice1 (extraClassif @sys t extraT) (extraClassif @sys t extraT))
-            ClassifUnknown)
+            (Twice1 (extraClassif @sys dgamma t extraT) (extraClassif @sys dgamma t extraT))
+            ClassifUnknown
+          )
           ("Checking whether actual classifier equals expected classifier.")
         _ -> return ()
   return ctInferred

@@ -130,11 +130,14 @@ newMetaClassif4ast gamma t extraT reason =
   haveClassif @sys @t $
   haveClassif @sys @(Classif t) $
   do
+    let dgamma' = ctx'mode gamma
+    let dgamma = unVarFromCtx <$> dgamma'
     ct <- newMetaClassif4astNoCheck gamma t extraT reason
-    cct <- newMetaClassif4astNoCheck gamma ct (extraClassif @sys @t t extraT) reason
+    let extraCT = extraClassif @sys @t dgamma t extraT
+    cct <- newMetaClassif4astNoCheck gamma ct extraCT reason
       -- It is assumed that a classifier's classifier needs no metas.
     addNewConstraint
-      (Jud (analyzableToken @sys @(Classif t)) gamma ct (extraClassif @sys @t t extraT) (ClassifWillBe cct))
+      (Jud (analyzableToken @sys @(Classif t)) gamma ct extraCT (ClassifWillBe cct))
       reason
     return ct
 

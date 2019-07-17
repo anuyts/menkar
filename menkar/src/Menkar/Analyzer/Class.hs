@@ -42,6 +42,8 @@ data AnalyzableToken sys (ast :: * -> *) where
     AnalyzableToken sys rhs -> AnalyzableToken sys (ClassifBinding Type rhs sys)-}
   AnTokenNamedBinding :: (Analyzable sys (rhs sys)) =>
     AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (NamedBinding rhs sys)
+  AnTokenModalBox :: (Analyzable sys (content sys)) =>
+    AnalyzableToken sys (content sys) -> AnalyzableToken sys (ModalBox content sys)
   AnTokenUniHSConstructor :: AnalyzableToken sys (UniHSConstructor sys)
   AnTokenConstructorTerm :: AnalyzableToken sys (ConstructorTerm sys)
   AnTokenType :: AnalyzableToken sys (Type sys)
@@ -312,7 +314,7 @@ class (Functor t,
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
   convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
-  extraClassif :: t v -> ClassifExtraInput t v -> ClassifExtraInput (Classif t) v
+  extraClassif :: Mode sys v -> t v -> ClassifExtraInput t v -> ClassifExtraInput (Classif t) v
 
 extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) =>
         BoolToken doubled ->
