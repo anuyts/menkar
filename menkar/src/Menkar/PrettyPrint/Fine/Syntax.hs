@@ -185,6 +185,11 @@ instance (SysPretty sys,
          Show (NamedBinding rhs sys Void) where
   show binding = "[NamedBinding|\n" ++ fine2string @sys ScCtxEmpty binding omit ++ "\n|]"
 
+instance (SysPretty sys,
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (content sys)) =>
+         Fine2Pretty sys (ModalBox content sys) where
+  fine2pretty gamma (ModalBox content) opts = fine2pretty gamma content opts
+
 elimination2pretty :: (DeBruijnLevel v,
                        SysPretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
