@@ -207,7 +207,7 @@ instance SysTC Trivial where
     --AnTokenTrivTerm -> case (fstTwice1 ts :: TrivTerm _) of {}
     --AnTokenTrivUniHSConstructor -> case (fstTwice1 ts :: TrivUniHSConstructor _) of {}
   -- checkEtaWHNSysTy gamma t1 syst2 = case syst2 of {}
-  etaExpandSysType gamma t sysType = case sysType of {}
+  etaExpandSysType useHoles gamma t sysType = case sysType of {}
   checkSysJudgement jud = case jud of {}
 
 ----------------------------------
