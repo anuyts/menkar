@@ -56,7 +56,7 @@ instance Analyzable Reldtt ReldttMode where
       TokenTC -> AnalysisTC $ U1
       TokenRel -> AnalysisRel
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 {-| Chain modalities need to be whnormalized before comparing them!
 -}
@@ -164,7 +164,7 @@ instance Analyzable Reldtt ChainModty where
         TokenRel -> AnalysisRel
       
   convRel token d = U1 :*: U1
-  extraClassif t extraT = U1 :*: U1
+  extraClassif d t extraT = U1 :*: U1
 
 instance Analyzable Reldtt KnownModty where
   type ClassifExtraInput KnownModty = U1
@@ -198,7 +198,7 @@ instance Analyzable Reldtt KnownModty where
         where domTail :*: codTail = getAnalysisTC rtail
       TokenRel -> AnalysisRel
   convRel token d = U1 :*: U1
-  extraClassif t extraT = U1 :*: U1
+  extraClassif d t extraT = U1 :*: U1
 
 instance Analyzable Reldtt (Const ModtySnout) where
   type ClassifExtraInput (Const ModtySnout) = U1
@@ -208,7 +208,7 @@ instance Analyzable Reldtt (Const ModtySnout) where
   witClassif token = Witness
   analyze token gamma (Classification (Const snout) U1 maybeU1) h = Left $ AnErrorSys $ AnErrorModtySnout
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 instance Analyzable Reldtt ModtyTail where
   type ClassifExtraInput ModtyTail = Const ModtySnout
@@ -309,7 +309,7 @@ instance Analyzable Reldtt ModtyTail where
           dproblem = ReldttMode $ Expr2 $ TermProblem $ Expr2 $ TermWildcard
 
   convRel token d = U1 :*: U1
-  extraClassif t extraT = U1 :*: U1
+  extraClassif d t extraT = U1 :*: U1
 
 instance Analyzable Reldtt ReldttDegree where
   type ClassifExtraInput ReldttDegree = U1
@@ -384,7 +384,7 @@ instance Analyzable Reldtt ReldttDegree where
         TokenRel -> AnalysisRel
 
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 instance Analyzable Reldtt ReldttSysTerm where
   type ClassifExtraInput ReldttSysTerm = ClassifExtraInput (Term Reldtt)
@@ -443,7 +443,7 @@ instance Analyzable Reldtt ReldttSysTerm where
         TokenRel -> AnalysisRel-}
 
   convRel token d = modedEqDeg d
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 instance Analyzable Reldtt ModeTerm where
   type ClassifExtraInput ModeTerm = U1
@@ -480,7 +480,7 @@ instance Analyzable Reldtt ModeTerm where
         TokenRel -> AnalysisRel
 
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = U1
 
 instance Analyzable Reldtt ModtyTerm where
   type ClassifExtraInput ModtyTerm = U1
@@ -608,7 +608,7 @@ instance Analyzable Reldtt ModtyTerm where
     ModtyTermUnavailable dom cod -> unreachable -- only for prettyprinting
 
   convRel token d = U1 :*: U1
-  extraClassif t extraT = U1 :*: U1
+  extraClassif d t extraT = U1 :*: U1
 
 instance Analyzable Reldtt ReldttUniHSConstructor where
   type ClassifExtraInput ReldttUniHSConstructor = ClassifExtraInput (UniHSConstructor Reldtt)
@@ -621,7 +621,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
     SysTypeMode -> Right $ do
       return $ case token of
         TokenTrav -> AnalysisTrav $ SysTypeMode
-        TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
+        TokenTC -> AnalysisTC $ ModalBox $ Const1 $ ReldttMode $ BareMode $ ModeTermZero
         TokenRel -> AnalysisRel
     SysTypeModty dom cod -> Right $ do
       rdom <- fmapCoe runIdentity <$> h Identity
@@ -646,7 +646,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
         (AddressInfo ["codomain"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ SysTypeModty (getAnalysisTrav rdom) (getAnalysisTrav rcod)
-        TokenTC -> AnalysisTC $ ReldttMode $ BareMode $ ModeTermZero
+        TokenTC -> AnalysisTC $ ModalBox $ Const1 $ ReldttMode $ BareMode $ ModeTermZero
         TokenRel -> AnalysisRel
     {-SysTypeChainModtyDisguisedAsTerm dom cod -> Right $ do
       rdom <- fmapCoe runIdentity <$> h Identity
@@ -675,7 +675,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
         TokenRel -> AnalysisRel-}
 
   convRel token d = U1
-  extraClassif t extraT = U1
+  extraClassif d t extraT = crispModedModality d :*: U1
 
 --------------------------------
 
