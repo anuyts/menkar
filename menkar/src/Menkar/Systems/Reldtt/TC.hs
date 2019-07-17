@@ -83,20 +83,26 @@ instance SysTC Reldtt where
   checkMultimodeOrSysASTRel token eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs = case token of
     Left AnTokenMode -> byAnalysis
     Left AnTokenModality -> do
-      case (t1, t2) of
-        (ChainModtyTerm dom1 cod1 tmu1, _) -> checkTermRel
-          (Eta True)
-          (modedEqDeg dataMode)
-          gamma
-          (Twice1 tmu1 (BareChainModty $ t2))
-          (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
-        _ -- TODO
-        otherwise -> do
-          (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
-          (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
-          case (metasT1, metasT2) of
-            ([], []) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
-            (_ , _ ) -> tcBlock "Cannot solve inequality: one side is blocked on a meta-variable."
+      (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
+      (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
+      case (metasT1, metasT2, t1, t2) of
+        ([] , _  , ChainModtyTerm _ _ _, _) -> unreachable
+        (_  , [] , _, ChainModtyTerm _ _ _) -> unreachable
+        ([] , [] , _, _) ->
+          checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs
+        (_:_, [] , ChainModtyTerm dom1 cod1 tmu1, _) -> do
+          let tmu2 = BareChainModty t2
+          checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
+            (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
+        (_:_, [] , _, _) -> unreachable
+        ([] , _:_, _, ChainModtyTerm dom2 cod2 tmu2) -> do
+          let tmu1 = BareChainModty t1
+          checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
+            (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
+        ([] , _:_, _, _) -> unreachable
+        (_  , _  , ChainModtyTerm _ _ _, ChainModtyTerm _ _ _) ->
+          tcBlock "Cannot solve inequality: both sides are blocked on a meta-variable."
+        (_  , _  , _, _) -> unreachable
     Left AnTokenDegree -> do
       (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
       (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
@@ -131,13 +137,36 @@ instance SysTC Reldtt where
     case token of
       Left AnTokenMode -> byAnalysis
       Left AnTokenModality -> do
+        dom1orig <- newRelatedMetaMode (Eta True) gammaOrig gamma subst partialInv (_chainModty'dom t2) "Inferring domain."
+        cod1orig <- newRelatedMetaMode (Eta True) gammaOrig gamma subst partialInv (_chainModty'cod t2) "Inferring codomain."
         s1orig <- newMetaTermNoCheck gammaOrig MetaBlocked Nothing reason
-        let t1orig = ChainModtyTerm _ _ $ s1orig
+        let t1orig = ChainModtyTerm dom1orig cod1orig s1orig
         let t1 = subst <$> t1orig
         addNewConstraint
           (JudRel (AnTokenMultimode AnTokenModality) eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs)
           reason
         return t1orig
+      Left AnTokenDegree -> byAnalysis
+      Right AnTokenModeTerm -> byAnalysis
+      Right AnTokenModtyTerm -> byAnalysis
+      Right AnTokenModtySnout -> unreachable
+      Right AnTokenModtyTail -> unreachable
+      Right AnTokenKnownModty -> unreachable
+      {-
+      Right AnTokenModtySnout -> case getConst relT of
+        ModEq -> return $ Const $ getConst t2
+        ModLeq -> unreachable
+      Right AnTokenModtyTail -> case getConst relT of
+        ModEq -> byAnalysis
+        ModLeq -> unreachable
+      Right AnTokenModtyKnown -> case getConst relT of
+        ModEq -> byAnalysis
+        ModLeq -> unreachable
+      -}
     where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc _
       byAnalysis = newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs
+
+  etaExpandSysType gamma t systy = case systy of
+    SysTypeMode -> return $ Just Nothing
+    SysTypeModty dom cod -> return $ Just $ Just $ BareModty $ ModtyTermChain $ ChainModtyTerm dom cod t

@@ -9,6 +9,8 @@ import Menkar.Monad.Monad
 
 import Data.Void
 import Data.Constraint.Witness
+import Data.Functor.Const
+import GHC.Generics
 
 class SysWHN sys => SysTC sys where
 
@@ -91,6 +93,8 @@ class SysWHN sys => SysTC sys where
     String ->
     tc (t vOrig)
 
+  {-| Returns an eta-expansion if eta is certainly allowed, @Just Nothing@ if it's not allowed, and @Nothing@ if unclear.
+  -}
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     Ctx Type sys v Void ->
@@ -132,3 +136,17 @@ newMetaClassif4ast gamma t extraT reason =
       (Jud (analyzableToken @sys @(Classif t)) gamma ct (extraClassif @sys @t t extraT) (ClassifWillBe cct))
       reason
     return ct
+
+newRelatedMetaMode :: forall sys tc v vOrig .
+    (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+    Eta ->
+    Ctx Type sys vOrig Void ->
+    Ctx (Twice2 Type) sys v Void ->
+    (vOrig -> v) ->
+    (v -> Maybe vOrig) ->
+    Mode sys v ->
+    String ->
+    tc (Mode sys vOrig)
+newRelatedMetaMode eta gammaOrig gamma subst partialInv d2 reason =
+  newRelatedMultimodeOrSysAST (Left AnTokenMode) eta U1 gammaOrig gamma subst partialInv d2 U1 U1
+    (ClassifWillBe $ Twice1 U1 U1) reason

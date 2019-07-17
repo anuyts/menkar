@@ -167,9 +167,12 @@ _knownModty'cod :: KnownModty v -> Mode Reldtt v
 _knownModty'cod (KnownModty snout tail) = addIntToMode (_modtySnout'cod snout) (_modtyTail'cod tail)
   --_modtyTail'cod tail & _Wrapped' %~ nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc)
 
+{-| The idea is that for whblocked ChainModtys, the whnormal ones are 'ChainModtyKnown' and 'ChainModtyLink',
+    while the blocked ones are 'ChainModtyTerm'.
+-}
 data ChainModty v =
   ChainModtyKnown (KnownModty v) |
-  {-| It is an error to use this constructor on a term that is not whnormal. -}
+  {-| It is an error to use this constructor on a term that is not whnormal (whblocked is not allowed). -}
   ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
   {-| Reduces for whnormal terms... (weird, I know) -}
   ChainModtyTerm
