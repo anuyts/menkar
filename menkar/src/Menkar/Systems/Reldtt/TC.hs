@@ -167,6 +167,11 @@ instance SysTC Reldtt where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc _
       byAnalysis = newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs
 
-  etaExpandSysType gamma t systy = case systy of
+  etaExpandSysType useHoles gamma t systy = case systy of
     SysTypeMode -> return $ Just Nothing
-    SysTypeModty dom cod -> return $ Just $ Just $ BareModty $ ModtyTermChain $ ChainModtyTerm dom cod t
+    SysTypeModty dom cod -> do
+      chmu <- case useHoles of
+        UseHoles -> ChainModtyTerm dom cod <$>
+          newMetaTerm gamma (BareSysType $ SysTypeModty dom cod) MetaBlocked "Infer chain modality."
+        UseEliminees -> return $ ChainModtyTerm dom cod t
+      return $ Just $ Just $ BareModty $ ModtyTermChain $ chmu
