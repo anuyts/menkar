@@ -1,0 +1,7 @@
+Best proposal:
+  <<! {= 0 2 3 : 4 -> 4}{cont x} !>>
+  <<! {0 T : 0 -> 1}{disc _}{forget _} !>>
+
+Not so good because the underscores are expressions that may also contain (...)
+  <<! (= 0 2 3 : 4 -> 4)(cont x) !>>
+  <<! (0 T : 0 -> 1)(disc _)(forget _) !>>
