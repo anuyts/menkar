@@ -705,3 +705,5 @@ makeLenses ''Declaration
 makeLenses ''TelescopedPartialDeclaration
 makeLenses ''LeftDivided
 makeLenses ''NamedBinding
+
+data UseHolesOrEliminees = UseHoles | UseEliminees

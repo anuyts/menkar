@@ -181,60 +181,12 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
 etaExpandIfApplicable ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  let giveUp = checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
-  maybeExpansions <- case (ty1, ty2) of
-    -- Pi-types: eta-expand
-    (Pi piBinding1, Pi piBinding2) -> do
-      let app1 = Expr2 $ TermElim
-            (idModedModality $ VarWkn <$> dgamma)
-            (VarWkn <$> t1) (VarWkn <$> Pi piBinding1) (App $ Var2 VarLast)
-      let app2 = Expr2 $ TermElim
-            (idModedModality $ VarWkn <$> dgamma)
-            (VarWkn <$> t2) (VarWkn <$> Pi piBinding2) (App $ Var2 VarLast)
-      return $ Just (Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding1) $ ValRHS app1 $ binding'body piBinding1,
-                     Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding2) $ ValRHS app2 $ binding'body piBinding2)
-    (Pi _, _) -> tcFail "Types are presumed to be related."
-    (_, Pi _) -> tcFail "Types are presumed to be related."
-    -- Sigma types: eta expand if allowed
-    (Sigma sigmaBinding1, Sigma sigmaBinding2) -> do
-      let dmu = _segment'modty $ binding'segment $ sigmaBinding1
-      etaAllowed <- allowsEta (crispModedModality dgamma' :\\ fstCtx gamma) dmu
-        "Need to know if eta is allowed."
-      case etaAllowed of
-        Just True -> do
-          let fst1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t1 (Sigma sigmaBinding1) Fst
-          let fst2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t2 (Sigma sigmaBinding2) Fst
-          let snd1 = Expr2 $ TermElim (idModedModality dgamma) t1 (Sigma sigmaBinding1) Snd
-          let snd2 = Expr2 $ TermElim (idModedModality dgamma) t2 (Sigma sigmaBinding2) Snd
-          return $ Just (Expr2 $ TermCons $ Pair sigmaBinding1 fst1 snd1,
-                         Expr2 $ TermCons $ Pair sigmaBinding2 fst2 snd2)
-        Just False -> Nothing <$ giveUp
-        Nothing -> tcBlock $ "Need to know if sigma-type has eta."
-    (Sigma _, _) -> tcFail "Types are presumed to be related."
-    (_, Sigma _) -> tcFail "Types are presumed to be related."
-    -- Unit type: eta-expand
-    (UnitType, UnitType) -> return $ Just (Expr2 $ TermCons $ ConsUnit,
-                                           Expr2 $ TermCons $ ConsUnit)
-    (UnitType, _) -> tcFail "Types are presumed to be related."
-    (_, UnitType) -> tcFail "Types are presumed to be related."
-    -- Box type: eta-expand
-    (BoxType boxSeg1, BoxType boxSeg2) -> do
-      let dmu = _segment'modty $ boxSeg1
-      etaAllowed <- allowsEta (crispModedModality dgamma' :\\ fstCtx gamma) dmu
-        "Need to know if eta is allowed."
-      case etaAllowed of
-        Just True -> do
-          let unbox1 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t1 (BoxType boxSeg1) Unbox
-          let unbox2 = Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t2 (BoxType boxSeg2) Unbox
-          return $ Just $ (Expr2 $ TermCons $ ConsBox boxSeg1 unbox1,
-                           Expr2 $ TermCons $ ConsBox boxSeg2 unbox2)
-        Just False -> Nothing <$ giveUp
-        Nothing -> tcBlock $ "Need to know if sigma-type has eta."
-    (BoxType _, _) -> tcFail "Types are presumed to be related."
-    (_, BoxType _) -> tcFail "Types are presumed to be related."
-    (_, _) -> Nothing <$ giveUp
-  case maybeExpansions of
-    Just (expandT1, expandT2) ->
+  --let giveUp = checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
+  maybeMaybeExpandT1 <- etaExpand UseEliminees (fstCtx gamma) t1 ty1
+  maybeMaybeExpandT2 <- etaExpand UseEliminees (sndCtx gamma) t2 ty2
+  let maybeMaybeExpansions = getCompose $ (,) <$> Compose maybeMaybeExpandT1 <*> Compose maybeMaybeExpandT2
+  case maybeMaybeExpansions of
+    Just (Just (expandT1, expandT2)) ->
       addNewConstraint
         (JudTermRel
           (Eta False)
@@ -244,7 +196,8 @@ etaExpandIfApplicable ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2
           (Twice2 (hs2type ty1) (hs2type ty2))
         )
         "Eta-expand."
-    Nothing -> return ()
+    Just Nothing -> return ()
+    Nothing -> tcBlock $ "Need to know if types have eta."
 
 checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   ModedDegree sys v ->

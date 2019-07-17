@@ -210,61 +210,74 @@ solveMetaImmediately gammaOrig gamma subst partialInv t2 nonwhnt2 ty1 ty2 metasT
 -}
 etaExpand ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  UseHolesOrEliminees ->
   Ctx Type sys v Void ->
   Term sys v ->
   UniHSConstructor sys v ->
   tc (Maybe (Maybe (Term sys v)))
-etaExpand gamma t (Pi piBinding) = do
-  body <- newMetaTerm
+etaExpand useHoles gamma t (Pi piBinding) = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  body <- case useHoles of
+    UseHoles -> newMetaTerm
             --(eqDeg :: Degree sys _)
             (gamma :.. (VarFromCtx <$> binding'segment piBinding))
             (binding'body piBinding)
             MetaBlocked
             "Infer function body."
+    UseEliminees -> return $ Expr2 $ TermElim
+            (idModedModality $ VarWkn <$> dgamma)
+            (VarWkn <$> t) (VarWkn <$> Pi piBinding) (App $ Var2 VarLast)
   return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) (ValRHS body $ binding'body piBinding)
-etaExpand gamma t (Sigma sigmaBinding) = do
+etaExpand useHoles gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
   allowsEta (crispModedModality dgamma' :\\ gamma) dmu "Need to know if eta is allowed." >>= \case
     Just True -> do
-        tmFst <- newMetaTerm
+        tmFst <- case useHoles of
+          UseHoles -> newMetaTerm
                    --(eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content $ binding'segment $ sigmaBinding)
                    MetaBlocked
                    "Infer first projection."
-        tmSnd <- newMetaTerm
+          UseEliminees -> return $ Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t (Sigma sigmaBinding) Fst
+        tmSnd <- case useHoles of
+          UseHoles -> newMetaTerm
                    --(eqDeg :: Degree sys _)
                    gamma
                    (substLast2 tmFst $ binding'body sigmaBinding)
                    MetaBlocked
                    "Infer second projection."
+          UseEliminees -> return $ Expr2 $ TermElim (idModedModality dgamma) t (Sigma sigmaBinding) Snd
         return $ Just $ Just $ Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd
     Just False -> return $ Just Nothing
     Nothing -> return $ Nothing
-etaExpand gamma t (BoxType boxSeg) = do
+etaExpand useHoles gamma t (BoxType boxSeg) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty $ boxSeg
   allowsEta (crispModedModality dgamma' :\\ gamma) dmu "Need to know if eta is allowed." >>= \case
     Just True -> do
       let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType boxSeg
-      tmUnbox <- newMetaTerm
+      tmUnbox <- case useHoles of
+          UseHoles -> newMetaTerm
                    --(eqDeg :: Degree sys _)
                    (VarFromCtx <$> dmu :\\ gamma)
                    (_segment'content boxSeg)
                    MetaBlocked
                    "Infer box content."
+          UseEliminees -> return $ Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t (BoxType boxSeg) Unbox
       return $ Just $ Just $ Expr2 $ TermCons $ ConsBox boxSeg tmUnbox
     Just False -> return $ Just Nothing
     Nothing -> return $ Nothing
-etaExpand gamma t UnitType = return $ Just $ Just $ Expr2 $ TermCons $ ConsUnit
-etaExpand gamma t (UniHS _) = return $ Just $ Nothing
-etaExpand gamma t EmptyType = return $ Just $ Nothing
-etaExpand gamma t NatType = return $ Just $ Nothing
-etaExpand gamma t (EqType _ _ _) = return $ Just $ Nothing
-etaExpand gamma t (SysType sysType) = etaExpandSysType gamma t sysType
+etaExpand useHoles gamma t UnitType = return $ Just $ Just $ Expr2 $ TermCons $ ConsUnit
+etaExpand useHoles gamma t (UniHS _) = return $ Just $ Nothing
+etaExpand useHoles gamma t EmptyType = return $ Just $ Nothing
+etaExpand useHoles gamma t NatType = return $ Just $ Nothing
+etaExpand useHoles gamma t (EqType _ _ _) = return $ Just $ Nothing
+etaExpand useHoles gamma t (SysType sysType) = etaExpandSysType useHoles gamma t sysType
 
 checkEtaForNormalType :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -273,7 +286,7 @@ checkEtaForNormalType :: forall sys tc v .
   UniHSConstructor sys v ->
   tc Bool
 checkEtaForNormalType gamma t ty = do
-  maybeMaybeTExpanded <- etaExpand gamma t ty
+  maybeMaybeTExpanded <- etaExpand UseHoles gamma t ty
   let ty' = hs2type ty
   case maybeMaybeTExpanded of
     Nothing -> tcBlock $ "Need to know if this type has eta."

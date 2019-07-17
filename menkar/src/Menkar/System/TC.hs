@@ -97,6 +97,7 @@ class SysWHN sys => SysTC sys where
   -}
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
+    UseHolesOrEliminees ->
     Ctx Type sys v Void ->
     Term sys v ->
     SysUniHSConstructor sys v ->
