@@ -1,6 +1,6 @@
 Best proposal for new syntax:
   [= 0 2 3 : 4 -> 4 | cont x]
-  [0 T : 1 -> 2 | disc d+ d0 | forget _]
+  [0 T : 1 -> 2 | disc (d+ d0) | forget _]
 
 Best proposal:
   <<! {= 0 2 3 : 4 -> 4}{cont x} !>>

@@ -2,6 +2,7 @@ module Menkar.Systems.Reldtt.Scoper where
 
 import Menkar.Fine
 import Menkar.System
+import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Monad
 import qualified Menkar.Raw as Raw

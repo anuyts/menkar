@@ -12,6 +12,7 @@ import Menkar.System.Fine
 import Menkar.System.PrettyPrint
 import Menkar.Fine
 import Menkar.Monad
+import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Systems.Reldtt.Analyzer
 --import Menkar.Systems.Reldtt.Scoper

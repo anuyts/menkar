@@ -10,6 +10,7 @@ import Menkar.System.WHN
 import Menkar.System.TC
 import Menkar.Fine
 import Menkar.Monad
+import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Systems.Reldtt.Analyzer
 import Menkar.Systems.Reldtt.Scoper

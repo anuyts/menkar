@@ -8,6 +8,7 @@ import Menkar.System.Scoper
 import Menkar.System.WHN
 import Menkar.Fine
 import Menkar.Monad
+import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Systems.Reldtt.Analyzer
 import Menkar.Systems.Reldtt.Scoper

@@ -2,6 +2,7 @@ module Menkar.Systems.Reldtt.Fine where
 
 import Menkar.Fine
 import Menkar.System
+import Menkar.Systems.Reldtt.Basic
 
 import Control.Exception.AssertFalse
 
@@ -14,8 +15,6 @@ fst1 :: (a :*: b) c -> a c
 fst1 (a :*: b) = a
 snd1 :: (a :*: b) c -> b c
 snd1 (a :*: b) = b
-
-data Reldtt :: KSys where
 
 type instance Mode Reldtt = ReldttMode
 type instance Modality Reldtt = ChainModty
@@ -66,24 +65,6 @@ deriving instance Wrapped (ReldttMode v)
 --  Unwrapped (ReldttMode v) = Term Reldtt v
 --  _Wrapped f = dimap _ _
 
-data KnownDeg =
-  KnownDegEq |
-  KnownDeg Int |
-  KnownDegOmega {-^ Only allowed in infinite modes. -} |
-  KnownDegTop |
-  KnownDegProblem
-  deriving (Eq, Ord)
-
--- | It is an error to create a @'ModtySnout'@ whose length differs from its codomain.
-data ModtySnout = ModtySnout
-  {_modtySnout'dom :: Int,
-   _modtySnout'cod :: Int,
-   {-| Degrees in REVERSE ORDER. -}
-   _modtySnout'degreesReversed :: [KnownDeg]
-  } deriving Eq
-instance Ord ModtySnout where
-  ModtySnout idom1 icod1 krevdegs1 <= ModtySnout idom2 icod2 krevdegs2 =
-    idom1 == idom2 && icod1 == icod2 && all (\ (i1, i2) -> i1 <= i2) (zip krevdegs1 krevdegs2)
 data ModtyTail v =
   TailEmpty |
 

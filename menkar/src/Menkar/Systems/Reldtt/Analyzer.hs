@@ -4,6 +4,7 @@ module Menkar.Systems.Reldtt.Analyzer where
 
 import Menkar.Fine
 import Menkar.System
+import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Analyzer
 

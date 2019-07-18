@@ -2,12 +2,7 @@ module Menkar.Systems.Trivial.Trivial where
 
 import Menkar.Fine.Syntax
 import Menkar.Analyzer
-import Menkar.System.Scoper
-import Menkar.System.Analyzer
-import Menkar.System.Fine
-import Menkar.System.WHN
-import Menkar.System.TC
-import Menkar.System.PrettyPrint
+import Menkar.System
 import Menkar.PrettyPrint.Fine
 import Menkar.Monad
 import Menkar.PrettyPrint.Aux.Context
@@ -26,6 +21,8 @@ import Data.Functor.Const
 import Data.Kind hiding (Type)
 
 data Trivial :: KSys where
+
+type instance Raw.SysExprC Trivial = Void
 
 data TrivMode v = TrivMode
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
