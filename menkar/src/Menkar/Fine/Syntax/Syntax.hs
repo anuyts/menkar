@@ -3,6 +3,7 @@
 
 module Menkar.Fine.Syntax.Syntax where
 
+import Menkar.System.Basic
 import Menkar.System.Fine.Syntax
 import Menkar.Fine.Syntax.Substitution hiding (Expr (..))
 import Menkar.Basic.Context

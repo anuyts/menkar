@@ -1,9 +1,9 @@
 module Menkar.System.Fine.Syntax where
 
+import Menkar.System.Basic
+
 import Menkar.Fine.Syntax.Substitution
 import Data.Kind
-
-type KSys = *
 
 --type family Mode :: KSys -> * -> *
 --type family Modality :: KSys -> * -> *
