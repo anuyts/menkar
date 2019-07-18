@@ -2,6 +2,8 @@
 
 module Menkar.Raw.Syntax.Syntax where
 
+import Menkar.System.Basic
+import Menkar.System.Raw
 import Menkar.Basic.Syntax
 
 import Data.Number.Nat
@@ -10,41 +12,45 @@ import Data.Hashable
 import Data.Kind
 import GHC.Generics
 
-data Eliminator =
+data Eliminator (sys :: KSys) =
   ElimDots |
   --ElimEnd ArgSpec {-^ should not be 'ArgSpecExplicit'.-} |
-  ElimArg ArgSpec Expr |
+  ElimArg ArgSpec (Expr sys) |
   ElimProj ProjSpec
   -- case; induction
   --deriving Show
 
-data ExprC =
+data ExprC (sys :: KSys) =
   ExprQName QName |
-  ExprParens Expr |
+  ExprParens (Expr sys) |
   ExprNatLiteral Nat |
   ExprImplicit |
-  ExprGoal String
+  ExprGoal String |
+  ExprSys (SysExprC sys)
   --deriving Show
 
-data Elimination = Elimination ExprC [Eliminator] --deriving Show
-addEliminators :: Elimination -> [Eliminator] -> Elimination
+data Elimination (sys :: KSys) = Elimination (ExprC sys) [Eliminator sys] --deriving Show
+addEliminators :: forall sys . Elimination sys -> [Eliminator sys] -> Elimination sys
 addEliminators (Elimination e elims) moreElims = Elimination e (elims ++ moreElims)
 
-data ExprB =
-  ExprElimination Elimination
+data ExprB (sys :: KSys) =
+  ExprElimination (Elimination sys)
   --deriving Show
 
-data Operand = OperandTelescope Telescope | OperandExpr ExprB --deriving Show
+data Operand (sys :: KSys) =
+  OperandTelescope (Telescope sys) |
+  OperandExpr (ExprB sys) --deriving Show
 
-data Expr = ExprOps Operand (Maybe (Elimination, Maybe Expr)) --deriving Show
+data Expr (sys :: KSys) =
+  ExprOps (Operand sys) (Maybe (Elimination sys, Maybe (Expr sys))) --deriving Show
 
-expr3to2 :: ExprC -> ExprB
+expr3to2 :: ExprC sys -> ExprB sys
 expr3to2 e = ExprElimination $ Elimination e []
-expr2to1 :: ExprB -> Expr
+expr2to1 :: ExprB sys -> Expr sys
 expr2to1 e = ExprOps (OperandExpr e) Nothing
-expr3to1 :: ExprC -> Expr
+expr3to1 :: ExprC sys -> Expr sys
 expr3to1 = expr2to1 . expr3to2
-expr3to1smart :: ExprC -> Expr
+expr3to1smart :: ExprC sys -> Expr sys
 expr3to1smart (ExprParens e) = e
 --expr3to1smart ExprImplicit = expr2to1 $ ExprElimination $ Elimination ExprImplicit [ElimEnd ArgSpecNext]
 expr3to1smart e = expr2to1 . expr3to2 $ e
@@ -52,12 +58,12 @@ expr3to1smart e = expr2to1 . expr3to2 $ e
 -----------------------------------------------------------
 
 {-| One item in the annotation clause. -}
-data Annotation = Annotation (Qualified String) (Maybe Expr) --deriving Show
+data Annotation (sys :: KSys) = Annotation (Qualified String) (Maybe (Expr sys)) --deriving Show
 
-newtype Segment = Segment (Declaration DeclSortSegment) --deriving Show
+newtype Segment sys = Segment (Declaration sys DeclSortSegment) --deriving Show
 
 {-| A bunch of assumptions in accolads. Essentially a dependent telescope. -}
-newtype Telescope = Telescope {untelescope :: [Segment]} --deriving Show
+newtype Telescope sys = Telescope {untelescope :: [Segment sys]} --deriving Show
 
 data DeclSort =
   DeclSortVal |
@@ -78,9 +84,9 @@ instance CanBeTyped DeclSortVal where
 instance CanBeTyped DeclSortResolution where
 instance CanBeTyped DeclSortSegment where
 
-data DeclContent (declSort :: DeclSort) where
-  DeclContent :: CanBeTyped declSort => Expr -> DeclContent declSort
-  DeclContentEmpty :: DeclContent declSort
+data DeclContent sys (declSort :: DeclSort) where
+  DeclContent :: CanBeTyped declSort => Expr sys -> DeclContent sys declSort
+  DeclContentEmpty :: DeclContent sys declSort
 
 data EntryHeader :: DeclSort -> * where
   HeaderToplevelModule :: EntryHeader (DeclSortModule True)
@@ -104,35 +110,35 @@ headerKeyword HeaderResolution = "resolution"
 
 {-| The left hand side of a genuine entry, or the content of a cell of a telescope.
     For entries, there is typically one name. -}
-data Declaration declSort = Declaration {
-  decl'annotations :: [Annotation],
+data Declaration sys declSort = Declaration {
+  decl'annotations :: [Annotation sys],
   decl'names :: DeclNames declSort,
-  decl'telescope :: Telescope,
-  decl'content :: DeclContent declSort} --deriving Show
+  decl'telescope :: Telescope sys,
+  decl'content :: DeclContent sys declSort} --deriving Show
 
-data RHS declSort where
-  RHSModule :: [AnyEntry] -> RHS (DeclSortModule b)
-  RHSVal :: Expr -> RHS DeclSortVal
+data RHS sys declSort where
+  RHSModule :: [AnyEntry sys] -> RHS sys (DeclSortModule b)
+  RHSVal :: Expr sys -> RHS sys DeclSortVal
   --RHSResolution
   --deriving Show
 
-coerceRHSToplevel :: RHS (DeclSortModule b1) -> RHS (DeclSortModule b2)
+coerceRHSToplevel :: RHS sys (DeclSortModule b1) -> RHS sys (DeclSortModule b2)
 coerceRHSToplevel (RHSModule entries) = RHSModule entries
 
-data Entry declSort = EntryLR {
+data Entry sys declSort = EntryLR {
   entry'header :: EntryHeader declSort,
-  entry'lhs :: Declaration declSort,
-  entry'rhs :: RHS declSort}
+  entry'lhs :: Declaration sys declSort,
+  entry'rhs :: RHS sys declSort}
   --deriving Show
 
-data AnyEntry where
-  AnyEntry :: Entry declSort -> AnyEntry
+data AnyEntry sys where
+  AnyEntry :: Entry sys declSort -> AnyEntry sys
 
 --newtype Entry = EntryLR EntryLR --deriving Show
 
-newtype File = File (Entry (DeclSortModule True)) --deriving Show
+newtype File sys = File (Entry sys (DeclSortModule True)) --deriving Show
 
-wrapInModules :: [String] -> Entry (DeclSortModule False) -> Entry (DeclSortModule False)
+wrapInModules :: [String] -> Entry sys (DeclSortModule False) -> Entry sys (DeclSortModule False)
 wrapInModules [] entry = entry
 wrapInModules (moduleName:moduleNames) entry =
   EntryLR HeaderModule lhs rhs
@@ -144,7 +150,7 @@ wrapInModules (moduleName:moduleNames) entry =
           }
         rhs = RHSModule [AnyEntry $ wrapInModules moduleNames entry]
 
-file2nestedModules :: File -> Entry (DeclSortModule False)
+file2nestedModules :: File sys -> Entry sys (DeclSortModule False)
 file2nestedModules (File toplevelmodule@(EntryLR HeaderToplevelModule lhs rhs)) =
   let DeclNamesToplevelModule (Qualified moduleNames string) = decl'names lhs
       lhs' = Declaration {
