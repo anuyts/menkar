@@ -159,6 +159,8 @@ instance SysScoper Trivial where
              $? id
            )
 
+  scopeSysExprC gamma sysExprC = absurd sysExprC
+
   newMetaModeNoCheck gamma reason = return TrivMode
 
   newMetaModtyNoCheck gamma reason = return TrivModality

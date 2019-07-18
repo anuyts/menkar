@@ -7,5 +7,5 @@ type instance SysExprC Reldtt = KnownModty
 
 data KnownModty = KnownModty {_knownModty'snout :: ModtySnout, _knownModty'tail :: ModtyTail}
 
-newtype ModtyTail = ModtyTail [ModtyTailAspect]
+newtype ModtyTail = ModtyTail {_modtyTail'aspects :: [ModtyTailAspect]}
 data ModtyTailAspect = ModtyTailAspect String (ExprC Reldtt)

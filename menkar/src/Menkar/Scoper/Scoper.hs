@@ -83,6 +83,7 @@ exprC gamma (Raw.ExprGoal str) = do
   let algGoal = AlgGoal str $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
   result <- newMetaTermNoCheck {-eqDeg-} gamma MetaBlocked (Just $ algGoal) "Infer goal's value."
   return $ Expr2 $ TermAlgorithm algGoal result
+exprC gamma (Raw.ExprSys sysExprC) = scopeSysExprC gamma sysExprC
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}
 elimination :: forall sys sc v .

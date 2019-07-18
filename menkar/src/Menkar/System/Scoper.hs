@@ -2,7 +2,7 @@ module Menkar.System.Scoper where
 
 import Menkar.Fine
 import Menkar.Monad
-import qualified Menkar.Raw.Syntax as Raw
+import qualified Menkar.Raw as Raw
 import Menkar.Analyzer
 
 import Data.Functor.Functor1
@@ -13,6 +13,8 @@ import GHC.Generics
 class SysSyntax (Term sys) sys => SysScoper sys where
   scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void -> 
     Raw.Qualified String -> Maybe (Raw.Expr sys) -> sc (Annotation sys v)
+  scopeSysExprC :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void ->
+    Raw.SysExprC sys -> sc (Term sys v)
   newMetaModeNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>
     Ctx Type sys v Void -> String -> sc (Mode sys v)
   newMetaModtyNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>

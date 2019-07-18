@@ -3,6 +3,7 @@ module Menkar.Systems.Reldtt.Scoper where
 import Menkar.Fine
 import Menkar.System
 import Menkar.Systems.Reldtt.Basic
+import qualified Menkar.Systems.Reldtt.Raw as Raw
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Monad
 import qualified Menkar.Raw as Raw
@@ -12,11 +13,42 @@ import Menkar.Systems.Reldtt.Analyzer
 
 import Text.PrettyPrint.Tree
 import Data.Omissible
+import Control.Exception.AssertFalse
 
 import Data.Maybe
+import Data.Void
 import Data.Functor.Compose
 import Data.Functor.Coerce
 import GHC.Generics
+import Util (snocView)
+
+scopeTailAspect :: (MonadScoper Reldtt sc, DeBruijnLevel v) =>
+  Ctx Type Reldtt v Void ->
+  Raw.ModtyTailAspect ->
+  sc (ModtyTail v)
+scopeTailAspect gamma (Raw.ModtyTailAspect str rawD) = do
+  fineD <- ReldttMode !<$> exprC gamma rawD
+  case str of
+    "cont" -> return $ TailCont fineD
+    "disc" -> return $ TailDisc fineD
+    "forget" -> return $ TailForget fineD
+    otherwise -> scopeFail $ "Illegal tail aspect: `" ++ str ++ "`."
+
+foldTailAspects :: (MonadScoper Reldtt sc, DeBruijnLevel v) =>
+  [ModtyTail v] ->
+  sc (ModtyTail v)
+foldTailAspects aspects = case snocView aspects of
+  Nothing -> return $ TailEmpty
+  Just (initAspects, lastAspect) -> do
+    initFold <- foldTailAspects initAspects
+    case (initFold, lastAspect) of
+      (TailEmpty, _) -> return lastAspect
+      (_, TailEmpty) -> unreachable
+      (TailCont d, _) -> scopeFail "Tail aspect 'cont' must be the only tail aspect in the modality signature."
+      (_, TailCont d) -> scopeFail "Tail aspect 'cont' must be the only tail aspect in the modality signature."
+      (TailDisc cod, TailForget dom) -> return $ TailDiscForget dom cod
+      (TailForget dom, TailDisc cod) -> return $ TailDiscForget dom cod
+      (_, _) -> scopeFail "A tail aspect ('disc' or 'forget') occurs twice in the same modality signature."
 
 instance SysScoper Reldtt where
   scopeAnnotation gamma qstring maybeRawArg = do
@@ -36,6 +68,10 @@ instance SysScoper Reldtt where
                (Raw.unparse' qstring \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
                $? id
              )
+  scopeSysExprC gamma (Raw.KnownModty snout rawTail) = do
+    fineTailAspects <- sequenceA $ scopeTailAspect gamma <$> Raw._modtyTail'aspects rawTail
+    fineTail <- foldTailAspects fineTailAspects
+    return $ BareKnownModty $ KnownModty snout fineTail
   newMetaModeNoCheck gamma reason = ReldttMode !<$> newMetaTermNoCheck gamma MetaBlocked Nothing reason
   newMetaModtyNoCheck gamma reason = do
     dom <- newMetaModeNoCheck gamma "Inferring domain of modality."
