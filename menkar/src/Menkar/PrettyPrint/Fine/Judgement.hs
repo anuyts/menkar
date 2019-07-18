@@ -35,7 +35,7 @@ _vdash = [' ', vdash]
 _vdash_ = [' ', vdash, ' ']
 
 haveFine2Pretty :: forall sys t a .
-  (SysPretty sys) =>
+  (SysFinePretty sys) =>
   AnalyzableToken sys t ->
   ((Fine2Pretty sys t) => a) ->
   a
@@ -66,7 +66,7 @@ haveFine2Pretty token a = case token of
   AnTokenSysTerm -> a
   AnTokenSysUniHSConstructor -> a
 
-token2string :: forall sys t . (SysPretty sys) => AnalyzableToken sys t -> String
+token2string :: forall sys t . (SysFinePretty sys) => AnalyzableToken sys t -> String
 token2string token = case token of
   AnTokenModedModality -> "modality"
   AnTokenBinding token -> "binding:" ++ token2string token
@@ -99,7 +99,7 @@ modrel2pretty ModLeq = ribbon "\8804"
 modrel2pretty ModEq  = ribbon "="
 
 relation2pretty :: forall sys t v .
-  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
   ScCtx sys v Void ->
   ClassifExtraInput t v ->
@@ -147,7 +147,7 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
   (AnTokenSysUniHSConstructor, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
 
 classif2pretty :: forall sys t v .
-  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
   ScCtx sys v Void ->
   ClassifExtraInput t v ->
@@ -211,7 +211,7 @@ classif2pretty token gamma extraT ct extraCT opts =
     (AnTokenSysUniHSConstructor, U1, ModalBox (Const1 d), dcrisp :*: U1) -> "UniHS " ++| fine2pretty gamma d opts
 
 maybeClassif2pretty :: forall sys t v .
-  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t) =>
+  (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
   ScCtx sys v Void ->
   ClassifExtraInput t v ->
@@ -226,7 +226,7 @@ maybeClassif2pretty token gamma extraT (ClassifMustBe ct) extraCT opts =
 maybeClassif2pretty token gamma extraT (ClassifUnknown) extraCT opts = ribbon ":_"
 
 classification2pretty :: forall sys t v .
-  (DeBruijnLevel v, Multimode sys, SysPretty sys, Analyzable sys t, Fine2Pretty sys t) =>
+  (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t, Fine2Pretty sys t) =>
   ScCtx sys v Void ->
   Classification t v ->
   ClassifExtraInput (Classif t) v ->
@@ -239,7 +239,7 @@ classification2pretty gamma (Classification t extraT maybeCT) extraCT opts =
          
 jud2pretty :: forall sys .
   (Multimode sys,
-   SysPretty sys) =>
+   SysFinePretty sys) =>
   Judgement sys ->
   Fine2PrettyOptions sys ->
   PrettyTree String
@@ -374,11 +374,11 @@ jud2pretty (JudEntry gamma entry) opts = ctx2pretty gamma opts \\\ [_vdash ++ " 
 
 jud2string :: forall sys .
   (Multimode sys,
-   SysPretty sys) =>
+   SysFinePretty sys) =>
   Judgement sys -> Fine2PrettyOptions sys -> String
 jud2string jud opts = render (jud2pretty jud opts) (_fine2pretty'renderOptions opts)
 
 instance (Multimode sys,
-          SysPretty sys)
+          SysFinePretty sys)
          => Show (Judgement sys) where
   show jud = render (jud2pretty jud $? id) $? id

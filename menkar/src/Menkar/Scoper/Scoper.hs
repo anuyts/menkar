@@ -505,7 +505,7 @@ segments2telescoped gamma (fineSeg:fineSegs) = do
     Nothing -> return ()
     Just newName -> case lookupQName gamma (Raw.Qualified [] newName) of
       LookupResultNothing -> return ()
-      _ -> scopeFail $ "Shadowing is not allowed in variable names; already in scope: " ++ unparse newName
+      _ -> scopeFail $ "Shadowing is not allowed in variable names; already in scope: " ++ Raw.unparse newName
   -- Actual action:
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
@@ -563,7 +563,7 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
     ) gamma
   case lookupQName gamma (Raw.Qualified [] $ _val'name val) of
     LookupResultNothing -> return val
-    _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ unparse (_val'name val)
+    _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ Raw.unparse (_val'name val)
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule :: forall sys sc v .

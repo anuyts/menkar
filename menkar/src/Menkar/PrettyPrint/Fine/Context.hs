@@ -31,7 +31,7 @@ import Control.Lens
 dividedCtx2pretty :: forall v w sys ty .
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   SysPretty sys, Fine2Pretty sys (ty sys)) =>
+   SysFinePretty sys, Fine2Pretty sys (ty sys)) =>
   Maybe (ModedModality sys v) -> ScCtx sys v Void -> Ctx ty sys w v -> Fine2PrettyOptions sys -> PrettyTree String
 dividedCtx2pretty Nothing delta (CtxEmpty d) opts =
   "{context-mode : " ++| fine2pretty delta d opts |++ "}"
@@ -77,7 +77,7 @@ dividedCtx2pretty maybeDRho delta (CtxComp gamma) opts = dividedCtx2pretty maybe
 ctx2pretty :: forall v sys ty .
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   SysPretty sys, Fine2Pretty sys (ty sys)) =>
+   SysFinePretty sys, Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v Void -> Fine2PrettyOptions sys -> PrettyTree String
 ctx2pretty gamma opts = dividedCtx2pretty maybeDRho (ctx2scCtx gamma) (externalizeCtx gamma) opts
   where maybeDRho = if _fine2pretty'explicitLeftDivision opts
@@ -87,14 +87,14 @@ ctx2pretty gamma opts = dividedCtx2pretty maybeDRho (ctx2scCtx gamma) (externali
 ctx2string :: forall v sys ty .
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   SysPretty sys, Fine2Pretty sys (ty sys)) =>
+   SysFinePretty sys, Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v Void -> Fine2PrettyOptions sys -> String
 ctx2string gamma opts = render (ctx2pretty gamma opts) (_fine2pretty'renderOptions opts)
 
 instance
   (DeBruijnLevel v,
    Multimode sys, Functor (ty sys),
-   SysPretty sys, Fine2Pretty sys (ty sys)) =>
+   SysFinePretty sys, Fine2Pretty sys (ty sys)) =>
   Show (Ctx ty sys v Void) where
   show gamma = ctx2string gamma omit
 

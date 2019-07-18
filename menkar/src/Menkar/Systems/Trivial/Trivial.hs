@@ -21,12 +21,28 @@ import Data.Functor.Const
 import Data.Kind hiding (Type)
 import Control.Applicative
 
+---------------------------------
+
 data Trivial :: KSys where
+
+---------------------------------
 
 type instance Raw.SysExprC Trivial = Void
 
+---------------------------------
+
 instance SysParser Trivial where
   sysExprC = empty
+
+---------------------------------
+
+instance SysTrav Trivial where
+
+---------------------------------
+
+instance SysSyntax (Term Trivial) Trivial where
+
+---------------------------------
 
 data TrivMode v = TrivMode
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
@@ -46,6 +62,41 @@ data TrivAnalyzableToken (t :: * -> *) where
   --AnTokenDegree :: TrivAnalyzableToken TrivDegree
   --AnTokenTrivTerm :: TrivAnalyzableToken TrivTerm
   --AnTokenTrivUniHSConstructor :: TrivAnalyzableToken TrivUniHSConstructor
+
+pattern TrivModedModality = ModedModality TrivMode TrivMode TrivModality :: ModedModality Trivial _
+pattern TrivModedDegree = ModedDegree TrivMode TrivDegree :: ModedDegree Trivial _
+
+  {-
+instance Fine2Pretty Trivial U1 where
+  fine2pretty gamma U1 opts = ribbon "*"
+--instance Fine2Pretty Trivial U1 where
+--  fine2pretty gamma U1 = ribbon "hoc"
+-}
+
+instance Multimode Trivial where
+  idMod TrivMode = TrivModality
+  compMod TrivModality TrivMode TrivModality = TrivModality
+  divMod TrivModedModality TrivModedModality = TrivModality
+  divMod _ _ = unreachable
+  crispMod TrivMode = TrivModality
+  dataMode = TrivMode
+  approxLeftAdjointProj TrivModedModality = TrivModality
+  approxLeftAdjointProj _ = unreachable
+  --term2mode t = U1
+  --term2modty t = U1
+
+absurd1 :: V1 x -> a
+absurd1 v = undefined
+
+trivModedModality = TrivModedModality
+
+instance Degrees Trivial where
+  eqDeg d = TrivDegree
+  maybeTopDeg d = Nothing
+  divDeg TrivModedModality TrivModedDegree = TrivDegree
+  divDeg _ _ = unreachable
+
+---------------------------------
 
 type instance Mode Trivial = TrivMode
 type instance Modality Trivial = TrivModality
@@ -116,42 +167,10 @@ instance Analyzable Trivial TrivUniHSConstructor where
   convRel token TrivMode = U1
   extraClassif d t extraT = TrivModedModality :*: U1
 
-instance SysTrav Trivial where
+instance SysAnalyzer Trivial where
+  quickEqSysUnanalyzable sysErr = case sysErr of {}
 
-instance SysSyntax (Term Trivial) Trivial where
-
-pattern TrivModedModality = ModedModality TrivMode TrivMode TrivModality :: ModedModality Trivial _
-pattern TrivModedDegree = ModedDegree TrivMode TrivDegree :: ModedDegree Trivial _
-
-  {-
-instance Fine2Pretty Trivial U1 where
-  fine2pretty gamma U1 opts = ribbon "*"
---instance Fine2Pretty Trivial U1 where
---  fine2pretty gamma U1 = ribbon "hoc"
--}
-
-instance Multimode Trivial where
-  idMod TrivMode = TrivModality
-  compMod TrivModality TrivMode TrivModality = TrivModality
-  divMod TrivModedModality TrivModedModality = TrivModality
-  divMod _ _ = unreachable
-  crispMod TrivMode = TrivModality
-  dataMode = TrivMode
-  approxLeftAdjointProj TrivModedModality = TrivModality
-  approxLeftAdjointProj _ = unreachable
-  --term2mode t = U1
-  --term2modty t = U1
-
-absurd1 :: V1 x -> a
-absurd1 v = undefined
-
-trivModedModality = TrivModedModality
-
-instance Degrees Trivial where
-  eqDeg d = TrivDegree
-  maybeTopDeg d = Nothing
-  divDeg TrivModedModality TrivModedDegree = TrivDegree
-  divDeg _ _ = unreachable
+---------------------------------
 
 instance SysScoper Trivial where
   scopeAnnotation gamma qstring maybeRawArg = scopeFail $ "Illegal annotation: " ++ (render
@@ -172,8 +191,7 @@ instance SysScoper Trivial where
     AnTokenTrivTerm -> case (t :: TrivTerm _) of {}
     AnTokenTrivUniHSConstructor -> case (t :: TrivUniHSConstructor _) of {} -}
 
-instance SysAnalyzer Trivial where
-  quickEqSysUnanalyzable sysErr = case sysErr of {}
+---------------------------------
 
 instance SysWHN Trivial where
   whnormalizeSysTerm gamma t ty reason = case t of {}
@@ -189,6 +207,8 @@ instance SysWHN Trivial where
   leqDeg gamma TrivDegree TrivDegree TrivMode reason = return $ Just True
   isEqDeg gamma TrivDegree TrivMode reason = return $ Just True
   isTopDeg gamma TrivDegree TrivMode reason = return $ Just False
+
+---------------------------------
 
 instance SysTC Trivial where
   checkSysASTUnanalyzable sysError = case sysError of {}
@@ -215,6 +235,14 @@ instance SysTC Trivial where
 
 ----------------------------------
 
+instance Raw.Unparsable Void where
+  unparse' = absurd
+  parserName _ = "empty"
+
+instance Raw.SysRawPretty Trivial where
+
+----------------------------------
+
 instance Fine2Pretty Trivial TrivMode where
   fine2pretty gamma TrivMode opts = ribbon "*"
 
@@ -230,7 +258,7 @@ instance Fine2Pretty Trivial TrivTerm where
 instance Fine2Pretty Trivial TrivUniHSConstructor where
   fine2pretty gamma ty opts = case ty of {}
 
-instance SysPretty Trivial where
+instance SysFinePretty Trivial where
   sysJud2pretty jud opts = case jud of {}
   sysToken2string token = case token of {}
     {-AnTokenMode -> "mode"

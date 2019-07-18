@@ -4,6 +4,7 @@ import Menkar.Fine
 import Menkar.System
 import Menkar.Systems.Reldtt.Basic
 import qualified Menkar.Systems.Reldtt.Raw as Raw
+import qualified Menkar.Systems.Reldtt.PrettyPrint.Raw as Raw
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Monad
 import qualified Menkar.Raw as Raw

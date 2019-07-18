@@ -4,13 +4,14 @@ import Menkar.Fine
 import Menkar.Monad
 import qualified Menkar.Raw as Raw
 import Menkar.Analyzer
+import qualified Menkar.System.PrettyPrint.Raw as Raw
 
 import Data.Functor.Functor1
 
 import Data.Void
 import GHC.Generics
 
-class SysSyntax (Term sys) sys => SysScoper sys where
+class (SysSyntax (Term sys) sys, Raw.SysRawPretty sys) => SysScoper sys where
   scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void -> 
     Raw.Qualified String -> Maybe (Raw.Expr sys) -> sc (Annotation sys v)
   scopeSysExprC :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void ->

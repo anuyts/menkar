@@ -2,6 +2,7 @@ module Menkar.Systems.Reldtt.Parser where
 
 import Menkar.Systems.Reldtt.Basic
 import qualified Menkar.Systems.Reldtt.Raw as Raw
+import qualified Menkar.Systems.Reldtt.PrettyPrint.Raw as Raw
 import Menkar.System.Basic
 import qualified Menkar.System.Raw as Raw
 import Menkar.Parser
