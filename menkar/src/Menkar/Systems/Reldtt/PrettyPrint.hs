@@ -54,10 +54,13 @@ instance Fine2Pretty Reldtt ReldttDegree where
 instance Fine2Pretty Reldtt KnownModty where
   fine2pretty gamma kmu@(KnownModty snout@(ModtySnout idom icod krevdegs) tail) opts =
     ribbon ("\10216" ++ (join $ (++ " ") . knownDeg2string <$> reverse krevdegs) ++ prettyTail)
-      \\\ [" : (" ++ show idom ++ " + " ++| fine2pretty gamma (_modtyTail'dom tail) opts |++ ")",
-           " -> (" ++ show icod ++ " + " ++| fine2pretty gamma (_modtyTail'cod tail) opts |++ ")"]
+      \\\ typeAnnots
     /// ribbon "\10217"
-    where prettyTail = case tail of
+    where typeAnnots = if _fine2pretty'printTypeAnnotations opts
+            then [" : (" ++ show idom ++ " + " ++| fine2pretty gamma (_modtyTail'dom tail) opts |++ ")",
+                  " -> (" ++ show icod ++ " + " ++| fine2pretty gamma (_modtyTail'cod tail) opts |++ ")"]
+            else []
+          prettyTail = case tail of
             TailEmpty -> ""
             TailDisc _ -> " " ++ maxSnoutPretty ++ " " ++ maxSnoutPretty ++ "\8230"
             TailForget _ -> ""
@@ -69,7 +72,10 @@ instance Fine2Pretty Reldtt KnownModty where
 instance Fine2Pretty Reldtt (Const ModtySnout) where
   fine2pretty gamma (Const snout@(ModtySnout idom icod krevdegs)) opts = ribbon $
     "{" ++ (join $ (++ " ") . knownDeg2string <$> reverse krevdegs)
-    ++ " : " ++ show idom ++ " -> " ++ show icod ++ "}"
+    ++ typeAnnot ++ "}"
+    where typeAnnot = if _fine2pretty'printTypeAnnotations opts
+            then " : " ++ show idom ++ " -> " ++ show icod
+            else ""
 
 instance Fine2Pretty Reldtt ModtyTail where
   fine2pretty gamma tail opts = case tail of
