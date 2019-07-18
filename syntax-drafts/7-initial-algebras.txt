@@ -1,0 +1,157 @@
+/*	New: new annotation syntax
+	* Java-like annotations
+*/
+
+module *d(suc d) InitialOfFunctor
+	{*m(crisp) d : Depth}
+	{F : {~ *m(irr) l : Nat} -> Uni d l -> Uni d l}
+	{*m(str)
+		F' :
+		{~ *m(irr) lA lB : Nat}
+		{~ *m(par) A : Uni d lA}
+		{~ *m(par) B : Uni d lB}
+		{f : A -> B}
+		-> F l A -> F l B
+	}
+	{*m(str) *rewrite /*preferrably use extension types instead of rewrite rules*/
+		F'-id :
+		{*m(irr) lA : Nat}
+		{*m(par) A : Uni d lA}
+		-> F' ({a : A} > a) := ({fa : F A} > fa)
+	}
+	{*m(str) *rewrite
+		F'-comp :
+		{*m(irr) lA lB lC : Nat}
+		{*m(par) A : Uni d lA}
+		{*m(par) B : Uni d lB}
+		{*m(par) C : Uni d lC}
+		{*m(con) f : A -> B}
+		{*m(con) g : B -> C}
+		{fa : F A}
+		-> F' g (F' f fa) := F' (a > g (f a)) fa
+	}
+where {
+
+	val IsAlg {~ *m(irr) l : Nat} {A : Uni d l} : Uni d l = F A -> A
+
+	val IsMph {~ *m(irr) lA lB : Nat}
+		{~ A : Uni d lA}
+		{~ B : Uni d lB}
+		{*m(str) mkA : IsAlg A}
+		{*m(str) mkB : IsAlg B}
+		{*m(str) f : A -> B}
+		: Uni d (max lA lB)
+		= f . mkA == mkB . F' f
+
+	val Mu {*m(irr) l : Nat} : Uni d (suc l) = {*m(par) X : Set [d] l} {mkX : IsAlg X} -> X
+
+	val *m(str) fold {~ *m(irr) l : Nat}
+		{*m(par) X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu l -> X
+		= m > m X mkX
+
+	val *m(str) mkMu {~ *m(irr) l : Nat} : IsAlg (Mu l) = fm X mkX mkX > (F' (fold mkX) fm)
+
+	val *m(str) mfold {~ *m(irr) l : Nat} {*m(par) X : Uni [d] l}
+	: IsMph mkMu mkX (fold mkX)
+	= refl
+
+	val Mu' {*m(irr) l : Nat} : Uni d (suc l) = data {
+		mkMu' : F Mu' -> Mu'
+	}
+
+	val *m(str) fold' {~ *m(irr) l : Nat}
+		{*m(par) X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu' l -> X
+		//pattern matching lambda! (separate cases with pipe)
+		= case {
+			/*Of course this is nonsense: F is not recognized as covariant*/
+			mkMu' (fm > fx) > mkX fx
+		}
+
+	val *m(str) mfold' {~ *m(irr) l : Nat} {*m(par) X : Uni d l}
+	: IsMph mkMu' mkX (fold' mkX)
+	= refl
+}
+
+//----------------------------------------------------------
+
+/*	New: new annotation syntax
+	* Annotation consists of single operator character + atomic expression.
+*/
+
+module ^(suc d) InitialOfFunctor
+	{*crisp d : Depth}
+	{F : {~ *irr l : Nat} -> Uni d l -> Uni d l}
+	{*str
+		F' :
+		{~ *irr lA lB : Nat}
+		{~ *par A : Uni d lA}
+		{~ *par B : Uni d lB}
+		{f : A -> B}
+		-> F l A -> F l B
+	}
+	{*str @rewrite /*preferrably use extension types instead of rewrite rules*/
+		F'-id :
+		{*irr lA : Nat}
+		{*par A : Uni d lA}
+		-> F' ({a : A} > a) := ({fa : F A} > fa)
+	}
+	{*str @rewrite
+		F'-comp :
+		{*irr lA lB lC : Nat}
+		{*par A : Uni d lA}
+		{*par B : Uni d lB}
+		{*par C : Uni d lC}
+		{*con f : A -> B}
+		{*con g : B -> C}
+		{fa : F A}
+		-> F' g (F' f fa) := F' (a > g (f a)) fa
+	}
+where {
+
+	val IsAlg {~ *irr l : Nat} {A : Uni d l} : Uni d l = F A -> A
+
+	val IsMph {~ *irr lA lB : Nat}
+		{~ A : Uni d lA}
+		{~ B : Uni d lB}
+		{*str mkA : IsAlg A}
+		{*str mkB : IsAlg B}
+		{*str f : A -> B}
+		: Uni d (max lA lB)
+		= f . mkA == mkB . F' f
+
+	val Mu {*irr l : Nat} : Uni d (suc l) = {*(par) X : Set [d] l} {mkX : IsAlg X} -> X
+
+	val *str fold {~ *irr l : Nat}
+		{*par X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu l -> X
+		= m > m X mkX
+
+	val *str mkMu {~ *irr l : Nat} : IsAlg (Mu l) = fm X mkX mkX > (F' (fold mkX) fm)
+
+	val *str mfold {~ *irr l : Nat} {*par X : Uni [d] l}
+	: IsMph mkMu mkX (fold mkX)
+	= refl
+
+	val Mu' {*irr l : Nat} : Uni d (suc l) = data {
+		mkMu' : F Mu' -> Mu'
+	}
+
+	val *str fold' {~ *irr l : Nat}
+		{*par X : Uni d l}
+		{mkX : IsAlg X}
+		: Mu' l -> X
+		//pattern matching lambda! (separate cases with pipe)
+		= case {
+			/*Of course this is nonsense: F is not recognized as covariant*/
+			mkMu' (fm > fx) > mkX fx
+		}
+
+	val *str mfold' {~ *irr l : Nat} {*par X : Uni d l}
+	: IsMph mkMu' mkX (fold' mkX)
+	= refl
+}
