@@ -19,10 +19,14 @@ import Data.Void
 import Data.Maybe
 import Data.Functor.Const
 import Data.Kind hiding (Type)
+import Control.Applicative
 
 data Trivial :: KSys where
 
 type instance Raw.SysExprC Trivial = Void
+
+instance SysParser Trivial where
+  sysExprC = empty
 
 data TrivMode v = TrivMode
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial))
