@@ -309,10 +309,10 @@ expr gamma fullRawExpr@
                    (_, Nothing) -> scopeFail $ "Body of lambda missing: " ++ Raw.unparse fullRawExpr
 -- Unary operator expression (e.g. @5 ! .{arg = 3}@)
 expr gamma (Raw.ExprOps (Raw.OperandExpr rawExprL) (Just (rawOp, Nothing))) = do
-  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecExplicit (Raw.expr2to1 rawExprL)])
+  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecExplicit (Raw.exprBtoA rawExprL)])
 -- Binary operator expression (e.g. @a == .{A} b@)
 expr gamma (Raw.ExprOps (Raw.OperandExpr rawExprL) (Just (rawOp, Just rawExprR))) = do
-  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecExplicit (Raw.expr2to1 rawExprL),
+  elimination gamma (Raw.addEliminators rawOp [Raw.ElimArg Raw.ArgSpecExplicit (Raw.exprBtoA rawExprL),
                                                Raw.ElimArg Raw.ArgSpecExplicit rawExprR])
 -- Naked telescope
 expr gamma fullRawExpr@(Raw.ExprOps (Raw.OperandTelescope _) Nothing) =

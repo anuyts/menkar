@@ -44,16 +44,16 @@ data Operand (sys :: KSys) =
 data Expr (sys :: KSys) =
   ExprOps (Operand sys) (Maybe (Elimination sys, Maybe (Expr sys))) --deriving Show
 
-expr3to2 :: ExprC sys -> ExprB sys
-expr3to2 e = ExprElimination $ Elimination e []
-expr2to1 :: ExprB sys -> Expr sys
-expr2to1 e = ExprOps (OperandExpr e) Nothing
-expr3to1 :: ExprC sys -> Expr sys
-expr3to1 = expr2to1 . expr3to2
-expr3to1smart :: ExprC sys -> Expr sys
-expr3to1smart (ExprParens e) = e
---expr3to1smart ExprImplicit = expr2to1 $ ExprElimination $ Elimination ExprImplicit [ElimEnd ArgSpecNext]
-expr3to1smart e = expr2to1 . expr3to2 $ e
+exprCtoB :: ExprC sys -> ExprB sys
+exprCtoB e = ExprElimination $ Elimination e []
+exprBtoA :: ExprB sys -> Expr sys
+exprBtoA e = ExprOps (OperandExpr e) Nothing
+exprCtoA :: ExprC sys -> Expr sys
+exprCtoA = exprBtoA . exprCtoB
+exprCtoAsmart :: ExprC sys -> Expr sys
+exprCtoAsmart (ExprParens e) = e
+--exprCto1smart ExprImplicit = exprBtoA $ ExprElimination $ Elimination ExprImplicit [ElimEnd ArgSpecNext]
+exprCtoAsmart e = exprBtoA . exprCtoB $ e
 
 -----------------------------------------------------------
 
