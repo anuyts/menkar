@@ -23,7 +23,7 @@ import Data.Void
 type TestParser = MP.Parsec ParseError String
 instance CanParse (MP.ParsecT ParseError String Identity)
 
-testparse :: String -> IO (Either (MP.ParseErrorBundle String ParseError) Raw.File)
+testparse :: String -> IO (Either (MP.ParseErrorBundle String ParseError) (Raw.File sys))
 testparse filename = do
   let path = "Menkar/code-examples/" ++ filename
   code <- readFile path
@@ -316,7 +316,7 @@ qName = qNonOp <|> parens qOp
 
 -- expression subparsers -----------------------------------
 
-expr3 :: CanParse m => m Raw.ExprC
+expr3 :: CanParse m => m (Raw.ExprC sys)
 expr3 = MP.label "atomic expression" $
   (Raw.ExprParens <$> parens expr) <|>
   (Raw.ExprImplicit <$ loneUnderscore) <?|>
@@ -324,11 +324,11 @@ expr3 = MP.label "atomic expression" $
   (Raw.ExprNatLiteral <$> natLiteralNonSticky) <?|>
   (Raw.ExprGoal <$> goal)
 
-argNext :: CanParse m => m Raw.Eliminator
+argNext :: CanParse m => m (Raw.Eliminator sys)
 argNext = Raw.ElimArg Raw.ArgSpecNext <$> (dotPrecise *> accols expr)
-argExplicit :: CanParse m => m Raw.Eliminator
+argExplicit :: CanParse m => m (Raw.Eliminator sys)
 argExplicit = Raw.ElimArg Raw.ArgSpecExplicit . Raw.expr3to1smart <$> expr3
-argNamed :: CanParse m => m Raw.Eliminator
+argNamed :: CanParse m => m (Raw.Eliminator sys)
 argNamed = (dotPrecise *>) $ accols $ do
   aName <- unqName
   keyword "="
@@ -342,13 +342,13 @@ projectorNumbered = Raw.ProjSpecNumbered <$> (dotPrecise *> natLiteralNonSticky)
 projectorTail :: CanParse m => m Raw.ProjSpec
 projectorTail = Raw.ProjSpecTail <$> (dotPrecise *> dotPrecise *> natLiteralNonSticky)
 
-eliminator :: CanParse m => m Raw.Eliminator
+eliminator :: CanParse m => m (Raw.Eliminator sys)
 eliminator = MP.label "eliminator" $
   argExplicit <|> argNext <?|> argNamed <?|>
   (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
-opEliminator :: CanParse m => m Raw.Eliminator
+opEliminator :: CanParse m => m (Raw.Eliminator sys)
 opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
-annotEliminator :: CanParse m => m Raw.Eliminator
+annotEliminator :: CanParse m => m (Raw.Eliminator sys)
 annotEliminator = MP.label "annotation eliminator" $ argExplicit <|> argNext <?|> argNamed
 
 {-
@@ -361,33 +361,33 @@ argEndNamed = (dotPrecise *>) $ accols $ do
   loneDots
   return $ Raw.ElimEnd $ Raw.ArgSpecNamed aName
 -}
-eliminatorEnd :: CanParse m => m Raw.Eliminator
+eliminatorEnd :: CanParse m => m (Raw.Eliminator sys)
 eliminatorEnd = Raw.ElimDots <$ loneDots
 --eliminatorEnd = MP.label "end-of-elimination marker" $ argEndNext <?|> argEndNamed
 
-eliminators :: CanParse m => m [Raw.Eliminator]
+eliminators :: CanParse m => m [Raw.Eliminator sys]
 eliminators = MP.label "eliminators" $
   (++) <$> manyTry eliminator <*> (fromMaybe [] <$> optionalTry ((: []) <$> eliminatorEnd))
-opEliminators :: CanParse m => m [Raw.Eliminator]
+opEliminators :: CanParse m => m [Raw.Eliminator sys]
 opEliminators = MP.label "operator eliminators" $ manyTry opEliminator
-annotEliminators :: CanParse m => m [Raw.Eliminator]
+annotEliminators :: CanParse m => m [Raw.Eliminator sys]
 annotEliminators = MP.label "annotation eliminators" $ manyTry annotEliminator
 
-elimination :: CanParse m => m Raw.Elimination
+elimination :: CanParse m => m (Raw.Elimination sys)
 elimination = Raw.Elimination <$> expr3 <*> eliminators
 
-expr2 :: CanParse m => m Raw.ExprB
+expr2 :: CanParse m => m (Raw.ExprB sys)
 expr2 = MP.label "operator-free expression" $ Raw.ExprElimination <$> elimination
 
-operand :: CanParse m => m Raw.Operand
+operand :: CanParse m => m (Raw.Operand sys)
 operand = (Raw.OperandTelescope <$> telescopeSome) <?|> (Raw.OperandExpr <$> expr2)
 
-operatorHead :: CanParse m => m Raw.ExprC
+operatorHead :: CanParse m => m (Raw.ExprC sys)
 operatorHead = (ticks $ Raw.ExprParens <$> expr) <|> (Raw.ExprQName <$> qOp)
-operator :: CanParse m => m Raw.Elimination
+operator :: CanParse m => m (Raw.Elimination sys)
 operator = MP.label "operator with eliminations" $ Raw.Elimination <$> operatorHead <*> opEliminators
 
-expr :: CanParse m => m Raw.Expr
+expr :: forall sys m . CanParse m => m (Raw.Expr sys)
 expr = MP.label "expression" $ do
   anOperand <- operand
   rest <- optional $ do
@@ -434,21 +434,21 @@ entryAnnotation = compoundAnnotation
 
 -- annotations - new
 
-annotation :: CanParse m => m Raw.Annotation
+annotation :: CanParse m => m (Raw.Annotation sys)
 annotation = MP.label "annotation" $ do
   annotName <- qWord
   annotArg <- optional expr
   return $ Raw.Annotation annotName annotArg
 
-segmentAnnotations :: CanParse m => m [Raw.Annotation]
+segmentAnnotations :: CanParse m => m [Raw.Annotation sys]
 segmentAnnotations = manyTry $ annotation <* pipe
 
-entryAnnotations :: CanParse m => m [Raw.Annotation]
+entryAnnotations :: CanParse m => m [Raw.Annotation sys]
 entryAnnotations = (brackets $ someSep pipe annotation) <|> return []
 
 -- telescopes
 
-segment :: CanParse m => m Raw.Segment
+segment :: CanParse m => m (Raw.Segment sys)
 segment = MP.label "telescope segment" $ accols $ do
       annots <- segmentAnnotations --fromMaybe [] <$> optionalTry annotationClause
       names <- Raw.DeclNamesSegment <$> some ((Just <$> unqName) <|> (Nothing <$ loneUnderscore))
@@ -461,13 +461,13 @@ segment = MP.label "telescope segment" $ accols $ do
         Raw.decl'content = fromMaybe Raw.DeclContentEmpty $ Raw.DeclContent <$> maybeType
       }
 
-telescopeMany :: CanParse m => m Raw.Telescope
+telescopeMany :: CanParse m => m (Raw.Telescope sys)
 telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segment
 
-telescopeSome :: CanParse m => m Raw.Telescope
+telescopeSome :: CanParse m => m (Raw.Telescope sys)
 telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segment
 
-lhs :: CanParse m => Raw.EntryHeader declSort -> m (Raw.Declaration declSort)
+lhs :: forall sys m declSort . CanParse m => Raw.EntryHeader declSort -> m (Raw.Declaration sys declSort)
 lhs header = MP.label "LHS" $ do
   annots <- entryAnnotations --many entryAnnotation
   name <- case header of
@@ -493,7 +493,7 @@ lhs header = MP.label "LHS" $ do
   context <- telescopeMany
   maybeType <- optional $ do
     keyword ":"
-    expr
+    expr @sys
   declContentType <- case maybeType of
     Nothing -> return $ Raw.DeclContentEmpty
     Just ty -> case header of
@@ -508,7 +508,7 @@ lhs header = MP.label "LHS" $ do
     Raw.decl'content = declContentType
     }
 
-moduleRHS :: CanParse m => m (Raw.RHS (Raw.DeclSortModule b))
+moduleRHS :: CanParse m => m (Raw.RHS sys (Raw.DeclSortModule b))
 moduleRHS = MP.label "module RHS" $
   Raw.RHSModule <$> (keyword "where" *> (accols $ many entry))
   {-do
@@ -516,10 +516,10 @@ moduleRHS = MP.label "module RHS" $
   entries <- accols $ many entry
   return $ Raw.RHSModule entries-}
 
-valRHS :: CanParse m => m (Raw.RHS Raw.DeclSortVal)
+valRHS :: CanParse m => m (Raw.RHS sys Raw.DeclSortVal)
 valRHS = Raw.RHSVal <$> (keyword "=" *> expr) 
 
-rhs :: CanParse m => Raw.EntryHeader declSort -> m (Raw.RHS declSort)
+rhs :: CanParse m => Raw.EntryHeader declSort -> m (Raw.RHS sys declSort)
 rhs Raw.HeaderToplevelModule = moduleRHS
 rhs Raw.HeaderModule = moduleRHS
 rhs Raw.HeaderVal = valRHS
@@ -544,26 +544,26 @@ modul = do
     _ -> fail "Expected a module" -- TODO
 -}
 
-entry :: CanParse m => m Raw.AnyEntry
+entry :: CanParse m => m (Raw.AnyEntry sys)
 entry = MP.label "entry" $ do
   Raw.AnyEntryHeader header <- entryHeader
   anLHS <- lhs header
   anRHS <- rhs header
   return $ Raw.AnyEntry $ Raw.EntryLR header anLHS anRHS
 
-toplevelEntry :: CanParse m => m Raw.AnyEntry
+toplevelEntry :: forall sys m . CanParse m => m (Raw.AnyEntry sys)
 toplevelEntry = MP.label "entry" $ do
   keyword "module"
   anLHS <- lhs Raw.HeaderToplevelModule
   anRHS <- rhs Raw.HeaderToplevelModule
   return $ Raw.AnyEntry $ Raw.EntryLR Raw.HeaderToplevelModule anLHS anRHS
 
-file :: CanParse m => m Raw.File
+file :: forall sys m . CanParse m => m (Raw.File sys)
 file = MP.between manySpace MP.eof $ do
-  Raw.AnyEntry themodule <- toplevelEntry
+  Raw.AnyEntry themodule <- toplevelEntry @sys
   case Raw.entry'header themodule of
     Raw.HeaderToplevelModule -> return $ Raw.File themodule
     _ -> fail $ "Top level entry should be a module : " ++ Raw.unparse themodule
 
-bulk :: CanParse m => m [Raw.AnyEntry]
+bulk :: CanParse m => m [Raw.AnyEntry sys]
 bulk = MP.between manySpace MP.eof $ many entry

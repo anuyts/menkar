@@ -51,7 +51,7 @@ instance Unparsable (Qualified Name) where
   unparse' qs@(Qualified modules (Name Op name)) = "(" ++| unparseQualified qs |++ ")"
   parserName _ = "qName"
 
-instance Unparsable Eliminator where
+instance Unparsable (Eliminator sys) where
   --unparse' (ElimEnd ArgSpecNext) = ribbon "..."
   --unparse' (ElimEnd ArgSpecExplicit) = ribbon "...<AT_NEXT_EXPLICIT>"
   --unparse' (ElimEnd (ArgSpecNamed name)) = ".{" ++| unparse' name |++ " = ...}"
@@ -70,7 +70,7 @@ instance Unparsable Eliminator where
   parserName (ElimArg _ _) = "eliminator"
   parserName (ElimProj _) = "eliminator"
 
-instance Unparsable ExprC where
+instance Unparsable (ExprC sys) where
   unparse' (ExprQName qname) = unparse' qname
   unparse' (ExprParens expr) = "(" ++| unparse' expr |++ ")"
   unparse' (ExprNatLiteral n) = ribbon $ show n
@@ -78,38 +78,38 @@ instance Unparsable ExprC where
   unparse' (ExprGoal str) = ribbon $ '?' : str
   parserName _ = "expr3"
 
-unparseOpElimination :: Elimination -> PrettyTree String
+unparseOpElimination :: Elimination sys -> PrettyTree String
 unparseOpElimination (Elimination (ExprQName (Qualified [] (Name Op opname))) eliminators)
   = ribbon opname \\\ (" " ++|) . unparse' <$> eliminators
 unparseOpElimination (Elimination expr3 eliminators) = "`" ++| unparse' expr3 \\\ (" " ++|) . unparse' <$> eliminators
-instance Unparsable Elimination where
+instance Unparsable (Elimination sys) where
   unparse' (Elimination expr3 eliminators) = unparse' expr3 \\\ (" " ++|) . unparse' <$> eliminators
   parserName _ = "elimination"
 
-instance Unparsable ExprB where
+instance Unparsable (ExprB sys) where
   unparse' (ExprElimination elim) = unparse' elim
   parserName _ = "expr2"
 
-instance Unparsable Operand where
+instance Unparsable (Operand sys) where
   unparse' (OperandTelescope telescope) = unparse' telescope
   unparse' (OperandExpr expr2) = unparse' expr2
   parserName _ = "operand"
 
-unparseExprRHS :: (Elimination, Maybe Expr) -> [PrettyTree String]
+unparseExprRHS :: (Elimination sys, Maybe (Expr sys)) -> [PrettyTree String]
 unparseExprRHS (elim, Nothing) = [" " ++| unparseOpElimination elim]
 unparseExprRHS (elim, Just expr) =
   let (operandPretty, restPretty) = unparseExpr expr
   in  (" " ++| unparseOpElimination elim |++ " " |+| operandPretty) : restPretty
-unparseExpr :: Expr -> (PrettyTree String, [PrettyTree String])
+unparseExpr :: Expr sys -> (PrettyTree String, [PrettyTree String])
 unparseExpr (ExprOps operand x) = (unparse' operand, fromMaybe [] (unparseExprRHS <$> x))
 
-instance Unparsable Expr where
+instance Unparsable (Expr sys) where
   unparse' expr = 
     let (operandPretty, restPretty) = unparseExpr expr
     in  operandPretty \\\ restPretty
   parserName _ = "expr"
 
-instance Unparsable Annotation where
+instance Unparsable (Annotation sys) where
   unparse' (Annotation qstr Nothing) = unparse' qstr |++ " | "
   unparse' (Annotation qstr (Just arg)) = (unparse' qstr \\\ [unparse' arg]) |++ " | "
   {-
@@ -120,13 +120,13 @@ instance Unparsable Annotation where
   -}
   parserName _ = "annotation"
 
-unparseAnnotationClause :: [Annotation] -> PrettyTree String
+unparseAnnotationClause :: [Annotation sys] -> PrettyTree String
 unparseAnnotationClause annots = ribbonEmpty \\\ unparse' <$> annots
 
-unparseEntryAnnotations :: [Annotation] -> PrettyTree String
+unparseEntryAnnotations :: [Annotation sys] -> PrettyTree String
 unparseEntryAnnotations annots = "[" ++| unparseAnnotationClause annots |++ "]"
 
-instance Unparsable Segment where
+instance Unparsable (Segment sys) where
   unparse' (Segment decl) = "{" ++| content |++ "} "
     where content = case (decl'names decl, decl'content decl) of
             (DeclNamesSegment names, DeclContent typ) ->
@@ -140,7 +140,7 @@ instance Unparsable Segment where
               |+| unparse' (decl'telescope decl)
   parserName _ = "segment"
 
-instance Unparsable Telescope where
+instance Unparsable (Telescope sys) where
   unparse' (Telescope segments) = treeGroup $ unparse' <$> segments
   parserName _ = "telescopeMany"
 
@@ -154,13 +154,13 @@ instance Unparsable (DeclNames declSort) where
   parserName (DeclNamesModule _) = "(Raw.DeclNamesModule <$> unqName)"
   parserName (DeclNamesVal _) = "(Raw.DeclNamesVal <$> unqName)"
 
-unparseLHSUntyped :: Declaration declSort -> PrettyTree String
+unparseLHSUntyped :: Declaration sys declSort -> PrettyTree String
 unparseLHSUntyped decl =
     unparseEntryAnnotations (decl'annotations decl)
     |+| unparse' (decl'names decl) |++ " "
     |+| unparse' (decl'telescope decl)
     ||| ribbonEmpty -- as a guard against \+\
-instance Unparsable (Declaration declSort) where
+instance Unparsable (Declaration sys declSort) where
   unparse' lhs = case decl'content lhs of
     DeclContentEmpty -> unparseLHSUntyped lhs
     DeclContent typ -> 
@@ -175,7 +175,7 @@ instance Unparsable (Declaration declSort) where
   parserName _ = "lhs"
   -}
   
-instance Unparsable (RHS declSort) where
+instance Unparsable (RHS sys declSort) where
   unparse' (RHSModule entries) = ribbon " where {"
                                  \\\ (entries >>= (\ entry -> [unparse' entry, ribbon "        "]))
                                  /// ribbon "}"
@@ -191,15 +191,15 @@ instance Unparsable LREntry where
   parserName _ = "lrEntry"
 -}
 
-instance Unparsable (Entry declSort) where
+instance Unparsable (Entry sys declSort) where
   unparse' (EntryLR header lhs rhs) = headerKeyword header ++ " " ++| unparse' lhs \+\ [unparse' rhs]
   parserName _ = "entry"
 
-instance Unparsable AnyEntry where
+instance Unparsable (AnyEntry sys) where
   unparse' (AnyEntry entry) = unparse' entry
   parserName _ = "Raw.AnyEntry <$> entry"
 
-instance Unparsable File where
+instance Unparsable (File sys) where
   unparse' (File entry) = unparse' entry
   parserName _ = "file"
   showUnparsable x = "(quickParse file \"\n" ++ unparse x ++ "\n\")"
@@ -212,33 +212,33 @@ instance Show (Qualified String) where
   show = showUnparsable
 instance Show (Qualified Name) where
   show = showUnparsable
-instance Show Eliminator where
+instance Show (Eliminator sys) where
   show = showUnparsable
-instance Show ExprC where
+instance Show (ExprC sys) where
   show = showUnparsable
-instance Show Elimination where
+instance Show (Elimination sys) where
   show = showUnparsable
-instance Show ExprB where
+instance Show (ExprB sys) where
   show = showUnparsable
-instance Show Operand where
+instance Show (Operand sys) where
   show = showUnparsable
-instance Show Expr where
+instance Show (Expr sys) where
   show = showUnparsable
-instance Show Annotation where
+instance Show (Annotation sys) where
   show = showUnparsable
-instance Show Segment where
+instance Show (Segment sys) where
   show = showUnparsable
-instance Show Telescope where
+instance Show (Telescope sys) where
   show = showUnparsable
 instance Show (DeclNames declSort) where
   show = showUnparsable
-instance Show (Declaration declSort) where
+instance Show (Declaration sys declSort) where
   show = showUnparsable
-instance Show (RHS declSort) where
+instance Show (RHS sys declSort) where
   show = showUnparsable
-instance Show (Entry declSort) where
+instance Show (Entry sys declSort) where
   show = showUnparsable
-instance Show AnyEntry where
+instance Show (AnyEntry sys) where
   show = showUnparsable
-instance Show File where
+instance Show (File sys) where
   show = showUnparsable
