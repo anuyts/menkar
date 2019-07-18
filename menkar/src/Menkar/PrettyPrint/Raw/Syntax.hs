@@ -76,7 +76,8 @@ instance Unparsable (ExprC sys) where
   unparse' (ExprNatLiteral n) = ribbon $ show n
   unparse' ExprImplicit = ribbon "_"
   unparse' (ExprGoal str) = ribbon $ '?' : str
-  parserName _ = "expr3"
+  unparse' (ExprSys sysExprC) = unparse' sysExprC
+  parserName _ = "exprC"
 
 unparseOpElimination :: Elimination sys -> PrettyTree String
 unparseOpElimination (Elimination (ExprQName (Qualified [] (Name Op opname))) eliminators)
@@ -88,7 +89,7 @@ instance Unparsable (Elimination sys) where
 
 instance Unparsable (ExprB sys) where
   unparse' (ExprElimination elim) = unparse' elim
-  parserName _ = "expr2"
+  parserName _ = "exprB"
 
 instance Unparsable (Operand sys) where
   unparse' (OperandTelescope telescope) = unparse' telescope
