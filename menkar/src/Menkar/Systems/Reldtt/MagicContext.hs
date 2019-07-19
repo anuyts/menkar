@@ -87,10 +87,10 @@ valSuc = val NonOp "suc" (idMod dataMode) $
       (hs2type NatType)
   )
 
-{- | @indNat
+{- | @val *id indNat
         {~ *id dcod : Mode}
         {~ *id mu : Modality d 0}
-        *forget(d)
+        *(forget d)
         {C : {*mu n : Nat} -> Set}
         {cz : C 0}
         {cs : {*mu n : Nat} -> C n -> C (suc n)}
@@ -136,3 +136,15 @@ valIndNat = val NonOp "indNat" (idMod dataMode) $
                      `arrow` (appMotive $ Expr2 $ TermCons $ ConsSuc $ n)
     tyCS :: DeBruijnLevel v => UniHSConstructor Reldtt v
     tyCS = pi (segEx NonOp "n" (mvar 1 dataMode (dvar 0)) $ hs2type NatType) (hs2type $ tyCS' $ Var2 $ VarLast)
+
+{- | @val *id UniHS {*id d : Mode} *(forget d) : UniHS d = UniHS d @
+-}
+valUniHS :: Entry Reldtt Void
+valUniHS = val NonOp "UniHS" (idMod dataMode) $
+  segEx NonOp "d" {- var 0 -} (idMod dataMode) (BareSysType $ SysTypeMode) :|-
+  moded (forget $ dvar 0) :**
+  Telescoped (
+    ValRHS
+      (hs2term $ UniHS $ dvar 0)
+      (hs2type $ UniHS $ dvar 0)
+  )
