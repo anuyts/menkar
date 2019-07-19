@@ -7,6 +7,7 @@ import Menkar.Fine
 --import Menkar.Fine.Multimode
 import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
+import Menkar.Systems.Reldtt.Analyzer
 import Menkar.Basic.Context
 import Menkar.Analyzer
 
@@ -524,3 +525,42 @@ valFunext = val NonOp "funext" (idMod dataMode) $
     tyEqPi = pi segA (appEqCod (Var2 $ VarLast))
 
 -----------------
+
+magicEntries :: [Entry Reldtt Void]
+magicEntries = 
+  valNat :
+  valSuc :
+  valIndNat :
+  valUniHS :
+  valUnitType :
+  valUnitTerm :
+  valIndBox :
+  valPair :
+  valIndPair :
+  valEmpty :
+  valIndEmpty :
+  valEqType :
+  valRefl :
+  valIndEq :
+  valFunext :
+  []
+
+magicContext :: Ctx Type Reldtt (VarInModule Void) Void
+magicContext = CtxEmpty dataMode :<...> ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
+
+----------------------------------------------
+
+magicModuleCorrect :: Judgement Reldtt
+magicModuleCorrect =
+  (Jud
+    (AnTokenDeclaration $ AnTokenTelescoped $ AnTokenModuleRHS)
+    (CtxEmpty dataMode)
+    (Declaration
+      (DeclNameModule "magic")
+      (idModedModality dataMode)
+      Explicit
+      (Telescoped $ ModuleRHS $ absurd <$> (Compose $ reverse magicEntries))
+    )
+    U1
+    (ClassifWillBe U1)
+  )
