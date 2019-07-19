@@ -605,7 +605,7 @@ deriving instance (
     CanSwallow (Term sys) (ty sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (Telescoped ty rhs sys)
-infixr 3 :|-
+infixr 3 :|-, :**
 
 joinTelescoped :: Telescoped ty (Telescoped ty rhs) sys v -> Telescoped ty rhs sys v
 joinTelescoped (Telescoped tr) = tr
