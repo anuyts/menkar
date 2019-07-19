@@ -93,20 +93,22 @@ valNat = val NonOp "Nat" (idMod dataMode) $
       (hs2type $ UniHS $ dvar 0)
   )
 
--- | @val *id suc {n : Nat} : Nat = suc n@
+-- | @val *id suc {~ *id d : Mode} {*(forget d)} {n : Nat} : Nat = suc n@
 valSuc :: Entry Reldtt Void
 valSuc = val NonOp "suc" (idMod dataMode) $
-  segEx NonOp "n" (idMod dataMode) (hs2type NatType) :|-
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  moded (forget $ dvar 0) :**
+  segEx NonOp "n" {- var 1 -} (idMod $ dvar 0) (hs2type NatType) :|-
   Telescoped (
     ValRHS
-      (Expr2 $ TermCons $ ConsSuc $ var 0)
+      (Expr2 $ TermCons $ ConsSuc $ var 1)
       (hs2type NatType)
   )
 
 {- | @val *id indNat
-        {~ *id dmot : Mode}
-        {~ *id nu : Modality d 0}
-        *(forget d)
+        {~ *id d dmot : Mode}
+        {~ *id nu : Modality d dmot}
+        *(forget dmot)
         {C : {*nu n : Nat} -> Set}
         {cz : C 0}
         {cs : {*nu n : Nat} -> C n -> C (suc n)}
@@ -116,42 +118,43 @@ valSuc = val NonOp "suc" (idMod dataMode) $
 -- TODO types of cz and cs and rhs need to be lifted to a higher universe
 valIndNat :: Entry Reldtt Void
 valIndNat = val NonOp "indNat" (idMod dataMode) $
-  segIm NonOp "dmot" {- var 0 -} (idMod dataMode) (tyMode) :|-
-  segIm NonOp "nu" {- var 1 -} (idMod dataMode) (tyModty dataMode (dvar 0)) :|-
-  moded (forget $ dvar 0) :**
-  segEx NonOp "C" {- var 2 -} (idMod $ dvar 0) (hs2type $ tyMotive) :|-
-  segEx NonOp "cz" {- var 3 -} (idMod $ dvar 0) (tyCZ) :|-
-  segEx NonOp "cs" {- var 4 -} (idMod $ dvar 0) (hs2type $ tyCS) :|-
-  segEx NonOp "n*" {- var 5 -} (mvar 1 dataMode (dvar 0)) (hs2type NatType) :|-
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) (tyMode) :|-
+  segIm NonOp "dmot" {- var 1 -} (idMod dataMode) (tyMode) :|-
+  segIm NonOp "nu" {- var 2 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  moded (forget $ dvar 1) :**
+  segEx NonOp "C" {- var 3 -} (idMod $ dvar 1) (hs2type $ tyMotive) :|-
+  segEx NonOp "cz" {- var 4 -} (idMod $ dvar 1) (tyCZ) :|-
+  segEx NonOp "cs" {- var 5 -} (idMod $ dvar 1) (hs2type $ tyCS) :|-
+  segEx NonOp "n*" {- var 6 -} (mvar 2 (dvar 0) (dvar 1)) (hs2type NatType) :|-
   Telescoped (
     ValRHS
-      (elim (var 5) NatType (mvar 1 dataMode (dvar 0)) $ ElimDep
-        (nbind NonOp "n" {- var 6 -} $ appMotive (var 6))
+      (elim (var 6) NatType (mvar 2 (dvar 0) (dvar 1)) $ ElimDep
+        (nbind NonOp "n" {- var 7 -} $ appMotive (var 7))
         (ElimNat
-          (var 3)
-          (nbind NonOp "n" {- var 6 -} $ nbind NonOp "ihyp" {- var 7 -} $
+          (var 4)
+          (nbind NonOp "n" {- var 7 -} $ nbind NonOp "ihyp" {- var 8 -} $
             app 
-              (app (var 4) (tyCS) (dvar 0) (var 6))
-              (tyCS' (var 6))
-              (dvar 0)
-              (var 7)
+              (app (var 5) (tyCS) (dvar 1) (var 7))
+              (tyCS' (var 7))
+              (dvar 1)
+              (var 8)
           )
         )
       )
-      (appMotive (var 5))
+      (appMotive (var 6))
   )
   where
     tyMotive :: DeBruijnLevel v => UniHSConstructor Reldtt v
-    tyMotive = (segEx NonOp "n" (mvar 1 dataMode (dvar 0)) $ hs2type NatType) `arrow` (hs2type $ UniHS $ dvar 0)
+    tyMotive = (segEx NonOp "n" (mvar 2 (dvar 0) (dvar 1)) $ hs2type NatType) `arrow` (hs2type $ UniHS $ dvar 1)
     appMotive :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
-    appMotive arg = Type $ app (var 2) tyMotive (dvar 0) arg
+    appMotive arg = Type $ app (var 3) tyMotive (dvar 1) arg
     tyCZ :: DeBruijnLevel v => Type Reldtt v
     tyCZ = appMotive $ Expr2 $ TermCons $ ConsZero
     tyCS' :: DeBruijnLevel v => Term Reldtt v -> UniHSConstructor Reldtt v
-    tyCS' n = (segEx NonOp "ihyp" (idMod $ dvar 0) $ appMotive n)
+    tyCS' n = (segEx NonOp "ihyp" (idMod $ dvar 1) $ appMotive n)
                      `arrow` (appMotive $ Expr2 $ TermCons $ ConsSuc $ n)
     tyCS :: DeBruijnLevel v => UniHSConstructor Reldtt v
-    tyCS = pi (segEx NonOp "n" (mvar 1 dataMode (dvar 0)) $ hs2type NatType) (hs2type $ tyCS' $ Var2 $ VarLast)
+    tyCS = pi (segEx NonOp "n" (mvar 2 (dvar 0) (dvar 1)) $ hs2type NatType) (hs2type $ tyCS' $ Var2 $ VarLast)
 
 -----------------
 
