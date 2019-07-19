@@ -148,3 +148,17 @@ valUniHS = val NonOp "UniHS" (idMod dataMode) $
       (hs2term $ UniHS $ dvar 0)
       (hs2type $ UniHS $ dvar 0)
   )
+
+-- | @val *id Unit : Set = Unit@
+valUnitType :: Entry Reldtt Void
+valUnitType = val NonOp "Unit" (idMod dataMode) $
+  Telescoped (
+    ValRHS
+      (hs2term UnitType)
+      (hs2type $ UniHS dataMode)
+  )
+
+-- | @val *id unit : Unit = unit@
+valUnitTerm :: Entry Reldtt Void
+valUnitTerm = val NonOp "unit" (idMod dataMode) $
+  Telescoped $ ValRHS (Expr2 $ TermCons $ ConsUnit) (hs2type UnitType)
