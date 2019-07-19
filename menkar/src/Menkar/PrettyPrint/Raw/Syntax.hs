@@ -76,7 +76,6 @@ instance SysRawPretty sys => Unparsable (ExprC sys) where
   unparse' (ExprNatLiteral n) = ribbon $ show n
   unparse' ExprImplicit = ribbon "_"
   unparse' (ExprGoal str) = ribbon $ '?' : str
-  unparse' (ExprBox seg) = "Box " ++| unparse' seg
   unparse' (ExprSys sysExprC) = unparse' sysExprC
   parserName _ = "exprC"
 

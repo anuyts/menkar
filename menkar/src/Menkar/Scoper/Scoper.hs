@@ -83,11 +83,6 @@ exprC gamma (Raw.ExprGoal str) = do
   let algGoal = AlgGoal str $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
   result <- newMetaTermNoCheck {-eqDeg-} gamma MetaBlocked (Just $ algGoal) "Infer goal's value."
   return $ Expr2 $ TermAlgorithm algGoal result
-exprC gamma (Raw.ExprBox rawSeg) = do
-  fineSegs <- segment gamma rawSeg
-  case fineSegs of
-    (fineSeg :|- Telescoped Unit2) -> return $ hs2term $ BoxType fineSeg
-    _ -> scopeFail "The `Box` type constructor requires a single variable name (or underscore)."
 exprC gamma (Raw.ExprSys sysExprC) = scopeSysExprC gamma sysExprC
 
 {-| @'elimination' gamma rawElim@ scopes @rawElim@ to a term. -}

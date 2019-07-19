@@ -49,7 +49,6 @@ exprC = MP.label "atomic expression" $
   (Raw.ExprQName <$> qName) <?|>
   (Raw.ExprNatLiteral <$> natLiteralNonSticky) <?|>
   (Raw.ExprGoal <$> goal) <?|>
-  (Raw.ExprBox <$> (keyword "Box" *> segment)) <?|>
   (Raw.ExprSys <$> sysExprC @sys)
 
 argNext :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
@@ -76,8 +75,8 @@ eliminator = MP.label "eliminator" $
   (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
 opEliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
 opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
---annotEliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
---annotEliminator = MP.label "annotation eliminator" $ argExplicit <|> argNext <?|> argNamed
+annotEliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
+annotEliminator = MP.label "annotation eliminator" $ argExplicit <|> argNext <?|> argNamed
 
 {-
 argEndNext :: CanParse m => m Raw.Eliminator
@@ -98,8 +97,8 @@ eliminators = MP.label "eliminators" $
   (++) <$> manyTry eliminator <*> (fromMaybe [] <$> optionalTry ((: []) <$> eliminatorEnd))
 opEliminators :: (SysParser sys, CanParse m) => m [Raw.Eliminator sys]
 opEliminators = MP.label "operator eliminators" $ manyTry opEliminator
---annotEliminators :: (SysParser sys, CanParse m) => m [Raw.Eliminator sys]
---annotEliminators = MP.label "annotation eliminators" $ manyTry annotEliminator
+annotEliminators :: (SysParser sys, CanParse m) => m [Raw.Eliminator sys]
+annotEliminators = MP.label "annotation eliminators" $ manyTry annotEliminator
 
 elimination :: (SysParser sys, CanParse m) => m (Raw.Elimination sys)
 elimination = Raw.Elimination <$> exprC <*> eliminators
