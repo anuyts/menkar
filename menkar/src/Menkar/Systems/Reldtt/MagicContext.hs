@@ -373,4 +373,34 @@ valEmpty = val NonOp "Empty" (idMod dataMode) $
       (hs2type $ UniHS $ dvar 0)
   )
 
+{-| @val *id indEmpty
+        {~ *id d dmot : Mode}
+        {~ *id nu : Modality d dmot}
+        *(forget dmot)
+        {C : {*nu _ : Empty} -> UniHS}
+        {*nu e0 : Empty}
+        : C e0 = indEmpty (e > C e) e0@
+-}
+valIndEmpty :: Entry Reldtt Void
+valIndEmpty = val NonOp "indEmpty" (idMod dataMode) $
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) (tyMode) :|-
+  segIm NonOp "dmot" {- var 1 -} (idMod dataMode) (tyMode) :|-
+  segIm NonOp "nu" {- var 2 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  moded (forget $ dvar 1) :**
+  segEx NonOp "C" {- var 3 -} (idMod $ dvar 1) (hs2type $ tyMotive) :|-
+  segEx NonOp "e*" {- var 4 -} (idMod $ dvar 0) (hs2type $ EmptyType) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 4) EmptyType (mvar 2 (dvar 0) (dvar 1)) $
+       ElimDep (nbind NonOp "e" {- var 5 -} $ appMotive $ var 5) $
+       ElimEmpty
+      )
+      (appMotive $ var 4)
+  )
+  where
+    tyMotive :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyMotive = (segEx NonOp "e" (mvar 2 (dvar 0) (dvar 1)) $ hs2type EmptyType) `arrow` (hs2type $ UniHS $ dvar 1)
+    appMotive :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
+    appMotive arg = Type $ app (var 3) tyMotive (dvar 1) arg
+
 -----------------
