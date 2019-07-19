@@ -74,12 +74,7 @@ tyModty dom cod = BareSysType $ SysTypeModty dom cod
 
 comp :: Modality Reldtt v -> Modality Reldtt v -> Modality Reldtt v
 comp nu mu = ChainModtyTerm (_chainModty'dom mu) (_chainModty'cod nu) $
-  BareModty $ ModtyTermComp
-  (_chainModty'cod nu)
-  nu
-  (_chainModty'dom nu)
-  mu
-  (_chainModty'dom mu)
+  BareModty $ ModtyTermComp nu mu
 
 ----------------------------------------------
 

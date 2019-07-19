@@ -266,11 +266,12 @@ data ModtyTerm v =
   ModtyTermDiv (Term Reldtt v) (Term Reldtt v) |
   
   ModtyTermComp
-    (Mode Reldtt v) {-^ Codomain of result -}
+    --(Mode Reldtt v) {-^ Codomain of result -}
     (ChainModty v) {-^ The postcomposite -}
-    (Mode Reldtt v) {-^ Intermediate mode -}
+    --(Mode Reldtt v) {-^ Intermediate mode -}
     (ChainModty v) {-^ The precomposite -}
-    (Mode Reldtt v) {-^ Domain of result -} |
+    --(Mode Reldtt v) {-^ Domain of result -}
+  |
   ModtyTermApproxLeftAdjointProj
     (Mode Reldtt v) {-^ Domain of result -}
     (Mode Reldtt v) {-^ Codomain of result -}
@@ -318,7 +319,7 @@ instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
   idMod d = ChainModtyKnown (idKnownModty d)
-  compMod mu2 mid mu1 = ChainModtyTerm dom cod $ BareModty $ ModtyTermComp cod mu2 mid mu1 dom
+  compMod mu2 mid mu1 = ChainModtyTerm dom cod $ BareModty $ ModtyTermComp mu2 mu1
     where dom = _chainModty'dom mu1
           cod = _chainModty'cod mu2
     --ChainModtyLink (idKnownModty $ _chainModty'cod mu2) (BareChainModty mu2) $

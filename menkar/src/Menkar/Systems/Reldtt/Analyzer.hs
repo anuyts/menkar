@@ -545,8 +545,8 @@ instance Analyzable Reldtt ModtyTerm where
           ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) (getAnalysisTrav rmuArg)
         TokenTC -> AnalysisTC $ domResult :*: codResult
         TokenRel -> AnalysisRel
-    ModtyTermComp cod mu2 mid mu1 dom -> Right $ do
-      rdom <- fmapCoe runIdentity <$> h Identity
+    ModtyTermComp mu2 mu1 -> Right $ do
+      {-rdom <- fmapCoe runIdentity <$> h Identity
         (conditional $ ModtyTermComp unreachable unreachable unreachable unreachable unreachable)
         (\ gamma' -> \ case
             (Classification modtyTerm'@(ModtyTermComp cod' mu2' mid' mu1' dom') U1 maybeDomCod) ->
@@ -575,36 +575,39 @@ instance Analyzable Reldtt ModtyTerm where
         )
         extCtxId
         (\_ U1 -> U1)
-        (AddressInfo ["codomain"] NoFocus omit)
+        (AddressInfo ["codomain"] NoFocus omit)-}
       rmu1 <- fmapCoe runIdentity <$> h Identity
-        (conditional $ ModtyTermComp (getAnalysisTrav rcod)
-                         unreachable (getAnalysisTrav rmid)
-                         unreachable (getAnalysisTrav rdom))
+        --(conditional $ ModtyTermComp (getAnalysisTrav rcod)
+        --                 unreachable (getAnalysisTrav rmid)
+        --                 unreachable (getAnalysisTrav rdom))
+        (conditional $ ModtyTermComp unreachable unreachable)
         (\ gamma' -> \ case
-            (Classification modtyTerm'@(ModtyTermComp cod' mu2' mid' mu1' dom') U1 maybeDomCod) ->
-              Just $ Identity !<$> Classification mu1' U1 (ClassifMustBe $ dom' :*: mid')
+            (Classification modtyTerm'@(ModtyTermComp mu2' mu1') U1 maybeDomCod) ->
+              Just $ Identity !<$> Classification mu1' U1 ClassifUnknown
             otherwise -> Nothing
         )
         extCtxId
         (\_ U1 -> Const ModEq)
         (AddressInfo ["precomposite"] FocusEliminee omit)
       rmu2 <- fmapCoe runIdentity <$> h Identity
-        (conditional $ ModtyTermComp (getAnalysisTrav rcod)
-                         unreachable (getAnalysisTrav rmid)
-                         unreachable (getAnalysisTrav rdom))
+        --(conditional $ ModtyTermComp (getAnalysisTrav rcod)
+        --                 unreachable (getAnalysisTrav rmid)
+        --                 unreachable (getAnalysisTrav rdom))
+        (conditional $ ModtyTermComp unreachable unreachable)
         (\ gamma' -> \ case
-            (Classification modtyTerm'@(ModtyTermComp cod' mu2' mid' mu1' dom') U1 maybeDomCod) ->
-              Just $ Identity !<$> Classification mu2' U1 (ClassifMustBe $ mid' :*: cod')
+            (Classification modtyTerm'@(ModtyTermComp mu2' mu1') U1 maybeDomCod) ->
+              Just $ Identity !<$> Classification mu2' U1 (ClassifMustBe $ _chainModty'cod mu1' :*: _chainModty'cod mu2')
             otherwise -> Nothing
         )
         extCtxId
         (\_ U1 -> Const ModEq)
         (AddressInfo ["postcomposite"] FocusEliminee omit)
       return $ case token of
-        TokenTrav -> AnalysisTrav $ ModtyTermComp (getAnalysisTrav rcod)
-                           (getAnalysisTrav rmu2) (getAnalysisTrav rmid)
-                           (getAnalysisTrav rmu1) (getAnalysisTrav rdom)
-        TokenTC -> AnalysisTC $ dom :*: cod
+        --TokenTrav -> AnalysisTrav $ ModtyTermComp (getAnalysisTrav rcod)
+        --                   (getAnalysisTrav rmu2) (getAnalysisTrav rmid)
+        --                   (getAnalysisTrav rmu1) (getAnalysisTrav rdom)
+        TokenTrav -> AnalysisTrav $ ModtyTermComp (getAnalysisTrav rmu2) (getAnalysisTrav rmu1)
+        TokenTC -> AnalysisTC $ _chainModty'dom mu1 :*: _chainModty'cod mu2
         TokenRel -> AnalysisRel
     ModtyTermUnavailable dom cod -> unreachable -- only for prettyprinting
 

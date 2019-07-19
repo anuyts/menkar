@@ -398,15 +398,15 @@ whnormalizeModtyTerm gamma mu reason = case mu of
         Just kmu -> return $ ModtyTermChain $ ChainModtyKnown $ kmu
         Nothing -> return mu
       otherwise -> return mu
-  ModtyTermComp cod chmu2 mid chmu1 dom -> do
+  ModtyTermComp chmu2 chmu1 -> do
     (chmu1, metas1) <- listen $ whnormalizeChainModty gamma chmu1 reason
     (chmu2, metas2) <- listen $ whnormalizeChainModty gamma chmu2 reason
     case (metas1, metas2) of
       ([], []) -> return $ ModtyTermChain $
-        ChainModtyLink (idKnownModty $ cod) (BareChainModty chmu2) $
-        ChainModtyLink (idKnownModty $ mid) (BareChainModty chmu1) $
-        ChainModtyKnown (idKnownModty $ dom)
-      (_, _) -> return $ ModtyTermComp cod chmu2 mid chmu1 dom
+        ChainModtyLink (idKnownModty $ _chainModty'cod chmu2) (BareChainModty chmu2) $
+        ChainModtyLink (idKnownModty $ _chainModty'dom chmu2) (BareChainModty chmu1) $
+        ChainModtyKnown (idKnownModty $ _chainModty'dom chmu1)
+      (_, _) -> return $ ModtyTermComp chmu2 chmu1
   ModtyTermUnavailable ddom dcod -> return mu
   
 whnormalizeReldttDegree :: forall whn v .
