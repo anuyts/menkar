@@ -26,6 +26,7 @@ data ExprC (sys :: KSys) =
   ExprNatLiteral Nat |
   ExprImplicit |
   ExprGoal String |
+  ExprBox (Segment sys) |
   ExprSys (SysExprC sys)
   --deriving Show
 

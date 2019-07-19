@@ -1,0 +1,7 @@
+val Uni : UniHS = {*par T : UniHS} ><!
+val code {*par T : UniHS} : Uni = box T
+val El : {*str T : Uni} : UniHS = T ...
+
+val Uni : UniHS = Box {*par T : UniHS}
+val code {*par T : UniHS} : Uni = box T
+val El : {*str T : Uni} : UniHS = T ...
