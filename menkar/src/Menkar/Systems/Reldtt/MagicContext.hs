@@ -85,10 +85,12 @@ comp nu mu = ChainModtyTerm (_chainModty'dom mu) (_chainModty'cod nu) $
 -- | @val *id Nat : Set = Nat@
 valNat :: Entry Reldtt Void
 valNat = val NonOp "Nat" (idMod dataMode) $
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  moded (forget $ dvar 0) :**
   Telescoped (
     ValRHS
       (hs2term NatType)
-      (hs2type $ UniHS dataMode)
+      (hs2type $ UniHS $ dvar 0)
   )
 
 -- | @val *id suc {n : Nat} : Nat = suc n@
@@ -170,16 +172,24 @@ valUniHS = val NonOp "UniHS" (idMod dataMode) $
 -- | @val *id Unit : Set = Unit@
 valUnitType :: Entry Reldtt Void
 valUnitType = val NonOp "Unit" (idMod dataMode) $
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  moded (forget $ dvar 0) :**
   Telescoped (
     ValRHS
       (hs2term UnitType)
-      (hs2type $ UniHS dataMode)
+      (hs2type $ UniHS $ dvar 0)
   )
 
--- | @val *id unit : Unit = unit@
+-- | @val *id unit {~ *id d : Mode} {*(forget d)} : Unit = unit@
 valUnitTerm :: Entry Reldtt Void
 valUnitTerm = val NonOp "unit" (idMod dataMode) $
-  Telescoped $ ValRHS (Expr2 $ TermCons $ ConsUnit) (hs2type UnitType)
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  moded (forget $ dvar 0) :**
+  Telescoped (
+    ValRHS
+      (Expr2 $ TermCons $ ConsUnit)
+      (hs2type UnitType)
+  )
 
 -----------------
 
@@ -346,5 +356,18 @@ valIndPair = val NonOp "indPair" (idMod dataMode) $
       (appMotive $ Expr2 $ TermCons $ Pair (Binding segAMu $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
     tyCPair :: DeBruijnLevel v => UniHSConstructor Reldtt v
     tyCPair = pi segAMuNu $ hs2type $ tyCPair' $ Var2 $ VarLast
+
+-----------------
+
+-- | @val *id Empty {~ *id d : Mode} {*(forget d)} : UniHS d = Empty@
+valEmpty :: Entry Reldtt Void
+valEmpty = val NonOp "Empty" (idMod dataMode) $
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  moded (forget $ dvar 0) :**
+  Telescoped (
+    ValRHS
+      (hs2term EmptyType)
+      (hs2type $ UniHS $ dvar 0)
+  )
 
 -----------------
