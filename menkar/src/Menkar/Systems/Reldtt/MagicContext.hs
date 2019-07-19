@@ -404,3 +404,83 @@ valIndEmpty = val NonOp "indEmpty" (idMod dataMode) $
     appMotive arg = Type $ app (var 3) tyMotive (dvar 1) arg
 
 -----------------
+
+{-| @val *id (==)
+      {~ *id d : Mode}
+      {*(forget d)}
+      {~ *id A : UniHS d}
+      {*id aL aR : A}
+      : UniHS d = aL == .{A} aR@
+-}
+valEqType :: Entry Reldtt Void
+valEqType = val Op "==" (idMod dataMode) $
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  moded (forget $ dvar 0) :**
+  segIm NonOp "A"  {- var 1 -} (idMod $ dvar 0) (hs2type $ UniHS $ dvar 0) :|-
+  segEx NonOp "aL" {- var 2 -} (idMod $ dvar 0) (Type $ var 1) :|-
+  segEx NonOp "aR" {- var 3 -} (idMod $ dvar 0) (Type $ var 1) :|-
+  Telescoped (
+    ValRHS
+      (hs2term $ EqType (Type $ var 1) (var 2) (var 3))
+      (hs2type $ UniHS $ dvar 0)
+    )
+
+{-| @val *id refl
+      {~ *id d : Mode}
+      {*(forget d)}
+      {~ *id A : UniHS d}
+      {~ *id a : A} : a == .{A = A} a = refl@
+-}
+valRefl :: Entry Reldtt Void
+valRefl = val NonOp "refl" (idMod dataMode) $
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  moded (forget $ dvar 0) :**
+  segIm NonOp "A" {- var 1 -} (idMod $ dvar 0) (hs2type $ UniHS $ dvar 0) :|-
+  segIm NonOp "a" {- var 2 -} (idMod $ dvar 0) (Type $ var 1) :|-
+  Telescoped (
+    ValRHS
+      (Expr2 $ TermCons $ ConsRefl (Type $ var 1) (var 2))
+      (hs2type $ EqType (Type $ var 1) (var 2) (var 2))
+  )
+
+{-| @val *id ind==
+        {~ *id d dmot : Mode}
+        {~ *id nu : Modality d dmot}
+        *(forget dmot)
+        {~ *nu A : UniHS d}
+        {~ *nu aL : A}
+        {*id C : {*nu aR : A} -> {*nu _ : aL == aR} -> UniHS dmot}
+        {*id crefl : C aL (refl .{A} .{aL})}
+        {~ *nu aR* : A}
+        {*nu eq* : aL == aR}
+        : C aR* eq*
+        = ind== (aR > eq > C) crefl eq*@
+-}
+valIndEq :: Entry Reldtt Void
+valIndEq = val NonOp "ind==" (idMod dataMode) $
+  segIm NonOp "d" {- var 0 -} (idMod dataMode) (tyMode) :|-
+  segIm NonOp "dmot" {- var 1 -} (idMod dataMode) (tyMode) :|-
+  segIm NonOp "nu" {- var 2 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  moded (forget $ dvar 1) :**
+  segIm NonOp "A"  {- var 3 -} (mvar 2 (dvar 0) (dvar 1)) (hs2type $ UniHS $ dvar 0) :|-
+  segIm NonOp "aL" {- var 4 -} (mvar 2 (dvar 0) (dvar 1)) (Type $ var 3) :|-
+  segEx NonOp "C"  {- var 5 -} (idMod $ dvar 1) (hs2type $ tyMotive) :|-
+  segEx NonOp "crefl" {- var 6 -} (idMod $ dvar 1) (appMotive (var 4) (Expr2 $ TermCons $ ConsRefl (Type $ var 3) (var 4))) :|-
+  segIm NonOp "aR*" {- var 7 -} (mvar 2 (dvar 0) (dvar 1)) (Type $ var 3) :|-
+  segEx NonOp "eq*" {- var 8 -} (mvar 2 (dvar 0) (dvar 1)) (hs2type $ EqType (Type $ var 3) (var 4) (var 7)) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 8) (EqType (Type $ var 3) (var 4) (var 7)) (mvar 2 (dvar 0) (dvar 1)) $
+       ElimEq (nbind NonOp "aR" {- var 9 -} $ nbind NonOp "eq" {- var 10 -} $ appMotive (var 9) (var 10)) (var 6))
+      (appMotive (var 7) (var 8))
+  )
+  where
+    tyMotive' :: DeBruijnLevel v => Term Reldtt v -> UniHSConstructor Reldtt v
+    tyMotive' aR = (segEx NonOp "eq" (mvar 2 (dvar 0) (dvar 1)) $ hs2type $ EqType (Type $ var 3) (var 4) aR)
+                   `arrow` (hs2type $ UniHS $ dvar 1)
+    tyMotive :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyMotive = pi (segEx NonOp "aR" (mvar 2 (dvar 0) (dvar 1)) $ Type $ var 3) (hs2type $ tyMotive' $ Var2 VarLast)
+    appMotive :: DeBruijnLevel v => Term Reldtt v -> Term Reldtt v -> Type Reldtt v
+    appMotive aR eq = Type $ app (app (var 5) tyMotive (dvar 1) aR) (tyMotive' aR) (dvar 1) eq
+
+-----------------
