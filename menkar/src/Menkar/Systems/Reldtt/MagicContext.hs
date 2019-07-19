@@ -483,4 +483,44 @@ valIndEq = val NonOp "ind==" (idMod dataMode) $
     appMotive :: DeBruijnLevel v => Term Reldtt v -> Term Reldtt v -> Type Reldtt v
     appMotive aR eq = Type $ app (app (var 5) tyMotive (dvar 1) aR) (tyMotive' aR) (dvar 1) eq
 
+{-| @val *id funext
+      {~ *id ddom dcod : Mode}
+      {~ *id mu : Modality ddom dcod}
+      *(forget dcod)
+      {~ *mu A : UniHS ddom}
+      {~ *id B : {*mu _ : A} -> UniHS dcod}
+      {~ *id f g : {*mu x : A} -> B x}
+      {*id p : {*mu x : A} -> f x == g x}
+      : f == g = funext p@
+-}
+valFunext :: Entry Reldtt Void
+valFunext = val NonOp "funext" (idMod dataMode) $
+  segIm NonOp "ddom" {- var 0 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "dcod" {- var 1 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "mu" {- var 2 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  moded (forget $ dvar 1) :**
+  segIm NonOp "A" {- var 3 -} (mvar 2 (dvar 0) (dvar 1)) (hs2type $ UniHS $ dvar 0) :|-
+  segIm NonOp "B" {- var 4 -} (idMod $ dvar 1) (hs2type $ tyCod) :|-
+  segIm NonOp "f" {- var 5 -} (idMod $ dvar 1) (hs2type $ tyPi) :|-
+  segIm NonOp "g" {- var 6 -} (idMod $ dvar 1) (hs2type $ tyPi) :|-
+  segEx NonOp "p" {- var 7 -} (idMod $ dvar 1) (hs2type $ tyEqPi) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 7) tyEqPi (idMod $ dvar 1) Funext)
+      (hs2type $ EqType (hs2type $ tyPi) (var 5) (var 6))
+  )  
+  where
+    segA :: DeBruijnLevel v => Segment Type Reldtt v
+    segA = segEx NonOp "x" (mvar 2 (dvar 0) (dvar 1)) (Type $ var 3)
+    tyCod :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyCod = segA `arrow` (hs2type $ UniHS $ dvar 1)
+    appCod :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
+    appCod arg = Type $ app (var 4) tyCod (dvar 1) arg
+    appEqCod :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
+    appEqCod arg = hs2type $ EqType (appCod arg) (app (var 5) tyPi (dvar 1) arg) (app (var 6) tyPi (dvar 1) arg)
+    tyPi :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyPi = pi segA (appCod (Var2 $ VarLast))
+    tyEqPi :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyEqPi = pi segA (appEqCod (Var2 $ VarLast))
+
 -----------------
