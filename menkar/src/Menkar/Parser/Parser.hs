@@ -62,6 +62,9 @@ argNamed = (dotPrecise *>) $ accols $ do
   aValue <- expr
   return $ Raw.ElimArg (Raw.ArgSpecNamed aName) aValue
 
+unbox :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
+unbox = Raw.ElimUnbox <$ (dotPrecise *> accols manySpace)
+
 projectorNamed :: CanParse m => m Raw.ProjSpec
 projectorNamed = Raw.ProjSpecNamed <$> (dotPrecise *> unqName)
 projectorNumbered :: CanParse m => m Raw.ProjSpec
@@ -71,7 +74,7 @@ projectorTail = Raw.ProjSpecTail <$> (dotPrecise *> dotPrecise *> natLiteralNonS
 
 eliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
 eliminator = MP.label "eliminator" $
-  argExplicit <|> argNext <?|> argNamed <?|>
+  argExplicit <|> argNext <?|> argNamed <?|> unbox <?|>
   (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
 opEliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
 opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
@@ -175,6 +178,9 @@ entryAnnotations = (brackets $ someSep pipe annotation) <|> return []
 
 -- telescopes
 
+modalLock :: (SysParser sys, CanParse m) => m (Raw.ModalLock sys)
+modalLock = MP.label "telescope modal-lock segment" $ accols $ Raw.ModalLock <$> segmentAnnotations
+
 segment :: (SysParser sys, CanParse m) => m (Raw.Segment sys)
 segment = MP.label "telescope segment" $ accols $ do
       annots <- segmentAnnotations --fromMaybe [] <$> optionalTry annotationClause
@@ -188,11 +194,14 @@ segment = MP.label "telescope segment" $ accols $ do
         Raw.decl'content = fromMaybe Raw.DeclContentEmpty $ Raw.DeclContent <$> maybeType
       }
 
+segmentOrLock :: (SysParser sys, CanParse m) => m (Either (Raw.ModalLock sys) (Raw.Segment sys))
+segmentOrLock = Right <$> segment <?|> Left <$> modalLock
+
 telescopeMany :: (SysParser sys, CanParse m) => m (Raw.Telescope sys)
-telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segment
+telescopeMany = MP.label "telescope (possibly empty)" $ Raw.Telescope <$> many segmentOrLock
 
 telescopeSome :: (SysParser sys, CanParse m) => m (Raw.Telescope sys)
-telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segment
+telescopeSome = MP.label "telescope (non-empty)" $ Raw.Telescope <$> some segmentOrLock
 
 lhs :: forall sys m declSort .
   (SysParser sys, CanParse m) =>

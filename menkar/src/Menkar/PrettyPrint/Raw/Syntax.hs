@@ -11,6 +11,8 @@ import Text.PrettyPrint.Tree
 import Data.Omissible
 
 import Data.Maybe
+import Data.Either
+import Control.Lens
 
 --showshowdoc :: Doc -> String
 --showshowdoc doc = replace "\\n" "\t\t\\n\\\n\\" $ show $ displayS (renderPretty 1.0 100 doc) ""
@@ -65,10 +67,9 @@ instance SysRawPretty sys => Unparsable (Eliminator sys) where
   unparse' (ElimArg ArgSpecExplicit expr) = "(" ++| unparse' expr |++ ")"
   unparse' (ElimArg (ArgSpecNamed name) expr) = ".{" ++| unparse' name |++ " = " |+| unparse' expr |++ "}"
   unparse' (ElimProj p) = unparse' p
+  unparse' (ElimUnbox) = ribbon ".{}"
   parserName (ElimDots) = "eliminatorEnd"
-  --parserName (ElimEnd _) = "eliminatorEnd"
-  parserName (ElimArg _ _) = "eliminator"
-  parserName (ElimProj _) = "eliminator"
+  parserName _ = "eliminator"
 
 instance SysRawPretty sys => Unparsable (ExprC sys) where
   unparse' (ExprQName qname) = unparse' qname
@@ -141,8 +142,14 @@ instance SysRawPretty sys => Unparsable (Segment sys) where
               |+| unparse' (decl'telescope decl)
   parserName _ = "segment"
 
+instance SysRawPretty sys => Unparsable (ModalLock sys) where
+  unparse' (ModalLock annots) = "{" ++| unparseEntryAnnotations annots |++ "}"
+  parserName _ = "modalLock"
+
 instance SysRawPretty sys => Unparsable (Telescope sys) where
-  unparse' (Telescope segments) = treeGroup $ unparse' <$> segments
+  unparse' (Telescope segments) = treeGroup $ segments <&> \case
+    Left modalLock -> unparse' modalLock
+    Right segment -> unparse' segment
   parserName _ = "telescopeMany"
 
 instance Unparsable (DeclNames declSort) where

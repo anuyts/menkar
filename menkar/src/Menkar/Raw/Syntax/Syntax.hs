@@ -16,7 +16,8 @@ data Eliminator (sys :: KSys) =
   ElimDots |
   --ElimEnd ArgSpec {-^ should not be 'ArgSpecExplicit'.-} |
   ElimArg ArgSpec (Expr sys) |
-  ElimProj ProjSpec
+  ElimProj ProjSpec |
+  ElimUnbox
   -- case; induction
   --deriving Show
 
@@ -62,8 +63,10 @@ data Annotation (sys :: KSys) = Annotation (Qualified String) (Maybe (Expr sys))
 
 newtype Segment sys = Segment (Declaration sys DeclSortSegment) --deriving Show
 
+newtype ModalLock sys = ModalLock [Annotation sys]
+
 {-| A bunch of assumptions in accolads. Essentially a dependent telescope. -}
-newtype Telescope sys = Telescope {untelescope :: [Segment sys]} --deriving Show
+newtype Telescope sys = Telescope {untelescope :: [Either (ModalLock sys) (Segment sys)]} --deriving Show
 
 data DeclSort =
   DeclSortVal |

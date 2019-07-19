@@ -382,17 +382,17 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
     -- Bogus: `t ... e` (Throw error.)
     (_, Pair2 _ SmartElimDots : _) -> tcFail $ "Bogus elimination: `...` is not the last eliminator."
     -- Explicit application of a function: `f arg` (Apply if explicit, auto-eliminate otherwise.)
-    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
+    (TypeHS (Pi piBinding),
      Pair2 dmuInfer (SmartElimArg Raw.ArgSpecExplicit dmuArg arg) : eliminators') ->
       case (_segment'plicity $ binding'segment $ piBinding) of
         Explicit -> apply gamma eliminee piBinding (Just dmuArg) arg dmuInfer eliminators' result tyResult
         _ -> autoEliminate gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Immediate application of a function: `f .{arg}` (Apply.)
-    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
+    (TypeHS (Pi piBinding),
      Pair2 dmuInfer (SmartElimArg Raw.ArgSpecNext dmuArg arg) : eliminators') ->
       apply gamma eliminee piBinding (Just dmuArg) arg dmuInfer eliminators' result tyResult
     -- Named application of a function: `f .{a = arg}` (Apply if the name matches, auto-eliminate otherwise.)
-    (Type (Expr2 (TermCons (ConsUniHS (Pi piBinding)))),
+    (TypeHS (Pi piBinding),
      Pair2 dmuInfer (SmartElimArg (Raw.ArgSpecNamed name) dmuArg arg) : eliminators') ->
       if Just name == (_segment'name $ binding'segment $ piBinding)
       then apply gamma eliminee piBinding (Just dmuArg) arg dmuInfer eliminators' result tyResult
@@ -401,7 +401,7 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
     (_, Pair2 _ (SmartElimArg _ _ _) : eliminators') ->
       autoEliminate gamma eliminee tyEliminee eliminators result tyResult Nothing
     -- Named projection of a pair: `pair .componentName`
-    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))),
+    (TypeHS (Sigma sigmaBinding),
      Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecNamed name)) : eliminators') ->
       -- if the given name is the name of the first component
       if Just name == (_segment'name $ binding'segment $ sigmaBinding)
@@ -412,7 +412,7 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
         let d = elimineeMode gamma eliminators
         in  projSnd gamma eliminee sigmaBinding (idModedModality d) eliminators result tyResult
     -- Numbered projection of a pair: `pair .i`
-    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))),
+    (TypeHS (Sigma sigmaBinding),
      Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecNumbered i)) : eliminators') ->
       if i == 1
       -- then project out the first component and continue
@@ -422,7 +422,7 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
                d = modality'dom dmuInfer
            in  projSnd gamma eliminee sigmaBinding (idModedModality d) decEliminators result tyResult
     -- Numbered tail projection of a pair: `pair ..i`
-    (Type (Expr2 (TermCons (ConsUniHS (Sigma sigmaBinding)))),
+    (TypeHS (Sigma sigmaBinding),
      Pair2 dmuInfer (SmartElimProj (Raw.ProjSpecTail i)) : eliminators') ->
       if i == 1
       -- then do nothing
@@ -450,6 +450,13 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
            in  projSnd gamma eliminee sigmaBinding (idModedModality d) decEliminators result tyResult
     -- Projection of a non-pair: auto-eliminate.
     (_, (Pair2 _ (SmartElimProj _)) : _) ->
+      autoEliminate gamma eliminee tyEliminee eliminators result tyResult Nothing
+    -- Unboxing of a boxed value: `boxed .{}`
+    (TypeHS (BoxType boxSeg),
+     Pair2 dmuInfer SmartElimUnbox : eliminators') ->
+      unbox gamma eliminee boxSeg dmuInfer eliminators' result tyResult
+    -- Unboxing of a non-box: auto-eliminate.
+    (_, Pair2 _ SmartElimUnbox : _) ->
       autoEliminate gamma eliminee tyEliminee eliminators result tyResult Nothing
 
 checkSmartElim :: forall sys tc v .

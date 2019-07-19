@@ -48,6 +48,7 @@ eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
   fineExpr <- expr (VarFromCtx <$> dmu :\\ gamma) rawExpr
   return $ SmartElimArg argSpec dmu fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
+eliminator gamma (Raw.ElimUnbox) = return $ SmartElimUnbox
 
 natLiteral :: forall sys sc v .
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
@@ -159,36 +160,41 @@ simpleLambda gamma rawArg rawBody =
 buildPi ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
-  Segment Type sys v ->
-  Term sys (VarExt v) ->
+  Either (ModedModality sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
   sc (Term sys v)
-buildPi gamma fineSeg fineCod = do
+buildPi gamma (Right (fineSeg, fineCod)) = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
-  return $ Expr2 $ TermCons $ ConsUniHS $ Pi $ Binding fineSeg (Type fineCod)
+  return $ hs2term $ Pi $ Binding fineSeg (Type fineCod)
+buildPi gamma (Left (dmu, fineCod)) = do
+  return $ hs2term $ BoxType $ Declaration (DeclNameSegment Nothing) dmu Explicit (Type fineCod)
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
-  Segment Type sys v ->
-  Term sys (VarExt v) ->
+  Either (ModedModality sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
   sc (Term sys v)
-buildSigma gamma fineSeg fineCod = do
+buildSigma gamma (Right (fineSeg, fineCod)) = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
   return $ Expr2 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg (Type fineCod)
+buildSigma gamma (Left (dmu, fineCod)) =
+  scopeFail $ "Modal locks are not allowed in telescopes for Sigma-types."
   
 {-| @'buildLambda' gamma fineSeg fineBody@ scopes the Menkar expression @<fineSeg> > <fineBody>@ to a term. -}
 buildLambda ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
-  Segment Type sys v ->
-  Term sys (VarExt v) ->
+  Either (ModedModality sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
   sc (Term sys v)
-buildLambda gamma fineSeg fineBody = do
-  fineCod <- Type <$> newMetaTermNoCheck (gamma :.. VarFromCtx <$> fineSeg) MetaBlocked Nothing "Infer codomain."
+buildLambda gamma (Right (fineSeg, fineBody)) = do
+  fineCod <- newMetaTypeNoCheck (gamma :.. VarFromCtx <$> fineSeg) "Infer codomain."
   return $ Expr2 $ TermCons $ Lam $ Binding fineSeg $ ValRHS fineBody fineCod
+buildLambda gamma (Left (dmu, fineContent)) = do
+  tyContent <- newMetaTypeNoCheck (VarFromCtx <$> dmu :\\ gamma) "Infer box content type."
+  let boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit tyContent
+  return $ Expr2 $ TermCons $ ConsBox boxSeg fineContent
 
 {-| @'binder2' build gamma fineSegs rawArgs rawBody@ scopes the Menkar expression
     @<fineSegs> **> <rawArgs> **> rawBody@ to a term, where
@@ -198,20 +204,22 @@ binder2 ::
   ( forall w .
     DeBruijnLevel w =>
     Ctx Type sys w Void ->
-    Segment Type sys w ->
-    Term sys (VarExt w) ->
+    Either (ModedModality sys w, Term sys w) (Segment Type sys w, Term sys (VarExt w)) ->
     sc (Term sys w)
   ) ->
   Ctx Type sys v Void ->
   Telescoped Type Unit2 sys v ->
       {-^ remainder of the already-scoped part of the telescope on the left of the operator -}
-  [Raw.Segment sys] -> {-^ telescope on the left of the operator -}
+  [Either (Raw.ModalLock sys) (Raw.Segment sys)] -> {-^ telescope on the left of the operator -}
   Raw.Expr sys -> {-^ operand on the right of the operator -}
   sc (Term sys v)
 binder2 build gamma (Telescoped Unit2) rawArgs rawBody = binder build gamma rawArgs rawBody
-binder2 build gamma (fineSeg :|- fineSegs) rawArgs rawBody =
-  build gamma fineSeg =<< binder2 build (gamma :.. (VarFromCtx <$> fineSeg)) fineSegs rawArgs rawBody
-binder2 build gamma (mu :** fineSegs) rawArgs rawBody = unreachable
+binder2 build gamma (fineSeg :|- fineSegs) rawArgs rawBody = do
+  fineCod <- binder2 build (gamma :.. (VarFromCtx <$> fineSeg)) fineSegs rawArgs rawBody
+  build gamma $ Right (fineSeg, fineCod) 
+binder2 build gamma (dmu :** fineSegs) rawArgs rawBody = do
+  fineCod <- binder2 build (VarFromCtx <$> dmu :\\ gamma) fineSegs rawArgs rawBody
+  build gamma $ Left (dmu, fineCod)
 
 {-| @'binder' build gamma rawArgs rawBody@ scopes the Menkar expression
     @<rawArgs> **> rawBody@ to a term, where
@@ -221,18 +229,20 @@ binder ::
   ( forall w .
     DeBruijnLevel w =>
     Ctx Type sys w Void ->
-    Segment Type sys w ->
-    Term sys (VarExt w) ->
+    Either (ModedModality sys w, Term sys w) (Segment Type sys w, Term sys (VarExt w)) ->
     sc (Term sys w)
   ) ->
   Ctx Type sys v Void ->
-  [Raw.Segment sys] -> {-^ telescope on the left of the operator -}
+  [Either (Raw.ModalLock sys) (Raw.Segment sys)] -> {-^ telescope on the left of the operator -}
   Raw.Expr sys -> {-^ operand on the right of the operator -}
   sc (Term sys v)
 binder build gamma [] rawBody = expr gamma rawBody
-binder build gamma (rawArg:rawArgs) rawBody = do
+binder build gamma (Right rawArg : rawArgs) rawBody = do
   fineArgTelescope <- segment gamma rawArg
   binder2 build gamma fineArgTelescope rawArgs rawBody
+binder build gamma (Left rawLock : rawArgs) rawBody = do
+  dmu <- modalLock gamma rawLock
+  binder2 build gamma (dmu :** Telescoped Unit2) rawArgs rawBody
 
 {-| @'telescopeOperation' gamma rawTheta rawOp maybeRawExprR@ scopes the Menkar expression
     @<rawTheta> <rawOp> <maybeRawExprR>@ to a term. -}
@@ -509,6 +519,31 @@ segments2telescoped gamma (fineSeg:fineSegs) = do
   -- Actual action:
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (VarFromCtx <$> fineSeg)) (fmap VarWkn <$> fineSegs)
 
+modalLock ::
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v Void ->
+  Raw.ModalLock sys ->
+  sc (ModedModality sys v)
+modalLock gamma (Raw.ModalLock rawAnnots) = do
+  let dgamma' = ctx'mode gamma
+      dgamma = unVarFromCtx <$> dgamma'
+  fineAnnots <- sequenceA $ annotation gamma <$> rawAnnots
+  (maybeDom, maybeMu) <- flip execStateT (Nothing, Nothing) $ forM_ fineAnnots $ \ case
+    AnnotMode fineMode -> use _1 >>= \ case
+      Just _ -> scopeFail $ "Encountered multiple mode annotations."
+      Nothing -> _1 .= Just fineMode
+    AnnotModality fineModty -> use _2 >>= \ case
+      Just _ -> scopeFail $ "Encountered multiple modality annotations."
+      Nothing -> _2 .= Just fineModty
+    AnnotImplicit -> scopeFail $ "Encountered plicity annotation in a modal lock."
+  dom <- case maybeDom of
+    Nothing -> newMetaModeNoCheck (crispModedModality dgamma' :\\ gamma) "Inferring domain of modality."
+    Just dom -> return dom
+  mu <- case maybeMu of
+    Nothing -> newMetaModtyNoCheck (crispModedModality dgamma' :\\ gamma) "Inferring modality."
+    Just mu -> return mu
+  return $ ModedModality dom dgamma mu
+
 segment ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
@@ -528,7 +563,8 @@ telescope2 :: forall sys sc v .
 telescope2 gamma (Telescoped Unit2) rawTele = telescope gamma rawTele
 telescope2 gamma (fineSeg :|- fineSegs) rawTele =
   (fineSeg :|-) <$> telescope2 (gamma :.. (VarFromCtx <$> fineSeg)) fineSegs rawTele
-telescope2 gamma (mu :** fineSegs) rawTele = unreachable
+telescope2 gamma (dmu :** fineSegs) rawTele =
+  (dmu :**) <$> telescope2 (VarFromCtx <$> dmu :\\ gamma) fineSegs rawTele
 
 telescope :: forall sys sc v .
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
@@ -536,9 +572,12 @@ telescope :: forall sys sc v .
   Raw.Telescope sys ->
   sc (Telescoped Type Unit2 sys v)
 telescope gamma (Raw.Telescope []) = return $ Telescoped Unit2
-telescope gamma (Raw.Telescope (rawSeg : rawSegs)) = do
+telescope gamma (Raw.Telescope (Right rawSeg : rawSegs)) = do
   fineFrontSegs <- segment gamma rawSeg
   telescope2 gamma fineFrontSegs (Raw.Telescope rawSegs)
+telescope gamma (Raw.Telescope (Left rawLock : rawSegs)) = do
+  dmu <- modalLock gamma rawLock
+  telescope2 gamma (dmu :** Telescoped Unit2) (Raw.Telescope rawSegs)
 
 ----------------------------------------------------------
 

@@ -325,7 +325,8 @@ data SmartEliminator (sys :: KSys) (v :: *) =
   SmartElimDots |
   --SmartElimEnd Raw.ArgSpec |
   SmartElimArg Raw.ArgSpec (ModedModality sys v) (Term sys v) |
-  SmartElimProj Raw.ProjSpec
+  SmartElimProj Raw.ProjSpec |
+  SmartElimUnbox
 deriving instance (SysTrav sys) => Functor (SmartEliminator sys)
 deriving instance (SysTrav sys) => Foldable (SmartEliminator sys)
 deriving instance (SysTrav sys) => Traversable (SmartEliminator sys)
