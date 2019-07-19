@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Menkar.Main where
 
 import qualified Menkar.Parser as P
@@ -5,11 +7,13 @@ import qualified Menkar.Scoper as S
 import Menkar.Monads.DTT
 import qualified Menkar.Raw as Raw
 import Menkar.Fine
-import Menkar.Systems.Trivial.Trivial
-import Menkar.Systems.Trivial.MagicContext
+import Menkar.Systems
 import Menkar.TC
 import Menkar.Monad.Monad
 import Menkar.Analyzer
+import Menkar.System.MagicContext
+import Menkar.MagicContext.MagicContext
+import Menkar.System.System
 
 import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
@@ -44,27 +48,27 @@ quickRead str = case (readsPrec 0 str :: [(a, String)]) of
 
 --------------------------
 
-data MainState = MainState {
-  _main'fine2prettyOptions :: Fine2PrettyOptions Trivial}
+data MainState sys = MainState {
+  _main'fine2prettyOptions :: Fine2PrettyOptions sys}
 
 makeLenses ''MainState
 
-instance Omissible MainState where
+instance Omissible (MainState sys) where
   omit = MainState {
     _main'fine2prettyOptions = omit}
 
-class WithMainState where
-  mainState :: IORef MainState
+class WithMainState sys where
+  mainState :: IORef (MainState sys)
 
 --------------------------
 
-printConstraint :: IORef MainState -> Constraint Trivial -> IO ()
+printConstraint :: (Sys sys) => IORef (MainState sys) -> Constraint sys -> IO ()
 printConstraint ref c = do
   mainState <- readIORef ref
   putStrLn $ "Constraint " ++ show (_constraint'id c) ++ ":"
   putStr $ jud2string (_constraint'judgement c) $ _main'fine2prettyOptions mainState
 
-printTrace :: IORef MainState -> Constraint Trivial -> IO ()
+printTrace :: (Sys sys) => IORef (MainState sys) -> Constraint sys -> IO ()
 printTrace ref c = do
   case _constraint'parent c of
     Nothing -> return ()
@@ -75,10 +79,10 @@ printTrace ref c = do
   putStrLn ""
   printConstraint ref c
 
-printBlockInfo :: DeBruijnLevel v =>
-  IORef MainState ->
-  TCState Trivial m ->
-  ([Int], BlockInfo Trivial m v, Constraint Trivial) ->
+printBlockInfo :: (Sys sys, DeBruijnLevel v) =>
+  IORef (MainState sys) ->
+  TCState sys m ->
+  ([Int], BlockInfo sys m v, Constraint sys) ->
   IO ()
 printBlockInfo ref s (blockingMetas, blockInfo, constraintJudBlock) = do
   putStrLn $ ""
@@ -89,7 +93,7 @@ printBlockInfo ref s (blockingMetas, blockInfo, constraintJudBlock) = do
   putStrLn $ "See constraint: " ++ show (_constraint'id constraintJudBlock)-}
   printConstraint ref $ _blockInfo'parent blockInfo
 
-printMetaInfo :: DeBruijnLevel v => IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m v -> IO ()
+printMetaInfo :: (Sys sys, DeBruijnLevel v) => IORef (MainState sys) -> TCState sys m -> Int -> MetaInfo sys m v -> IO ()
 printMetaInfo ref s meta info = do
   mainState <- readIORef ref
   putStrLn $ "Context:"
@@ -122,13 +126,13 @@ printMetaInfo ref s meta info = do
     Nothing -> putStrLn "(Created at scope-checking time.)"
     Just parent -> printConstraint ref parent
 
-printConstraintByIndex :: IORef MainState -> TCState Trivial m -> Int -> IO ()
+printConstraintByIndex :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> IO ()
 printConstraintByIndex ref s i =
   if (i < 0 || i >= _tcState'constraintCounter s)
   then putStrLn $ "Constraint index out of bounds."
   else printTrace ref $ fromMaybe unreachable $ view (tcState'constraintMap . at i) s
 
-printMeta :: IORef MainState -> TCState Trivial m -> Int -> IO ()
+printMeta :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> IO ()
 printMeta ref s meta =
   if (meta < 0 || meta >= _tcState'metaCounter s)
   then putStrLn $ "Meta index out of bounds."
@@ -136,17 +140,17 @@ printMeta ref s meta =
     let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
     forThisDeBruijnLevel (printMetaInfo ref s meta) metaInfo
 
-summarizeUnsolvedMeta :: IORef MainState -> TCState Trivial m -> Int -> MetaInfo Trivial m v -> IO ()
+summarizeUnsolvedMeta :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> MetaInfo sys m v -> IO ()
 summarizeUnsolvedMeta ref s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
   Right solutionInfo -> return ()
   Left blocks -> putStrLn $
     "?" ++ show meta ++ "    (" ++ show (length blocks) ++ " constraints)    Creation: " ++ _metaInfo'reason metaInfo
 
-printUnsolvedMetas :: IORef MainState -> TCState Trivial m -> IO ()
+printUnsolvedMetas :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 printUnsolvedMetas ref s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
   summarizeUnsolvedMeta ref s meta `forThisDeBruijnLevel` metaInfo
 
-printReport :: IORef MainState -> TCState Trivial m -> TCReport Trivial -> IO ()
+printReport :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> TCReport sys -> IO ()
 printReport ref s report = do
   putStrLn $ "Report"
   putStrLn $ "------"
@@ -154,7 +158,7 @@ printReport ref s report = do
   printConstraint ref $ _tcReport'parent report
   putStrLn $ ""
 
-printOverview :: IORef MainState -> TCState Trivial m -> IO ()
+printOverview :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 printOverview ref s = do
   let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
   putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
@@ -171,7 +175,7 @@ prompt prefix = do
   hFlush stdout
   getLine
 
-giveHelp :: IORef MainState -> IO ()
+giveHelp :: (Sys sys) => IORef (MainState sys) -> IO ()
 giveHelp ref = do
   putStrLn $ "q       quit          Quit Menkar."
   putStrLn $ "o       overview      Give an overview of the type-checking results."
@@ -184,19 +188,19 @@ giveHelp ref = do
   putStrLn $ "s help  set help      Get help on the set command."
   --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
-runCommandMeta :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
+runCommandMeta :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> [String] -> IO ()
 runCommandMeta ref s args = case args of
   [arg] -> case quickRead arg :: Maybe Int of
     Just meta -> printMeta ref s meta
     Nothing -> putStrLn $ "Argument to 'meta' should be an integer."
   _ -> putStrLn $ "Command 'meta' expects one integer argument, e.g. 'meta 5'."
-runCommandConstraint :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
+runCommandConstraint :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> [String] -> IO ()
 runCommandConstraint ref s args = case args of
   [arg] -> case quickRead arg :: Maybe Int of
     Just i -> printConstraintByIndex ref s i
     Nothing -> putStrLn $ "Argument to 'constraint' should be an integer."
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
-runCommandReports :: IORef MainState -> TCState Trivial m -> IO ()
+runCommandReports :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 runCommandReports ref s = sequenceA_ $ _tcState'reports s <&> printReport ref s
 
 ------------------------
@@ -217,7 +221,7 @@ readInt str k = case quickRead str of
   Just int -> k int
   Nothing -> putStrLn $ "Not an integer: " ++ str
 
-giveHelpSet :: IORef MainState -> TCState Trivial m -> IO ()
+giveHelpSet :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 giveHelpSet ref s = do
   putStrLn $ "set help                          Get this help."
   putStrLn $ "set explicit-division <BOOL>      Print left division explicitly."
@@ -233,7 +237,7 @@ giveHelpSet ref s = do
   putStrLn $ "set print-types <BOOL>            Print pedantic type annotations."
   putStrLn $ "set width <INT>                   Set line width."
 
-printMetaSolutionsOn :: IORef MainState -> TCState Trivial m -> IO ()
+printMetaSolutionsOn :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 printMetaSolutionsOn ref s = do
   let setSolutionMap maybeMap = modifyIORef ref $ main'fine2prettyOptions . fine2pretty'printSolutions .~ maybeMap
   setSolutionMap $ Just $ _tcState'metaMap s & (mapMaybe $
@@ -242,7 +246,7 @@ printMetaSolutionsOn ref s = do
           Right solutionInfo -> Just $ ForSomeDeBruijnLevel $ _solutionInfo'solution solutionInfo
       )
 
-runCommandSet :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
+runCommandSet :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> [String] -> IO ()
 runCommandSet ref s [] = giveHelpSet ref s
 runCommandSet ref s ("help" : _) = giveHelpSet ref s
 runCommandSet ref s ("explicit-division" : args) = forceLength 1 args $ \[str] -> readBool str $ \bool ->
@@ -294,7 +298,7 @@ runCommandSet ref s _ = giveHelpSet ref s
 
 ------------------------
 
-runCommand :: IORef MainState -> TCState Trivial m -> [String] -> IO ()
+runCommand :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> [String] -> IO ()
 runCommand ref s [] = return ()
 runCommand ref s ("constraint" : args) = runCommandConstraint ref s args
 runCommand ref s ("c" : args) = runCommandConstraint ref s args
@@ -315,7 +319,7 @@ runCommand ref s (command : args) = do
   putStrLn $ "Unknown command : " ++ command
   putStrLn $ "Type 'help' for help."
 
-consumeCommand :: IORef MainState -> TCState Trivial m -> IO Bool
+consumeCommand :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO Bool
 consumeCommand ref s = do
   command <- prompt "> "
   let splitCommand = words command
@@ -326,7 +330,7 @@ consumeCommand ref s = do
       runCommand ref s splitCommand
       return True
 
-interactiveMode :: IORef MainState -> TCState Trivial m -> IO ()
+interactiveMode :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 interactiveMode ref s = do
   printMetaSolutionsOn ref s
   putStrLn "-------------------------"
@@ -338,7 +342,7 @@ interactiveMode ref s = do
   doUntilFail (consumeCommand ref s)
   return ()
 
-interactAfterTask :: TC Trivial () -> IO ()
+interactAfterTask :: (Sys sys) => TC sys () -> IO ()
 interactAfterTask task = do
           ref <- initMainState
           let (tcResult, s) = flip getTC initTCState $ task
@@ -371,29 +375,34 @@ interactAfterTask task = do
 
 ----------------------------
 
-checkMagic :: IO ()
+checkMagic :: forall sys . (Sys sys) => IO ()
 checkMagic = interactAfterTask $ do
   addNewConstraint
-    magicModuleCorrect
+    (magicModuleCorrect @sys)
     "Checking the magic module."
   typeCheck
 
 getWidth :: IO (Maybe Int)
 getWidth = fmap ((\x -> x - 4) . System.width) <$> System.size
 
-prepMainState :: IO MainState
+prepMainState :: (Sys sys) => IO (MainState sys)
 prepMainState = do
   maybeWidth <- getWidth
   return $ omit & fromMaybe id
     (maybeWidth <&> \width -> main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ width)
 
-initMainState :: IO (IORef MainState)
+initMainState :: (Sys sys) => IO (IORef (MainState sys))
 initMainState = prepMainState >>= newIORef
 
 ----------------------------
-  
-mainArgs :: [String] -> IO ()
-mainArgs args = do
+
+printCommandLineHelp :: IO ()
+printCommandLineHelp = do
+  putStrLn "menkar <system> [<file>...]"
+  putStrLn "<system> : one of 'trivial', 'reldtt'"
+
+runMenkar :: forall sys . (Sys sys) => [String] -> IO ()
+runMenkar args = do
   rawEntries <- fmap concat $ sequenceA $ args <&> \path -> do
     code <- readFile path
     let errorOrRawFile = P.parse P.bulk path code
@@ -407,33 +416,18 @@ mainArgs args = do
           exitSuccess
       Right rawEntries -> return rawEntries
   interactAfterTask $ do
-    fineModule <- S.bulk magicContext rawEntries
+    fineModule <- S.bulk (magicContext @sys) rawEntries
     addNewConstraint
       (Jud AnTokenEntry magicContext fineModule U1 (ClassifWillBe U1))
       "Type-checking everything."
     typeCheck
-{-
-mainArgs args = do
-  case args of
-    [path] -> do
-      code <- readFile path
-      let errorOrRawFile = P.parse P.file path code
-      case errorOrRawFile of
-        Left e -> do
-          putStrLn "-------------"
-          putStrLn "PARSING ERROR"
-          putStrLn "-------------"
-          putStrLn $ MP.errorBundlePretty e
-        Right rawFile -> interactAfterTask $ do
-                fineFile <- S.file magicContext rawFile
-                addNewConstraint
-                  (JudEntry magicContext fineFile)
-                  Nothing
-                  "Type-checking the file."
-                typeCheck
-    xs -> do
-      putStrLn "This program should be given a file path as its sole argument."
--}
+  
+mainArgs :: [String] -> IO ()
+mainArgs [] = printCommandLineHelp
+mainArgs (system : args) = case system of
+  "trivial" -> runMenkar @Trivial args
+  "reldtt" -> runMenkar @Reldtt args
+  otherwise -> printCommandLineHelp
 
 main :: IO ()
 main = mainArgs =<< (System.Environment.getArgs :: IO [String])

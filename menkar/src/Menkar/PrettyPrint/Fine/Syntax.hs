@@ -425,10 +425,7 @@ telescope2pretties gamma (Telescoped Unit2) opts = []
 telescope2pretties gamma (seg :|- telescope) opts =
   (fine2pretty gamma seg opts) : telescope2pretties (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) telescope opts
 telescope2pretties gamma (mu :** telescope) opts =
-  [fine2pretty gamma (modality'mod mu) opts |++ " {" \\\
-    telescope2pretties (() ::\\ gamma) telescope opts /+/
-    ribbon "}"
-  ]
+  ("{" ++| fine2pretty gamma mu opts |++ "}") : telescope2pretties (() ::\\ gamma) telescope opts
 instance (SysFinePretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
          Fine2Pretty sys (ty sys), Fine2Pretty sys (rhs sys)) =>

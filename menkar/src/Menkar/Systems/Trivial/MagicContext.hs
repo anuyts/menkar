@@ -9,7 +9,7 @@ import Menkar.Fine.Judgement
 --import Menkar.Fine.Multimode
 import Menkar.Systems.Trivial.Trivial
 import Menkar.Basic.Context
-import Menkar.Analyzer
+import Menkar.System
 
 import Control.Exception.AssertFalse
 
@@ -410,22 +410,9 @@ magicEntries =
   valFunext :
   []
 
-magicContext :: Ctx Type Trivial (VarInModule Void) Void
-magicContext = CtxEmpty TrivMode :<...> ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
+instance SysMagicContext Trivial where
+  magicModule = ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
 
-----------------------------------------------
+-------------------------
 
-magicModuleCorrect :: Judgement Trivial
-magicModuleCorrect =
-  (Jud
-    (AnTokenDeclaration $ AnTokenTelescoped $ AnTokenModuleRHS)
-    (CtxEmpty TrivMode)
-    (Declaration
-      (DeclNameModule "magic")
-      TrivModedModality
-      Explicit
-      (Telescoped $ ModuleRHS $ absurd <$> (Compose $ reverse magicEntries))
-    )
-    U1
-    (ClassifWillBe U1)
-  )
+instance Sys Trivial where

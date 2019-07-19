@@ -66,9 +66,12 @@ dividedCtx2pretty maybeDRho delta (gamma :<...> modul) opts =
       ]
   where printGamma = dividedCtx2pretty maybeDRho delta gamma opts
 dividedCtx2pretty Nothing delta (dmu :\\ gamma) opts = --haveDB gamma $
-  "[" ++| fine2pretty delta (unVarBeforeCtxUnsafe <$> dmu) opts |++ "] \\ ("
-                             \\\ [dividedCtx2pretty Nothing delta gamma opts]
-                             /// ribbon ")"
+  dividedCtx2pretty Nothing delta gamma opts \+\ [
+      " {" ++| fine2pretty delta (unVarBeforeCtxUnsafe <$> dmu) opts |++ "}"
+    ]
+--  "[" ++| fine2pretty delta (unVarBeforeCtxUnsafe <$> dmu) opts |++ "] \\ ("
+--                             \\\ [dividedCtx2pretty Nothing delta gamma opts]
+--                             /// ribbon ")"
 dividedCtx2pretty (Just drho) delta (dmu :\\ gamma) opts =
   dividedCtx2pretty (Just $ compModedModality (unVarBeforeCtxUnsafe <$> dmu) drho) delta gamma opts
 dividedCtx2pretty maybeDRho delta (CtxId gamma) opts = dividedCtx2pretty maybeDRho delta gamma opts

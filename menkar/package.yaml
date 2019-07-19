@@ -33,7 +33,7 @@ dependencies:
 - containers # == 0.5.7.1
 - terminal-size == 0.3.2.1
 - ghc == 8.6.5
-- data-ordlist == 0.4.7
+- data-ordlist == 0.4.7.0
 # - bifunctors == 5.4.2
 # - hs-functors == 0.1.3.0
 

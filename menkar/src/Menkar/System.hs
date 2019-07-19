@@ -7,7 +7,9 @@ module Menkar.System (
   module Menkar.System.Scoper,
   module Menkar.System.WHN,
   module Menkar.System.TC,
-  module Menkar.System.PrettyPrint
+  module Menkar.System.PrettyPrint,
+  module Menkar.System.MagicContext,
+  module Menkar.System.System
   ) where
 
 import Menkar.System.Basic
@@ -19,3 +21,5 @@ import Menkar.System.Scoper
 import Menkar.System.WHN
 import Menkar.System.TC
 import Menkar.System.PrettyPrint
+import Menkar.System.MagicContext
+import Menkar.System.System

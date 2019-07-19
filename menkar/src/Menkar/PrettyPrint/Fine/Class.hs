@@ -49,7 +49,7 @@ instance Omissible (Fine2PrettyOptions sys) where
     _fine2pretty'humanReadableMetas = True,
     _fine2pretty'printAlgorithm = PrintAlgorithmUnderscore,
     _fine2pretty'printSolutions = Nothing,
-    _fine2pretty'explicitLeftDivision = False,
+    _fine2pretty'explicitLeftDivision = True,
     _fine2pretty'printTypeAnnotations = False,
     _fine2pretty'printModule = (PrintModuleVerbosity (Just PrintEntryEntirely)),
     _fine2pretty'printModuleInContext = (Just (PrintModuleVerbosity Nothing)),

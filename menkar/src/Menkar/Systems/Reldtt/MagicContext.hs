@@ -3,13 +3,14 @@ module Menkar.Systems.Reldtt.MagicContext where
 import Prelude hiding (pi)
 
 import Menkar.Basic.Syntax
-import Menkar.Fine
+import Menkar.Fine.Syntax
+import Menkar.Fine.Context
 --import Menkar.Fine.Multimode
 import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
-import Menkar.Systems.Reldtt.Analyzer
+import Menkar.System.Fine
+import Menkar.System.MagicContext
 import Menkar.Basic.Context
-import Menkar.Analyzer
 
 import Control.Exception.AssertFalse
 
@@ -244,7 +245,7 @@ valIndBox = val NonOp "indBox" (idMod dataMode) $
     ValRHS
       (elim (var 8) (BoxType $ boxSeg) (mvar 4 (dvar 1) (dvar 2))
       $ ElimDep
-        (nbind NonOp "b" {- var 9 -} $ appMotive $ var 5)
+        (nbind NonOp "b" {- var 9 -} $ appMotive $ var 9)
       $ ElimBox
         (nbind NonOp "x" {- var 9 -} $ app (var 7) tyCBox (dvar 2) (var 9))
       )
@@ -540,22 +541,5 @@ magicEntries =
   valFunext :
   []
 
-magicContext :: Ctx Type Reldtt (VarInModule Void) Void
-magicContext = CtxEmpty dataMode :<...> ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
-
-----------------------------------------------
-
-magicModuleCorrect :: Judgement Reldtt
-magicModuleCorrect =
-  (Jud
-    (AnTokenDeclaration $ AnTokenTelescoped $ AnTokenModuleRHS)
-    (CtxEmpty dataMode)
-    (Declaration
-      (DeclNameModule "magic")
-      (idModedModality dataMode)
-      Explicit
-      (Telescoped $ ModuleRHS $ absurd <$> (Compose $ reverse magicEntries))
-    )
-    U1
-    (ClassifWillBe U1)
-  )
+instance SysMagicContext Reldtt where
+  magicModule = ModuleRHS (absurd <$> (Compose $ reverse magicEntries))
