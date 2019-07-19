@@ -82,7 +82,7 @@ where {
 	* Annotation consists of single operator character + atomic expression.
 */
 
-module ^(suc d) InitialOfFunctor
+module &(suc d) InitialOfFunctor
 	{*crisp d : Depth}
 	{F : {~ *irr l : Nat} -> Uni d l -> Uni d l}
 	{*str
