@@ -6,8 +6,8 @@ module Menkar.Systems.Reldtt (
   module Menkar.Systems.Reldtt.Scoper,
   module Menkar.Systems.Reldtt.WHN,
   module Menkar.Systems.Reldtt.TC,
-  module Menkar.Systems.Reldtt.PrettyPrint
-  --module Menkar.Systems.Reldtt.MagicContext
+  module Menkar.Systems.Reldtt.PrettyPrint,
+  module Menkar.Systems.Reldtt.MagicContext
   ) where
 
 import Menkar.Systems.Reldtt.Basic
@@ -18,4 +18,4 @@ import Menkar.Systems.Reldtt.Scoper
 import Menkar.Systems.Reldtt.WHN
 import Menkar.Systems.Reldtt.TC
 import Menkar.Systems.Reldtt.PrettyPrint
---import Menkar.Systems.Reldtt.MagicContext
+import Menkar.Systems.Reldtt.MagicContext

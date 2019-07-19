@@ -397,8 +397,8 @@ magicEntries =
   valUniHS :
   valUnitType :
   valUnitTerm :
-  valBoxType :
-  valBoxTerm :
+  --valBoxType :
+  --valBoxTerm :
   valIndBox :
   valPair :
   valIndPair :

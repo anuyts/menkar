@@ -1,7 +1,7 @@
 module Menkar.Systems (
-  module Menkar.Systems.Trivial,
-  module Menkar.Systems.Reldtt
+  module Trivial,
+  module Reldtt
   ) where
 
-import Menkar.Systems.Trivial
-import Menkar.Systems.Reldtt
+import qualified Menkar.Systems.Trivial as Trivial
+import qualified Menkar.Systems.Reldtt as Reldtt
