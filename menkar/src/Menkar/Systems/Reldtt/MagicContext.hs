@@ -66,6 +66,20 @@ app eliminee tyEliminee d arg = elim eliminee tyEliminee (idMod d) $ App arg
 forget :: Mode Reldtt v -> Modality Reldtt v
 forget d = ChainModtyKnown $ KnownModty (ModtySnout 0 0 []) (TailForget d)
 
+tyMode :: Type Reldtt v
+tyMode = BareSysType $ SysTypeMode
+tyModty :: Mode Reldtt v -> Mode Reldtt v -> Type Reldtt v
+tyModty dom cod = BareSysType $ SysTypeModty dom cod
+
+comp :: Modality Reldtt v -> Modality Reldtt v -> Modality Reldtt v
+comp nu mu = ChainModtyTerm (_chainModty'dom mu) (_chainModty'cod nu) $
+  BareModty $ ModtyTermComp
+  (_chainModty'cod nu)
+  nu
+  (_chainModty'dom nu)
+  mu
+  (_chainModty'dom mu)
+
 ----------------------------------------------
 
 -- | @val *id Nat : Set = Nat@
@@ -88,20 +102,20 @@ valSuc = val NonOp "suc" (idMod dataMode) $
   )
 
 {- | @val *id indNat
-        {~ *id dcod : Mode}
-        {~ *id mu : Modality d 0}
+        {~ *id dmot : Mode}
+        {~ *id nu : Modality d 0}
         *(forget d)
-        {C : {*mu n : Nat} -> Set}
+        {C : {*nu n : Nat} -> Set}
         {cz : C 0}
-        {cs : {*mu n : Nat} -> C n -> C (suc n)}
-        {*mu n0 : Nat} : C n
+        {cs : {*nu n : Nat} -> C n -> C (suc n)}
+        {*nu n0 : Nat} : C n
         = indNat (n > C n) cz (n > ihyp > cs n ihyp) n0@
 -}
 -- TODO types of cz and cs and rhs need to be lifted to a higher universe
 valIndNat :: Entry Reldtt Void
 valIndNat = val NonOp "indNat" (idMod dataMode) $
-  segIm NonOp "dcod" {- var 0 -} (idMod dataMode) (BareSysType $ SysTypeMode) :|-
-  segIm NonOp "mu" {- var 1 -} (idMod dataMode) (BareSysType $ SysTypeModty dataMode (dvar 0)) :|-
+  segIm NonOp "dmot" {- var 0 -} (idMod dataMode) (tyMode) :|-
+  segIm NonOp "nu" {- var 1 -} (idMod dataMode) (tyModty dataMode (dvar 0)) :|-
   moded (forget $ dvar 0) :**
   segEx NonOp "C" {- var 2 -} (idMod $ dvar 0) (hs2type $ tyMotive) :|-
   segEx NonOp "cz" {- var 3 -} (idMod $ dvar 0) (tyCZ) :|-
@@ -137,17 +151,21 @@ valIndNat = val NonOp "indNat" (idMod dataMode) $
     tyCS :: DeBruijnLevel v => UniHSConstructor Reldtt v
     tyCS = pi (segEx NonOp "n" (mvar 1 dataMode (dvar 0)) $ hs2type NatType) (hs2type $ tyCS' $ Var2 $ VarLast)
 
+-----------------
+
 {- | @val *id UniHS {*id d : Mode} *(forget d) : UniHS d = UniHS d @
 -}
 valUniHS :: Entry Reldtt Void
 valUniHS = val NonOp "UniHS" (idMod dataMode) $
-  segEx NonOp "d" {- var 0 -} (idMod dataMode) (BareSysType $ SysTypeMode) :|-
+  segEx NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
   moded (forget $ dvar 0) :**
   Telescoped (
     ValRHS
       (hs2term $ UniHS $ dvar 0)
       (hs2type $ UniHS $ dvar 0)
   )
+
+-----------------
 
 -- | @val *id Unit : Set = Unit@
 valUnitType :: Entry Reldtt Void
@@ -162,3 +180,76 @@ valUnitType = val NonOp "Unit" (idMod dataMode) $
 valUnitTerm :: Entry Reldtt Void
 valUnitTerm = val NonOp "unit" (idMod dataMode) $
   Telescoped $ ValRHS (Expr2 $ TermCons $ ConsUnit) (hs2type UnitType)
+
+-----------------
+
+{-
+{- | @val *id box
+        {~ *id ddom dcod : Mode}
+        {~ *id mu : Modality dom cod}
+        *(forget cod)
+        {~ *mu X : UniHS dom}
+        {x : X} : Box {*mu _ : X} = box x@
+-}
+valBoxTerm :: Entry Trivial Void
+valBoxTerm = val NonOp "box" (idMod dataMode) $
+  segIm NonOp "ddom" {- var 0 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "dcod" {- var 1 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "mu" {- var 2 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  moded (forget $ dvar 1) :**
+  segIm NonOp "X" {- var 0 -} (hs2type $ UniHS TrivMode) :|-
+  segEx NonOp "x" {- var 1 -} (Type $ var 0) :|-
+  Telescoped (
+    ValRHS
+      (Expr2 $ TermCons $ ConsBox boxSeg $ var 1)
+      (hs2type $ BoxType $ boxSeg)
+  )
+  where boxSeg :: DeBruijnLevel v => Segment Type Trivial v
+        boxSeg = segEx NonOp "x" $ Type $ var 0
+-}
+
+{-| val *id indBox
+      {~ *id ddom dcod dmot : Mode}
+      {~ *id mu : Modality ddom dcod}
+      {~ *id nu : Modality dcod dmot}
+      {*(forget dmot)}
+      {&ddom *(nu @ mu) X : UniHS ddom}
+      {&dmot C : {&dcod *mu _ : {*nu} -> X} -> UniHS dmot}
+      {&dmot cbox : {*(nu @ mu) x : X} -> C ({*nu} > x)}
+      {&dcod b0 : {*nu} -> X} : C b0
+        = indBox (b > C b) (x > cbox x) b0
+-}
+valIndBox :: Entry Reldtt Void
+valIndBox = val NonOp "indBox" (idMod dataMode) $
+  segIm NonOp "ddom" {- var 0 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "dcod" {- var 1 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "dmot" {- var 2 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "mu" {- var 3 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  segIm NonOp "nu" {- var 4 -} (idMod dataMode) (tyModty (dvar 1) (dvar 2)) :|-
+  moded (forget $ dvar 2) :**
+  segEx NonOp "X"  {- var 5 -} (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (hs2type $ UniHS $ dvar 0) :|-
+  segEx NonOp "C"  {- var 6 -} (idMod $ dvar 2) (hs2type tyMotive) :|-
+  segEx NonOp "cbox" {- var 7 -} (idMod $ dvar 2) (hs2type $ tyCBox) :|-
+  segEx NonOp "b*" {- var 8 -} (idMod $ dvar 2) (hs2type $ BoxType $ boxSeg) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 8) (BoxType $ boxSeg) (mvar 4 (dvar 1) (dvar 2))
+      $ ElimDep
+        (nbind NonOp "b" {- var 9 -} $ appMotive $ var 5)
+      $ ElimBox
+        (nbind NonOp "x" {- var 9 -} $ app (var 7) tyCBox (dvar 2) (var 9))
+      )
+      (appMotive $ var 8)
+  )
+  where
+    boxSeg :: DeBruijnLevel v => Segment Type Reldtt v
+    boxSeg = segEx NonOp "x" (mvar 3 (dvar 0) (dvar 1)) $ Type $ var 5
+    tyMotive :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyMotive = (segEx NonOp "b" (mvar 4 (dvar 1) (dvar 2)) (hs2type $ BoxType $ boxSeg)) `arrow` (hs2type $ UniHS $ dvar 2)
+    appMotive :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
+    appMotive arg = Type $ app (var 6) tyMotive (dvar 2) arg
+    tyCBox :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyCBox = pi (segEx NonOp "x" (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (Type $ var 5)) $
+             appMotive $ Expr2 $ TermCons $ ConsBox boxSeg $ Var2 $ VarLast
+
+-----------------

@@ -139,6 +139,7 @@ valUnitType = val NonOp "Unit" $
 valUnitTerm :: Entry Trivial Void
 valUnitTerm = val NonOp "unit" $ Telescoped $ ValRHS (Expr2 $ TermCons $ ConsUnit) (hs2type UnitType)
 
+{-
 -- | @Box {X : UniHS} : UniHS l = Box {x : X}@
 valBoxType :: Entry Trivial Void
 valBoxType = val NonOp "Box" $
@@ -161,6 +162,7 @@ valBoxTerm = val NonOp "box" $
   )
   where boxSeg :: DeBruijnLevel v => Segment Type Trivial v
         boxSeg = segEx NonOp "x" $ Type $ var 0
+-}
 
 {-| indBox
       {X : Set}
