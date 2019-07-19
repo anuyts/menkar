@@ -246,7 +246,9 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
                 Just $ Identity !<$> Classification d' U1 (ClassifWillBe U1)
               otherwise -> Nothing
           )
-          extCtxId
+          (\ token' gamma' _ _ ->
+             Just $ CtxId $ crispModedModality (ctx'mode gamma') :\\ gamma'
+          )
           (const $ const U1)
           (AddressInfo ["mode"] NoFocus omit)
         return $ case token of
