@@ -216,7 +216,7 @@ valPair = val Op "," $
   Telescoped (
     ValRHS
       (Expr2 $ TermCons $ Pair (Binding segA $ appCod $ Var2 VarLast) (var 2) (var 3))
-      (hs2type $ sigma segA (appCod $ var 4))
+      (hs2type $ sigma segA {- var 4 -} (appCod $ var 4))
   )
   where
     segA :: DeBruijnLevel v => Segment Type Trivial v

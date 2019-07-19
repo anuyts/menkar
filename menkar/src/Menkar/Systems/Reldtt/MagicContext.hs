@@ -191,7 +191,7 @@ valUnitTerm = val NonOp "unit" (idMod dataMode) $
         {~ *mu X : UniHS dom}
         {x : X} : Box {*mu _ : X} = box x@
 -}
-valBoxTerm :: Entry Trivial Void
+valBoxTerm :: Entry Reldtt Void
 valBoxTerm = val NonOp "box" (idMod dataMode) $
   segIm NonOp "ddom" {- var 0 -} (idMod dataMode) tyMode :|-
   segIm NonOp "dcod" {- var 1 -} (idMod dataMode) tyMode :|-
@@ -204,7 +204,7 @@ valBoxTerm = val NonOp "box" (idMod dataMode) $
       (Expr2 $ TermCons $ ConsBox boxSeg $ var 1)
       (hs2type $ BoxType $ boxSeg)
   )
-  where boxSeg :: DeBruijnLevel v => Segment Type Trivial v
+  where boxSeg :: DeBruijnLevel v => Segment Type Reldtt v
         boxSeg = segEx NonOp "x" $ Type $ var 0
 -}
 
@@ -251,5 +251,100 @@ valIndBox = val NonOp "indBox" (idMod dataMode) $
     tyCBox :: DeBruijnLevel v => UniHSConstructor Reldtt v
     tyCBox = pi (segEx NonOp "x" (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (Type $ var 5)) $
              appMotive $ Expr2 $ TermCons $ ConsBox boxSeg $ Var2 $ VarLast
+
+-----------------
+
+{-| val *id (,)
+      {~ *id ddom dcod : Mode}
+      {~ *id mu : Modality ddom dcod}
+      *(forget dcod)
+      {~ *mu A : UniHS ddom}
+      {~ *id B : {*mu A} -> UniHS dcod}
+      {*mu x : A}
+      {*id y : B x}
+      : {*mu x : A} >< B x
+      = x , y
+-}
+valPair :: Entry Reldtt Void
+valPair = val Op "," (idMod dataMode) $
+  segIm NonOp "ddom" {- var 0 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "dcod" {- var 1 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "mu" {- var 2 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  moded (forget $ dvar 1) :**
+  segIm NonOp "A" {- var 3 -} (mvar 2 (dvar 0) (dvar 1)) (hs2type $ UniHS $ dvar 0) :|-
+  segIm NonOp "B" {- var 4 -} (idMod $ dvar 1) (hs2type $ tyCod) :|-
+  segEx NonOp "x" {- var 5 -} (mvar 2 (dvar 0) (dvar 1)) (Type $ var 3) :|-
+  segEx NonOp "y" {- var 6 -} (idMod $ dvar 1) (appCod $ var 5) :|-
+  Telescoped (
+    ValRHS
+      (Expr2 $ TermCons $ Pair (Binding segA $ appCod $ Var2 VarLast) (var 5) (var 6))
+      (hs2type $ sigma segA {- var 7 -} (appCod $ var 7))
+  )
+  where
+    segA :: DeBruijnLevel v => Segment Type Reldtt v
+    segA = segEx NonOp "x" (mvar 2 (dvar 0) (dvar 1)) (Type $ var 3)
+    tyCod :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyCod = segA `arrow` (hs2type $ UniHS $ dvar 1)
+    appCod :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
+    appCod arg = Type $ app (var 4) tyCod (dvar 1) arg
+
+{-| val *id indPair
+      {~ *id ddom dcod dmot : Mode}
+      {~ *id mu : Modality ddom dcod}
+      {~ *id nu : Modality dcod dmot}
+      {*(forget dmot)}
+      {~ *(nu @ mu) A : UniHS ddom}
+      {~ *nu B : A -> UniHS dcod}
+      {*id C : {*nu _ : {*mu x : A} >< B x} -> Set}
+      {*id cpair : {*(nu @ mu) x : A} {*nu y : B x} -> C (x , y)}
+      {*nu p0 : {*mu x : A} >< B x}
+      : C p0
+      = indPair (p > C) (x > y > cpair x y) p0
+-}
+valIndPair :: Entry Reldtt Void
+valIndPair = val NonOp "indPair" (idMod dataMode) $
+  segIm NonOp "ddom" {- var 0 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "dcod" {- var 1 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "dmot" {- var 2 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "mu" {- var 3 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  segIm NonOp "nu" {- var 4 -} (idMod dataMode) (tyModty (dvar 1) (dvar 2)) :|-
+  moded (forget $ dvar 2) :**
+  segIm NonOp "A" {- var 5 -} (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (hs2type $ UniHS $ dvar 0) :|-
+  segIm NonOp "B" {- var 6 -} (mvar 4 (dvar 1) (dvar 2)) (hs2type $ tyCod) :|-
+  segEx NonOp "C" {- var 7 -} (idMod $ dvar 2) (hs2type $ tyMotive) :|-
+  segEx NonOp "cpair" {- var 8 -} (idMod $ dvar 2) (hs2type $ tyCPair) :|-
+  segEx NonOp "p*" {- var 9 -} (mvar 4 (dvar 1) (dvar 2)) (hs2type $ tyPair) :|-
+  Telescoped (
+    ValRHS
+      (elim (var 9) tyPair (mvar 4 (dvar 1) (dvar 2)) $
+       ElimDep (nbind NonOp "p" {- var 10 -} $ appMotive $ var 10) $
+       ElimSigma $ nbind NonOp "x" {- var 10 -} $ nbind NonOp "y" {- var 11 -} $
+       app (
+         app (var 8) tyCPair (dvar 2) (var 10)
+       ) (tyCPair' (var 10)) (dvar 2) (var 11)
+      )
+      (appMotive $ var 9)
+  )
+  where
+    segAMu :: DeBruijnLevel v => Segment Type Reldtt v
+    segAMu = segEx NonOp "x" (mvar 3 (dvar 0) (dvar 1)) (Type $ var 5)
+    segAMuNu :: DeBruijnLevel v => Segment Type Reldtt v
+    segAMuNu = segEx NonOp "x" (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (Type $ var 5)
+    tyCod :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyCod = segAMu `arrow` (hs2type $ UniHS $ dvar 1)
+    appCod :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
+    appCod arg = Type $ app (var 6) tyCod (dvar 1) arg
+    tyPair :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyPair = sigma segAMu $ appCod $ Var2 $ VarLast
+    tyMotive :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyMotive = (segEx NonOp "p" (mvar 4 (dvar 1) (dvar 2)) $ hs2type tyPair) `arrow` (hs2type $ UniHS $ dvar 2)
+    appMotive :: DeBruijnLevel v => Term Reldtt v -> Type Reldtt v
+    appMotive arg = Type $ app (var 7) tyMotive (dvar 2) arg
+    tyCPair' :: DeBruijnLevel v => Term Reldtt v -> UniHSConstructor Reldtt v
+    tyCPair' x = pi
+      (segEx NonOp "y" (mvar 4 (dvar 1) (dvar 2)) $ appCod $ x)
+      (appMotive $ Expr2 $ TermCons $ Pair (Binding segAMu $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
+    tyCPair :: DeBruijnLevel v => UniHSConstructor Reldtt v
+    tyCPair = pi segAMuNu $ hs2type $ tyCPair' $ Var2 $ VarLast
 
 -----------------
