@@ -1,5 +1,5 @@
 //module Test where {
-  val box0 : Box Nat = ?box0
+  val box0 : {} -> Nat = ?box0
   val reflBox0 : 0 == .{Nat} box0 ... = refl ...
   //val betabox {n : Nat} : n == (box n) ... = refl ...
 //}

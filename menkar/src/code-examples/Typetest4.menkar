@@ -4,6 +4,7 @@ module Test where {
     val (+) {a b : Nat} : Nat = indNat (_ > {_ : Nat} -> Nat) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
     val (->) {A B : UniHS} : UniHS = {_ : A} -> B
     val (><) {A B : UniHS} : UniHS = {_ : A} >< B
+    val Box {A : UniHS} : UniHS = {} -> A
     val etatest : {_ : Nat} -> Box (Unit) = ?goal
 }
 

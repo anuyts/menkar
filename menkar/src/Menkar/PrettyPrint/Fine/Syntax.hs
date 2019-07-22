@@ -135,11 +135,11 @@ instance (SysFinePretty sys,
   fine2pretty gamma (SmartElimDots) opts = ribbon "..."
   --fine2pretty gamma (SmartElimEnd argSpec) = Raw.unparse' (Raw.ElimEnd argSpec)
   fine2pretty gamma (SmartElimArg Raw.ArgSpecNext dmu term) opts =
-    ".{" ++| fine2pretty gamma dmu opts |+| fine2pretty gamma term opts |++ "}"
+    ".{*(" ++| fine2pretty gamma dmu opts |++ ") " |+| fine2pretty gamma term opts |++ "}"
   fine2pretty gamma (SmartElimArg Raw.ArgSpecExplicit dmu term) opts =
-    "(" ++| fine2pretty gamma dmu opts |++ " | " |+| fine2pretty gamma term opts |++ ")"
+    "(*(" ++| fine2pretty gamma dmu opts |++ ") " |+| fine2pretty gamma term opts |++ ")"
   fine2pretty gamma (SmartElimArg (Raw.ArgSpecNamed name) dmu term) opts =
-    ".{" ++| fine2pretty gamma dmu opts |++ " | " |++ Raw.unparse name ++ " = " |+| fine2pretty gamma term opts |++ "}"
+    ".{*(" ++| fine2pretty gamma dmu opts |++ ") " |++ Raw.unparse name ++ " = " |+| fine2pretty gamma term opts |++ "}"
   fine2pretty gamma (SmartElimProj projSpec) opts = Raw.unparse' projSpec
   fine2pretty gamma (SmartElimUnbox) opts = ribbon ".{}"
 instance (SysFinePretty sys,
