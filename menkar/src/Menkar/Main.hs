@@ -398,8 +398,15 @@ initMainState = prepMainState >>= newIORef
 
 printCommandLineHelp :: IO ()
 printCommandLineHelp = do
-  putStrLn "menkar <system> [<file>...]"
-  putStrLn "<system> : one of 'trivial', 'reldtt'"
+  putStrLn ""
+  putStrLn "SYNOPSIS"
+  putStrLn "    menkar <system> [<file>...]"
+  putStrLn "    menkar --check-magic <system>"
+  putStrLn ""
+  putStrLn "OPTIONS"
+  putStrLn "    <system> :   trivial : one mode, one modality"
+  putStrLn "                 redltt :  degrees of relatedness - https://doi.org/10.1145/3209108.3209119"
+  putStrLn ""
 
 runMenkar :: forall sys . (Sys sys) => [String] -> IO ()
 runMenkar args = do
@@ -424,9 +431,13 @@ runMenkar args = do
   
 mainArgs :: [String] -> IO ()
 mainArgs [] = printCommandLineHelp
-mainArgs (system : args) = case system of
+mainArgs (arg1 : args) = case arg1 of
   "trivial" -> runMenkar @Trivial args
   "reldtt" -> runMenkar @Reldtt args
+  "--check-magic" -> case args of
+    "trivial" : [] -> checkMagic @Trivial
+    "reldtt" : [] -> checkMagic @Reldtt
+    _ -> printCommandLineHelp
   otherwise -> printCommandLineHelp
 
 main :: IO ()
