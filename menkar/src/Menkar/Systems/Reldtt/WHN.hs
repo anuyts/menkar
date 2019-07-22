@@ -322,15 +322,15 @@ whnormalizeKnownModty gamma mu@(KnownModty snout tail) reason = do
       _ -> return $ KnownModty snout tail
     TailProblem -> return $ KnownModty snout TailProblem
 
-whnormalizeChainModty :: forall whn v .
+whnormalizeChainModtyNonzeroCod :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Ctx Type Reldtt v Void ->
   ChainModty v ->
   String ->
   whn (ChainModty v)
-whnormalizeChainModty gamma mu@(ChainModtyKnown knownMu) reason =
+whnormalizeChainModtyNonzeroCod gamma mu@(ChainModtyKnown knownMu) reason =
   ChainModtyKnown <$> whnormalizeKnownModty gamma knownMu reason
-whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = do
+whnormalizeChainModtyNonzeroCod gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = do
   -- mu . nu . rho
   knownMu <- whnormalizeKnownModty gamma knownMu reason
   termNu <- whnormalize gamma termNu
@@ -349,21 +349,35 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
                 ChainModtyTerm ddom dcod trho ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
                     ChainModtyKnown $ idKnownModty ddom
-          whnormalizeChainModty gamma composite reason
+          whnormalizeChainModtyNonzeroCod gamma composite reason
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
           let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
                           compMod chainNuC (_chainModty'cod chainRho) chainRho
-          whnormalizeChainModty gamma composite reason
+          whnormalizeChainModtyNonzeroCod gamma composite reason
         ChainModtyTerm ddom dcod tnu -> return $ ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
-whnormalizeChainModty gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
+whnormalizeChainModtyNonzeroCod gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
   (tmu, metasTMu) <- listen $ whnormalize gamma tmu (BareSysType $ SysTypeModty dom cod) reason
   case metasTMu of
-    [] -> whnormalizeChainModty gamma
+    [] -> whnormalizeChainModtyNonzeroCod gamma
       (ChainModtyLink (idKnownModty cod) tmu $ ChainModtyKnown $ idKnownModty dom)
       reason
     otherwise -> return $ ChainModtyTerm dom cod tmu
+
+whnormalizeChainModty :: forall whn v .
+  (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
+  Ctx Type Reldtt v Void ->
+  ChainModty v ->
+  String ->
+  whn (ChainModty v)
+whnormalizeChainModty gamma chmu reason = do
+  let cod = _chainModty'cod chmu
+  whnCod <- whnormalizeMode gamma cod reason
+  case whnCod of
+    ReldttMode (BareMode ModeTermZero) -> return $ ChainModtyKnown $
+      forgetKnownModty $ _chainModty'dom chmu
+    otherwise -> whnormalizeChainModtyNonzeroCod gamma chmu reason
 
 whnormalizeModeTerm :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>

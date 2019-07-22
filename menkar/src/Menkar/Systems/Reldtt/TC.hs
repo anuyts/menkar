@@ -86,7 +86,10 @@ instance SysTC Reldtt where
     Left AnTokenModality -> do
       (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
       (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
-      case (metasT1, metasT2, t1, t2) of
+      newParent <- defConstraint
+        (JudRel analyzableToken eta relT gamma (Twice1 t1 t2) extraTs maybeCTs)
+        "Weak-head-normalizing both sides."
+      withParent newParent $ case (metasT1, metasT2, t1, t2) of
         ([] , _  , ChainModtyTerm _ _ _, _) -> unreachable
         (_  , [] , _, ChainModtyTerm _ _ _) -> unreachable
         ([] , [] , _, _) ->
@@ -107,7 +110,10 @@ instance SysTC Reldtt where
     Left AnTokenDegree -> do
       (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
       (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
-      case (metasT1, metasT2) of
+      newParent <- defConstraint
+        (JudRel analyzableToken eta relT gamma (Twice1 t1 t2) extraTs maybeCTs)
+        "Weak-head-normalizing both sides."
+      withParent newParent $ case (metasT1, metasT2) of
         ([], []) -> checkASTRel' eta relT gamma (Twice1 t1 t2) extraTs maybeCTs
         otherwise -> tcBlock "Cannot solve relation: one side is blocked on a meta-variable."
     Right AnTokenModeTerm -> byAnalysis

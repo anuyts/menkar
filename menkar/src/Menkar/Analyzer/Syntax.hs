@@ -524,7 +524,11 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
                   (ClassifMustBe $ _segment'content boxSeg')
               otherwise -> Nothing
           )
-          extCtxId
+          (\ token gamma' (Classification t' U1 _) _ -> case t' of
+              ConsBox boxSeg' tUnbox' ->
+                Just $ CtxId $ VarFromCtx <$> _segment'modty boxSeg' :\\ gamma'
+              otherwise -> Nothing
+          )
           extRelId
           (AddressInfo ["box content"] NoFocus omit)
         return $ case token of

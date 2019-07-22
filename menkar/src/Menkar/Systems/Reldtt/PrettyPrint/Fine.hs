@@ -36,7 +36,7 @@ instance Fine2Pretty Reldtt ChainModty where
   fine2pretty gamma chmu opts = case chmu of
     ChainModtyKnown kmu -> fine2pretty gamma kmu opts
     ChainModtyLink knu trho chsigma -> fine2pretty gamma knu opts \\\
-        [" \8728(" ++| fine2pretty gamma trho opts |++ ")\8728"] /+/
+        [" \8728(" ++| fine2pretty gamma trho opts |++ ")\8728 "] /+/
       fine2pretty gamma chsigma opts
     ChainModtyTerm dom cod tmu -> "(" ++| fine2pretty gamma tmu opts |++ ")"
 

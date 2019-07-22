@@ -135,6 +135,9 @@ data KnownModty v = KnownModty {_knownModty'snout :: ModtySnout, _knownModty'tai
 idKnownModty :: Mode Reldtt v -> KnownModty v
 idKnownModty d = KnownModty (ModtySnout 0 0 []) (TailCont d)
 
+forgetKnownModty :: Mode Reldtt v -> KnownModty v
+forgetKnownModty dom = KnownModty (ModtySnout 0 0 []) (TailForget dom)
+
 problemKnownModty :: KnownModty v
 problemKnownModty = KnownModty (ModtySnout 0 0 []) TailProblem
 
