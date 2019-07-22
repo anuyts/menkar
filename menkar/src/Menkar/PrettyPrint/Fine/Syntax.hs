@@ -401,8 +401,8 @@ instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Plicity sys) where
   fine2pretty gamma Explicit opts = ribbonEmpty
-  fine2pretty gamma Implicit opts = ribbon "~ | "
-  fine2pretty gamma (Resolves t) opts = "resolves " ++| fine2pretty gamma t opts |++ " | "
+  fine2pretty gamma Implicit opts = ribbon "~ "
+  fine2pretty gamma (Resolves t) opts = "~(" ++| fine2pretty gamma t opts |++ ") "
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Plicity sys Void) where
@@ -426,7 +426,7 @@ telescope2pretties gamma (Telescoped Unit2) opts = []
 telescope2pretties gamma (seg :|- telescope) opts =
   (fine2pretty gamma seg opts) : telescope2pretties (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) telescope opts
 telescope2pretties gamma (mu :** telescope) opts =
-  ("{" ++| fine2pretty gamma mu opts |++ "}") : telescope2pretties (() ::\\ gamma) telescope opts
+  ("{*(" ++| fine2pretty gamma mu opts |++ ")}") : telescope2pretties (() ::\\ gamma) telescope opts
 instance (SysFinePretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
          Fine2Pretty sys (ty sys), Fine2Pretty sys (rhs sys)) =>
@@ -448,8 +448,8 @@ declAnnots2pretties :: (DeBruijnLevel v,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          ScCtx sys v Void -> Declaration declSort content sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 declAnnots2pretties gamma decl opts = [
-                fine2pretty gamma (_decl'modty decl) opts,
-                fine2pretty gamma (_decl'plicity decl) opts
+                fine2pretty gamma (_decl'plicity decl) opts,
+                "*(" ++| fine2pretty gamma (_decl'modty decl) opts |++ ") "
               ]
 
 {-
@@ -501,18 +501,18 @@ instance (SysFinePretty sys, Functor (content sys),
         PrintEntryEntirely -> prettyNameAndAnnots
           ||| fine2pretty gamma (_decl'content decl) opts
       where
-        prettyNameAndAnnots = ribbon "val ["
+        prettyNameAndAnnots = ribbon "val "
           \\\ declAnnots2pretties gamma decl opts
-          /// "] " ++| (declName2pretty gamma (_decl'name decl) opts)
+          /// (declName2pretty gamma (_decl'name decl) opts)
     DeclNameModule str -> case _fine2pretty'printEntry opts of
       PrintEntryName -> declName2pretty gamma (_decl'name decl) opts
       PrintEntryNameAnnots -> prettyNameAndAnnots
       PrintEntryEntirely -> prettyNameAndAnnots
         ||| fine2pretty gamma (_decl'content decl) opts
       where
-        prettyNameAndAnnots = ribbon "module  ["
+        prettyNameAndAnnots = ribbon "module "
           \\\ declAnnots2pretties gamma decl opts
-          /// "] " ++| (declName2pretty gamma (_decl'name decl) opts)
+          /// "" ++| (declName2pretty gamma (_decl'name decl) opts)
 instance (SysFinePretty sys, Functor (content sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
          Fine2Pretty sys (content sys)) =>

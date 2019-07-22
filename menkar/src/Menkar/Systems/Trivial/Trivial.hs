@@ -249,10 +249,10 @@ instance Raw.SysRawPretty Trivial where
 ----------------------------------
 
 instance Fine2Pretty Trivial TrivMode where
-  fine2pretty gamma TrivMode opts = ribbon "*"
+  fine2pretty gamma TrivMode opts = ribbon "_"
 
 instance Fine2Pretty Trivial TrivModality where
-  fine2pretty gamma TrivModality opts = ribbon "*"
+  fine2pretty gamma TrivModality opts = ribbon "_"
 
 instance Fine2Pretty Trivial TrivDegree where
   fine2pretty gamma TrivDegree opts = ribbon "="
