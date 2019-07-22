@@ -385,7 +385,7 @@ valIndEmpty = val NonOp "indEmpty" (idMod dataMode) $
   segIm NonOp "nu" {- var 2 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
   moded (forget $ dvar 1) :**
   segEx NonOp "C" {- var 3 -} (idMod $ dvar 1) (hs2type $ tyMotive) :|-
-  segEx NonOp "e*" {- var 4 -} (idMod $ dvar 0) (hs2type $ EmptyType) :|-
+  segEx NonOp "e*" {- var 4 -} (mvar 2 (dvar 0) (dvar 1)) (hs2type $ EmptyType) :|-
   Telescoped (
     ValRHS
       (elim (var 4) EmptyType (mvar 2 (dvar 0) (dvar 1)) $
