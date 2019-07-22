@@ -480,7 +480,12 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
                   (ClassifMustBe $ _segment'content $ binding'segment $ sigmaBinding')
               otherwise -> Nothing
           )
-          extCtxId
+          (\ token gamma' (Classification t' U1 _) _ -> case t' of
+              Pair sigmaBinding' tFst' tSnd ->
+                Just $ CtxId $
+                  VarFromCtx <$> _segment'modty (binding'segment sigmaBinding') :\\ gamma'
+              otherwise -> Nothing
+          )
           extRelId
           (AddressInfo ["first component"] NoFocus omit)
         rtSnd <- fmapCoe runIdentity <$> h Identity
