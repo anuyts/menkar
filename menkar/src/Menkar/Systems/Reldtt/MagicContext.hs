@@ -240,7 +240,7 @@ valIndBox = val NonOp "indBox" (idMod dataMode) $
   segEx NonOp "X"  {- var 5 -} (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (hs2type $ UniHS $ dvar 0) :|-
   segEx NonOp "C"  {- var 6 -} (idMod $ dvar 2) (hs2type tyMotive) :|-
   segEx NonOp "cbox" {- var 7 -} (idMod $ dvar 2) (hs2type $ tyCBox) :|-
-  segEx NonOp "b*" {- var 8 -} (idMod $ dvar 2) (hs2type $ BoxType $ boxSeg) :|-
+  segEx NonOp "b*" {- var 8 -} (mvar 4 (dvar 1) (dvar 2)) (hs2type $ BoxType $ boxSeg) :|-
   Telescoped (
     ValRHS
       (elim (var 8) (BoxType $ boxSeg) (mvar 4 (dvar 1) (dvar 2))
