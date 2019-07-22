@@ -17,6 +17,7 @@ import qualified Menkar.PrettyPrint.Raw as Raw
 
 import Text.PrettyPrint.Tree
 import Data.Omissible
+import Data.Functor.Functor1
 
 import Data.Void
 import Data.Maybe
@@ -34,7 +35,7 @@ charYielding :: Char
 charYielding = '\x2198'
 
 ---------------------------
-
+{-
 instance (SysFinePretty sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
           Fine2Pretty sys (ModedModality sys) where
@@ -52,8 +53,8 @@ instance (SysFinePretty sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
           Fine2Pretty sys (ModedDegree sys) where
   fine2pretty gamma (ModedDegree d deg) opts = fine2pretty gamma deg opts
-
-deriving instance (Show (Mode sys v), Show (Modality sys v)) => Show (ModedContramodality sys v)
+-}
+--deriving instance (Show (Mode sys v), Show (Modality sys v)) => Show (ModedContramodality sys v)
 
 binding2pretty :: (DeBruijnLevel v,
                   SysFinePretty sys,
@@ -282,7 +283,7 @@ instance (SysFinePretty sys,
       \\\ ((|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies)
   fine2pretty gamma (AlgSmartElim eliminee (Compose eliminators)) opts =
     "(" ++| fine2pretty gamma eliminee opts |++ ")"
-      |+| treeGroup ((" " ++|) . ($ opts) . fine2pretty gamma . snd2 <$> eliminators)
+      |+| treeGroup ((" " ++|) . ($ opts) . fine2pretty gamma . snd1 <$> eliminators)
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Algorithm sys Void) where
@@ -388,7 +389,7 @@ instance (SysFinePretty sys,
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Annotation sys) where
-  fine2pretty gamma (AnnotMode d) opts = fine2pretty gamma d opts
+  --fine2pretty gamma (AnnotMode d) opts = fine2pretty gamma d opts
   fine2pretty gamma (AnnotModality mu) opts = fine2pretty gamma mu opts
   fine2pretty gamma (AnnotImplicit) opts = ribbon "~"
 instance (SysFinePretty sys,

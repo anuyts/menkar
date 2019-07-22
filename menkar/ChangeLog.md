@@ -4,6 +4,7 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  Removed extremely widespread but redundant mode annotations from syntax.
 *  Added special function-like modal-lock syntax for Box types.
 *  Added support for RelDTT.
 *  Put mode classifier of 'UniHSConstructor' in a 'ModalBox' so that it lives in the right context.

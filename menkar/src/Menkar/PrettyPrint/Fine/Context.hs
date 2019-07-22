@@ -36,7 +36,7 @@ dividedCtx2pretty :: forall v w sys ty .
 dividedCtx2pretty Nothing delta (CtxEmpty d) opts =
   "{context-mode : " ++| fine2pretty delta d opts |++ "}"
 dividedCtx2pretty (Just drho) delta (CtxEmpty d) opts =
-  "{context-mode : " ++| fine2pretty delta (modality'dom drho) opts |++ "}"
+  "{context-mode : " ++| fine2pretty delta (_modality'dom drho) opts |++ "}"
 dividedCtx2pretty maybeDRho delta (gamma :.. seg) opts = haveDB gamma $
   dividedCtx2pretty maybeDRho delta gamma opts
     \+\ [

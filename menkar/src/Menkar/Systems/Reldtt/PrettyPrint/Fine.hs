@@ -43,7 +43,7 @@ instance Fine2Pretty Reldtt ChainModty where
 instance Fine2Pretty Reldtt ReldttDegree where
   fine2pretty gamma deg opts = case deg of
     DegKnown d kdeg -> ribbon $ knownDeg2string kdeg
-    DegGet deg' chmu dom cod -> fine2pretty gamma deg' opts \\\
+    DegGet deg' chmu -> fine2pretty gamma deg' opts \\\
       [" \183(" ++| fine2pretty gamma chmu opts |++ ")"]
 
 instance Fine2Pretty Reldtt KnownModty where

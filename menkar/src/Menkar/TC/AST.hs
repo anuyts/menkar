@@ -18,6 +18,8 @@ import Menkar.WHN
 --import Menkar.TC.Segment
 --import Menkar.TC.Solve
 
+import Data.Functor.Functor1
+
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
@@ -144,7 +146,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
       case alg of
         AlgSmartElim eliminee (Compose eliminators) -> do
           let dgamma = unVarFromCtx <$> ctx'mode gamma
-          let dmuElim = concatModedModalityDiagrammatically (fst2 <$> eliminators) dgamma
+          let dmuElim = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
           tyEliminee <- newMetaType {-(eqDeg :: Degree sys _)-}
                         (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
           -----

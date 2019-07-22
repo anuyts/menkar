@@ -55,9 +55,9 @@ instance SysScoper Reldtt where
   scopeAnnotation gamma qstring maybeRawArg = do
     let dgamma' = ctx'mode gamma
     case qstring of
-      Raw.Qualified [] "d" -> case maybeRawArg of
+      {-Raw.Qualified [] "d" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `d` requires an argument."
-        Just rawArg -> AnnotMode . ReldttMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg
+        Just rawArg -> AnnotMode . ReldttMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg-}
       Raw.Qualified [] "m" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `m` requires an argument."
         Just rawArg -> do

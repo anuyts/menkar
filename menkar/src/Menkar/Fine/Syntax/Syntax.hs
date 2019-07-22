@@ -115,6 +115,10 @@ LookupResult sys (VarOpenCtx v w)deriving instance (Functor mode, Functor modty,
 
 data ModRel = ModEq | ModLeq
 
+type ModedModality sys = Modality sys
+_modality'mod :: ModedModality sys v -> Modality sys v
+_modality'mod mu = mu
+{-
 data ModedModality (sys :: KSys) (v :: *) =
   ModedModality {
     modality'dom :: Mode sys v,
@@ -125,7 +129,9 @@ deriving instance (SysTrav sys) => Foldable (ModedModality sys)
 deriving instance (SysTrav sys) => Traversable (ModedModality sys)
 deriving instance (SysTrav sys) => Generic1 (ModedModality sys)
 deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModedModality sys)
+-}
 
+{-
 data ModedContramodality (sys :: KSys) (v :: *) =
   ModedContramodality {contramodality'dom :: Mode sys v, contramodality'rightAdjoint :: Modality sys v}
 deriving instance (SysTrav sys) => Functor (ModedContramodality sys)
@@ -134,7 +140,12 @@ deriving instance (SysTrav sys) => Traversable (ModedContramodality sys)
 deriving instance (SysTrav sys) => Generic1 (ModedContramodality sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ModedContramodality sys)
+-}
 
+type ModedDegree sys = Degree sys
+_degree'deg :: ModedDegree sys v -> Degree sys v
+_degree'deg deg = deg
+{-
 data ModedDegree (sys :: KSys) (v :: *) =
   ModedDegree {_degree'mode :: Mode sys v, _degree'deg :: Degree sys v}
 deriving instance (SysTrav sys) => Functor (ModedDegree sys)
@@ -142,6 +153,7 @@ deriving instance (SysTrav sys) => Foldable (ModedDegree sys)
 deriving instance (SysTrav sys) => Traversable (ModedDegree sys)
 deriving instance (SysTrav sys) => Generic1 (ModedDegree sys)
 deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModedDegree sys)
+-}
 
 {-| Looking up something the module @modul@ in @dmu :\\ (gamma :<...> modul)@ yields
     @LeftDivided (ctx'mode gamma) dmu _@.-}
@@ -373,7 +385,7 @@ data Algorithm sys v =
     (Compose [] (Term sys) v) {-^ dependencies -} |
   AlgSmartElim
     (Term sys v) {-^ eliminee -}
-    (Compose [] (Pair2 ModedModality SmartEliminator sys) v)
+    (Compose [] (ModedModality sys :*: SmartEliminator sys) v)
       {-^ Eliminators. The moded modality inserted in front of a smart eliminator,
           is the composite of the modalities of that eliminator and the IMPLICIT eliminators immediately before it. -}
 deriving instance (SysTrav sys) => Functor (Algorithm sys)
@@ -453,7 +465,7 @@ isBlockedOrMeta _ [] = False
 
 {-| Not used in segments. Used by the scoper, and also used for annotation entries. -}
 data Annotation (sys :: KSys) v =
-  AnnotMode (Mode sys v) |
+  --AnnotMode (Mode sys v) |
   AnnotModality (Modality sys v) |
   AnnotImplicit
   --AnnotResolves (Term )
@@ -539,7 +551,7 @@ data TelescopedPartialDeclaration
      (v :: *) =
   TelescopedPartialDeclaration {
     _pdecl'names :: Maybe (Raw.DeclNames declSort),
-    _pdecl'mode :: Compose Maybe (Mode sys) v,
+    --_pdecl'mode :: Compose Maybe (Mode sys) v,
     _pdecl'modty :: Compose Maybe (Modality sys) v,
     _pdecl'plicity :: Compose Maybe (Plicity sys) v,
     _pdecl'content :: Telescoped ty (Maybe2 content) sys v
@@ -562,7 +574,7 @@ deriving instance (
 newPartialDeclaration :: TelescopedPartialDeclaration declSort ty content sys v
 newPartialDeclaration = TelescopedPartialDeclaration {
   _pdecl'names = Nothing,
-  _pdecl'mode = Compose Nothing,
+  --_pdecl'mode = Compose Nothing,
   _pdecl'modty = Compose Nothing,
   _pdecl'plicity = Compose Nothing,
   _pdecl'content = Telescoped $ Maybe2 $ Compose $ Nothing

@@ -33,11 +33,12 @@ newMetaModedModalityNoCheck :: (SysScoper sys, MonadScoper sys sc, DeBruijnLevel
   Ctx Type sys v Void ->
   String ->
   sc (ModedModality sys v)
-newMetaModedModalityNoCheck gamma reason = do
+newMetaModedModalityNoCheck = newMetaModtyNoCheck
+{-newMetaModedModalityNoCheck gamma reason = do
   dom <- newMetaModeNoCheck gamma reason
   cod <- newMetaModeNoCheck gamma reason
   mu <- newMetaModtyNoCheck gamma reason
-  return $ ModedModality dom cod mu
+  return $ ModedModality dom cod mu-}
 
 newMetaClassif4astNoCheck :: forall sys sc t v .
   (MonadScoper sys sc, DeBruijnLevel v, SysScoper sys, SysAnalyzer sys, Analyzable sys t) =>

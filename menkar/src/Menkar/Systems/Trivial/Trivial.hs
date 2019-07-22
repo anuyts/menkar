@@ -63,8 +63,10 @@ data TrivAnalyzableToken (t :: * -> *) where
   --AnTokenTrivTerm :: TrivAnalyzableToken TrivTerm
   --AnTokenTrivUniHSConstructor :: TrivAnalyzableToken TrivUniHSConstructor
 
-pattern TrivModedModality = ModedModality TrivMode TrivMode TrivModality :: ModedModality Trivial _
-pattern TrivModedDegree = ModedDegree TrivMode TrivDegree :: ModedDegree Trivial _
+pattern TrivModedModality = TrivModality
+pattern TrivModedDegree = TrivDegree
+--pattern TrivModedModality = ModedModality TrivMode TrivMode TrivModality :: ModedModality Trivial _
+--pattern TrivModedDegree = ModedDegree TrivMode TrivDegree :: ModedDegree Trivial _
 
   {-
 instance Fine2Pretty Trivial U1 where
@@ -75,13 +77,15 @@ instance Fine2Pretty Trivial U1 where
 
 instance Multimode Trivial where
   idMod TrivMode = TrivModality
-  compMod TrivModality TrivMode TrivModality = TrivModality
+  compMod TrivModality TrivModality = TrivModality
   divMod TrivModedModality TrivModedModality = TrivModality
   divMod _ _ = unreachable
   crispMod TrivMode = TrivModality
   dataMode = TrivMode
   approxLeftAdjointProj TrivModedModality = TrivModality
   approxLeftAdjointProj _ = unreachable
+  _modality'dom TrivModality = TrivMode
+  _modality'cod TrivModality = TrivMode
   --term2mode t = U1
   --term2modty t = U1
 
@@ -95,6 +99,7 @@ instance Degrees Trivial where
   maybeTopDeg d = Nothing
   divDeg TrivModedModality TrivModedDegree = TrivDegree
   divDeg _ _ = unreachable
+  _degree'mode TrivDegree = TrivMode
 
 ---------------------------------
 

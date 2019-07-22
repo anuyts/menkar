@@ -337,18 +337,18 @@ instance Analyzable Reldtt ReldttDegree where
         TokenTC -> AnalysisTC $ d
         TokenRel -> AnalysisRel
 
-    DegGet degArg mu dom cod -> Right $ do
+    DegGet degArg mu -> Right $ do
       rdegArg <- fmapCoe runIdentity <$> h Identity
-        (conditional $ DegGet unreachable unreachable unreachable unreachable)
+        (conditional $ DegGet unreachable unreachable)
         (\ gamma' -> \ case
-            (Classification deg'@(DegGet degArg' mu' dom' cod') U1 maybeD') ->
-              Just $ Identity !<$> Classification degArg' U1 (ClassifMustBe cod')
+            (Classification deg'@(DegGet degArg' mu') U1 maybeD') ->
+              Just $ Identity !<$> Classification degArg' U1 (ClassifMustBe $ _chainModty'cod mu')
             otherwise -> Nothing
         )
         extCtxId
         (\_ (Const modrel) -> Const modrel)
         (AddressInfo ["argument degree"] NoFocus omit)
-      rdom <- fmapCoe runIdentity <$> h Identity
+      {-rdom <- fmapCoe runIdentity <$> h Identity
         (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable unreachable unreachable)
         (\ gamma' -> \ case
             (Classification deg'@(DegGet degArg' mu' dom' cod') U1 maybeD') ->
@@ -367,12 +367,12 @@ instance Analyzable Reldtt ReldttDegree where
         )
         extCtxId
         (\_ _ -> U1)
-        (AddressInfo ["codomain"] FocusWrapped omit)
+        (AddressInfo ["codomain"] FocusWrapped omit)-}
       rmu <- fmapCoe runIdentity <$> h Identity
-        (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable (getAnalysisTrav rdom) (getAnalysisTrav rcod))
+        (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable)
         (\ gamma' -> \ case
-            (Classification deg'@(DegGet degArg' mu' dom' cod') U1 maybeD') ->
-              Just $ Identity !<$> Classification mu' U1 (ClassifMustBe $ dom' :*: cod')
+            (Classification deg'@(DegGet degArg' mu') U1 maybeD') ->
+              Just $ Identity !<$> Classification mu' U1 ClassifUnknown --(ClassifMustBe $ dom' :*: cod')
             otherwise -> Nothing
         )
         extCtxId
@@ -380,8 +380,8 @@ instance Analyzable Reldtt ReldttDegree where
         (AddressInfo ["modality"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
-          DegGet (getAnalysisTrav rdegArg) (getAnalysisTrav rmu) (getAnalysisTrav rdom) (getAnalysisTrav rcod)
-        TokenTC -> AnalysisTC $ dom
+          DegGet (getAnalysisTrav rdegArg) (getAnalysisTrav rmu) --(getAnalysisTrav rdom) (getAnalysisTrav rcod)
+        TokenTC -> AnalysisTC $ _chainModty'dom mu
         TokenRel -> AnalysisRel
 
   convRel token d = U1

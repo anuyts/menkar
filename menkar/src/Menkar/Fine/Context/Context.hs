@@ -87,7 +87,7 @@ ctx'mode (CtxEmpty d) = VarBeforeCtx <$> d
 ctx'mode (gamma :.. seg) = bimap VarWkn id <$> ctx'mode gamma
 ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
 ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
-ctx'mode (dmu :\\ gamma) = modality'dom dmu
+ctx'mode (dmu :\\ gamma) = _modality'dom dmu
 ctx'mode (CtxId gamma) = bimap Identity id <$> ctx'mode gamma
 ctx'mode (CtxComp gamma) = bimap Compose id <$> ctx'mode gamma
 

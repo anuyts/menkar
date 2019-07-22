@@ -31,6 +31,7 @@ fromRight b0 (Right b) = b
 
 -------------------------
 
+{-
 instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   type Classif (ModedModality sys) = Mode sys :*: Mode sys -- domain and codomain
   type Relation (ModedModality sys) = Const ModRel
@@ -65,6 +66,7 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
         TokenRel -> AnalysisRel
   convRel token d = U1 :*: U1
   extraClassif d t extraT = U1 :*: U1
+-}
 
 -------------------------
 
@@ -219,7 +221,7 @@ instance (SysAnalyzer sys, Analyzable sys (content sys)) => Analyzable sys (Moda
 
   convRel token d = convRel (analyzableToken @sys @(content sys)) d
   extraClassif d (ModalBox content) (dmu :*: extraContent) =
-    dmu :*: extraClassif @sys @(content sys) (modality'dom dmu) content extraContent
+    dmu :*: extraClassif @sys @(content sys) (_modality'dom dmu) content extraContent
 
 -------------------------
 
@@ -967,7 +969,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ Identity !<$> Classification dmuElim' U1
-                (ClassifMustBe $ modality'dom dmuElim' :*: (unVarFromCtx <$> ctx'mode gamma'))
+                (ClassifMustBe $ _modality'dom dmuElim' :*: (unVarFromCtx <$> ctx'mode gamma'))
             otherwise -> Nothing
         )
         crispExtCtxId
@@ -1099,7 +1101,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       (conditional $ Declaration name unreachable unreachable unreachable)
       (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
          Just $ Identity !<$>
-         Classification dmu' U1 (ClassifMustBe $ modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma')))
+         Classification dmu' U1 (ClassifMustBe $ _modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma')))
       crispExtCtxId
       (const $ const $ Const $ ModEq)
       (AddressInfo ["modality"] FocusWrapped omit)
@@ -1128,7 +1130,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
     let dgamma = unVarFromCtx <$> dgamma'
     
     rdmu <- h id (crispModedModality dgamma' :\\ gamma)
-      (Classification dmu U1 (ClassifMustBe $ modality'dom dmu :*: dgamma) (toIfRel token $ Const ModEq))
+      (Classification dmu U1 (ClassifMustBe $ _modality'dom dmu :*: dgamma) (toIfRel token $ Const ModEq))
       (AddressInfo ["modality"] True omit)
       (Just . _decl'modty)
     -- TODO plic
@@ -1144,7 +1146,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
 -}
   convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
   extraClassif d decl extraDecl =
-    extraClassif @sys @(rhs sys) (modality'dom $ _decl'modty $ decl) (_decl'content decl) extraDecl
+    extraClassif @sys @(rhs sys) (_modality'dom $ _decl'modty $ decl) (_decl'content decl) extraDecl
 
 -------------------------
 
@@ -1220,7 +1222,7 @@ instance (SysAnalyzer sys,
           (\ gamma' -> \ case
               (Classification (dmu' :** telescopedRHS') U1 maybeU1') ->
                 Just $ Identity !<$> Classification dmu' U1
-                  (ClassifMustBe $ modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma'))
+                  (ClassifMustBe $ _modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma'))
               otherwise -> Nothing
           )
           crispExtCtxId

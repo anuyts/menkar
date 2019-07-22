@@ -63,7 +63,7 @@ data Judgement (sys :: KSys) where
     Ctx Type sys v Void ->
     Term sys v {-^ eliminee -} ->
     Type sys v ->
-    [Pair2 ModedModality SmartEliminator sys v] {-^ eliminators -} ->
+    [(ModedModality sys :*: SmartEliminator sys) v] {-^ eliminators -} ->
     Term sys v {-^ result -} ->
     Type sys v ->
     Judgement sys

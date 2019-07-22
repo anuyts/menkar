@@ -7,6 +7,8 @@ import Menkar.Fine
 import Menkar.Monad.Monad
 import Menkar.Analyzer
 
+import Control.Exception.AssertFalse
+
 import Data.Void
 import Control.Monad.Writer
 import GHC.Generics
@@ -87,7 +89,8 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     whn (Maybe Bool)
   allowsEta gamma dmu@(ModedModality ddom dcod' mu) {-dcod-} reason = do
     let dnu = modedApproxLeftAdjointProj dmu
-    leqMod gamma (idMod dcod') (modality'mod $ compModedModality dmu dnu) dcod' dcod' reason
+    leqMod gamma (idMod dcod') (_modality'mod $ compModedModality dmu dnu) dcod' dcod' reason
+  allowsEta gamma _ reason = unreachable
 
   {- Use the inequality judgement instead!
   -- | True if @nu . mu <= id@, where nu is the @approxLeftAdjointProj@.
@@ -103,7 +106,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     whn (Maybe Bool)
   allowsProjections parent gamma dmu@(ModedModality ddom mu) dcod reason = do
     let dnu = modedApproxLeftAdjointProj dmu dcod
-    leqMod parent gamma (modality'mod $ compModedModality dnu dmu) (idMod ddom) ddom ddom reason
+    leqMod parent gamma (_modality'mod $ compModedModality dnu dmu) (idMod ddom) ddom ddom reason
   -}
 
 

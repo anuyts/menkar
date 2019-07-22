@@ -29,6 +29,7 @@ import Data.Coerce
 import Control.Lens
 import Data.Number.Nat
 import Data.List
+import GHC.Generics
 
 ---------------------------
 
@@ -101,7 +102,7 @@ elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   fineEliminee <- exprC (VarFromCtx <$> dmuTotal :\\ gamma) rawEliminee
   --fineTy <- type4newImplicit gamma
   fineElims <- forM (zip3 dmus dmuTails rawElims) $
-    \ (dmu, dmuTail, rawElim) -> Pair2 dmu <$> eliminator (VarFromCtx <$> dmuTail :\\ gamma) rawElim
+    \ (dmu, dmuTail, rawElim) -> (dmu :*:) <$> eliminator (VarFromCtx <$> dmuTail :\\ gamma) rawElim
   case fineElims of
     [] -> return fineEliminee
     _  -> do
@@ -366,9 +367,9 @@ buildDeclaration gamma generateContent partDecl = do
         let dgamma' = ctx'mode gamma
             dgamma = unVarFromCtx <$> dgamma'
         -- allocate all implicits BEFORE name fork
-        d <- case _pdecl'mode partDecl of
+        {-d <- case _pdecl'mode partDecl of
           Compose (Just d') -> return d'
-          Compose Nothing -> newMetaModeNoCheck (crispModedModality dgamma' :\\ gamma) "Infer mode."
+          Compose Nothing -> newMetaModeNoCheck (crispModedModality dgamma' :\\ gamma) "Infer mode."-}
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
           Compose Nothing -> newMetaModtyNoCheck (crispModedModality dgamma' :\\ gamma) "Infer modality."
@@ -393,7 +394,7 @@ buildDeclaration gamma generateContent partDecl = do
             --ListT . nameHandler $ _pdecl'names partDecl
         return $ names <&> \ name -> Declaration {
           _decl'name = name,
-          _decl'modty = ModedModality d dgamma mu,
+          _decl'modty = mu, --ModedModality d dgamma mu,
           _decl'plicity = plic,
           _decl'content = telescopedContent
           }
@@ -460,12 +461,12 @@ partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclarat
   forM_ fineAnnots $
             \ fineAnnot ->
               case fineAnnot of
-                AnnotMode fineMode -> do
+                {-AnnotMode fineMode -> do
                   -- _Wrapped' is a lens for Compose
                   maybeOldFineMode <- use $ pdecl'mode._Wrapped'
                   case maybeOldFineMode of
                     Just oldFineMode -> scopeFail $ "Encountered multiple mode annotations: " ++ Raw.unparse rawDecl
-                    Nothing -> pdecl'mode._Wrapped' .= Just fineMode
+                    Nothing -> pdecl'mode._Wrapped' .= Just fineMode-}
                 AnnotModality fineModty -> do
                   maybeOldFineModty <- use $ pdecl'modty._Wrapped'
                   case maybeOldFineModty of
@@ -529,20 +530,20 @@ modalLock gamma (Raw.ModalLock rawAnnots) = do
       dgamma = unVarFromCtx <$> dgamma'
   fineAnnots <- sequenceA $ annotation gamma <$> rawAnnots
   (maybeDom, maybeMu) <- flip execStateT (Nothing, Nothing) $ forM_ fineAnnots $ \ case
-    AnnotMode fineMode -> use _1 >>= \ case
+    {-AnnotMode fineMode -> use _1 >>= \ case
       Just _ -> scopeFail $ "Encountered multiple mode annotations."
-      Nothing -> _1 .= Just fineMode
+      Nothing -> _1 .= Just fineMode-}
     AnnotModality fineModty -> use _2 >>= \ case
       Just _ -> scopeFail $ "Encountered multiple modality annotations."
       Nothing -> _2 .= Just fineModty
     AnnotImplicit -> scopeFail $ "Encountered plicity annotation in a modal lock."
-  dom <- case maybeDom of
+  {-dom <- case maybeDom of
     Nothing -> newMetaModeNoCheck (crispModedModality dgamma' :\\ gamma) "Inferring domain of modality."
-    Just dom -> return dom
+    Just dom -> return dom-}
   mu <- case maybeMu of
     Nothing -> newMetaModtyNoCheck (crispModedModality dgamma' :\\ gamma) "Inferring modality."
     Just mu -> return mu
-  return $ ModedModality dom dgamma mu
+  return $ mu -- ModedModality dom dgamma mu
 
 segment ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>

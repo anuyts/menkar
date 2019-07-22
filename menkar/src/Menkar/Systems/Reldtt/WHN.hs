@@ -353,7 +353,7 @@ whnormalizeChainModtyNonzeroCod gamma mu@(ChainModtyLink knownMu termNu chainRho
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
           let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
-                          compMod chainNuC (_chainModty'cod chainRho) chainRho
+                          compMod chainNuC chainRho
           whnormalizeChainModtyNonzeroCod gamma composite reason
         ChainModtyTerm ddom dcod tnu -> return $ ChainModtyLink knownMu termNu chainRho
     _ -> return $ ChainModtyLink knownMu termNu chainRho
@@ -432,17 +432,17 @@ whnormalizeReldttDegree :: forall whn v .
 whnormalizeReldttDegree gamma i reason = do
     case i of
       DegKnown _ _ -> return i
-      DegGet j chmu ddom dcod -> do
+      DegGet j chmu -> do
         j <- whnormalizeReldttDegree gamma j reason
         case j of
-          DegKnown d KnownDegEq -> return $ DegKnown ddom KnownDegEq
-          DegKnown d KnownDegTop -> return $ DegKnown ddom KnownDegTop
+          DegKnown d KnownDegEq -> return $ DegKnown (_chainModty'dom chmu) KnownDegEq
+          DegKnown d KnownDegTop -> return $ DegKnown (_chainModty'dom chmu) KnownDegTop
           DegKnown d j' -> do
             chmu <- whnormalizeChainModty gamma chmu reason
             case chmu of
-              ChainModtyKnown kmu -> return $ DegKnown ddom $ knownGetDeg j' kmu 
-              _ -> return $ DegGet j chmu ddom dcod
-          _ -> return $ DegGet j chmu ddom dcod
+              ChainModtyKnown kmu -> return $ DegKnown (_chainModty'dom chmu) $ knownGetDeg j' kmu 
+              _ -> return $ DegGet j chmu
+          _ -> return $ DegGet j chmu
   
 instance SysWHN Reldtt where
   whnormalizeSysTerm gamma sysT ty reason = do

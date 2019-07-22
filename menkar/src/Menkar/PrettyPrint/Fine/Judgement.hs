@@ -280,7 +280,7 @@ jud2pretty (JudSmartElim gamma eliminee tyEliminee eliminators result tyResult) 
       " : " ++| fine2pretty (ctx2scCtx gamma) tyEliminee opts
       ],
     ribbon " <eliminated-with>" \\\
-      (eliminators <&> \(Pair2 dmu elim) ->
+      (eliminators <&> \(dmu :*: elim) ->
           " " ++| fine2pretty (ctx2scCtx gamma) dmu opts |++ " " |+| fine2pretty (ctx2scCtx gamma) elim opts
       ),
     ribbon (" <yields> ") \\\ [

@@ -291,9 +291,13 @@ data ReldttDegree v =
   DegGet
     (ReldttDegree v) {-^ Degree -}
     (ChainModty v) {-^ Modality -}
-    (Mode Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
-    (Mode Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
+    --(Mode Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
+    --(Mode Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
+_reldttDegree'mode :: ReldttDegree v -> Mode Reldtt v
+_reldttDegree'mode (DegKnown d kdeg) = d
+_reldttDegree'mode (DegGet deg chmu) = _chainModty'dom chmu
 
 data ReldttSysTerm v =
   SysTermMode (ModeTerm v) |
@@ -322,7 +326,7 @@ instance SysSyntax (Term Reldtt) Reldtt
 
 instance Multimode Reldtt where
   idMod d = ChainModtyKnown (idKnownModty d)
-  compMod mu2 mid mu1 = ChainModtyTerm dom cod $ BareModty $ ModtyTermComp mu2 mu1
+  compMod mu2 mu1 = ChainModtyTerm dom cod $ BareModty $ ModtyTermComp mu2 mu1
     where dom = _chainModty'dom mu1
           cod = _chainModty'cod mu2
     --ChainModtyLink (idKnownModty $ _chainModty'cod mu2) (BareChainModty mu2) $
@@ -334,10 +338,13 @@ instance Multimode Reldtt where
   dataMode = ReldttMode $ BareMode $ ModeTermZero
   approxLeftAdjointProj (ModedModality dom cod mu) = wrapInChainModty cod dom $
     BareModty (ModtyTermApproxLeftAdjointProj cod dom mu)
+  _modality'dom = _chainModty'dom
+  _modality'cod = _chainModty'cod
 
 instance Degrees Reldtt where
   eqDeg d = DegKnown d KnownDegEq
   maybeTopDeg d = Just $ DegKnown d KnownDegTop
-  divDeg (ModedModality dom cod mu) (ModedDegree cod' i) = DegGet i mu dom cod
+  divDeg mu i = DegGet i mu
+  _degree'mode = _reldttDegree'mode
 
 ------------------------------
