@@ -181,6 +181,7 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
 etaExpandIfApplicable ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
+  let giveUp = checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
   --let giveUp = checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
   maybeMaybeExpandT1 <- etaExpand UseEliminees (fstCtx gamma) t1 ty1
   maybeMaybeExpandT2 <- etaExpand UseEliminees (sndCtx gamma) t2 ty2
@@ -196,7 +197,7 @@ etaExpandIfApplicable ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2
           (Twice2 (hs2type ty1) (hs2type ty2))
         )
         "Eta-expand."
-    Just Nothing -> return ()
+    Just Nothing -> giveUp
     Nothing -> tcBlock $ "Need to know if types have eta."
 
 checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
