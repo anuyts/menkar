@@ -87,6 +87,8 @@ checkSpecialAST :: forall sys tc v t .
   tc (Classif t v)
 checkSpecialAST gamma anErr t extraT maybeCT = do
   let ty = fromClassifInfo unreachable maybeCT
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
   case (anErr, analyzableToken @sys @t, t) of
     (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> do
       maybeT <- awaitMeta "I want to know what I'm supposed to type-check." meta depcies
@@ -170,7 +172,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
       let ldivSeg = unVarFromCtx <$> lookupVar gamma v
       addNewConstraint
         (JudRel AnTokenModedModality (Eta True) (Const ModLeq)
-          (duplicateCtx gamma)
+          (crispModedModality dgamma' :\\ duplicateCtx gamma)
           (Twice1
             (_decl'modty . _leftDivided'content $ ldivSeg)
             (_leftDivided'modality $ ldivSeg)
