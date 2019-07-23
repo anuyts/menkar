@@ -152,7 +152,8 @@ _knownModty'cod (KnownModty snout tail) = addIntToMode (_modtySnout'cod snout) (
   --_modtyTail'cod tail & _Wrapped' %~ nTimes (_modtySnout'cod snout) (BareMode . ModeTermSuc)
 
 {-| The idea is that for whblocked ChainModtys, the whnormal ones are 'ChainModtyKnown' and 'ChainModtyLink',
-    while the blocked ones are 'ChainModtyTerm'.
+    while the blocked ones are 'ChainModtyTerm'. However, 'ChainModtyKnwon' and 'ChainModtyLink' can still
+    block on an unknown codomain, which may turn out to be 0, in which case the modality becomes the forgetful one.
 -}
 data ChainModty v =
   ChainModtyKnown (KnownModty v) |

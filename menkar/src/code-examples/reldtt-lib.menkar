@@ -1,5 +1,5 @@
-val *[ : 0 -> 0] Mode : UniHS _ = _
-val *[ : 0 -> 0] Modality {dom cod : Mode} : UniHS _ = _
+val *[ : 0 -> 0] Mode : UniHS _ ... = _
+val *[ : 0 -> 0] Modality {dom cod : Mode} : UniHS _ ... = _
 val *[ : 0 -> 0] d0 : Mode = _
 val *[ : 0 -> 0] crisp {cod : Mode} : Modality d0 cod = [ : 0 -> 0 | disc cod]
 val *[ : 0 -> 0] forget {dom : Mode} : Modality dom d0 = [ : 0 -> 0 | forget dom]

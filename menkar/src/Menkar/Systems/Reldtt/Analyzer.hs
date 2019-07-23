@@ -80,7 +80,7 @@ instance Analyzable Reldtt ChainModty where
         )
         extCtxId
         extRelId
-        (AddressInfo ["underlying known modality"] FocusWrapped omit)
+        (AddressInfo ["underlying known modality"] FocusWrapped WorthMentioning)
       return $ case token of
         TokenTrav -> AnalysisTrav $ ChainModtyKnown $ getAnalysisTrav rkmu
         TokenTC -> AnalysisTC $ getAnalysisTC $ rkmu
@@ -136,7 +136,7 @@ instance Analyzable Reldtt ChainModty where
         )
         extCtxId
         (\ d rel -> U1)
-        (AddressInfo ["domain"] FocusWrapped omit)
+        (AddressInfo ["modality represented by a term: domain annotation"] FocusWrapped omit)
       rcod <- fmapCoe runIdentity <$> h Identity
         (conditional $ ChainModtyTerm unreachable unreachable unreachable)
         (\ gamma' -> \ case
@@ -146,7 +146,7 @@ instance Analyzable Reldtt ChainModty where
         )
         extCtxId
         (\ d rel -> U1)
-        (AddressInfo ["codomain"] FocusWrapped omit)
+        (AddressInfo ["modality represented by a term: codomain annotation"] FocusWrapped omit)
       rt <- fmapCoe runIdentity <$> h Identity
         (conditional $ ChainModtyTerm (getAnalysisTrav rdom) (getAnalysisTrav rcod) unreachable)
         (\ gamma' -> \ case
@@ -157,7 +157,7 @@ instance Analyzable Reldtt ChainModty where
         )
         extCtxId
         (\ d rel -> modedEqDeg $ Identity !<$> d)
-        (AddressInfo ["modality disguised as term (probably a meta)"] FocusEliminee omit)
+        (AddressInfo ["modality represented by a term: that underlying term"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
           ChainModtyTerm (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rt)
@@ -416,6 +416,11 @@ instance Analyzable Reldtt ReldttSysTerm where
         (\ gamma' -> \ case
             Classification syst'@(SysTermModty modtyTerm') U1 maybeTy' ->
               Just $ Identity !<$> Classification modtyTerm' U1 ClassifUnknown
+              {-(maybeTy' & \case
+                  ClassifMustBe (BareSysType (SysTypeModty dom' cod')) -> ClassifWillBe (dom' :*: cod')
+                  ClassifWillBe (BareSysType (SysTypeModty dom' cod')) -> ClassifWillBe (dom' :*: cod')
+                  otherwise -> ClassifUnknown
+              )-}
             otherwise -> Nothing
         )
         extCtxId
@@ -496,7 +501,7 @@ instance Analyzable Reldtt ModtyTerm where
         (conditional $ ModtyTermChain unreachable)
         (\ gamma' -> \ case
             Classification modtyTerm'@(ModtyTermChain chmu') U1 maybeDomCod' ->
-              Just $ Identity !<$> Classification chmu' U1 ClassifUnknown
+              Just $ Identity !<$> Classification chmu' U1 (classifMust2will maybeDomCod')
             otherwise -> Nothing
         )
         extCtxId

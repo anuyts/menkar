@@ -87,7 +87,7 @@ token2string token = case token of
   AnTokenU1 -> "0-tuple"
   AnTokenPair1 ltoken rtoken -> "pair:(" ++ token2string ltoken ++ ", " ++ token2string rtoken ++ ")"
   AnTokenConst1 token -> "const-boxed:" ++ token2string token
-  AnTokenSys systoken -> "system-boxed:" ++ sysToken2string systoken
+  AnTokenSys systoken -> sysToken2string systoken
   AnTokenMultimode AnTokenMode -> "mode"
   AnTokenMultimode AnTokenModality -> "modality"
   AnTokenMultimode AnTokenDegree -> "degree"

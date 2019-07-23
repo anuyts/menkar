@@ -221,7 +221,7 @@ checkAST gamma t extraT maybeCT = do
             -- if no type is given, write a meta in judgement (thus certifying it) and pass it back.
             ClassifUnknown -> do
               cs <- newMetaClassif4ast gammadelta s extraS $
-                "Inferring classifier " ++ (join $ (" > " ++) <$> _addressInfo'address addressInfo)
+                "Inferring classifier: " ++ (join $ _addressInfo'address addressInfo)
               return $ (cs, ClassifMustBe cs)
           addNewConstraint
             (Jud analyzableToken gammadelta s extraS maybeCS)

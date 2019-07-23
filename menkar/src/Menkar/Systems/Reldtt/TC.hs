@@ -94,7 +94,7 @@ instance SysTC Reldtt where
         (JudRel analyzableToken eta relT gamma (Twice1 t1 t2) extraTs maybeCTs)
         "Weak-head-normalizing both sides."
       withParent newParent $ case (metasT1, metasT2, t1, t2) of
-        ([] , _  , ChainModtyTerm _ _ _, _) -> unreachable
+        ([], _  , ChainModtyTerm _ _ _, _) -> unreachable
         (_  , [] , _, ChainModtyTerm _ _ _) -> unreachable
         ([] , [] , _, _) ->
           checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs
@@ -110,9 +110,8 @@ instance SysTC Reldtt where
             (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
             --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
         ([] , _:_, _, _) -> unreachable
-        (_  , _  , ChainModtyTerm _ _ _, ChainModtyTerm _ _ _) ->
+        (_:_, _:_, _, _) ->
           tcBlock "Cannot solve inequality: both sides are blocked on a meta-variable."
-        (_  , _  , _, _) -> unreachable
     Left AnTokenDegree -> do
       (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
       (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
