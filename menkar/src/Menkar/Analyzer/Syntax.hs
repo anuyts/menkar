@@ -980,7 +980,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ Identity !<$> Classification tyEliminee' U1
-                (ClassifMustBe $ ModalBox $ Const1 $ unVarFromCtx <$> ctx'mode gamma')
+                (ClassifMustBe $ ModalBox $ Const1 $ _modality'dom dmuElim')
             otherwise -> Nothing
         )
         (\ token' gamma' input1 condInput2 -> case input1 of
