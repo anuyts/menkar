@@ -6,14 +6,14 @@ It is named after the star [Alpha Ceti][alphaceti].
 ## Features
 Currently supported features include:
 
-* type-checking of multimode MLTT with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
-* a command-line interaction mode that provides the user with a wealth of information, including stack traces for almost everything,
+* type-checking of **multimode MLTT** with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
+* a **command-line interaction mode** that provides the user with a wealth of information, including stack traces for almost everything,
 * smart eliminations, including
-   * implicit arguments in the sense of Agda,
+   * **implicit arguments** in the sense of Agda,
    * named arguments,
    * implicit unboxing,
    * named and numbered projections for nested Σ-types.
-* internal crisp mode and modality polymorphism,
+* internal crisp **mode and modality polymorphism**,
 * a single universe that (inconsistently) contains itself,
 * support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a well-behaved (e.g. fibrant) universe to a possibly ill-behaved (e.g. non-fibrant) Hofmann-Streicher-universe whose codes can be promoted to the type level continuously.
 
