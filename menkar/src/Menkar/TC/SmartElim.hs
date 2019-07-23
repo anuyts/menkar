@@ -177,7 +177,10 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
         (dmuInfer)
       )
       (Twice1 U1 U1)
-      ClassifUnknown
+      (ClassifWillBe $ Twice1
+        (_modality'dom dmuElimTotal :*: _modality'dom dmuElimTotal)
+        (_modality'dom dmuInfer :*: _modality'cod dmuInfer)
+      )
     )
     "Checking whether actual modality equals expected modality."
   addNewConstraint
@@ -231,7 +234,10 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
         (dmuInfer)
       )
       (Twice1 U1 U1)
-      ClassifUnknown
+      (ClassifWillBe $ Twice1
+        (_modality'dom dmuElimTotal :*: _modality'dom dmuElimTotal)
+        (_modality'dom dmuInfer :*: _modality'cod dmuInfer)
+      )
     )
     "Checking whether actual modality equals expected modality."
   {- The argument will be checked when checking the result of the smart elimination.
@@ -438,7 +444,7 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
               (dmuInfer)
             )
             (Twice1 U1 U1)
-            ClassifUnknown
+            (ClassifWillBe $ Twice1 (d :*: d) (_modality'dom dmuInfer :*: _modality'cod dmuInfer))
           )
          
           "Checking that actual modality equals expected modality."
@@ -487,7 +493,7 @@ checkSmartElim gamma eliminee tyEliminee eliminators result tyResult = do
       parent' <- defConstraint
                    (JudSmartElim gamma eliminee whnTyEliminee eliminators result tyResult)
                   
-                   "Weak-head-normalized type."
+                   "Weak-head-normalize type of eliminee."
       withParent parent' $ checkSmartElimForNormalType gamma eliminee whnTyEliminee eliminators result tyResult
     -- the type does not weak-head-normalize
     _ -> tcBlock "Need to know type in order to make sense of smart-elimination."
