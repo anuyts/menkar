@@ -187,7 +187,8 @@ instance Analyzable Reldtt KnownModty where
     rtail <- fmapCoe runIdentity <$> h Identity
       (conditional $ KnownModty snout unreachable)
       (\ gamma' (Classification kmu'@(KnownModty snout' tail') U1 maybeDomCod') ->
-           Just $ Identity !<$> Classification tail' (Const snout') ClassifUnknown
+           Just $ Identity !<$>
+           Classification tail' (Const snout') (ClassifWillBe $ _modtyTail'dom tail' :*: _modtyTail'cod tail')
       )
       extCtxId
       extRelId
