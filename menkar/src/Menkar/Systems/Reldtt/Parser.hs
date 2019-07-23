@@ -18,7 +18,7 @@ degree =
 modtySnout :: CanParse m => m ModtySnout
 modtySnout = do
   kdegs <- many degree
-  pipe
+  symbol ":"
   idom <- natLiteralNonSticky
   symbol "->"
   icod <- natLiteralNonSticky

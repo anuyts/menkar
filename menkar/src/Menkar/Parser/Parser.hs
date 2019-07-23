@@ -183,7 +183,7 @@ entryAnnotations = (brackets $ someSep pipe annotation) <|> return []
 annotation :: (SysParser sys, CanParse m) => m (Raw.Annotation sys)
 annotation = MP.label "annotation" $ do
   annotName <- some opChar <* MP.notFollowedBy opChar
-  annotArg <- (Just <$> exprC) <|> (Nothing <$ manySpace)
+  annotArg <- (Just <$> exprC) <?|> (Nothing <$ someSpace)
   return $ Raw.Annotation annotName annotArg
 
 segmentAnnotations :: (SysParser sys, CanParse m) => m [Raw.Annotation sys]
