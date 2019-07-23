@@ -37,18 +37,18 @@ Planned features include:
 * internal presheaf operators, to wit:
 
    * definitional extension types,
-   * dependent right adjoints (which we prefer to call **transpension types**; these are right adjoint to the Π-type over substructural shape variables),
+   * [transpension types][transpension] (a.k.a. amazing dependent right adjoints) for working with dependably [atomic][nlab-tiny] objects,
    * the final type extension operation **Glue**.
 
    From these, one can implement:
 
    * the **strictness** axiom as used, among others, by [Orton and Pitts][strictness],
-   * the initial type extension operation **Weld**,
-   * Moulin's [**Ψ-type**-operator][psi], dubbed "relativity" by [Cavallo and Harper][relativity].
+   * from strictness, the initial type extension operation **Weld** (and Glue again),
+   * Moulin's [**Ψ-type**][psi], dubbed "relativity" by [Cavallo and Harper][relativity].
 * instance arguments - a feature analogous to Agda's [instance arguments][bright-side-of-typeclasses] and Haskell's typeclasses.
 A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved,
 * the resolution-features necessary to implement a relatedness-checker *within* Menkar,
-* subtyping (very long term).
+* perhaps, one day, definitional inequality and subtyping.
 
 ## Type systems
 Multimode modal type systems currently supported are:
@@ -78,7 +78,8 @@ Menkar is now installed as `menkar-exe`.
 ### Running
 Type-check the concatenation of three files:
 ```
-menkar-exe path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
+menkar-exe trivial path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
+menkar-exe reldtt path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
 ```
 
 ## Other remarks
@@ -97,3 +98,4 @@ Don't hesitate to contact me if this project sparks your interest.
 [strictness]: https://doi.org/10.23638/LMCS-14(4:23)2018
 [time-warps]: https://arxiv.org/abs/1805.11021v1
 [relativity]: https://arxiv.org/abs/1901.00489
+[transpension]: https://people.cs.kuleuven.be/~andreas.nuyts/transpension-types19.pdf
