@@ -84,6 +84,10 @@ instance SysTC Reldtt where
   checkMultimodeOrSysASTRel token eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs = case token of
     Left AnTokenMode -> byAnalysis
     Left AnTokenModality -> do
+      let dom1 = _modality'dom t1
+      let cod1 = _modality'cod t1
+      let dom2 = _modality'dom t2
+      let cod2 = _modality'cod t2
       (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
       (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
       newParent <- defConstraint
@@ -94,15 +98,17 @@ instance SysTC Reldtt where
         (_  , [] , _, ChainModtyTerm _ _ _) -> unreachable
         ([] , [] , _, _) ->
           checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs
-        (_:_, [] , ChainModtyTerm dom1 cod1 tmu1, _) -> do
+        (_:_, [] , ChainModtyTerm _ _ tmu1, _) -> do
           let tmu2 = BareChainModty t2
           checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
-            (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
+            (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
+            --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
         (_:_, [] , _, _) -> unreachable
-        ([] , _:_, _, ChainModtyTerm dom2 cod2 tmu2) -> do
+        ([] , _:_, _, ChainModtyTerm _ _ tmu2) -> do
           let tmu1 = BareChainModty t1
           checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
-            (maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
+            (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
+            --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
         ([] , _:_, _, _) -> unreachable
         (_  , _  , ChainModtyTerm _ _ _, ChainModtyTerm _ _ _) ->
           tcBlock "Cannot solve inequality: both sides are blocked on a meta-variable."
