@@ -12,6 +12,7 @@ import Data.Void
 import GHC.Generics
 
 class (SysSyntax (Term sys) sys, Raw.SysRawPretty sys) => SysScoper sys where
+  rawRootAnnots :: [Raw.Annotation sys]
   scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void -> 
     String -> Maybe (Raw.ExprC sys) -> sc (Annotation sys v)
   scopeSysExprC :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void ->

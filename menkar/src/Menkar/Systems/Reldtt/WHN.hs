@@ -405,7 +405,7 @@ whnormalizeModtyTerm gamma mu reason = case mu of
   -- ModtyTermChain is a constructor, don't normalize under it!
   ModtyTermChain chmu -> return mu
   ModtyTermDiv rho nu -> todo -- only for prettyprinting
-  ModtyTermApproxLeftAdjointProj ddom dcod chrho -> do
+  ModtyTermApproxLeftAdjointProj chrho -> do
     chrho <- whnormalizeChainModty gamma chrho reason
     case chrho of
       ChainModtyKnown krho -> case knownApproxLeftAdjointProj krho of

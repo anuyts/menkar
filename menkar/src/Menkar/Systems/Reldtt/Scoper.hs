@@ -52,6 +52,8 @@ foldTailAspects aspects = case snocView aspects of
       (_, _) -> scopeFail "A tail aspect ('disc' or 'forget') occurs twice in the same modality signature."
 
 instance SysScoper Reldtt where
+  rawRootAnnots = [Raw.Annotation "*" $ Just $ Raw.ExprSys $ Raw.KnownModty (ModtySnout 0 0 []) (Raw.ModtyTail [])]
+  
   scopeAnnotation gamma qstring maybeRawArg = do
     let dgamma' = ctx'mode gamma
     case qstring of

@@ -277,13 +277,27 @@ data ModtyTerm v =
     --(Mode Reldtt v) {-^ Domain of result -}
   |
   ModtyTermApproxLeftAdjointProj
-    (Mode Reldtt v) {-^ Domain of result -}
-    (Mode Reldtt v) {-^ Codomain of result -}
+    --(Mode Reldtt v) {-^ Domain of result -}
+    --(Mode Reldtt v) {-^ Codomain of result -}
     (ChainModty v) {-^ The argument modality -} |
   
   {-| Only for prettyprinting. -} 
   ModtyTermUnavailable (Term Reldtt v) {-^ The domain, can be omega -} (Term Reldtt v) {-^ The codomain, can be omega -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
+
+_modtyTerm'dom :: ModtyTerm v -> Mode Reldtt v
+_modtyTerm'dom (ModtyTermChain chmu) = _chainModty'dom chmu
+_modtyTerm'dom (ModtyTermDiv _ _) = unreachable
+_modtyTerm'dom (ModtyTermComp chmu2 chmu1) = _chainModty'dom chmu1
+_modtyTerm'dom (ModtyTermApproxLeftAdjointProj chmu) = _chainModty'cod chmu
+_modtyTerm'dom (ModtyTermUnavailable _ _) = unreachable
+
+_modtyTerm'cod :: ModtyTerm v -> Mode Reldtt v
+_modtyTerm'cod (ModtyTermChain chmu) = _chainModty'cod chmu
+_modtyTerm'cod (ModtyTermDiv _ _) = unreachable
+_modtyTerm'cod (ModtyTermComp chmu2 chmu1) = _chainModty'cod chmu2
+_modtyTerm'cod (ModtyTermApproxLeftAdjointProj chmu) = _chainModty'dom chmu 
+_modtyTerm'cod (ModtyTermUnavailable _ _) = unreachable
 
 data ReldttDegree v =
   DegKnown
@@ -339,7 +353,7 @@ instance Multimode Reldtt where
   crispMod d = ChainModtyKnown (KnownModty (ModtySnout 0 0 []) $ TailDisc d)
   dataMode = ReldttMode $ BareMode $ ModeTermZero
   approxLeftAdjointProj (ModedModality dom cod mu) = wrapInChainModty cod dom $
-    BareModty (ModtyTermApproxLeftAdjointProj cod dom mu)
+    BareModty (ModtyTermApproxLeftAdjointProj mu)
   approxLeftAdjointProj _ = unreachable
   _modality'dom = _chainModty'dom
   _modality'cod = _chainModty'cod

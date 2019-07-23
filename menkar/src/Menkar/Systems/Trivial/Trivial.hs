@@ -178,6 +178,8 @@ instance SysAnalyzer Trivial where
 ---------------------------------
 
 instance SysScoper Trivial where
+  rawRootAnnots = []
+  
   scopeAnnotation gamma string maybeRawArg = scopeFail $ "Illegal annotation: " ++ (render
              (ribbon string \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
              $? id

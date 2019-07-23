@@ -61,7 +61,7 @@ checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = d
                   (Twice1 extraS1 extraS2)
                   (classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2)
                 )
-                ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
+                ("Relating: " ++ (join $ _addressInfo'address addressInfo))
               withParent virtualConstraint $
                 checkASTRel eta relS gammadelta (Twice1 s1 s2) (Twice1 extraS1 extraS2) maybeCSs
             WorthScheduling -> addNewConstraint
@@ -70,7 +70,7 @@ checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = d
                 (Twice1 extraS1 extraS2)
                 (classifMust2will $ Twice1 <$> maybeCS1 <*> maybeCS2)
               )
-              ("Relating:" ++ (join $ (" > " ++ ) <$> _addressInfo'address addressInfo))
+              ("Relating: " ++ (join $ _addressInfo'address addressInfo))
           return AnalysisRel
   case attempt of
     Right AnalysisRel -> return ()

@@ -693,7 +693,7 @@ bulk :: forall sys sc v .
   sc (Entry sys v)
 bulk gamma rawEntries = do
     let rawModuleLHS = Raw.Declaration
-          []
+          rawRootAnnots
           (Raw.DeclNamesModule "Root")
           (Raw.Telescope [])
           Raw.DeclContentEmpty -- modules have no type

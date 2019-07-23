@@ -101,7 +101,7 @@ instance Fine2Pretty Reldtt ModtyTerm where
     ModtyTermChain chmu -> fine2pretty gamma chmu opts
     ModtyTermDiv tnu tmu -> fine2pretty gamma tnu opts \\\ [" \\ " ++| fine2pretty gamma tmu opts]
     ModtyTermComp tmu2 tmu1 -> fine2pretty gamma tmu2 opts \\\ [" \8728 " ++| fine2pretty gamma tmu1 opts]
-    ModtyTermApproxLeftAdjointProj domResult codResult chmu -> "µ-proj (" ++| fine2pretty gamma chmu opts |++ ")"
+    ModtyTermApproxLeftAdjointProj chmu -> "approx-left-adjoint (" ++| fine2pretty gamma chmu opts |++ ")"
     ModtyTermUnavailable dom cod -> ribbon "\8856"
 
 instance SysFinePretty Reldtt where

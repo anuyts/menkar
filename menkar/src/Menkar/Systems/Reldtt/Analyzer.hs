@@ -415,7 +415,8 @@ instance Analyzable Reldtt ReldttSysTerm where
         (conditional $ SysTermModty unreachable)
         (\ gamma' -> \ case
             Classification syst'@(SysTermModty modtyTerm') U1 maybeTy' ->
-              Just $ Identity !<$> Classification modtyTerm' U1 ClassifUnknown
+              Just $ Identity !<$> Classification modtyTerm' U1
+                (ClassifWillBe $ _modtyTerm'dom modtyTerm' :*: _modtyTerm'cod modtyTerm')
               {-(maybeTy' & \case
                   ClassifMustBe (BareSysType (SysTypeModty dom' cod')) -> ClassifWillBe (dom' :*: cod')
                   ClassifWillBe (BareSysType (SysTypeModty dom' cod')) -> ClassifWillBe (dom' :*: cod')
@@ -513,8 +514,8 @@ instance Analyzable Reldtt ModtyTerm where
           where dom :*: cod = getAnalysisTC rchmu
         TokenRel -> AnalysisRel
     ModtyTermDiv rho mu -> unreachable -- only for prettyprinting
-    ModtyTermApproxLeftAdjointProj domResult codResult muArg -> Right $ do
-      rdomResult <- fmapCoe runIdentity <$> h Identity
+    ModtyTermApproxLeftAdjointProj muArg -> Right $ do
+      {-rdomResult <- fmapCoe runIdentity <$> h Identity
         (conditional $ ModtyTermApproxLeftAdjointProj unreachable unreachable unreachable)
         (\ gamma' -> \ case
             (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj domResult' codResult' muArg') U1 maybeDomCod) ->
@@ -533,13 +534,13 @@ instance Analyzable Reldtt ModtyTerm where
         )
         extCtxId
         (\_ U1 -> U1)
-        (AddressInfo ["codomain of result"] NoFocus omit)
+        (AddressInfo ["codomain of result"] NoFocus omit)-}
       rmuArg <- fmapCoe runIdentity <$> h Identity
-        (conditional $ ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) unreachable)
+        (conditional $ ModtyTermApproxLeftAdjointProj unreachable)
         (\ gamma' -> \ case
-            (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj domResult' codResult' muArg') U1 maybeDomCod) ->
+            (Classification modtyTerm'@(ModtyTermApproxLeftAdjointProj muArg') U1 maybeDomCod) ->
               Just $ Identity !<$>
-                Classification muArg' U1 (ClassifMustBe $ codResult' :*: domResult')
+                Classification muArg' U1 (ClassifWillBe $ _chainModty'dom muArg' :*: _chainModty'cod muArg')
             otherwise -> Nothing
         )
         extCtxId
@@ -547,8 +548,8 @@ instance Analyzable Reldtt ModtyTerm where
         (AddressInfo ["argument modality"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
-          ModtyTermApproxLeftAdjointProj (getAnalysisTrav rdomResult) (getAnalysisTrav rcodResult) (getAnalysisTrav rmuArg)
-        TokenTC -> AnalysisTC $ domResult :*: codResult
+          ModtyTermApproxLeftAdjointProj (getAnalysisTrav rmuArg)
+        TokenTC -> AnalysisTC $ _chainModty'cod muArg :*: _chainModty'dom muArg -- purposefully swapped
         TokenRel -> AnalysisRel
     ModtyTermComp mu2 mu1 -> Right $ do
       {-rdom <- fmapCoe runIdentity <$> h Identity
