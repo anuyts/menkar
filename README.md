@@ -6,55 +6,64 @@ It is named after the star [Alpha Ceti][alphaceti].
 ## Features
 Currently supported features include:
 
-* type-checking of basic MLTT with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
+* type-checking of multimode MLTT with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
 * a command-line interaction mode that provides the user with a wealth of information, including stack traces for almost everything,
-* a single universe that (inconsistently) contains itself,
 * smart eliminations, including
    * implicit arguments in the sense of Agda,
    * named arguments,
    * implicit unboxing,
    * named and numbered projections for nested Σ-types.
+* internal crisp mode and modality polymorphism,
+* a single universe that (inconsistently) contains itself,
+* support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a well-behaved (e.g. fibrant) universe to a possibly ill-behaved (e.g. non-fibrant) Hofmann-Streicher-universe whose codes can be promoted to the type level continuously.
 
 Partly implemented (but presently unusable) features include:
 
-* support for multimode modality systems,
-* internal crisp mode and modality polymorphism,
-* support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a fibrant universe to a possibly non-fibrant (Hofmann-Streicher)-universe whose codes can be promoted to the type level continuously,
 * a [definitional relatedness][reldtt] checker (coined by A. Vezzosi), which may allow for the non-consideration of irrelevant subterms during conversion-checking.
 
 Planned features include:
 
-* instance arguments - a feature analogous to Agda's [instance arguments][bright-side-of-typeclasses] and Haskell's typeclasses.
-A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved,
-* the resolution-features necessary to implement a relatedness-checker *within* Menkar,
+* a Hofmann-Streicher-universe of propositions, equipped with logic operators,
+* the coproduct type,
 * non-recursive HITs via a type former for pushouts along `ΣBφ -> B` (a codependent coproduct),
-* non-recursive QITs via a type former for pushouts along `B + B -> B`,
+* non-recursive QITs via a type former for pushouts along `B + B -> B` or via an interval modelled by the unit type,
 * recursive HITs and QITs via a type former for taking the least fixpoint of (a polynomial quotient of?) a pointed indexed polynomial functor (a very fancy W-type),
-* support for context exponentiation (for working with dependably [atomic][nlab-tiny] objects),
-*  internal presheaf operators, to wit:
-
-   * definitional extension types,
-   * dependent right adjoints (which we prefer to call **transpension types**; these are right adjoint to the Π-type over substructural shape variables),
-   * Orton and Pitts's [**strictness**][strictness] axiom.
-
-   From these, one can implement the initial and final type extension operations Glue and Weld, and Moulin's [**Ψ-type**][psi],
 * smart constructors, perhaps including
    * implicit first components,
    * named first components,
    * implicit boxing,
-   * named and numbered injections for nested codependent coproduct types.
+   * named and numbered injections for coproduct-like types,
+* support for context exponentiation (for working with dependably [atomic][nlab-tiny] objects),
+* internal presheaf operators, to wit:
+
+   * definitional extension types,
+   * dependent right adjoints (which we prefer to call **transpension types**; these are right adjoint to the Π-type over substructural shape variables),
+   * the final type extension operation **Glue**.
+
+   From these, one can implement:
+
+   * the **strictness** axiom as used, among others, by [Orton and Pitts][strictness],
+   * the initial type extension operation **Weld**,
+   * Moulin's [**Ψ-type**-operator][psi], dubbed "relativity" by [Cavallo and Harper][relativity].
+* instance arguments - a feature analogous to Agda's [instance arguments][bright-side-of-typeclasses] and Haskell's typeclasses.
+A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved,
+* the resolution-features necessary to implement a relatedness-checker *within* Menkar,
 * subtyping (very long term).
 
 ## Type systems
-Some type systems that we aim to support, are:
+Multimode modal type systems currently supported are:
 
-* MLTT (already supported),
+* the trivial system (1 mode, 1 modality, i.e. basic MLTT),
+* RelDTT a.k.a. [degrees of relatedness][reldtt],
+* hence also [ParamDTT][paramdtt], which is essentially the mode 2 (depth 1) fragment of RelDTT,
+
+We also aim to support:
+
 * cubical type theory,
-* [degrees of relatedness][reldtt] - hence also [ParamDTT][paramdtt],
 * directed type theory,
 * guarded type theory with multiple clocks and [time warps][time-warps].
 
-Where applicable, the user may ask to include/exclude/agnosticlude diagonals, symmetries and connections in the base category, as well as generalize from binary to n-ary systems.
+Where applicable, the user should ideally have the option to include/exclude/agnosticlude diagonals, symmetries and connections in the base category, as well as generalize from binary to n-ary systems.
 
 ## Quick start guide
 
@@ -87,3 +96,4 @@ Don't hesitate to contact me if this project sparks your interest.
 [paramdtt]: https://doi.org/10.1145/3110276
 [strictness]: https://doi.org/10.23638/LMCS-14(4:23)2018
 [time-warps]: https://arxiv.org/abs/1805.11021v1
+[relativity]: https://arxiv.org/abs/1901.00489
