@@ -112,8 +112,8 @@ instance SysRawPretty sys => Unparsable (Expr sys) where
   parserName _ = "expr"
 
 instance SysRawPretty sys => Unparsable (Annotation sys) where
-  unparse' (Annotation qstr Nothing) = unparse' qstr |++ " | "
-  unparse' (Annotation qstr (Just arg)) = (unparse' qstr \\\ [unparse' arg]) |++ " | "
+  unparse' (Annotation annotName Nothing) = ribbon annotName
+  unparse' (Annotation annotName (Just arg)) = (ribbon annotName \\\ [unparse' arg])
   {-
   unparse' (Annotation qname []) = unparse' qname
   unparse' (Annotation qname elims) = "[" ++| unparse' qname

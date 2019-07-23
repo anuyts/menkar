@@ -4,6 +4,10 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  New annotation syntax:
+
+   `val *mu x : A = ...` instead of `val [m mu] x : A = ...`
+   `{~ *mu x : A}` instead of `{~ | m mu | x : A}`
 *  Removed extremely widespread but redundant mode annotations from syntax. (A lot of trivialized legacy code is present.)
 *  Added special function-like modal-lock syntax for Box types.
 *  Added support for RelDTT.

@@ -341,9 +341,9 @@ annotation :: forall sys sc v .
   Ctx Type sys v Void ->
   Raw.Annotation sys ->
   sc (Annotation sys v)
-annotation gamma (Raw.Annotation (Raw.Qualified [] "~") Nothing) = return AnnotImplicit
-annotation gamma (Raw.Annotation qstring maybeRawArg) = do
-  scopeAnnotation gamma qstring maybeRawArg
+annotation gamma (Raw.Annotation "~" Nothing) = return AnnotImplicit
+annotation gamma (Raw.Annotation annotName maybeRawArg) = do
+  scopeAnnotation gamma annotName maybeRawArg
 
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal

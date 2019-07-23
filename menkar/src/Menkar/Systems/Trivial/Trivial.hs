@@ -178,8 +178,8 @@ instance SysAnalyzer Trivial where
 ---------------------------------
 
 instance SysScoper Trivial where
-  scopeAnnotation gamma qstring maybeRawArg = scopeFail $ "Illegal annotation: " ++ (render
-             (Raw.unparse' qstring \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
+  scopeAnnotation gamma string maybeRawArg = scopeFail $ "Illegal annotation: " ++ (render
+             (ribbon string \\\ (maybeToList $ Raw.unparse' <$> maybeRawArg))
              $? id
            )
 

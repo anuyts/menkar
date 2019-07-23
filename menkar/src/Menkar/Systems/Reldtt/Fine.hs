@@ -334,10 +334,12 @@ instance Multimode Reldtt where
     --ChainModtyKnown (idKnownModty $ _chainModty'dom mu1)
   divMod (ModedModality dom' cod' mu') (ModedModality dom cod mu) = wrapInChainModty dom dom' $
     BareModty (ModtyTermDiv (BareChainModty mu') (BareChainModty mu))
+  divMod _ _ = unreachable
   crispMod d = ChainModtyKnown (KnownModty (ModtySnout 0 0 []) $ TailDisc d)
   dataMode = ReldttMode $ BareMode $ ModeTermZero
   approxLeftAdjointProj (ModedModality dom cod mu) = wrapInChainModty cod dom $
     BareModty (ModtyTermApproxLeftAdjointProj cod dom mu)
+  approxLeftAdjointProj _ = unreachable
   _modality'dom = _chainModty'dom
   _modality'cod = _chainModty'cod
 

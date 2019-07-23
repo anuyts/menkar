@@ -3,8 +3,8 @@ module Scopetest {Set} {Bool : Set} {(->)} {true : Bool} where {
 
 val aBool : Bool = true
 val bBool : Bool = aBool
-val id {~ | A : Set} {a : A} : A = a
-val twice {~ | A : Set} {f : A -> ?A} : A -> A = a > f (f a)
-val twice' : {~ | A : Set} {f : A -> ?A} -> A -> A = B > g > b > g (g b)
+val id {~ A : Set} {a : A} : A = a
+val twice {~ A : Set} {f : A -> ?A} : A -> A = a > f (f a)
+val twice' : {~ A : Set} {f : A -> ?A} -> A -> A = B > g > b > g (g b)
 
 }

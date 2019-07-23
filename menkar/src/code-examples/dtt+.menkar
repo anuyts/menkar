@@ -1,11 +1,11 @@
     val (+) {a b : Nat} : Nat = indNat (_ > {_ : Nat} -> Nat) (b > b) (a' > a'+ > b > suc (a'+ b)) a b
-    val lunit+ {~ | n : Nat}
+    val lunit+ {~ n : Nat}
         : (0 + n) == n
         = refl ...
-    val runit+ {~ | n : Nat}
+    val runit+ {~ n : Nat}
         : (n + 0) == n
         = indNat (x > (x + 0) == x) (refl ...) (x > e > cong suc e) n
-    val assoc {~ | m n o : Nat}
+    val assoc {~ m n o : Nat}
         : (m + (n + o)) == ((m + n) + o)
         = indNat
             (x > (x + (n + o)) == ((x + n) + o))

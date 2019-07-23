@@ -13,7 +13,7 @@ import GHC.Generics
 
 class (SysSyntax (Term sys) sys, Raw.SysRawPretty sys) => SysScoper sys where
   scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void -> 
-    Raw.Qualified String -> Maybe (Raw.Expr sys) -> sc (Annotation sys v)
+    String -> Maybe (Raw.ExprC sys) -> sc (Annotation sys v)
   scopeSysExprC :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void ->
     Raw.SysExprC sys -> sc (Term sys v)
   newMetaModeNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>

@@ -58,10 +58,10 @@ instance SysScoper Reldtt where
       {-Raw.Qualified [] "d" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `d` requires an argument."
         Just rawArg -> AnnotMode . ReldttMode <$> expr (crispModedModality dgamma' :\\ gamma) rawArg-}
-      Raw.Qualified [] "m" -> case maybeRawArg of
-        Nothing -> scopeFail $ "Annotation `m` requires an argument."
+      "*" -> case maybeRawArg of
+        Nothing -> scopeFail $ "Annotation `*` requires an argument."
         Just rawArg -> do
-          mu <- expr (crispModedModality dgamma' :\\ gamma) rawArg
+          mu <- exprC (crispModedModality dgamma' :\\ gamma) rawArg
           ddom <- newMetaModeNoCheck gamma "Inferring domain of modality."
           dcod <- newMetaModeNoCheck gamma "Inferring codomain of modality."
           return $ AnnotModality $ wrapInChainModty ddom dcod mu

@@ -78,8 +78,8 @@ eliminator = MP.label "eliminator" $
   (Raw.ElimProj <$> (projectorNamed <?|> projectorNumbered <?|> projectorTail))
 opEliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
 opEliminator = MP.label "operator eliminator" $ argNext <?|> argNamed
-annotEliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
-annotEliminator = MP.label "annotation eliminator" $ argExplicit <|> argNext <?|> argNamed
+--annotEliminator :: (SysParser sys, CanParse m) => m (Raw.Eliminator sys)
+--annotEliminator = MP.label "annotation eliminator" $ argExplicit <|> argNext <?|> argNamed
 
 {-
 argEndNext :: CanParse m => m Raw.Eliminator
@@ -100,8 +100,8 @@ eliminators = MP.label "eliminators" $
   (++) <$> manyTry eliminator <*> (fromMaybe [] <$> optionalTry ((: []) <$> eliminatorEnd))
 opEliminators :: (SysParser sys, CanParse m) => m [Raw.Eliminator sys]
 opEliminators = MP.label "operator eliminators" $ manyTry opEliminator
-annotEliminators :: (SysParser sys, CanParse m) => m [Raw.Eliminator sys]
-annotEliminators = MP.label "annotation eliminators" $ manyTry annotEliminator
+--annotEliminators :: (SysParser sys, CanParse m) => m [Raw.Eliminator sys]
+--annotEliminators = MP.label "annotation eliminators" $ manyTry annotEliminator
 
 elimination :: (SysParser sys, CanParse m) => m (Raw.Elimination sys)
 elimination = Raw.Elimination <$> exprC <*> eliminators
@@ -140,7 +140,7 @@ expr = Raw.Expr <$> some atom
 
 -- high-level subparsers -----------------------------------
 
--- annotations - old
+-- annotations - v1
 
 {-
 atomicAnnotation :: CanParse m => m Raw.Annotation
@@ -162,8 +162,9 @@ entryAnnotation :: CanParse m => m Raw.Annotation
 entryAnnotation = compoundAnnotation
 -}
 
--- annotations - new
+-- annotations - v2
 
+{-
 annotation :: (SysParser sys, CanParse m) => m (Raw.Annotation sys)
 annotation = MP.label "annotation" $ do
   annotName <- qWord
@@ -175,6 +176,21 @@ segmentAnnotations = manyTry $ annotation <* pipe
 
 entryAnnotations :: (SysParser sys, CanParse m) => m [Raw.Annotation sys]
 entryAnnotations = (brackets $ someSep pipe annotation) <|> return []
+-}
+
+-- annotations - v3
+
+annotation :: (SysParser sys, CanParse m) => m (Raw.Annotation sys)
+annotation = MP.label "annotation" $ do
+  annotName <- some opChar <* MP.notFollowedBy opChar
+  annotArg <- (Just <$> exprC) <|> (Nothing <$ manySpace)
+  return $ Raw.Annotation annotName annotArg
+
+segmentAnnotations :: (SysParser sys, CanParse m) => m [Raw.Annotation sys]
+segmentAnnotations = manyTry $ annotation
+
+entryAnnotations :: (SysParser sys, CanParse m) => m [Raw.Annotation sys]
+entryAnnotations = manyTry $ annotation
 
 -- telescopes
 

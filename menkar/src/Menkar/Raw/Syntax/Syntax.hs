@@ -59,7 +59,7 @@ exprCtoAsmart e = exprBtoA . exprCtoB $ e
 -----------------------------------------------------------
 
 {-| One item in the annotation clause. -}
-data Annotation (sys :: KSys) = Annotation (Qualified String) (Maybe (Expr sys)) --deriving Show
+data Annotation (sys :: KSys) = Annotation String (Maybe (ExprC sys)) --deriving Show
 
 newtype Segment sys = Segment (Declaration sys DeclSortSegment) --deriving Show
 
