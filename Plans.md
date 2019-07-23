@@ -1,5 +1,8 @@
+**THIS DOCUMENT IS JUST A NOTEPAD AND ALMOST ENTIRELY OBSOLETE**
+
 Base categories
 ===============
+
 There are the following templates
 ```
 cube	cubical sets
@@ -47,8 +50,8 @@ Fine syntax
 Fine syntax (well-typed)
 ```
 
-Normalization
-=============
+Weak-head-normalization
+=======================
 The type-checker frequently attempts to weak-head-normalize expressions. This process yields 2 results:
 * the (maximally) weak-head-normalized expression (in whbf, see below),
 * a list of metavariables that weak-head-normalization is blocked on (this list is empty if the returned expression is weak-head-normal).
