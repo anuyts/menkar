@@ -177,8 +177,14 @@ instance SysTC Reldtt where
   etaExpandSysType useHoles gamma t systy = case systy of
     SysTypeMode -> return $ Just Nothing
     SysTypeModty dom cod -> do
-      chmu <- case useHoles of
-        UseHoles -> ChainModtyTerm dom cod <$>
-          newMetaTerm gamma (BareSysType $ SysTypeModty dom cod) MetaBlocked "Infer chain modality."
-        UseEliminees -> return $ ChainModtyTerm dom cod t
-      return $ Just $ Just $ BareModty $ ModtyTermChain $ chmu
+      (cod, metasCod) <- runWriterT $ whnormalizeMode gamma cod "Want to know if codomain is zero."
+      case (cod, metasCod) of
+        (_, _:_) -> return Nothing
+        (ReldttMode (BareMode (ModeTermZero)), _) -> return $ Just $ Just $ BareKnownModty $
+          forgetKnownModty $ cod
+        (_, _) -> do
+          chmu <- case useHoles of
+            UseHoles -> ChainModtyTerm dom cod <$>
+              newMetaTerm gamma (BareSysType $ SysTypeModty dom cod) MetaBlocked "Infer chain modality."
+            UseEliminees -> return $ ChainModtyTerm dom cod t
+          return $ Just $ Just $ BareModty $ ModtyTermChain $ chmu

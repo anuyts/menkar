@@ -433,7 +433,7 @@ instance SysAnalyzer sys => Analyzable sys (ConstructorTerm sys) where
           )
           extCtxId
           extRelId
-          (AddressInfo ["UniHS-constructor"] FocusWrapped EntirelyBoring)
+          (AddressInfo ["UniHS-constructor"] NoFocus EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ ConsUniHS $ getAnalysisTrav rty
           TokenTC -> AnalysisTC $ hs2type $ UniHS $ getConst1 $ _modalBox'content $ getAnalysisTC rty

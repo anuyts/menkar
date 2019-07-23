@@ -303,7 +303,9 @@ checkEtaForNormalType gamma t ty = do
         "Eta-expand"
       return True
 
--- | Check whether a term is equal to its eta expansion if that exists.
+{- | Equate a term to its eta-expansion if it exists.
+     Returns whether an eta-expansion exists, or blocks if this is unclear.
+-}
 checkEta ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
