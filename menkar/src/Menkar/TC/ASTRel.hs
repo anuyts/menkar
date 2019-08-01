@@ -135,7 +135,7 @@ checkTermRelWHNTermsNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
 checkTermRelWHNTermsNoEta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2 =
   checkASTRel' (Eta False) deg gamma (Twice1 t1 t2) (Twice1 U1 U1) (ClassifWillBe $ Twice1 ty1 ty2)
 
-checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+checkTermRelNoEtaOld :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
@@ -149,7 +149,7 @@ checkTermRelNoEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   [Int] ->
   [Int] ->
   tc ()
-checkTermRelNoEta deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
+checkTermRelNoEtaOld deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 metasTy1 metasTy2 = do
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     -- Both are whnormal
     (False, False) -> checkTermRelWHNTermsNoEta deg gamma t1 t2 ty1 ty2 metasTy1 metasTy2
@@ -165,8 +165,7 @@ checkTermRelNoEta deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 meta
 -- MAYBE ETA --
 --------------------------------------------------------
 
--- | This should preferrably be implemented using TC.ASTSolve.etaExpand
-etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+etaExpandIfApplicableOld :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   ModedDegree sys v ->
   Ctx (Twice2 Type) sys v Void ->
   Term sys v ->
@@ -178,11 +177,11 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   UniHSConstructor sys v ->
   tc ()
-etaExpandIfApplicable ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
+etaExpandIfApplicableOld ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  let giveUp = checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
-  --let giveUp = checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
+  let giveUp = checkTermRelNoEtaOld ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
+  --let giveUp = checkTermRelNoEtaOld ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 (hs2type ty1) (hs2type ty2) [] []
   maybeMaybeExpandT1 <- etaExpand UseEliminees (fstCtx gamma) t1 ty1
   maybeMaybeExpandT2 <- etaExpand UseEliminees (sndCtx gamma) t2 ty2
   let maybeMaybeExpansions = getCompose $ (,) <$> Compose maybeMaybeExpandT1 <*> Compose maybeMaybeExpandT2
@@ -213,7 +212,7 @@ checkTermRelMaybeEta :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UniHSConstructor sys v ->
   tc ()
 checkTermRelMaybeEta deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 = do
-  let callEtaExpandIfApplicable = etaExpandIfApplicable deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2
+  let callEtaExpandIfApplicable = etaExpandIfApplicableOld deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2
   case (isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
     (False, False) -> callEtaExpandIfApplicable
     (True , False) ->
@@ -226,7 +225,7 @@ checkTermRelMaybeEta deg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 =
 
 ---------------------------------------------------
 
-checkTermRel :: forall sys tc v .
+checkTermRelOld :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Eta ->
   ModedDegree sys v ->
@@ -234,7 +233,7 @@ checkTermRel :: forall sys tc v .
   Twice1 (Term sys) v ->
   ClassifInfo (Twice1 (Type sys) v) ->
   tc ()
-checkTermRel eta ddeg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
+checkTermRelOld eta ddeg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
   let Twice1 ty1 ty2 = fromClassifInfo unreachable maybeTys
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
@@ -268,7 +267,138 @@ checkTermRel eta ddeg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
                (Expr2 (TermCons (ConsUniHS tycode1)), Expr2 (TermCons (ConsUniHS tycode2))) ->
                  checkTermRelMaybeEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 tycode1 tycode2
                (_, _) -> case (isBlockedOrMeta (unType ty1) metasTy1, isBlockedOrMeta (unType ty2) metasTy2) of
-                 (False, False) -> checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
+                 (False, False) -> checkTermRelNoEtaOld ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
                  (_    , _    ) ->
                    tcBlock $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
-        else checkTermRelNoEta ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
+        else checkTermRelNoEtaOld ddeg gamma t1 t2 nonwhnt1 nonwhnt2 metasT1 metasT2 ty1 ty2 [] []
+
+---------------------------------------------------
+
+checkTermRelNoEta :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  ModedDegree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  [Int] ->
+  [Int] ->
+  Type sys v ->
+  Type sys v ->
+  tc ()
+checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = _
+
+etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  ModedDegree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Term sys v ->
+  Term sys v ->
+  [Int] ->
+  [Int] ->
+  UniHSConstructor sys v ->
+  UniHSConstructor sys v ->
+  tc ()
+etaExpandIfApplicable deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  maybeMaybeExpandT1 <- etaExpand UseEliminees (fstCtx gamma) t1 ty1
+  maybeMaybeExpandT2 <- etaExpand UseEliminees (sndCtx gamma) t2 ty2
+  let maybeMaybeExpansions = getCompose $ (,) <$> Compose maybeMaybeExpandT1 <*> Compose maybeMaybeExpandT2
+  case maybeMaybeExpansions of
+    Just (Just (expandT1, expandT2)) ->
+      addNewConstraint
+        (JudTermRel
+          (Eta False)
+          deg
+          gamma
+          (Twice2 expandT1 expandT2)
+          (Twice2 (hs2type ty1) (hs2type ty2))
+        )
+        "Eta-expand."
+    Just Nothing -> checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 (hs2type ty1) (hs2type ty2)
+    Nothing -> tcBlock $ "Need to know if types have eta."
+
+checkTermRel :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Eta ->
+  ModedDegree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  Twice1 (Term sys) v ->
+  ClassifInfo (Twice1 (Type sys) v) ->
+  tc ()
+checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
+  let Twice1 ty1 ty2 = fromClassifInfo unreachable maybeTys
+  let dgamma' = ctx'mode gamma
+  let dgamma = unVarFromCtx <$> dgamma'
+  -- Top-relatedness is always ok.
+  itIsTopDeg <- isTopDeg (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
+    "Need to know whether required degree of relatedness is Top."
+  case itIsTopDeg of
+    -- It's certainly about top-relatedness
+    Just True -> return ()
+    -- We don't know
+    Nothing -> tcBlock $ "Need to know whether required degree of relatedness is Top."
+    -- It's certainly not about top-relatedness
+    Just False -> do
+      (t1, metasT1) <- runWriterT $ whnormalize (fstCtx gamma) nonwhnt1 ty1 "Weak-head-normalizing first term."
+      (t2, metasT2) <- runWriterT $ whnormalize (sndCtx gamma) nonwhnt2 ty2 "Weak-head-normalizing second term."
+      parent <- defConstraint
+            (JudTermRel
+              eta
+              deg
+              gamma
+              (Twice2 t1 t2)
+              (Twice2 ty1 ty2)
+            )
+            "Weak-head-normalize both hands."
+      withParent parent $ do
+        {- If we're EQUATING a meta to a term, then the term is a solution for the meta.
+           We only do this for whn-terms, because otherwise you risk solving a meta with itself.
+           If we're RELATING a meta to a term, then we cannot necessarily whsolve, because we might be e.g. in the unit type.
+        -}
+        itIsEqDeg <- isEqDeg (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
+          "Need to know if I'm checking equality."
+        solved <- case itIsEqDeg of
+          Just True -> case (t1, t2, isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
+            -- 'meta = whn'
+            (Expr2 (TermMeta neut1 meta1 (Compose depcies1) (Compose maybeAlg1)), _, True, False) -> do
+              maybeProblem <- tryToSolveImmediately          gamma  neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2
+              case maybeProblem of
+                Nothing -> return True
+                Just msg -> return False
+            -- 'whn = meta'
+            (_, Expr2 (TermMeta neut2 meta2 (Compose depcies2) (Compose maybeAlg2)), False, True) -> do
+              maybeProblem <- tryToSolveImmediately (flipCtx gamma) neut2 meta2 depcies2 maybeAlg2 t1 ty2 ty1
+              case maybeProblem of
+                Nothing -> return True
+                Just msg -> return False
+            otherwise -> return False
+          otherwise -> return False
+        unless solved $ do
+          if unEta eta
+            then checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+            else do
+              -- purposefully shadowing (renaming)
+              (ty1, metasTy1) <- runWriterT $ whnormalizeType (fstCtx gamma) ty1 "Weak-head-normalizing first type."
+              (ty2, metasTy2) <- runWriterT $ whnormalizeType (sndCtx gamma) ty2 "Weak-head-normalizing second type."
+              case (ty1, ty2, isBlockedOrMeta (unType ty1) metasTy1, isBlockedOrMeta (unType ty2) metasTy2) of
+                -- Both types are known: attempt eta-expansion
+                (TypeHS hsty1, TypeHS hsty2, False, False) -> etaExpandIfApplicable deg gamma t1 t2 metasT1 metasT2 hsty1 hsty2
+                -- One type is known and the other is blocked:
+                -- block if the known one has eta,
+                -- otherwise check without eta.
+                (TypeHS hsty1, _, False, True) -> etaExpand UseEliminees (fstCtx gamma) t1 hsty1 >>= \case
+                  Nothing -> tcBlock $ "Need to know if left-hand type has eta-expansion."
+                  Just Nothing -> checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+                  Just (Just _) -> tcBlock $ "Need to weak-head-normalize right-hand type in order to know how to eta-expand."
+                (_, TypeHS hsty2, True, False) -> etaExpand UseEliminees (sndCtx gamma) t2 hsty2 >>= \case
+                  Nothing -> tcBlock $ "Need to know if right-hand type has eta-expansion."
+                  Just Nothing -> checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+                  Just (Just _) -> tcBlock $ "Need to weak-head-normalize left-hand type in order to know how to eta-expand."
+                -- At least one type is neutral or not in the universe: check without eta.
+                (_, _, False, _) -> checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+                (_, _, _, False) -> checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
+                -- Both types are blocked: block
+                (_, _, True, True) -> tcBlock $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
+                
+    
+  

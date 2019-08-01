@@ -406,7 +406,7 @@ tryToSolveMeta eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 nonwhnt2 ty
                    else Just <$> solveMetaAgainstWHNF deg
                           gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
             case neutrality1 of
-              MetaBlocked -> return solution
+              MetaBlocked -> return (solution, ())
               MetaNeutral -> case solution of
                 Just (Expr2 (TermCons c)) -> tcFail $
                   "Cannot instantiate neutral meta with a constructor. " ++
@@ -414,7 +414,7 @@ tryToSolveMeta eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 nonwhnt2 ty
                   -- In the future (e.g. when you do neutral-implicit annotations), you may want to try and eta-contract c.
                   -- Note that `x > (f x .1 , f x ..2)` is not easy to eta-contract to `f`.
                   -- Best done using an eta-contraction judgement analogous to smart-elim judgement.
-                _ -> return solution
+                _ -> return (solution, ())
           )
   
 tryToSolveTerm :: forall sys tc v .
@@ -435,3 +435,56 @@ tryToSolveTerm eta deg gamma t1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2 alternativ
   (Expr2 (TermMeta neutrality1 meta1 (Compose depcies1) (Compose maybeAlg1))) ->
     tryToSolveMeta eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 nonwhnt2 ty1 ty2 metasTy1 metasTy2 alternative
   _ -> alternative "Cannot solve relation: one side is blocked on a meta-variable."
+
+---------------------------------------------------------------------
+
+getSubstAndPartialInv :: forall sys v vOrig .
+  (SysTC sys, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  [Term sys v] ->
+  Either String (vOrig -> v, v -> Maybe vOrig)
+getSubstAndPartialInv depcies = do
+  let getVar2 :: Term sys v -> Maybe v
+      getVar2 (Var2 v) = Just v
+      getVar2 _ = Nothing
+  case sequenceA $ getVar2 <$> depcies of
+    -- Some dependency is not a variable
+    Nothing -> Left "Cannot solve meta-variable: it has undergone contraction of dependencies."
+    -- All dependencies are variables
+    Just depcyVars -> do
+      let (_, repeatedVars, _) = complex depcyVars
+      case repeatedVars of
+        -- Some variables occur twice
+        _:_ -> Left "Cannot solve meta-variable: it has undergone contraction of dependencies."
+        -- All variables are unique
+        [] -> do
+          let subst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
+          let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
+          return (subst, partialInv)
+
+{- Either solves the meta right away and returns 'Nothing', or does nothing and returns 'Just' why not.
+   Never blocks.
+-}
+tryToSolveImmediately :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Ctx (Twice2 Type) sys v Void ->
+  MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
+  tc (Maybe String)
+tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 = do
+  let maybeProblem = case neut1 of
+        MetaBlocked -> Nothing
+        MetaNeutral -> case t2 of
+          -- If a neutral meta is being equated to a constructor, eta-expansion is our only hope.
+          (Expr2 (TermCons _)) -> Just $ "Cannot solve neutral meta-variable with constructor expression."
+          otherwise -> Nothing
+  case maybeProblem of
+    Just msg -> return $ Just msg
+    Nothing -> solveMeta meta1 $ \ (gammaOrig :: Ctx Type sys vOrig Void) ->
+      case getSubstAndPartialInv @sys @v @vOrig depcies1 of
+        Left msg -> return (Nothing, Just msg)
+        Right (subst, partialInv) -> case sequenceA $ partialInv <$> t2 of
+          Nothing ->
+            return (Nothing, Just "Cannot solve meta-variable immediately: candidate solution may have more dependencies.")
+          Just t2orig -> return (Just t2orig, Nothing)
