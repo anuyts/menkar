@@ -52,6 +52,8 @@ foldTailAspects aspects = case snocView aspects of
       (_, _) -> scopeFail "A tail aspect ('disc' or 'forget') occurs twice in the same modality signature."
 
 instance SysScoper Reldtt where
+  -- If you get an error here, consider modifying a meaningless comment in Menkar.Raw.Syntax.Syntax.
+  -- That file somehow corrupts the state of the compiler.
   rawRootAnnots = [Raw.Annotation "*" $ Just $ Raw.ExprSys $ Raw.KnownModty (ModtySnout 0 0 []) (Raw.ModtyTail [])]
   
   scopeAnnotation gamma qstring maybeRawArg = do
@@ -77,8 +79,8 @@ instance SysScoper Reldtt where
     return $ BareKnownModty $ KnownModty snout fineTail
   newMetaModeNoCheck gamma reason = ReldttMode !<$> newMetaTermNoCheck gamma MetaBlocked Nothing reason
   newMetaModtyNoCheck gamma reason = do
-    dom <- newMetaModeNoCheck gamma "Inferring domain of modality."
-    cod <- newMetaModeNoCheck gamma "Inferring codomain of modality."
+    dom <- newMetaModeNoCheck gamma $ reason ++ " (domain)"
+    cod <- newMetaModeNoCheck gamma $ reason ++ " (codomain)"
     tmu <- newMetaTermNoCheck gamma MetaBlocked Nothing reason
     --(meta, depcies) <- newMetaID gamma reason
     return $ wrapInChainModty dom cod tmu
