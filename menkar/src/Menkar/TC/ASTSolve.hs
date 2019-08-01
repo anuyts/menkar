@@ -394,8 +394,11 @@ tryToSolveMeta eta deg gamma neutrality1 meta1 depcies1 maybeAlg1 t2 nonwhnt2 ty
                      if etaHolds
                        -- If so, then above we have equated the meta to its expansion, so we can just come back later on.
                        then do
-                         parent <- fromMaybe unreachable <$> useMaybeParent
-                         Nothing <$ addConstraint parent
+                         -- -- RISK OF LOOPING (I think you do, now that JudEta is deprioritized)
+                         -- parent <- fromMaybe unreachable <$> useMaybeParent
+                         -- Nothing <$ addConstraint parent
+                         -- -- If we block, we won't loop:
+                         tcBlock $ "Equated meta to its expansion, now waiting for it to be solved."
                        -- Otherwise, solve against the WHNF.
                        else Just <$> solveMetaAgainstWHNF deg
                           gammaOrig gamma subst partialInv t2 ty1 ty2 metasTy1 metasTy2
