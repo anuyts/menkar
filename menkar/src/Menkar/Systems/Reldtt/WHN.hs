@@ -284,6 +284,7 @@ whnormalizeModtyTail gamma tail reason =
         otherwise -> return $ TailCont d
     TailProblem -> return TailProblem
 
+-- Why bother?
 whnormalizeKnownModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Ctx Type Reldtt v Void ->
@@ -322,19 +323,29 @@ whnormalizeKnownModty gamma mu@(KnownModty snout tail) reason = do
       _ -> return $ KnownModty snout tail
     TailProblem -> return $ KnownModty snout TailProblem
 
-whnormalizeChainModtyNonzeroCod :: forall whn v .
+whnormalizeChainModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Ctx Type Reldtt v Void ->
   ChainModty v ->
   String ->
   whn (ChainModty v)
-whnormalizeChainModtyNonzeroCod gamma mu@(ChainModtyKnown knownMu) reason =
-  ChainModtyKnown <$> whnormalizeKnownModty gamma knownMu reason
-whnormalizeChainModtyNonzeroCod gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = do
+whnormalizeChainModty gamma mu@(ChainModtyKnown knownMu) reason = return mu
+  -- KnownModty's are aligned before relating them.
+  --ChainModtyKnown <$> whnormalizeKnownModty gamma knownMu reason
+whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = return mu
+  -- Since termNu is required to be neutral, this thing is already normal!
+  {-do
   -- mu . nu . rho
   knownMu <- whnormalizeKnownModty gamma knownMu reason
-  termNu <- whnormalize gamma termNu
+  ------------------------------------------
+  -- vv -- kind of useless, but a good guard.
+  (termNu, metasTermNu) <- whnormalize gamma termNu
     (BareSysType $ SysTypeModty (_chainModty'cod chainRho) (_knownModty'dom knownMu)) reason
+  let () = case metasTermNu of
+    _:_ -> unreachable -- termNu must be normal in a ChainModtyLink!
+    [] -> ()
+  -- ^^ -- kind of useless, but a good guard
+  ------------------------------------------
   case termNu of
     BareChainModty chainNu -> do
       chainNu <- whnormalizeChainModty gamma chainNu reason
@@ -349,22 +360,23 @@ whnormalizeChainModtyNonzeroCod gamma mu@(ChainModtyLink knownMu termNu chainRho
                 ChainModtyTerm ddom dcod trho ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
                     ChainModtyKnown $ idKnownModty ddom
-          whnormalizeChainModtyNonzeroCod gamma composite reason
+          whnormalizeChainModty gamma composite reason
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
           let composite = ChainModtyLink (knownMu `compKnownModty` knownNuA) termNuB $
                           compMod chainNuC chainRho
-          whnormalizeChainModtyNonzeroCod gamma composite reason
+          whnormalizeChainModty gamma composite reason
         ChainModtyTerm ddom dcod tnu -> return $ ChainModtyLink knownMu termNu chainRho
-    _ -> return $ ChainModtyLink knownMu termNu chainRho
-whnormalizeChainModtyNonzeroCod gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
+    _ -> return $ ChainModtyLink knownMu termNu chainRho-}
+whnormalizeChainModty gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
   (tmu, metasTMu) <- listen $ whnormalize gamma tmu (BareSysType $ SysTypeModty dom cod) reason
   case metasTMu of
-    [] -> whnormalizeChainModtyNonzeroCod gamma
+    [] -> whnormalizeChainModty gamma
       (ChainModtyLink (idKnownModty cod) tmu $ ChainModtyKnown $ idKnownModty dom)
       reason
     otherwise -> return $ ChainModtyTerm dom cod tmu
 
+{-
 whnormalizeChainModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Ctx Type Reldtt v Void ->
@@ -378,6 +390,7 @@ whnormalizeChainModty gamma chmu reason = do
     ReldttMode (BareMode ModeTermZero) -> return $ ChainModtyKnown $
       forgetKnownModty $ _chainModty'dom chmu
     otherwise -> whnormalizeChainModtyNonzeroCod gamma chmu reason
+-}
 
 whnormalizeModeTerm :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
