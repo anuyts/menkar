@@ -285,7 +285,29 @@ checkTermRelNoEta :: forall sys tc v .
   Type sys v ->
   Type sys v ->
   tc ()
-checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = _
+checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
+  case (t1, t2, isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
+    -- "blocked ~ blocked": block
+    (_, _, True, True) -> tcBlock $ "Cannot solve relation without eta: both sides are blocked."
+    -- "meta ~ WHN": try to solve against WHN
+    (Expr2 (TermMeta neut1 meta1 (Compose depcies1) (Compose maybeAlg1)), _, True, False) -> do
+      maybeProblem <- tryToSolveAgainstWHN deg          gamma  neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2
+      case maybeProblem of
+        Nothing -> return ()
+        Just msg -> tcBlock msg
+    -- "WHN ~ meta": try to solve against WHN
+    (_, Expr2 (TermMeta neut2 meta2 (Compose depcies2) (Compose maybeAlg2)), False, True) -> do
+      maybeProblem <- tryToSolveAgainstWHN deg (flipCtx gamma) neut2 meta2 depcies2 maybeAlg2 t1 ty2 ty1
+      case maybeProblem of
+        Nothing -> return ()
+        Just msg -> tcBlock msg
+    -- "blocked ~ WHN": block
+    (_, _, True, False) -> tcBlock $ "Cannot solve relation without eta: left side is blocked"
+    -- "WHN ~ blocked": block
+    (_, _, False, True) -> tcBlock $ "Cannot solve relation without eta: right side is blocked"
+    -- "WHN ~ WHN": call analyzer
+    (_, _, False, False) -> 
+      checkASTRel' (Eta False) deg gamma (Twice1 t1 t2) (Twice1 U1 U1) (ClassifWillBe $ Twice1 ty1 ty2)
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   ModedDegree sys v ->

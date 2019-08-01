@@ -461,6 +461,63 @@ getSubstAndPartialInv depcies = do
           let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
           return (subst, partialInv)
 
+tryToSolveBy :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Ctx (Twice2 Type) sys v Void ->
+  MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
+  (forall vOrig . (DeBruijnLevel vOrig) =>
+    Ctx Type sys vOrig Void ->
+    (vOrig -> v) ->
+    (v -> Maybe vOrig) ->
+    tc (Maybe (Term sys vOrig), Maybe String)
+  ) ->
+  tc (Maybe String)
+tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 procedure = do
+  let maybeProblem = case neut1 of
+        MetaBlocked -> Nothing
+        MetaNeutral -> case t2 of
+          -- If a neutral meta is being equated to a constructor, eta-expansion is our only hope.
+          (Expr2 (TermCons _)) -> Just $ "Cannot solve neutral meta-variable with constructor expression."
+          otherwise -> Nothing
+  case maybeProblem of
+    Just msg -> return $ Just msg
+    Nothing -> solveMeta meta1 $ \ (gammaOrig :: Ctx Type sys vOrig Void) ->
+      case getSubstAndPartialInv @sys @v @vOrig depcies1 of
+        Left msg -> return (Nothing, Just msg)
+        Right (subst, partialInv) -> procedure gammaOrig subst partialInv  
+
+tryToSolveAgainstWHN :: forall sys tc v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+  Degree sys v ->
+  Ctx (Twice2 Type) sys v Void ->
+  MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
+  Term sys v ->
+  Type sys v ->
+  Type sys v ->
+  tc (Maybe String)
+tryToSolveAgainstWHN deg gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 =
+  tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 $ \ gammaOrig subst partialInv -> do
+    t1orig <- newRelatedAST' deg gammaOrig gamma subst partialInv t2 U1 U1 (ClassifWillBe $ Twice1 ty1 ty2)
+    return (Just t1orig, Nothing)
+  {-do
+  let maybeProblem = case neut1 of
+        MetaBlocked -> Nothing
+        MetaNeutral -> case t2 of
+          -- If a neutral meta is being equated to a constructor, eta-expansion is our only hope.
+          (Expr2 (TermCons _)) -> Just $ "Cannot solve neutral meta-variable with constructor expression."
+          otherwise -> Nothing
+  case maybeProblem of
+    Just msg -> return $ Just msg
+    Nothing -> solveMeta meta1 $ \ (gammaOrig :: Ctx Type sys vOrig Void) ->
+      case getSubstAndPartialInv @sys @v @vOrig depcies1 of
+        Left msg -> return (Nothing, Just msg)
+        Right (subst, partialInv) -> do
+          t1orig <- newRelatedAST' deg gammaOrig gamma subst partialInv t2 U1 U1 (ClassifWillBe $ Twice1 ty1 ty2)
+          return (Just t1orig, Nothing)-}
+  
 {- Either solves the meta right away and returns 'Nothing', or does nothing and returns 'Just' why not.
    Never blocks.
 -}
@@ -472,7 +529,13 @@ tryToSolveImmediately :: forall sys tc v .
   Type sys v ->
   Type sys v ->
   tc (Maybe String)
-tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 = do
+tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 =
+  tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 $ \ gammaOrig subst partialInv -> do
+    case sequenceA $ partialInv <$> t2 of
+      Nothing ->
+        return (Nothing, Just "Cannot solve meta-variable immediately: candidate solution may have more dependencies.")
+      Just t2orig -> return (Just t2orig, Nothing)
+  {-do
   let maybeProblem = case neut1 of
         MetaBlocked -> Nothing
         MetaNeutral -> case t2 of
@@ -487,4 +550,4 @@ tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 = do
         Right (subst, partialInv) -> case sequenceA $ partialInv <$> t2 of
           Nothing ->
             return (Nothing, Just "Cannot solve meta-variable immediately: candidate solution may have more dependencies.")
-          Just t2orig -> return (Just t2orig, Nothing)
+          Just t2orig -> return (Just t2orig, Nothing)-}
