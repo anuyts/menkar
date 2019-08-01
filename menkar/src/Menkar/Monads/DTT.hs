@@ -301,9 +301,9 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
       Right _ -> do
         throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
       Left blocks -> do
-        maybeSolution <- getSolution $ _metaInfo'context metaInfo
+        (maybeSolution, a) <- getSolution $ _metaInfo'context metaInfo
         case maybeSolution of
-          Nothing -> return ()
+          Nothing -> return a
           Just solution -> do
             -- Unblock blocked constraints
             sequenceA_ $ blocks <&>
@@ -325,6 +325,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
             -- Save the solution
             tcState'metaMap . at meta . _JustUnsafe .=
               ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
+            return a
 
 {-do
     maybeMetaInfo <- use $ tcState'metaMap . at meta
