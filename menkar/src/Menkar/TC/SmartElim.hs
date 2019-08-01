@@ -19,6 +19,7 @@ import GHC.Generics
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
+import Data.Functor.Constant
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Control.Monad.Trans.Maybe
@@ -35,11 +36,32 @@ checkSmartElimDone :: forall sys tc v .
   Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Type sys v ->
+  Maybe (Modality sys v) ->
   Term sys v ->
   Type sys v ->
   tc ()
-checkSmartElimDone gamma eliminee tyEliminee result tyResult = do
-      let dgamma = unVarFromCtx <$> ctx'mode gamma
+checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
+      let dgamma' = ctx'mode gamma
+      let dgamma = unVarFromCtx <$> dgamma'
+      case maybeMuElim of
+        Nothing -> return ()
+        Just muElim -> do
+          {-addNewConstraint
+            (JudRel analyzableToken (Eta True) U1
+              (crispMod dgamma' :\\ duplicateCtx gamma)
+              (Twice1 (_modality'dom muElim) (_modality'cod muElim))
+              (Twice1 U1 U1)
+              (ClassifWillBe $ Twice1 U1 U1)
+            )
+            "End of elimination: checking if modes match."-}
+          addNewConstraint
+            (JudRel analyzableToken (Eta True) (Const ModEq)
+              (crispMod dgamma' :\\ duplicateCtx gamma)
+              (Twice1 muElim (idMod dgamma))
+              (Twice1 U1 U1)
+              (ClassifWillBe $ Twice1 (_modality'dom muElim :*: _modality'cod muElim) (dgamma :*: dgamma))
+            )
+            "End of elimination: Checking whether actual elimination modality equals expected modality (namely identity)."
       addNewConstraint
         (JudTypeRel
           (modedEqDeg dgamma)
@@ -84,7 +106,7 @@ unbox gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
       (Twice1 U1 U1)
       (ClassifMustBe $ (\x -> Twice1 x x) $ _modality'dom dmuInfer :*: _modality'dom dmuElimTotal)
     )
-    "Checking whether actual modality equals expected modality."
+    "Unboxing: Checking whether actual elimination modality equals expected modality."
   addNewConstraint
     (JudSmartElim
       gamma
@@ -124,7 +146,7 @@ projFst gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
       (Twice1 U1 U1)
       (ClassifMustBe $ (\x -> Twice1 x x) $ _modality'dom dmuInfer :*: _modality'dom dmuElimTotal)
     )
-    "Checking whether actual modality equals expected modality."
+    "First projection: Checking whether actual elimination modality equals expected modality."
   addNewConstraint
     (JudSmartElim
       gamma
@@ -182,7 +204,7 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
         (_modality'dom dmuInfer :*: _modality'cod dmuInfer)
       )
     )
-    "Checking whether actual modality equals expected modality."
+    "Second projection: Checking whether actual elimination modality equals expected modality (namely identity)."
   addNewConstraint
     (JudSmartElim
       gamma
@@ -224,7 +246,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
           (Twice1 U1 U1)
           (ClassifMustBe $ (\x -> Twice1 x x) $ _modality'dom dmuArg :*: _modality'dom dmuElimTotal)
         )
-        "Checking whether modality annotation on argument matches the one from the type."
+        "Applying function: Checking whether modality annotation on argument matches the one from the type."
   -- dmuInfer should be the identity.
   addNewConstraint
     (JudRel AnTokenModedModality (Eta True) (Const ModEq)
@@ -239,7 +261,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
         (_modality'dom dmuInfer :*: _modality'cod dmuInfer)
       )
     )
-    "Checking whether actual modality equals expected modality."
+    "Applying function: Checking whether actual elimination modality equals expected modality (namely identity)."
   {- The argument will be checked when checking the result of the smart elimination.
      However, the argument determines the type of the application, which in turn determines the
      elaboration of the smart elimination. Hence, to avoid deadlock, we need to check it now as well.
@@ -382,11 +404,11 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
     -- No eliminators: Check that it's done. (Previously claimed to be unreachable, but I don't see why.)
     (_, []) ->
       --unreachable
-      checkSmartElimDone gamma eliminee tyEliminee result tyResult
+      checkSmartElimDone gamma eliminee tyEliminee Nothing result tyResult
     -- Silently eliminate further: `t ...` (Auto-eliminate, if not possible, assert that it's done.)
-    (_, (:*:) _ SmartElimDots : []) ->
+    (_, (:*:) muElim SmartElimDots : []) ->
       autoEliminate gamma eliminee tyEliminee eliminators result tyResult $
-      Just $ checkSmartElimDone gamma eliminee tyEliminee result tyResult
+      Just $ checkSmartElimDone gamma eliminee tyEliminee (Just muElim) result tyResult
     -- Bogus: `t ... e` (Throw error.)
     (_, (:*:) _ SmartElimDots : _) -> tcFail $ "Bogus elimination: `...` is not the last eliminator."
     -- Explicit application of a function: `f arg` (Apply if explicit, auto-eliminate otherwise.)
@@ -477,7 +499,7 @@ checkSmartElim :: forall sys tc v .
   Type sys v ->
   tc ()
 checkSmartElim gamma eliminee tyEliminee [] result tyResult =
-  checkSmartElimDone gamma eliminee tyEliminee result tyResult
+  checkSmartElimDone gamma eliminee tyEliminee Nothing result tyResult
 checkSmartElim gamma eliminee tyEliminee eliminators result tyResult = do
   let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
   let dmuElimTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
@@ -492,7 +514,6 @@ checkSmartElim gamma eliminee tyEliminee eliminators result tyResult = do
     [] -> do
       parent' <- defConstraint
                    (JudSmartElim gamma eliminee whnTyEliminee eliminators result tyResult)
-                  
                    "Weak-head-normalize type of eliminee."
       withParent parent' $ checkSmartElimForNormalType gamma eliminee whnTyEliminee eliminators result tyResult
     -- the type does not weak-head-normalize
