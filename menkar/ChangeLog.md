@@ -4,6 +4,7 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  Reimplement eta.
 *  New annotation syntax:
 
    * `val *mu x : A = ...` instead of `val [m mu] x : A = ...`

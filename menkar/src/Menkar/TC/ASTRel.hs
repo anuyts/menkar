@@ -397,8 +397,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
           otherwise -> return False
         unless solved $ do
           if unEta eta
-            then checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
-            else do
+            then do
               -- purposefully shadowing (renaming)
               (ty1, metasTy1) <- runWriterT $ whnormalizeType (fstCtx gamma) ty1 "Weak-head-normalizing first type."
               (ty2, metasTy2) <- runWriterT $ whnormalizeType (sndCtx gamma) ty2 "Weak-head-normalizing second type."
@@ -421,6 +420,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
                 (_, _, _, False) -> checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
                 -- Both types are blocked: block
                 (_, _, True, True) -> tcBlock $ "Need to weak-head-normalize types to tell whether I should use eta-expansion."
+            else checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2
                 
     
   
