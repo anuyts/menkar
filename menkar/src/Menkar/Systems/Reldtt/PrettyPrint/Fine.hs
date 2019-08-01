@@ -51,9 +51,13 @@ instance Fine2Pretty Reldtt KnownModty where
     ribbon ("[" ++ (join $ (++ " ") . knownDeg2string <$> reverse krevdegs) ++ prettyTail)
       \\\ typeAnnots
     /// ribbon "]"
-    where typeAnnots = if _fine2pretty'printTypeAnnotations opts
-            then [" : (" ++ show idom ++ " + " ++| fine2pretty gamma (_modtyTail'dom tail) opts |++ ")",
-                  " -> (" ++ show icod ++ " + " ++| fine2pretty gamma (_modtyTail'cod tail) opts |++ ")"]
+    where typeAnnots = if True -- _fine2pretty'printTypeAnnotations opts
+            then [ " : " ++| if idom == 0
+                             then fine2pretty gamma (_modtyTail'dom tail) opts
+                             else "(" ++ show idom ++ " + " ++| fine2pretty gamma (_modtyTail'dom tail) opts |++ ")",
+                  " -> " ++| if icod == 0
+                             then fine2pretty gamma (_modtyTail'cod tail) opts
+                             else "(" ++ show icod ++ " + " ++| fine2pretty gamma (_modtyTail'cod tail) opts |++ ")"]
             else []
           prettyTail = case tail of
             TailEmpty -> ""
