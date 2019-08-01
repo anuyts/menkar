@@ -118,6 +118,18 @@ compKnownModty mu2@(KnownModty snout2 tail2) mu1@(KnownModty snout1 tail1) =
              tailComp = compModtyTail tail2 tail1
          in  KnownModty snoutComp tailComp
 
+compChainModty :: ChainModty v -> ChainModty v -> ChainModty v
+compChainModty (ChainModtyLink kmu tnu chrho) chsigma =
+  ChainModtyLink kmu tnu $ compChainModty chrho chsigma
+compChainModty (ChainModtyKnown kmu) (ChainModtyLink knu trho chsigma) =
+  ChainModtyLink (kmu `compKnownModty` knu) trho chsigma
+compChainModty (ChainModtyKnown kmu) (ChainModtyKnown knu) =
+  ChainModtyKnown (kmu `compKnownModty` knu)
+compChainModty chmu@(ChainModtyKnown kmu) chnu@(ChainModtyTerm dom cod tnu) =
+  ChainModtyTerm dom (_knownModty'cod kmu) $ BareModty $ ModtyTermComp chmu chnu
+compChainModty chmu@(ChainModtyTerm dom cod tmu) chnu =
+  ChainModtyTerm (_chainModty'dom chnu) cod $ BareModty $ ModtyTermComp chmu chnu
+
 {-
 whnormalizeComp :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
@@ -370,8 +382,9 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
     _ -> return $ ChainModtyLink knownMu termNu chainRho-}
 whnormalizeChainModty gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
   (tmu, metasTMu) <- listen $ whnormalize gamma tmu (BareSysType $ SysTypeModty dom cod) reason
-  case metasTMu of
-    [] -> whnormalizeChainModty gamma
+  case (tmu, metasTMu) of
+    (BareChainModty chmu, []) -> whnormalizeChainModty gamma chmu reason
+    (_, []) -> whnormalizeChainModty gamma
       (ChainModtyLink (idKnownModty cod) tmu $ ChainModtyKnown $ idKnownModty dom)
       reason
     otherwise -> return $ ChainModtyTerm dom cod tmu
@@ -429,10 +442,7 @@ whnormalizeModtyTerm gamma mu reason = case mu of
     (chmu1, metas1) <- listen $ whnormalizeChainModty gamma chmu1 reason
     (chmu2, metas2) <- listen $ whnormalizeChainModty gamma chmu2 reason
     case (metas1, metas2) of
-      ([], []) -> return $ ModtyTermChain $
-        ChainModtyLink (idKnownModty $ _chainModty'cod chmu2) (BareChainModty chmu2) $
-        ChainModtyLink (idKnownModty $ _chainModty'dom chmu2) (BareChainModty chmu1) $
-        ChainModtyKnown (idKnownModty $ _chainModty'dom chmu1)
+      ([], []) -> return $ ModtyTermChain $ chmu2 `compChainModty` chmu1
       (_, _) -> return $ ModtyTermComp chmu2 chmu1
   ModtyTermUnavailable ddom dcod -> return mu
   

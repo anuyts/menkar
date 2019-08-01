@@ -88,30 +88,36 @@ instance SysTC Reldtt where
       let cod1 = _modality'cod t1
       let dom2 = _modality'dom t2
       let cod2 = _modality'cod t2
-      (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
-      (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
-      newParent <- defConstraint
-        (JudRel analyzableToken eta relT gamma (Twice1 t1 t2) extraTs maybeCTs)
-        "Weak-head-normalizing both sides."
-      withParent newParent $ case (metasT1, metasT2, t1, t2) of
-        ([], _  , ChainModtyTerm _ _ _, _) -> unreachable
-        (_  , [] , _, ChainModtyTerm _ _ _) -> unreachable
-        ([] , [] , _, _) ->
-          checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs
-        (_:_, [] , ChainModtyTerm _ _ tmu1, _) -> do
-          let tmu2 = BareChainModty t2
-          checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
-            (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
-            --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
-        (_:_, [] , _, _) -> unreachable
-        ([] , _:_, _, ChainModtyTerm _ _ tmu2) -> do
-          let tmu1 = BareChainModty t1
-          checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
-            (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
-            --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
-        ([] , _:_, _, _) -> unreachable
-        (_:_, _:_, _, _) ->
-          tcBlock "Cannot solve inequality: both sides are blocked on a meta-variable."
+      (cod1, metasCod1) <- runWriterT $ whnormalizeAST @Reldtt @_ @_ @ReldttMode
+        (fstCtx gamma) cod1 U1 U1 "Weak-head-normalize codomain (of 1st modality)"
+      case (cod1, metasCod1) of
+        (_, _:_) -> tcBlock $ "Need to know codomain: If it's zero, I can apply eta."
+        (ReldttMode (BareMode ModeTermZero), _) -> return ()
+        (_, _) -> do
+          (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
+          (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
+          newParent <- defConstraint
+            (JudRel analyzableToken eta relT gamma (Twice1 t1 t2) extraTs maybeCTs)
+            "Weak-head-normalizing both sides."
+          withParent newParent $ case (metasT1, metasT2, t1, t2) of
+            ([], _  , ChainModtyTerm _ _ _, _) -> unreachable
+            (_  , [] , _, ChainModtyTerm _ _ _) -> unreachable
+            ([] , [] , _, _) ->
+              checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs
+            (_:_, [] , ChainModtyTerm _ _ tmu1, _) -> do
+              let tmu2 = BareChainModty t2
+              checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
+                (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
+                --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
+            (_:_, [] , _, _) -> unreachable
+            ([] , _:_, _, ChainModtyTerm _ _ tmu2) -> do
+              let tmu1 = BareChainModty t1
+              checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
+                (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
+                --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))
+            ([] , _:_, _, _) -> unreachable
+            (_:_, _:_, _, _) ->
+              tcBlock "Cannot solve inequality: both sides are blocked on a meta-variable."
     Left AnTokenDegree -> do
       (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
       (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
