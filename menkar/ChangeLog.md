@@ -4,6 +4,8 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  Metavariables: Remember dependencies' modes, and weak-head-normalize them before trying to solve the metavariable.
+*  Properly check modalities for smart elimination judgements.
 *  Reimplement eta.
 *  New annotation syntax:
 
@@ -11,7 +13,7 @@ When releasing, change the changelog and `package.yaml`.
    * `{~ *mu x : A}` instead of `{~ | m mu | x : A}`
 *  Removed extremely widespread but redundant mode annotations from syntax. (A lot of trivialized legacy code is present.)
 *  Added special function-like modal-lock syntax for Box types.
-*  Added support for RelDTT.
+*  Added support for [Degrees of Relatedness (RelDTT)](https://doi.org/10.1145/3209108.3209119).
 *  Put mode classifier of 'UniHSConstructor' in a 'ModalBox' so that it lives in the right context.
 *  Annotated raw syntax with system parameter.
 
