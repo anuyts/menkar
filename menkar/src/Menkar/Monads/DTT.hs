@@ -34,6 +34,8 @@ import Data.Foldable
 import Data.Monoid
 import Control.Monad.Cont
 import Control.Monad.Trans.Cont
+import Control.Monad.Trans.Reader hiding (ask)
+import Control.Monad.Reader.Class
 import Control.Monad.State.Lazy
 import Control.Monad.List
 import Control.Monad.Except
@@ -90,6 +92,10 @@ data TCReport sys = TCReport {
   _tcReport'reason :: String
   }
 
+data TCOptions = TCOptions {
+  _tcOptions'loop :: Int
+  }
+
 data TCState sys m = TCState {
   _tcState'metaCounter :: Int,
   _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo sys m)),
@@ -127,21 +133,33 @@ data TCError sys m =
   TCErrorInternal (Maybe (Constraint sys)) String
 
 newtype TCT (sys :: KSys) (m :: * -> *)  (a :: *) =
-  TCT {unTCT :: ContT (TCResult sys) (ExceptT (TCError sys m) (StateT (TCState sys m) ({-ListT-}  m))) a}
-  deriving (Functor, Applicative, Monad, MonadState (TCState sys m), MonadError (TCError sys m), MonadDC (TCResult sys))
+  TCT {unTCT :: ContT (TCResult sys) (ExceptT (TCError sys m) (StateT (TCState sys m) (ReaderT TCOptions ({-ListT-}  m)))) a}
+  deriving (Functor, Applicative, Monad,
+            MonadState (TCState sys m),
+            MonadError (TCError sys m),
+            MonadDC (TCResult sys),
+            MonadReader (TCOptions))
 
 instance (Monad m) => MonadFail (TCT sys m) where
   fail s = unreachable
 
-getTCT :: (Monad m) => TCT sys m () -> TCState sys m -> m (Either (TCError sys m) (TCResult sys), TCState sys m)
-getTCT program initState = flip runStateT initState $ runExceptT $ evalContT $ unTCT program
+getTCT :: (Monad m) =>
+  TCOptions ->
+  TCState sys m ->
+  TCT sys m () ->
+  m (Either (TCError sys m) (TCResult sys), TCState sys m)
+getTCT opts initState program = flip runReaderT opts $ flip runStateT initState $ runExceptT $ evalContT $ unTCT program
 --getTCT program initState = flip runStateT initState $ evalContT $ unTCT program
 
 type TC sys = TCT sys Identity
 
 --getTC :: TC () -> TCState Identity -> Except (TCError Identity) (TCResult, TCState Identity)
-getTC :: TC sys () -> TCState sys Identity -> (Either (TCError sys Identity) (TCResult sys), TCState sys Identity)
-getTC program initState = runIdentity $ getTCT program initState
+getTC ::
+  TCOptions ->
+  TCState sys Identity ->
+  TC sys () ->
+  (Either (TCError sys Identity) (TCResult sys), TCState sys Identity)
+getTC opts initState program = runIdentity $ getTCT opts initState program
 
 ----------------------------------------------------------------------------
 makeLenses ''MetaInfo
@@ -283,7 +301,8 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
     i <- tcState'constraintCounter <<%= (+1)
     let constraint = Constraint jud maybeParent reason i
     tcState'constraintMap %= insert i constraint
-    when (i > 100000) $ withParent constraint $ tcFail "I may be stuck in a loop."
+    loop <- _tcOptions'loop <$> ask
+    when (i >= loop) $ withParent constraint $ tcFail "I may be stuck in a loop."
     return constraint
 
   -- Constraints are saved upon creation, not now.
@@ -299,36 +318,46 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
   addConstraintReluctantly constraint = todo
 
   solveMeta meta getSolution = do
+    -- Note: If you swap the following lines, then you get a GHC panic: "No skolem info."
+    -- Get info for this meta
     ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
+    -- Get the parent judgement
     parent <- fromMaybe unreachable <$> useMaybeParent
     case _metaInfo'maybeSolution metaInfo of
+      -- If it's solved, throw an error.
       Right _ -> do
         throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
+      -- Blocks contains the constraints blocked on the current meta, and their whereabouts.
       Left blocks -> do
+        -- Call the closure provided by the caller to obtain the solution for the meta.
+        -- ('a' is just something that the caller wants back.)
         (maybeSolution, a) <- getSolution $ _metaInfo'context metaInfo
         case maybeSolution of
+          -- If the caller fails to provide a solution, abort and pass back 'a'.
           Nothing -> return a
+          -- The caller provides 'solution :: Term sys v'.
           Just solution -> do
+            -- Get information about all metas (before solving the current one.)
+            metaMap <- use tcState'metaMap
+            -- Save the solution
+            tcState'metaMap . at meta . _JustUnsafe .=
+              ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
             -- Unblock blocked constraints
             sequenceA_ $ blocks <&>
-              \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) -> do
-              {- @meta@ is currently being solved.
+              {- @meta@ (introduced above) is currently being solved.
                  @block@ represents a problem blocked by this meta.
                  @k@ expresses how to unblock the problem if THIS meta is solved.
                  @blockingMetas@ is a list of other metas that can unblock this problem; they have their own @k@.
               -}
+              \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) -> do
               -- Check whether this is the first meta (among those on which this constraint is blocked) to be resolved.
-              allAreUnsolved <- fmap (not . getAny . fold) $ sequenceA $ blockingMetas <&>
-                \blockingMeta -> fmap (Any . forThisDeBruijnLevel isSolved) $ use $
-                  tcState'metaMap . at blockingMeta . _JustUnsafe
+              let allAreUnsolved = not . getAny . fold $ blockingMetas <&>
+                    \blockingMeta -> Any $ forThisDeBruijnLevel isSolved $ view (at blockingMeta . _JustUnsafe) metaMap
               if allAreUnsolved
-              -- If so, then unblock with the solution just provided
-              then addTask PriorityDefault $ withParent constraintJudBlock $ catchBlocks $ k $ Just $ solution
-              -- Else forget about this blocked constraint, it has been unblocked already.
-              else return ()
-            -- Save the solution
-            tcState'metaMap . at meta . _JustUnsafe .=
-              ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
+                -- If so, then unblock with the solution just provided
+                then addTask PriorityDefault $ withParent constraintJudBlock $ catchBlocks $ k $ Just $ solution
+                -- Else forget about this blocked constraint, it has been unblocked already.
+                else return ()
             return a
 
 {-do

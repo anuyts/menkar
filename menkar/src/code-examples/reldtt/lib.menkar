@@ -16,3 +16,9 @@ val *m0 disc0 {~ d : Mode} : Modality d (dsuc d) = [= : 0 -> 1 | cont d]
 val *m0 irr {~ dom cod-1 : Mode} : Modality dom (dsuc cod-1) = [T : 0 -> 1 | disc cod-1 | forget dom]
 val *m0 shi {~ dom-1 cod-2 : Mode} : Modality (dsuc dom-1) (dsuc (dsuc cod-2)) = [0 T : 1 -> 2 | disc cod-2 | forget dom-1]
 
+val *m0 (->) {~ d : Mode} {*(forget d)} {A B : UniHS d ...} : UniHS d ... = {_ : A} -> B
+
+/*
+    val (->) {A B : UniHS} : UniHS = {_ : A} -> B
+    val (><) {A B : UniHS} : UniHS = {_ : A} >< B
+*/

@@ -40,6 +40,7 @@ import Control.Monad.Except
 import Control.Lens
 import System.Exit
 import qualified System.Console.Terminal.Size as System
+import Text.Read
 
 quickRead :: forall a . Read a => String -> Maybe a
 quickRead str = case (readsPrec 0 str :: [(a, String)]) of
@@ -49,16 +50,21 @@ quickRead str = case (readsPrec 0 str :: [(a, String)]) of
 --------------------------
 
 data MainState sys = MainState {
-  _main'fine2prettyOptions :: Fine2PrettyOptions sys}
+  _main'fine2prettyOptions :: Fine2PrettyOptions sys,
+  _main'loop :: Int}
 
 makeLenses ''MainState
 
 instance Omissible (MainState sys) where
   omit = MainState {
-    _main'fine2prettyOptions = omit}
+    _main'fine2prettyOptions = omit,
+    _main'loop = 100000}
 
-class WithMainState sys where
-  mainState :: IORef (MainState sys)
+newtype GeneralMainState = GeneralMainState {specializeMainState :: forall sys . (Sys sys) => MainState sys}
+instance Omissible GeneralMainState where
+  omit = GeneralMainState omit
+mapGeneralMainState :: (forall sys . (Sys sys) => MainState sys -> MainState sys) -> GeneralMainState -> GeneralMainState
+mapGeneralMainState f (GeneralMainState s) = GeneralMainState $ f s
 
 --------------------------
 
@@ -342,10 +348,13 @@ interactiveMode ref s = do
   doUntilFail (consumeCommand ref s)
   return ()
 
-interactAfterTask :: (Sys sys) => TC sys () -> IO ()
-interactAfterTask task = do
-          ref <- initMainState
-          let (tcResult, s) = flip getTC initTCState $ task
+interactAfterTask :: (Sys sys) => MainState sys -> TC sys () -> IO ()
+interactAfterTask s task = do
+          ref <- newIORef s
+          let opts = TCOptions {
+                _tcOptions'loop = _main'loop s
+                }
+          let (tcResult, s) = getTC opts initTCState $ task
           case tcResult of
             Right () -> interactiveMode ref s
             Left e -> case e of
@@ -375,8 +384,8 @@ interactAfterTask task = do
 
 ----------------------------
 
-checkMagic :: forall sys . (Sys sys) => IO ()
-checkMagic = interactAfterTask $ do
+checkMagic :: forall sys . (Sys sys) => MainState sys -> IO ()
+checkMagic s = interactAfterTask s $ do
   addNewConstraint
     (magicModuleCorrect @sys)
     "Checking the magic module."
@@ -387,9 +396,8 @@ getWidth = fmap ((\x -> x - 4) . System.width) <$> System.size
 
 prepMainState :: (Sys sys) => IO (MainState sys)
 prepMainState = do
-  maybeWidth <- getWidth
-  return $ omit & fromMaybe id
-    (maybeWidth <&> \width -> main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ width)
+  GeneralMainState s <- initGeneralMainState
+  return s
 
 initMainState :: (Sys sys) => IO (IORef (MainState sys))
 initMainState = prepMainState >>= newIORef
@@ -400,16 +408,17 @@ printCommandLineHelp :: IO ()
 printCommandLineHelp = do
   putStrLn ""
   putStrLn "SYNOPSIS"
-  putStrLn "    menkar <system> [<file>...]"
-  putStrLn "    menkar --check-magic <system>"
+  putStrLn "    menkar [options] <system> [<file>...]"
+  putStrLn "    menkar [options] --check-magic <system>"
   putStrLn ""
   putStrLn "OPTIONS"
   putStrLn "    <system> :   trivial : one mode, one modality"
   putStrLn "                 redltt :  degrees of relatedness - https://doi.org/10.1145/3209108.3209119"
+  putStrLn "    --loop n :   After n constraints, conclude that you're in a loop and issue a typing error."
   putStrLn ""
 
-runMenkar :: forall sys . (Sys sys) => [String] -> IO ()
-runMenkar args = do
+runMenkar :: forall sys . (Sys sys) => MainState sys -> [String] -> IO ()
+runMenkar s args = do
   rawEntries <- fmap concat $ sequenceA $ args <&> \path -> do
     code <- readFile path
     let errorOrRawFile = P.parse P.bulk path code
@@ -422,23 +431,39 @@ runMenkar args = do
           putStrLn $ MP.errorBundlePretty e
           exitSuccess
       Right rawEntries -> return rawEntries
-  interactAfterTask $ do
+  interactAfterTask s $ do
     fineModule <- S.bulk (magicContext @sys) rawEntries
     addNewConstraint
       (Jud AnTokenEntry magicContext fineModule U1 (ClassifWillBe U1))
       "Type-checking everything."
     typeCheck
-  
-mainArgs :: [String] -> IO ()
-mainArgs [] = printCommandLineHelp
-mainArgs (arg1 : args) = case arg1 of
-  "trivial" -> runMenkar @Trivial args
-  "reldtt" -> runMenkar @Reldtt args
+
+mainStateArgs :: GeneralMainState -> [String] -> IO ()
+mainStateArgs s [] = printCommandLineHelp
+mainStateArgs s (arg1 : args) = case arg1 of
+  "trivial" -> runMenkar @Trivial (specializeMainState s) args
+  "reldtt" -> runMenkar @Reldtt (specializeMainState s) args
+  "--loop" -> case args of
+    [] -> printCommandLineHelp
+    arg2 : args -> case readMaybe arg2 :: Maybe Int of
+      Nothing -> printCommandLineHelp
+      Just n -> mainStateArgs (s & mapGeneralMainState (main'loop .~ n)) args
   "--check-magic" -> case args of
-    "trivial" : [] -> checkMagic @Trivial
-    "reldtt" : [] -> checkMagic @Reldtt
+    "trivial" : [] -> checkMagic @Trivial (specializeMainState s)
+    "reldtt" : [] -> checkMagic @Reldtt (specializeMainState s)
     _ -> printCommandLineHelp
   otherwise -> printCommandLineHelp
+
+initGeneralMainState :: IO GeneralMainState
+initGeneralMainState = do
+  maybeWidth <- getWidth
+  return $ GeneralMainState $ omit & fromMaybe id
+    (maybeWidth <&> \width -> main'fine2prettyOptions . fine2pretty'renderOptions . render'widthLeft .~ width)
+  
+mainArgs :: [String] -> IO ()
+mainArgs args = do
+  s <- initGeneralMainState
+  mainStateArgs s args
 
 main :: IO ()
 main = mainArgs =<< (System.Environment.getArgs :: IO [String])
