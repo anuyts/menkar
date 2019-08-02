@@ -48,7 +48,10 @@ quickEq t t' extraT extraT' =
              (neutrality == neutrality')
              && meta == meta'
              && length depcies == length depcies'
-             && and (zip depcies depcies' <&> \ (depcy, depcy') -> quickEq @sys depcy depcy' U1 U1)
+             && and (zip depcies depcies' <&> \ (d :*: depcy, d' :*: depcy') ->
+                        --quickEq @sys d d' U1 U1 && (follows from the other clause...)
+                        quickEq @sys depcy depcy' U1 U1
+                    )
            _ -> False
          (AnErrorTermMeta, _, _) -> unreachable
          (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable

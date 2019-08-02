@@ -76,6 +76,7 @@ dividedCtx2pretty (Just drho) delta (dmu :\\ gamma) opts =
   dividedCtx2pretty (Just $ compModedModality (unVarBeforeCtxUnsafe <$> dmu) drho) delta gamma opts
 dividedCtx2pretty maybeDRho delta (CtxId gamma) opts = dividedCtx2pretty maybeDRho delta gamma opts
 dividedCtx2pretty maybeDRho delta (CtxComp gamma) opts = dividedCtx2pretty maybeDRho delta gamma opts
+dividedCtx2pretty maybeDRho delta (CtxOpaque d) opts = unreachable
 
 ctx2pretty :: forall v sys ty .
   (DeBruijnLevel v,

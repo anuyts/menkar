@@ -4,6 +4,7 @@ module Menkar.Monads.ScoperOnly where
 
 import Menkar.Monad.Monad
 import Menkar.Fine.Syntax
+import Menkar.Fine.LookupQName
 --import Menkar.Fine.Judgement
 import Menkar.Basic.Context
 import Menkar.PrettyPrint.Aux.Context
@@ -19,11 +20,14 @@ import Data.Omissible
 
 import Control.Monad.State.Lazy
 import Control.Monad.Fail
+import Control.Lens
 import GHC.Generics (U1 (..))
 import Text.PrettyPrint.Tree
 import Data.Functor.Compose
 import Data.Void
 import Data.Maybe
+import Data.Proxy
+import GHC.Generics
 
 import qualified Menkar.Parser as P -- for testscope
 import Menkar.Scoper.Scoper -- for testscope
@@ -49,7 +53,10 @@ instance MonadFail SimpleScoper where
 instance MonadScoper Trivial SimpleScoper where
   newMetaID gamma reason = do
     i <- fresh
-    return (i, Var2 <$> scListVariables (ctx2scCtx gamma))
+    return (i, listAll Proxy <&> \ v ->
+        let d = fmap unVarFromCtx <$> _modality'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
+        in  d :*: Var2 v
+      )
   scopeFail msg = SimpleScoper $ lift $ Left msg
 
 ---------------------------

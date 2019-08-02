@@ -318,9 +318,9 @@ meta2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose may
           Nothing -> metaNoSolution
           Just (ForSomeDeBruijnLevel t) ->
             ["\x27ea" ++|
-              fine2pretty gamma (join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
+              fine2pretty gamma (join $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
             |++ "\x27eb"]
-  where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies
+  where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma . snd1 <$> depcies
         metaNoSolution = case maybeAlg of
           Nothing -> uglySubMeta
           Just alg -> if _fine2pretty'humanReadableMetas opts

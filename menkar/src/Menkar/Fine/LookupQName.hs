@@ -275,6 +275,7 @@ lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
     LookupResultVal $ LeftDivided dOrig (compModedModality dmu' dmu) seg
 lookupQName (CtxId gamma) qname = bimap Identity id !<$> lookupQName gamma qname
 lookupQName (CtxComp gamma) qname = bimap Compose id !<$> lookupQName gamma qname
+lookupQName (CtxOpaque d) qname = LookupResultNothing
 
 ------------------------
 
@@ -323,4 +324,4 @@ lookupVar (dmu :\\ gamma) v = LeftDivided dOrig (compModedModality dmu' dmu) seg
   where LeftDivided dOrig dmu' seg = lookupVar gamma v
 lookupVar (CtxId gamma) (Identity v) = bimap Identity id !<$> lookupVar gamma v
 lookupVar (CtxComp gamma) (Compose v) = bimap Compose id !<$> lookupVar gamma v
-
+lookupVar (CtxOpaque d) v = unreachable

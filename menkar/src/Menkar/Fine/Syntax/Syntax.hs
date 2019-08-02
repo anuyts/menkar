@@ -426,7 +426,7 @@ data TermNV (sys :: KSys) (v :: *) =
   TermMeta
     MetaNeutrality
     Int {-^ Meta's index -}
-    (Compose [] (Term sys) v) {-^ Dependencies -}
+    (Compose [] (Mode sys :*: Term sys) v) {-^ Dependencies -}
     (Compose Maybe (Algorithm sys) v) {-^ Human readable representation -} |
   TermWildcard {-^ A meta that need not be solved. -} |
   TermQName Raw.QName (LeftDivided (Telescoped Type ValRHS) sys v) |

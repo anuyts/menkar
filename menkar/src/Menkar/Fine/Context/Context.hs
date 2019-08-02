@@ -62,6 +62,10 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) (w :: *) where
   {-| Pleasing GHC -}
   CtxId :: Ctx t sys v w -> Ctx t sys (Identity v) w
   CtxComp :: Ctx t sys (f (g v)) w -> Ctx t sys (Compose f g v) w
+  {-| Opaque context of a given mode. Used only for WHN.
+      Necessary for whnormalizing meta dependencies, which should be enclosed in a LeftDivided.
+  -}
+  CtxOpaque :: DeBruijnLevel v => Mode sys (VarOpenCtx v w) -> Ctx t sys v w
 --type role Ctx representational nominal nominal representational
 infixr 3 :\\
 infixl 3 :.., :^^, :<...>
@@ -81,6 +85,7 @@ instance (
   swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
   swallow (CtxId gamma) = CtxId $ swallow gamma
   swallow (CtxComp gamma) = CtxComp $ swallow gamma
+  swallow (CtxOpaque d) = CtxOpaque $ swallow (fmap sequenceA d)
 
 ctx'mode :: Multimode sys => Ctx ty sys v w -> Mode sys (VarOpenCtx v w)
 ctx'mode (CtxEmpty d) = VarBeforeCtx <$> d
@@ -90,6 +95,7 @@ ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
 ctx'mode (dmu :\\ gamma) = _modality'dom dmu
 ctx'mode (CtxId gamma) = bimap Identity id <$> ctx'mode gamma
 ctx'mode (CtxComp gamma) = bimap Compose id <$> ctx'mode gamma
+ctx'mode (CtxOpaque d) = d
 
 haveDB :: Ctx ty sys v w -> ((DeBruijnLevel v) => t) -> t
 haveDB (CtxEmpty d) t = t
@@ -99,6 +105,7 @@ haveDB (gamma :<...> modul) t = haveDB gamma t
 haveDB (dmu :\\ gamma) t = haveDB gamma t
 haveDB (CtxId gamma) t = haveDB gamma t
 haveDB (CtxComp gamma) t = haveDB gamma t
+haveDB (CtxOpaque d) t = t
 
 mapSegment :: (
     SysTrav sys,
@@ -127,6 +134,7 @@ mapCtx f (gamma :<...> modul) = mapCtx f gamma :<...> modul
 mapCtx f (dmu :\\ gamma) = dmu :\\ mapCtx f gamma
 mapCtx f (CtxId gamma) = CtxId $ mapCtx f gamma
 mapCtx f (CtxComp gamma) = CtxComp $ mapCtx f gamma
+mapCtx f (CtxOpaque d) = CtxOpaque d
 
 duplicateCtx :: (
     SysTrav sys,
@@ -166,6 +174,7 @@ externalizeCtx (gamma :<...> modul) =
 externalizeCtx (dmu :\\ gamma) = externalizeVar <$> dmu :\\ externalizeCtx gamma
 externalizeCtx (CtxId gamma) = CtxId $ Identity !<$> externalizeCtx gamma
 externalizeCtx (CtxComp gamma) = CtxComp $ Compose !<$> externalizeCtx gamma
+externalizeCtx (CtxOpaque d) = CtxOpaque $ externalizeVar <$> d
 
 {-
 -- TODO: you need a left division here!

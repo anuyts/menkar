@@ -5,6 +5,7 @@ module Menkar.Monads.DTT where
 import Menkar.Basic
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
+import Menkar.Fine.LookupQName
 --import Menkar.Systems.Trivial.Trivial
 import Menkar.Monad.Monad
 import Menkar.TC.Judgement
@@ -19,8 +20,9 @@ import Text.PrettyPrint.Tree
 import Control.Exception.AssertFalse
 --import Control.Monad.MCont
 import Data.Omissible
+import Data.Functor.Functor1
 
-import GHC.Generics (U1 (..))
+import GHC.Generics
 import Data.Void
 import Data.Maybe
 import Data.Either
@@ -181,7 +183,9 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     maybeParent <- useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
-    let depcies = Var2 <$> listAll Proxy
+    let depcies = listAll Proxy <&> \ v ->
+          let d = fmap unVarFromCtx <$> _modality'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
+          in  d :*: Var2 v
     return (meta, depcies)
     
   {-
@@ -232,10 +236,10 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
       Just (ForSomeDeBruijnLevel (MetaInfo _ gamma reasonMeta maybeSolution)) -> do
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
-            return $ Just $ join $ (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
+            return $ Just $ join $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
           Left blocksOfConstraintsOnCurrentMeta -> shiftDC $ \ kCurrent -> do
             let kCurrentAdjusted =
-                  kCurrent . fmap (join . (fmap $ (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
+                  kCurrent . fmap (join . (fmap $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
             let allowContinuationToBlockOnCurrentMeta :: forall u . (DeBruijnLevel u) =>
                   (Maybe (Term sys u) -> TCT sys m (TCResult sys)) ->
                   (Maybe (Term sys u) -> TCT sys m (TCResult sys))

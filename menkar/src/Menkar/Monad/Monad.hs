@@ -16,6 +16,7 @@ import Data.Functor.Compose
 import Control.Monad.Trans.Maybe
 import Control.Monad.Fail
 import Data.Kind hiding (Type, Constraint)
+import GHC.Generics
 
 data Constraint sys = Constraint {
     _constraint'judgement :: Judgement sys,
@@ -38,7 +39,7 @@ class (
     (sys :: KSys)
     (sc :: * -> *)
     | sc -> sys where
-  newMetaID :: (DeBruijnLevel v) => Ctx Type sys v Void -> String -> sc (Int, [Term sys v])
+  newMetaID :: (DeBruijnLevel v) => Ctx Type sys v Void -> String -> sc (Int, [(Mode sys :*: Term sys) v])
   scopeFail :: String -> sc a
 
   {-| After scoping, before type-checking, metas are put to sleep.
@@ -83,7 +84,7 @@ class (
          are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
          run with the soluiton.
       It is an error to await the same meta twice. -}
-  awaitMeta :: String -> Int -> [Term sys v] -> whn (Maybe (Term sys v))
+  awaitMeta :: String -> Int -> [(Mode sys :*: Term sys) v] -> whn (Maybe (Term sys v))
 
 instance (MonadWHN sys whn, MonadTrans mT, MonadFail (mT whn)) => MonadWHN sys (mT whn) where
   awaitMeta reason meta depcies = lift $ awaitMeta reason meta depcies

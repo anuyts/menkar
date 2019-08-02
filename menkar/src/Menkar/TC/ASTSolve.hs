@@ -13,6 +13,7 @@ import Menkar.WHN
 
 import Control.Exception.AssertFalse
 import Data.Constraint.Conditional
+import Data.Functor.Functor1
 
 import Data.Void
 import Control.Lens
@@ -24,6 +25,7 @@ import Data.List.Unique
 import Data.Proxy
 import Data.Maybe
 import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Writer.Lazy
 import GHC.Generics
 import Control.Applicative
 
@@ -288,13 +290,13 @@ checkEta gamma t ty = do
 
 getSubstAndPartialInv :: forall sys v vOrig .
   (SysTC sys, DeBruijnLevel v, DeBruijnLevel vOrig) =>
-  [Term sys v] ->
+  [(Mode sys :*: Term sys) v] ->
   Either String (vOrig -> v, v -> Maybe vOrig)
 getSubstAndPartialInv depcies = do
   let getVar2 :: Term sys v -> Maybe v
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
-  case sequenceA $ getVar2 <$> depcies of
+  case sequenceA $ getVar2 . snd1 <$> depcies of
     -- Some dependency is not a variable
     Nothing -> Left "Cannot solve meta-variable: it has non-variable dependencies."
     -- All dependencies are variables
@@ -312,7 +314,7 @@ getSubstAndPartialInv depcies = do
 tryToSolveBy :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Ctx (Twice2 Type) sys v Void ->
-  MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
+  MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
   Term sys v ->
   Type sys v ->
   Type sys v ->
@@ -324,6 +326,9 @@ tryToSolveBy :: forall sys tc v .
   ) ->
   tc (Maybe String)
 tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 procedure = do
+  depcies1 <- sequenceA $ depcies1 <&> \ (d :*: depcy) ->
+    fmap ((d :*:) . fst) $ runWriterT $ whnormalize (CtxOpaque $ VarFromCtx <$> d) depcy (Type $ Expr2 $ TermWildcard)
+      "Trying to weak-head-normalize meta dependency to a variable"
   let maybeProblem = case neut1 of
         MetaBlocked -> Nothing
         MetaNeutral -> case t2 of
@@ -341,7 +346,7 @@ tryToSolveAgainstWHN :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Degree sys v ->
   Ctx (Twice2 Type) sys v Void ->
-  MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
+  MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
   Term sys v ->
   Type sys v ->
   Type sys v ->
@@ -372,7 +377,7 @@ tryToSolveAgainstWHN deg gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 =
 tryToSolveImmediately :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Ctx (Twice2 Type) sys v Void ->
-  MetaNeutrality -> Int -> [Term sys v] -> Maybe (Algorithm sys v) ->
+  MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
   Term sys v ->
   Type sys v ->
   Type sys v ->
