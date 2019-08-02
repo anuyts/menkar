@@ -296,7 +296,7 @@ getSubstAndPartialInv depcies = do
       getVar2 _ = Nothing
   case sequenceA $ getVar2 <$> depcies of
     -- Some dependency is not a variable
-    Nothing -> Left "Cannot solve meta-variable: it has undergone contraction of dependencies."
+    Nothing -> Left "Cannot solve meta-variable: it has non-variable dependencies."
     -- All dependencies are variables
     Just depcyVars -> do
       let (_, repeatedVars, _) = complex depcyVars
