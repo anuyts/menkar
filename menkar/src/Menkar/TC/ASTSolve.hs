@@ -384,7 +384,7 @@ tryToSolveImmediately :: forall sys tc v .
   tc (Maybe String)
 tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 =
   tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 $ \ gammaOrig subst partialInv -> do
-    case sequenceA $ partialInv <$> t2 of
+    case sequenceA $ partialInv <$> (Expr2 $ TermAlreadyChecked t2 ty2) of
       Nothing ->
         return (Nothing, Just "Cannot solve meta-variable immediately: candidate solution may have more dependencies.")
       Just t2orig -> return (Just t2orig, Nothing)
