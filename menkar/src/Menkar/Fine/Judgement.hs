@@ -162,6 +162,10 @@ data Judgement (sys :: KSys) where
     String {-^ Reason for blocking -} ->
     Judgement sys
 
+  JudUnblock ::
+    Int {-^ Meta that caused the unblocking. -} ->
+    Judgement sys
+
 -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
 -- | Premises: @'JudCtx'@
 {-JudType :: (DeBruijnLevel v) =>

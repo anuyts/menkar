@@ -128,3 +128,6 @@ checkConstraint parent = withParent parent $ case _constraint'judgement parent o
 
   JudBlock metasWithRequestingReasons blockingReason -> tcFail
     "This is a bug: I'm being asked to check a blocking judgement, but these are only for informative purposes."
+
+  JudUnblock _ -> tcFail
+    "This is a bug: I'm being asked to check a blocking judgement, but these are only for informative purposes."

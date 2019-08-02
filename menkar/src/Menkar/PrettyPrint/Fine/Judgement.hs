@@ -299,6 +299,9 @@ jud2pretty (JudBlock metasWithRequestingReasons blockingReason) opts =
   ribbon ("Blocked: " ++ blockingReason) \\\
     (metasWithRequestingReasons <&> \ (meta, requestingReason) ->
         ribbon ("                                                     ?" ++ show meta ++ "  :  " ++ requestingReason))
+jud2pretty (JudUnblock meta) opts =
+  ribbon ("Unblocked by: ?" ++ show meta) \\\
+  [ribbon " (But will only resume here if this is the outermost currently solved meta, listed first.)"]
 
 
 {-
