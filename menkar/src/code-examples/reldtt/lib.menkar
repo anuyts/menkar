@@ -1,7 +1,18 @@
-val *[ : 0 -> 0] Mode! : UniHS _ ... = _
-val *[ : 0 -> 0] Modality! {dom cod : Mode!} : UniHS _ ... = _
-val *[ : 0 -> 0] d0 : Mode! = _
-val *[ : 0 -> 0] crispforget {dom cod : Mode!} : Modality! dom cod = [ : 0 -> 0 | forget dom | disc cod]
-val *[ : 0 -> 0] crisp {cod : Mode!} : Modality! d0 cod = [ : 0 -> 0 | disc cod]
-val *[ : 0 -> 0] forget {dom : Mode!} : Modality! dom d0 = [ : 0 -> 0 | forget dom]
+val *[ : 0 -> 0] Mode : UniHS _ ... = _
+val *[ : 0 -> 0] Modality {dom cod : Mode} : UniHS _ ... = _
+
+val *[ : 0 -> 0] d0 : Mode = _
+val *[ : 0 -> 0] dsuc {d : Mode} = _
+
+val *[ : 0 -> 0] crispforget {dom cod : Mode} : Modality dom cod = [ : 0 -> 0 | forget dom | disc cod]
+val *[ : 0 -> 0] m0 : Modality d0 d0 = [ : 0 -> 0]
+val *m0 crisp {cod : Mode} : Modality d0 cod = [ : 0 -> 0 | disc cod]
+val *m0 forget {dom : Mode} : Modality dom d0 = [ : 0 -> 0 | forget dom]
+
+val *m0 con {~ d : Mode} : Modality d d = [: 0 -> 0 | cont d]
+val *m0 par {~ d : Mode} : Modality (dsuc d) d = [: 1 -> 0 | cont d]
+val *m0 str {~ d : Mode} : Modality (dsuc d) (dsuc (dsuc d)) = [0 0 : 1 -> 2 | cont d]
+val *m0 disc0 {~ d : Mode} : Modality d (dsuc d) = [= : 0 -> 1 | cont d]
+val *m0 irr {~ dom cod-1 : Mode} : Modality dom (dsuc cod-1) = [T : 0 -> 1 | disc cod-1 | forget dom]
+val *m0 shi {~ dom-1 cod-2 : Mode} : Modality (dsuc dom-1) (dsuc (dsuc cod-2)) = [0 T : 1 -> 2 | disc cod-2 | forget dom-1]
 
