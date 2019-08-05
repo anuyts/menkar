@@ -3,9 +3,13 @@ module Control.Monad.LoopReturn where
 import Data.Maybe
 import Data.Traversable
 
-forReturnList :: (Applicative f) => [a] -> (a -> f (Maybe b)) -> f [b]
-forReturnList as f = fmap chopAtNothing $ for as f
-  where chopAtNothing :: [Maybe b] -> [b]
-        chopAtNothing [] = []
-        chopAtNothing (Just b : maybeBs) = b : chopAtNothing maybeBs
-        chopAtNothing (Nothing : _) = []
+-- | Runs all computations in the list from left to right, until one returns @Right _@.
+forReturnList :: (Monad f) => [a] -> (a -> f (Either b c)) -> f ([b], Maybe c)
+forReturnList [] f = return ([], Nothing)
+forReturnList (a : as) f = do
+  fa <- f a
+  case fa of
+    Left b -> do
+      (bs, maybeC) <- forReturnList as f
+      return (b : bs, maybeC)
+    Right c -> return ([], Just c)

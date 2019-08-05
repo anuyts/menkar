@@ -368,15 +368,14 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
                  @blockingMetas@ is a list of other metas that can unblock this problem; they have their own @k@.
               -}
               -- \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) ->
-              \ blockedConstraintID ->
-                -- We add a task for each blocked constraint
-                addTask PriorityDefault $ do
+              \ blockedConstraintID -> do
                   -- Get the blocking constraint
                   constraintJudBlock <- use $
-                    tcState'blockedConstraintMap . at blockedConstraintID . _JustUnsafe . blockedConstraint'constraint
+                    tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID)
+                    . _JustUnsafe . blockedConstraint'constraint
                   -- Add an unblocking constraint, which will call tcUnblock
                   withParent constraintJudBlock $
-                    addNewConstraint (JudUnblock blockedConstraintID) "Meta ?" ++ show meta ++ " has been resolved."
+                    addNewConstraint (JudUnblock blockedConstraintID) $ "Meta ?" ++ show meta ++ " has been resolved."
                   {-
                   -- Informative judgement: we consider to unblock.
                   constraintJudUnblock <- withParent constraintJudBlock $
@@ -397,6 +396,23 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
   tcBlock reason = do
     parent <- fromMaybe unreachable <$> useMaybeParent
     throwError $ TCErrorBlocked parent reason []
+
+  tcUnblock blockedConstraintID = do
+    blockedConstraint <- use $ tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
+    let blockingMetas = _blockedConstraint'metas blockedConstraint
+    (_, maybeUnit) <- forReturnList blockingMetas $ \(ForSomeDeBruijnLevel blockingMeta) -> do
+      let meta = _blockingMeta'meta blockingMeta
+      metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
+      let maybeSolution = forThisDeBruijnLevel _metaInfo'maybeSolution metaInfo
+      case maybeSolution of
+        Left _ -> return $ Left ()
+        Right solution -> do
+          let t = _solutionInfo'solution solution
+          catchBlocks $ _blockingMeta'cont blockingMeta $ unsafeCoerce <$> t
+          return $ Right ()
+    case maybeUnit of
+      Just () -> return ()
+      Nothing -> tcFail $ "This is a bug: I'm asked to unblock a worry but all blocking metas are still unsolved."
 
   tcReport reason = do
     parent <- fromMaybe unreachable <$> useMaybeParent
