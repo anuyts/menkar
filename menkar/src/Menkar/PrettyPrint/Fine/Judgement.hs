@@ -2,6 +2,7 @@
 
 module Menkar.PrettyPrint.Fine.Judgement where
 
+import Menkar.ID
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.Fine.Context
@@ -295,14 +296,17 @@ jud2pretty (JudGoal gamma goalName t ty) opts =
     " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
 jud2pretty (JudResolve gamma t ty) opts = todo
 jud2pretty (JudSys jud) opts = sysJud2pretty jud opts
-jud2pretty (JudBlock metasWithRequestingReasons blockingReason) opts =
+{-jud2pretty (JudBlock metasWithRequestingReasons blockingReason) opts =
   ribbon ("Blocked: " ++ blockingReason) \\\
     (metasWithRequestingReasons <&> \ (meta, requestingReason) ->
         ribbon ("                                                     ?" ++ show meta ++ "  :  " ++ requestingReason))
 jud2pretty (JudUnblock meta) opts =
   ribbon ("Unblocked by: ?" ++ show meta) \\\
-  [ribbon " (But will only resume here if this is the outermost currently solved meta, listed first.)"]
-
+  [ribbon " (But will only resume here if this is the outermost currently solved meta, listed first.)"]-}
+jud2pretty (JudBlock blockedConstraintID) opts =
+  ribbon $ "Blocked: worry " ++ show (getBlockedConstraintID blockedConstraintID)
+jud2pretty (JudUnblock blockedConstraintID) opts =
+  ribbon $ "Unblock: worry " ++ show (getBlockedConstraintID blockedConstraintID)
 
 {-
 jud2pretty (JudType gamma ty) opts =

@@ -6,6 +6,7 @@ import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Analyzer.Class
 import Menkar.Analyzer.Syntax
+import Menkar.ID
 
 import Data.Void
 import Control.Exception.AssertFalse
@@ -157,6 +158,7 @@ data Judgement (sys :: KSys) where
     Judgement sys
 -}
 
+{-
   JudBlock ::
     [(Int {- all metas blocking this thing -}, String {- Reason for requesting those metas -})] ->
     String {-^ Reason for blocking -} ->
@@ -165,6 +167,10 @@ data Judgement (sys :: KSys) where
   JudUnblock ::
     Int {-^ Meta that caused the unblocking. -} ->
     Judgement sys
+-}
+
+  JudBlock :: BlockedConstraintID -> Judgement sys
+  JudUnblock :: BlockedConstraintID -> Judgement sys
 
 -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
 -- | Premises: @'JudCtx'@

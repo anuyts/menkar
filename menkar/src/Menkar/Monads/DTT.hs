@@ -3,6 +3,7 @@
 module Menkar.Monads.DTT where
 
 import Menkar.Basic
+import Menkar.ID
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
 import Menkar.Fine.LookupQName
@@ -56,12 +57,27 @@ data SolutionInfo (sys :: KSys) (m :: * -> *) (v :: *) = SolutionInfo {
   _solutionInfo'solution :: Term sys v
   }
 
+data BlockingMeta (sys :: KSys) (m :: * -> *) (v :: *) = BlockingMeta {
+  _blockingMeta'meta :: Int,
+  _blockingMeta'cont :: (Term sys v -> TCT sys m (TCResult sys)),
+  _blockingMeta'reasonAwait :: String
+  }
+
+data BlockedConstraint (sys :: KSys) (m :: * -> *) = BlockedConstraint {
+  _blockedConstraint'constraint :: Constraint sys,
+  _blockedConstraint'metas :: [ForSomeDeBruijnLevel (BlockingMeta sys m)] {-^ From outermost to innermost. -},
+  _blockedConstraint'unblockedBy :: Maybe MetaID {-^ Nothing if still blocked, otherwise the meta that unblocked it. -},
+  _blockedConstraint'reason :: String
+  }
+
+{-
 data BlockInfo (sys :: KSys) (m :: * -> *) (v :: *) = BlockInfo {
   _blockInfo'parent :: Constraint sys,
   _blockInfo'reasonBlock :: String,
   _blockInfo'reasonAwait :: String,
   _blockInfo'cont :: (Maybe (Term sys v) -> TCT sys m (TCResult sys))
   }
+-}
 
 data MetaInfo (sys :: KSys) m v = MetaInfo {
   _metaInfo'maybeParent :: Maybe (Constraint sys),
@@ -72,9 +88,7 @@ data MetaInfo (sys :: KSys) m v = MetaInfo {
       If unsolved, a list of blocked problems, from new to old, from outermost to innermost.
   -}
   _metaInfo'maybeSolution :: Either
-    [([Int] {- all metas blocking this thing, from outermost to innermost (?) -},
-      BlockInfo sys m v,
-      Constraint sys {- the @'JudBlock'@ constraint. -})]
+    [BlockedConstraintID] {- All blocks blocked on the current, unsolved meta. -}
     (SolutionInfo sys m v)
   }
 isDormant :: MetaInfo sys m v -> Bool
@@ -102,6 +116,8 @@ data TCState sys m = TCState {
   _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo sys m)),
   _tcState'constraintCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint sys),
+  _tcState'blockedConstraintCounter :: Int,
+  _tcState'blockedConstraintMap :: IntMap (BlockedConstraint sys m),
   _tcState'reports :: [(TCReport sys)],
   _tcState'newTasks :: [(PriorityConstraint, TCT sys m ())],
     -- ^ always empty unless during constraint check; to be run from back to front
@@ -110,7 +126,7 @@ data TCState sys m = TCState {
   _tcState'maybeParent :: Maybe (Constraint sys)
   }
 initTCState :: TCState sys m
-initTCState = TCState 0 empty 0 empty [] [] [] Nothing
+initTCState = TCState 0 empty 0 empty 0 empty [] [] [] Nothing
 
 -- | delimited continuation monad class
 class Monad m => MonadDC r m | m -> r where
@@ -128,7 +144,7 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 data TCError sys m =
   TCErrorConstraintBound |
   {-| The outermost blocked @awaitMeta@ is first in the list. -}
-  TCErrorBlocked (Constraint sys) String [(Int, ForSomeDeBruijnLevel (BlockInfo sys m))] |
+  TCErrorBlocked (Constraint sys) String [ForSomeDeBruijnLevel (BlockingMeta sys m)] |
   TCErrorTCFail (TCReport sys) |
   TCErrorScopeFail String |
   TCErrorInternal (Maybe (Constraint sys)) String
@@ -164,7 +180,8 @@ getTC opts initState program = runIdentity $ getTCT opts initState program
 
 ----------------------------------------------------------------------------
 makeLenses ''MetaInfo
-makeLenses ''BlockInfo
+makeLenses ''BlockingMeta
+makeLenses ''BlockedConstraint
 makeLenses ''TCState
 makeLenses ''TCReport
 ----------------------------------------------------------------------------
@@ -220,25 +237,16 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
 
 catchBlocks :: (Monad m, SysTC sys) => TCT sys m (TCResult sys) -> TCT sys m (TCResult sys)
 catchBlocks action = resetDC $ action `catchError` \case
-  TCErrorBlocked blockParent blockReason blocks -> do
-    let blockingMetas = fst <$> blocks
+  TCErrorBlocked blockParent blockReason blockingMetas -> do
+    iD <- BlockedConstraintID <$> (tcState'blockedConstraintCounter <<%= (+1))
+    withParent blockParent $ addNewConstraint (JudBlock iD) blockReason
+    let blockedConstraint = BlockedConstraint blockParent blockingMetas Nothing blockReason
+    tcState'blockedConstraintMap %= insert (getBlockedConstraintID iD) blockedConstraint
     -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
-    c <- withParent blockParent $ defConstraint
-      (JudBlock
-        (blocks <&> \ (meta, ForSomeDeBruijnLevel blockInfo) -> (meta, _blockInfo'reasonAwait blockInfo))
-        blockReason
-      )
-      "Can't do this now."
-    sequenceA_ $ reverse blocks <&> \(meta, ForSomeDeBruijnLevel blockInfo) -> do
-      tcState'metaMap . at meta . _JustUnsafe %= \(ForSomeDeBruijnLevel metaInfo) ->
-        ForSomeDeBruijnLevel $ over (metaInfo'maybeSolution . _LeftUnsafe)
-          ((blockingMetas, unsafeCoerce blockInfo, c) :) metaInfo
-      {-
-      maybeMetaInfo <- use $ tcState'metaMap . at meta
-      case maybeMetaInfo of
-        Nothing -> unreachable
-        Just (ForSomeDeBruijnLevel metaInfo) -> _handleBlocks
-      -}
+    sequenceA_ $ reverse blockingMetas <&> \blockingMeta -> do
+      tcState'metaMap . at (forThisDeBruijnLevel _blockingMeta'meta blockingMeta) . _JustUnsafe
+        %= \(ForSomeDeBruijnLevel metaInfo) ->
+             ForSomeDeBruijnLevel $ (metaInfo'maybeSolution . _LeftUnsafe %~ (iD :)) metaInfo
   e -> throwError e
 
 checkConstraintTC :: (SysTC sys, Degrees sys, Monad m) => Constraint sys -> TCT sys m ()
@@ -259,26 +267,33 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
           Right (SolutionInfo _ solution) -> do
             -- Substitute the dependencies into the solution and return.
             return $ Just $ join $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
-          Left blocksOfConstraintsOnCurrentMeta -> shiftDC $ \ kCurrent -> do
+          Left blockedConstraintIDs -> shiftDC $ \ kCurrent -> do
             -- Prepend the continuation with substituting the dependencies into the solution.
             let kCurrentAdjusted =
                   kCurrent . fmap (join .
                   (fmap $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
-            let allowContinuationToBlockOnCurrentMeta :: forall u . (DeBruijnLevel u) =>
-                  (Maybe (Term sys u) -> TCT sys m (TCResult sys)) ->
-                  (Maybe (Term sys u) -> TCT sys m (TCResult sys))
+            let allowContinuationToBlockOnCurrentMeta :: forall x .
+                  (x -> TCT sys m (TCResult sys)) ->
+                  (x -> TCT sys m (TCResult sys))
                 allowContinuationToBlockOnCurrentMeta kEnclosed x =
                   kEnclosed x `catchError` \case
-                    TCErrorBlocked blockParent blockReason blocks -> do
+                    TCErrorBlocked blockParent blockReason blockingMetas -> do
                       -- kick out enclosed @awaitMeta@s waiting for the same meta; they should never be run as they would
                       -- incorrectly assume that the current, enclosing, @awaitMeta@ yields no result yet.
-                      let blocks' = Prelude.filter (\(blockMeta, blockInfo) -> blockMeta /= meta) blocks
+                      let blockingMetas' = Prelude.filter
+                            (\blockingMeta -> (forThisDeBruijnLevel _blockingMeta'meta blockingMeta) /= meta)
+                            blockingMetas
                       -- allow continuations for enclosed @awaitMeta@s to block on the current meta as well!
-                      let blocks'' = blocks' <&>
-                            _2 %~ mapDeBruijnLevel (blockInfo'cont %~ allowContinuationToBlockOnCurrentMeta)
+                      let blockingMetas'' = blockingMetas' <&>
+                            mapDeBruijnLevel (blockingMeta'cont %~ allowContinuationToBlockOnCurrentMeta)
                       -- append the current meta and continuation, and rethrow.
-                      let blockInfo = BlockInfo blockParent blockReason reasonAwait kCurrentAdjusted
-                      throwError $ TCErrorBlocked blockParent blockReason ((meta, ForSomeDeBruijnLevel blockInfo) : blocks'')
+                      {- I think it doesn't matter whether kCurrentAdjusted below is allowed to block on current meta,
+                         because it will only be called after the current meta has been solved.
+                      -}
+                      let currentBlockingMeta =
+                            BlockingMeta meta ({-allowContinuationToBlockOnCurrentMeta-} kCurrentAdjusted . Just) reasonAwait
+                      throwError $ TCErrorBlocked blockParent blockReason
+                        (ForSomeDeBruijnLevel currentBlockingMeta : blockingMetas'')
                       -- throwError $ TCErrorBlocked blockParent blockReason
                       --                (blocks ++ [(meta, ForSomeDeBruijnLevel blockInfo)])
                       --tcState'metaMap . at meta .=
@@ -333,7 +348,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
       Right _ -> do
         throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
       -- Blocks contains the constraints blocked on the current meta, and their whereabouts.
-      Left blocks -> do
+      Left blockedConstraintIDs -> do
         -- Call the closure provided by the caller to obtain the solution for the meta.
         -- ('a' is just something that the caller wants back.)
         (maybeSolution, a) <- getSolution $ _metaInfo'context metaInfo
@@ -346,15 +361,23 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
             tcState'metaMap . at meta . _JustUnsafe .=
               ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
             -- Consider to unblock blocked constraints
-            sequenceA_ $ blocks <&>
+            sequenceA_ $ blockedConstraintIDs <&>
               {- @meta@ (introduced above) is currently being solved.
                  @block@ represents a problem blocked by this meta.
                  @k@ expresses how to unblock the problem if THIS meta is solved.
                  @blockingMetas@ is a list of other metas that can unblock this problem; they have their own @k@.
               -}
-              \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) ->
+              -- \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) ->
+              \ blockedConstraintID ->
                 -- We add a task for each blocked constraint
                 addTask PriorityDefault $ do
+                  -- Get the blocking constraint
+                  constraintJudBlock <- use $
+                    tcState'blockedConstraintMap . at blockedConstraintID . _JustUnsafe . blockedConstraint'constraint
+                  -- Add an unblocking constraint, which will call tcUnblock
+                  withParent constraintJudBlock $
+                    addNewConstraint (JudUnblock blockedConstraintID) "Meta ?" ++ show meta ++ " has been resolved."
+                  {-
                   -- Informative judgement: we consider to unblock.
                   constraintJudUnblock <- withParent constraintJudBlock $
                     defConstraint (JudUnblock meta) "A blocking meta has been resolved."
@@ -368,7 +391,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
                       else Just . forThisDeBruijnLevel isSolved <$> use (tcState'metaMap . at blockingMeta . _JustUnsafe)
                   if or outerSolveds
                     then return ()
-                    else withParent constraintJudUnblock $ catchBlocks $ k $ Just $ solution
+                    else withParent constraintJudUnblock $ catchBlocks $ k $ Just $ solution-}
             return a
   
   tcBlock reason = do
