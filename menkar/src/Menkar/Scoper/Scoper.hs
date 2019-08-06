@@ -45,8 +45,8 @@ eliminator gamma (Raw.ElimDots) = return SmartElimDots
 --eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
   let dgamma' = ctx'mode gamma
-  dmu <- newMetaModedModalityNoCheck (crispModedModality dgamma' :\\ gamma) "Inferring modality of argument."
-  fineExpr <- expr (VarFromCtx <$> dmu :\\ gamma) rawExpr
+  dmu <- newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring modality of argument."
+  fineExpr <- expr (VarFromCtx <$> withDom dmu :\\ gamma) rawExpr
   return $ SmartElimArg argSpec dmu fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
 eliminator gamma (Raw.ElimUnbox) = return $ SmartElimUnbox
@@ -96,13 +96,13 @@ elimination :: forall sys sc v .
 elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
-  dmus <- forM rawElims $ \_ -> newMetaModedModalityNoCheck (crispModedModality dgamma' :\\ gamma)
+  dmus <- forM rawElims $ \_ -> newMetaModedModalityNoCheck (crispModalityTo dgamma' :\\ gamma)
                                   "Inferring elimination modality."
   let dmuTotal : dmuTails = flip concatModedModalityDiagrammatically dgamma <$> tails dmus
-  fineEliminee <- exprC (VarFromCtx <$> dmuTotal :\\ gamma) rawEliminee
+  fineEliminee <- exprC (VarFromCtx <$> withDom dmuTotal :\\ gamma) rawEliminee
   --fineTy <- type4newImplicit gamma
   fineElims <- forM (zip3 dmus dmuTails rawElims) $
-    \ (dmu, dmuTail, rawElim) -> (dmu :*:) <$> eliminator (VarFromCtx <$> dmuTail :\\ gamma) rawElim
+    \ (dmu, dmuTail, rawElim) -> (dmu :*:) <$> eliminator (VarFromCtx <$> withDom dmuTail :\\ gamma) rawElim
   case fineElims of
     [] -> return fineEliminee
     _  -> do
@@ -137,8 +137,8 @@ simpleLambda ::
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
     let dgamma' = ctx'mode gamma
-    dmu <- newMetaModedModalityNoCheck (crispModedModality dgamma' :\\ gamma) "Infer domain mode/modality."
-    fineTy <- Type <$> newMetaTermNoCheck {-eqDeg-} (VarFromCtx <$> dmu :\\ gamma) MetaBlocked Nothing "Infer domain."
+    dmu <- newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Infer domain mode/modality."
+    fineTy <- Type <$> newMetaTermNoCheck {-eqDeg-} (VarFromCtx <$> withDom dmu :\\ gamma) MetaBlocked Nothing "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
       Raw.ExprImplicit -> return $ Nothing
@@ -146,7 +146,7 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
            "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
     let fineSeg = Declaration {
           _decl'name = DeclNameSegment maybeName,
-          _decl'modty = dmu,
+          _decl'modty = withDom dmu,
           _decl'plicity = Explicit,
           _decl'content = fineTy
         }
@@ -161,7 +161,7 @@ simpleLambda gamma rawArg rawBody =
 buildPi ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
-  Either (ModedModality sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
+  Either (ModalityTo sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
   sc (Term sys v)
 buildPi gamma (Right (fineSeg, fineCod)) = do
   --fineLvl <- term4newImplicit gamma
@@ -174,7 +174,7 @@ buildPi gamma (Left (dmu, fineCod)) = do
 buildSigma ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
-  Either (ModedModality sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
+  Either (ModalityTo sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
   sc (Term sys v)
 buildSigma gamma (Right (fineSeg, fineCod)) = do
   --fineLvl <- term4newImplicit gamma
@@ -187,7 +187,7 @@ buildSigma gamma (Left (dmu, fineCod)) =
 buildLambda ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
-  Either (ModedModality sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
+  Either (ModalityTo sys v, Term sys v) (Segment Type sys v, Term sys (VarExt v)) ->
   sc (Term sys v)
 buildLambda gamma (Right (fineSeg, fineBody)) = do
   fineCod <- newMetaTypeNoCheck (gamma :.. VarFromCtx <$> fineSeg) "Infer codomain."
@@ -205,7 +205,7 @@ binder2 ::
   ( forall w .
     DeBruijnLevel w =>
     Ctx Type sys w Void ->
-    Either (ModedModality sys w, Term sys w) (Segment Type sys w, Term sys (VarExt w)) ->
+    Either (ModalityTo sys w, Term sys w) (Segment Type sys w, Term sys (VarExt w)) ->
     sc (Term sys w)
   ) ->
   Ctx Type sys v Void ->
@@ -230,7 +230,7 @@ binder ::
   ( forall w .
     DeBruijnLevel w =>
     Ctx Type sys w Void ->
-    Either (ModedModality sys w, Term sys w) (Segment Type sys w, Term sys (VarExt w)) ->
+    Either (ModalityTo sys w, Term sys w) (Segment Type sys w, Term sys (VarExt w)) ->
     sc (Term sys w)
   ) ->
   Ctx Type sys v Void ->
@@ -367,12 +367,12 @@ buildDeclaration gamma generateContent partDecl = do
         let dgamma' = ctx'mode gamma
             dgamma = unVarFromCtx <$> dgamma'
         -- allocate all implicits BEFORE name fork
-        {-d <- case _pdecl'mode partDecl of
-          Compose (Just d') -> return d'
-          Compose Nothing -> newMetaModeNoCheck (crispModedModality dgamma' :\\ gamma) "Infer mode."-}
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
-          Compose Nothing -> newMetaModtyNoCheck (crispModedModality dgamma' :\\ gamma) "Infer modality."
+          Compose Nothing -> newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Infer modality."
+        let d = case _pdecl'mode partDecl of
+              Compose (Just d') -> d'
+              Compose Nothing -> _modality'dom mu
         let plic = case _pdecl'plicity partDecl of
               Compose (Just plic') -> plic'
               Compose Nothing -> Explicit
@@ -394,7 +394,7 @@ buildDeclaration gamma generateContent partDecl = do
             --ListT . nameHandler $ _pdecl'names partDecl
         return $ names <&> \ name -> Declaration {
           _decl'name = name,
-          _decl'modty = mu, --ModedModality d dgamma mu,
+          _decl'modty = ModalityTo d mu, --ModedModality d dgamma mu,
           _decl'plicity = plic,
           _decl'content = telescopedContent
           }
@@ -461,12 +461,12 @@ partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclarat
   forM_ fineAnnots $
             \ fineAnnot ->
               case fineAnnot of
-                {-AnnotMode fineMode -> do
+                AnnotMode fineMode -> do
                   -- _Wrapped' is a lens for Compose
                   maybeOldFineMode <- use $ pdecl'mode._Wrapped'
                   case maybeOldFineMode of
                     Just oldFineMode -> scopeFail $ "Encountered multiple mode annotations: " ++ Raw.unparse rawDecl
-                    Nothing -> pdecl'mode._Wrapped' .= Just fineMode-}
+                    Nothing -> pdecl'mode._Wrapped' .= Just fineMode
                 AnnotModality fineModty -> do
                   maybeOldFineModty <- use $ pdecl'modty._Wrapped'
                   case maybeOldFineModty of
@@ -524,26 +524,29 @@ modalLock ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Raw.ModalLock sys ->
-  sc (ModedModality sys v)
+  sc (ModalityTo sys v)
 modalLock gamma (Raw.ModalLock rawAnnots) = do
   let dgamma' = ctx'mode gamma
       dgamma = unVarFromCtx <$> dgamma'
   fineAnnots <- sequenceA $ annotation gamma <$> rawAnnots
   (maybeDom, maybeMu) <- flip execStateT (Nothing, Nothing) $ forM_ fineAnnots $ \ case
-    {-AnnotMode fineMode -> use _1 >>= \ case
+    AnnotMode fineMode -> use _1 >>= \ case
       Just _ -> scopeFail $ "Encountered multiple mode annotations."
-      Nothing -> _1 .= Just fineMode-}
+      Nothing -> _1 .= Just fineMode
     AnnotModality fineModty -> use _2 >>= \ case
       Just _ -> scopeFail $ "Encountered multiple modality annotations."
       Nothing -> _2 .= Just fineModty
     AnnotImplicit -> scopeFail $ "Encountered plicity annotation in a modal lock."
   {-dom <- case maybeDom of
-    Nothing -> newMetaModeNoCheck (crispModedModality dgamma' :\\ gamma) "Inferring domain of modality."
+    Nothing -> newMetaModeNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring domain of modality."
     Just dom -> return dom-}
   mu <- case maybeMu of
-    Nothing -> newMetaModtyNoCheck (crispModedModality dgamma' :\\ gamma) "Inferring modality."
+    Nothing -> newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring modality."
     Just mu -> return mu
-  return $ mu -- ModedModality dom dgamma mu
+  let dom = case maybeDom of
+        Nothing -> _modality'dom mu
+        Just dom -> dom
+  return $ ModalityTo dom mu
 
 segment ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>

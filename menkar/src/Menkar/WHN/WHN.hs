@@ -20,7 +20,7 @@ import GHC.Generics
 
 tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Ctx Type sys v Void ->
-  ModedModality sys v {-^ how eliminee is used -} ->
+  ModalityTo sys v {-^ how eliminee is used -} ->
   Term sys v {-^ eliminee, whnormal -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
   Eliminator sys v ->
@@ -37,10 +37,12 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
       ElimSigma pairClause -> case tyEliminee of
         Sigma sigmaBinding -> do
           let dmuSigma = _segment'modty $ binding'segment sigmaBinding
-          allowsEta (crispModedModality dgamma' :\\ gamma) dmuSigma reason >>= \case
+          allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmuSigma) reason >>= \case
             Just True -> do
-              let tmFst = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuSigma) whnEliminee tyEliminee Fst
-              let tmSnd = Expr2 $ TermElim (idModedModality dgamma)              whnEliminee tyEliminee Snd
+              let tmFst = Expr2 $
+                    TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmuSigma) whnEliminee tyEliminee Fst
+              let tmSnd = Expr2 $
+                    TermElim (idModalityTo dgamma)                                        whnEliminee tyEliminee Snd
               let subst v = case v of
                     VarWkn (VarWkn w) -> Var2 w
                     VarWkn VarLast -> tmFst
@@ -51,9 +53,10 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
       ElimBox boxClause -> case tyEliminee of
         BoxType boxSeg -> do
           let dmuBox = _segment'modty boxSeg
-          allowsEta (crispModedModality dgamma' :\\ gamma) dmuBox reason >>= \case
+          allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmuBox) reason >>= \case
             Just True -> do
-              let tmUnbox = Expr2 $ TermElim (modedApproxLeftAdjointProj dmuBox) whnEliminee tyEliminee Unbox
+              let tmUnbox = Expr2 $
+                    TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmuBox) whnEliminee tyEliminee Unbox
               let subst v = case v of
                     VarWkn w -> Var2 w
                     VarLast -> tmUnbox
@@ -72,7 +75,7 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
 -}
 whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
   Ctx Type sys v Void ->
-  ModedModality sys v {-^ how eliminee is used -} ->
+  ModalityTo sys v {-^ how eliminee is used -} ->
   Term sys v {-^ eliminee -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
   Eliminator sys v ->

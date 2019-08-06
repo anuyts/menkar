@@ -56,6 +56,18 @@ instance (SysFinePretty sys,
 -}
 --deriving instance (Show (Mode sys v), Show (Modality sys v)) => Show (ModedContramodality sys v)
 
+instance (SysFinePretty sys,
+          Fine2Pretty sys (ModalityTo sys) where
+  fine2pretty gamma (ModalityTo dom mu) opts = ribbonEmpty \\\ [
+                "&(" ++| fine2pretty gamma dom opts |++ ") ",
+                "*(" ++| fine2pretty gamma mu opts |++ ")"
+                -- todo add cod
+              ]
+instance (SysFinePretty sys,
+          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
+         Show (ModedModality sys Void) where
+  show dmu = "[ModedModality|\n" ++ fine2string @sys ScCtxEmpty dmu omit ++ "\n|]"
+
 binding2pretty :: (DeBruijnLevel v,
                   SysFinePretty sys,
                   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
@@ -425,8 +437,8 @@ telescope2pretties :: (DeBruijnLevel v,
 telescope2pretties gamma (Telescoped Unit2) opts = []
 telescope2pretties gamma (seg :|- telescope) opts =
   (fine2pretty gamma seg opts) : telescope2pretties (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) telescope opts
-telescope2pretties gamma (mu :** telescope) opts =
-  ("{*(" ++| fine2pretty gamma mu opts |++ ")}") : telescope2pretties (() ::\\ gamma) telescope opts
+telescope2pretties gamma (dmu :** telescope) opts =
+  ("{" ++| fine2pretty gamma dmu opts |++ "}") : telescope2pretties (() ::\\ gamma) telescope opts
 instance (SysFinePretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
          Fine2Pretty sys (ty sys), Fine2Pretty sys (rhs sys)) =>
@@ -448,8 +460,8 @@ declAnnots2pretties :: (DeBruijnLevel v,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          ScCtx sys v Void -> Declaration declSort content sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 declAnnots2pretties gamma decl opts = [
-                fine2pretty gamma (_decl'plicity decl) opts,
-                "*(" ++| fine2pretty gamma (_decl'modty decl) opts |++ ") "
+                fine2pretty gamma (_decl'plicity decl) opts |++ " ",
+                fine2pretty gamma (_decl'modty decl) opts
               ]
 
 {-
@@ -470,7 +482,7 @@ seg2pretty ::
    Fine2PrettyOptions sys -> PrettyTree String
 seg2pretty gamma seg index opts =
     ribbon " {" \\\
-      prettyAnnots ///
+      prettyAnnots |++ " " ///
     (nameWithIndex (_segment'name seg) index)
         |++ " : " |+| prettyType |++ "}"
     where

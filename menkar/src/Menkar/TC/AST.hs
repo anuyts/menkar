@@ -124,7 +124,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
       let (LeftDivided d2 d1mu telescope) = ldivVal
       let ldivModAppliedValRHS = (leftDivided'content .~ telescoped2modalQuantified d2 telescope) ldivVal
       addNewConstraint
-        (JudRel AnTokenModedModality (Eta True) (Const ModLeq)
+        (JudRel ModalityTo (Eta True) (Const ModLeq)
           (duplicateCtx gamma)
           (Twice1
             (_modApplied'modality . _leftDivided'content $ ldivModAppliedValRHS)

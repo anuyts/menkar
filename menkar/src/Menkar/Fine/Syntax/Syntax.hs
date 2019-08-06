@@ -475,7 +475,7 @@ isBlockedOrMeta _ [] = False
 
 {-| Not used in segments. Used by the scoper, and also used for annotation entries. -}
 data Annotation (sys :: KSys) v =
-  --AnnotMode (Mode sys v) |
+  AnnotMode (Mode sys v) |
   AnnotModality (Modality sys v) |
   AnnotImplicit
   --AnnotResolves (Term )

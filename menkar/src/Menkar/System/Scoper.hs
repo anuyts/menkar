@@ -51,10 +51,9 @@ newMetaClassif4astNoCheck :: forall sys sc t v .
   sc (Classif t v)
 newMetaClassif4astNoCheck gamma t extraT reason = do
   case (analyzableToken :: AnalyzableToken sys t, t) of
-    (AnTokenModedModality, _) -> do
-      dom <- newMetaModeNoCheck gamma reason
+    (AnTokenModalityTo, _) -> do
       cod <- newMetaModeNoCheck gamma reason
-      return $ dom :*: cod
+      return $ cod
     (AnTokenBinding tokenRHS, Binding seg rhs) -> do
       crhs <- newMetaClassif4astNoCheck (gamma :.. VarFromCtx <$> seg) rhs U1 reason
       return $ U1 :*: (NamedBinding (getDeclNameSegment . _decl'name $ seg) $ Const1 $ crhs)

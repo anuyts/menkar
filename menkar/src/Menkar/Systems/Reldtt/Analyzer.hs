@@ -686,7 +686,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
         TokenRel -> AnalysisRel-}
 
   convRel token d = U1
-  extraClassif d t extraT = crispModedModality d :*: U1
+  extraClassif d t extraT = crispModalityTo d :*: U1
 
 --------------------------------
 

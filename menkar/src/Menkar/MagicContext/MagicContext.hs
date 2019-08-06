@@ -19,7 +19,7 @@ magicModuleCorrect =
     (CtxEmpty dataMode)
     (Declaration
       (DeclNameModule "magic")
-      (idModedModality dataMode)
+      (idModalityTo dataMode)
       Explicit
       (Telescoped $ magicModule)
     )

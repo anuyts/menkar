@@ -185,7 +185,7 @@ etaExpand useHoles gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
-  allowsEta (crispModedModality dgamma' :\\ gamma) dmu "Need to know if eta is allowed." >>= \case
+  allowsEta (crispModalityTo dgamma' :\\ gamma) dmu "Need to know if eta is allowed." >>= \case
     Just True -> do
         tmFst <- case useHoles of
           UseHoles -> newMetaTerm
