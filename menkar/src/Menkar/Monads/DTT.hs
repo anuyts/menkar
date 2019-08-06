@@ -402,8 +402,8 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
     let blockingMetas = _blockedConstraint'metas blockedConstraint
     (_, maybeUnit) <- forReturnList blockingMetas $ \(ForSomeDeBruijnLevel blockingMeta) -> do
       let meta = _blockingMeta'meta blockingMeta
-      metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
-      let maybeSolution = forThisDeBruijnLevel _metaInfo'maybeSolution metaInfo
+      ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
+      let maybeSolution = _metaInfo'maybeSolution metaInfo
       case maybeSolution of
         Left _ -> return $ Left ()
         Right solution -> do
