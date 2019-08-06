@@ -41,7 +41,7 @@ haveFine2Pretty :: forall sys t a .
   ((Fine2Pretty sys t) => a) ->
   a
 haveFine2Pretty token a = case token of
-  AnTokenModedModality -> a
+  AnTokenModalityTo -> a
   AnTokenBinding token -> haveFine2Pretty token a
   AnTokenNamedBinding token -> haveFine2Pretty token a
   AnTokenModalBox token -> haveFine2Pretty token a
@@ -69,7 +69,7 @@ haveFine2Pretty token a = case token of
 
 token2string :: forall sys t . (SysFinePretty sys) => AnalyzableToken sys t -> String
 token2string token = case token of
-  AnTokenModedModality -> "modality"
+  AnTokenModalityTo -> "modality-with-domain"
   AnTokenBinding token -> "binding:" ++ token2string token
   AnTokenNamedBinding token -> "name-only-binding:" ++ token2string token
   AnTokenModalBox token -> "modal-box:" ++ token2string token
@@ -109,7 +109,7 @@ relation2pretty :: forall sys t v .
   Fine2PrettyOptions sys ->
   PrettyTree String
 relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
-  (AnTokenModedModality, Const modrel) -> modrel2pretty modrel
+  (AnTokenModalityTo, Const modrel) -> modrel2pretty modrel
   (AnTokenBinding token, ddeg) -> "[" ++| fine2pretty gamma ddeg opts |++ "]"
   (AnTokenNamedBinding token, Comp1 rel) ->
     let seg1 :*: Comp1 extraBody1 = extraT1
@@ -158,10 +158,8 @@ classif2pretty :: forall sys t v .
   PrettyTree String
 classif2pretty token gamma extraT ct extraCT opts =
   case (token, extraT, ct, extraCT) of
-    (AnTokenModedModality, U1, dom :*: cod, _) ->
-      fine2pretty gamma dom opts
-      |++ " -> " |+|
-      fine2pretty gamma cod opts
+    (AnTokenModalityTo, U1, cod, _) ->
+      "_ -> " ++| fine2pretty gamma cod opts
     (AnTokenBinding token, U1, _ :*: boundCRHS, _ :*: seg :*: Comp1 extraCRHS) ->
       (nameWithIndex (_namedBinding'name boundCRHS) (size $ _scCtx'sizeProxy gamma))
         |++ " -> " |+|

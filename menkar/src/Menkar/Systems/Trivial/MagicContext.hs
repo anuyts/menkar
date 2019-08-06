@@ -28,7 +28,7 @@ var n = Var2 $ fromMaybe unreachable $ forDeBruijnLevel Proxy n
 val :: Opness -> String -> Telescoped Type ValRHS Trivial v -> Entry Trivial v
 val op str rhs = EntryVal $ Declaration
   (DeclNameVal $ Name op str)
-  trivModedModality
+  TrivModalityTo
   Explicit
   rhs
 
@@ -45,14 +45,14 @@ nbind op str body = NamedBinding (Just $ Name op str) body
 seg :: Plicity Trivial v -> Opness -> String -> content Trivial v -> Segment content Trivial v
 seg plic op str content = Declaration
   (DeclNameSegment $ Just $ Name op str)
-  trivModedModality
+  TrivModalityTo
   plic
   content
 segIm = seg Implicit
 segEx = seg Explicit
 
 elim :: Term Trivial v -> UniHSConstructor Trivial v -> Eliminator Trivial v -> Term Trivial v
-elim eliminee tyEliminee eliminator = Expr2 $ TermElim trivModedModality eliminee tyEliminee eliminator
+elim eliminee tyEliminee eliminator = Expr2 $ TermElim TrivModalityTo eliminee tyEliminee eliminator
 app :: Term Trivial v -> UniHSConstructor Trivial v -> Term Trivial v -> Term Trivial v
 app eliminee tyEliminee arg = elim eliminee tyEliminee $ App arg
 

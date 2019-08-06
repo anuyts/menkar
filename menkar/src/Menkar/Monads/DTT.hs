@@ -225,7 +225,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = listAll Proxy <&> \ v ->
-          let d = fmap unVarFromCtx <$> _modality'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
+          let d = fmap unVarFromCtx $ _modalityTo'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
           in  d :*: Var2 v
     return (meta, depcies)
     

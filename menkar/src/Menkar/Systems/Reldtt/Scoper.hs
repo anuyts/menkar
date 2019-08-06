@@ -66,7 +66,7 @@ instance SysScoper Reldtt where
         Nothing -> scopeFail $ "Annotation `&` requires an argument."
         Just rawArg -> do
           d <- exprC (crispModalityTo dgamma' :\\ gamma) rawArg
-          return $ AnnotMode $ _ $ d
+          return $ AnnotMode $ ReldttMode $ d
       "*" -> case maybeRawArg of
         Nothing -> scopeFail $ "Annotation `*` requires an argument."
         Just rawArg -> do

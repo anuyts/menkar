@@ -53,8 +53,9 @@ instance MonadFail SimpleScoper where
 instance MonadScoper Trivial SimpleScoper where
   newMetaID gamma reason = do
     i <- fresh
-    return (i, listAll Proxy <&> \ v ->
-        let d = fmap unVarFromCtx <$> _modality'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
+    return (i, listAll Proxy <&> \ (v :: v) ->
+        let d :: TrivMode v
+            d = fmap unVarFromCtx $ _modalityTo'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
         in  d :*: Var2 v
       )
   scopeFail msg = SimpleScoper $ lift $ Left msg

@@ -65,6 +65,7 @@ data TrivAnalyzableToken (t :: * -> *) where
 
 pattern TrivModedModality = TrivModality
 pattern TrivModedDegree = TrivDegree
+pattern TrivModalityTo = ModalityTo TrivMode TrivModality
 --pattern TrivModedModality = ModedModality TrivMode TrivMode TrivModality :: ModedModality Trivial _
 --pattern TrivModedDegree = ModedDegree TrivMode TrivDegree :: ModedDegree Trivial _
 
@@ -170,7 +171,7 @@ instance Analyzable Trivial TrivUniHSConstructor where
   witClassif token = Witness
   analyze token gamma (Classification systy _ _) h = case systy of {}
   convRel token TrivMode = U1
-  extraClassif d t extraT = TrivModedModality :*: U1
+  extraClassif d t extraT = TrivModalityTo :*: U1
 
 instance SysAnalyzer Trivial where
   quickEqSysUnanalyzable sysErr = case sysErr of {}

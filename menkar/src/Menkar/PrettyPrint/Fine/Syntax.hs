@@ -57,16 +57,15 @@ instance (SysFinePretty sys,
 --deriving instance (Show (Mode sys v), Show (Modality sys v)) => Show (ModedContramodality sys v)
 
 instance (SysFinePretty sys,
-          Fine2Pretty sys (ModalityTo sys) where
+          Fine2Pretty sys (ModalityTo sys)) => Fine2Pretty sys (ModalityTo sys) where
   fine2pretty gamma (ModalityTo dom mu) opts = ribbonEmpty \\\ [
                 "&(" ++| fine2pretty gamma dom opts |++ ") ",
                 "*(" ++| fine2pretty gamma mu opts |++ ")"
-                -- todo add cod
               ]
 instance (SysFinePretty sys,
           Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         Show (ModedModality sys Void) where
-  show dmu = "[ModedModality|\n" ++ fine2string @sys ScCtxEmpty dmu omit ++ "\n|]"
+         Show (ModalityTo sys Void) where
+  show dmu = "[ModalityTo|\n" ++ fine2string @sys ScCtxEmpty dmu omit ++ "\n|]"
 
 binding2pretty :: (DeBruijnLevel v,
                   SysFinePretty sys,
@@ -209,7 +208,7 @@ elimination2pretty :: (DeBruijnLevel v,
                        SysFinePretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          ScCtx sys v Void ->
-         Maybe (ModedModality sys v) ->
+         Maybe (ModalityTo sys v) ->
          Maybe (Term sys v) ->
          Maybe (UniHSConstructor sys v) ->
          Eliminator sys v ->
@@ -401,8 +400,8 @@ instance (SysFinePretty sys,
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (Annotation sys) where
-  --fine2pretty gamma (AnnotMode d) opts = fine2pretty gamma d opts
-  fine2pretty gamma (AnnotModality mu) opts = fine2pretty gamma mu opts
+  fine2pretty gamma (AnnotMode d) opts = "&(" ++| fine2pretty gamma d opts |++ ")"
+  fine2pretty gamma (AnnotModality mu) opts = "*(" ++| fine2pretty gamma mu opts |++ ")"
   fine2pretty gamma (AnnotImplicit) opts = ribbon "~"
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -461,7 +460,7 @@ declAnnots2pretties :: (DeBruijnLevel v,
          ScCtx sys v Void -> Declaration declSort content sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 declAnnots2pretties gamma decl opts = [
                 fine2pretty gamma (_decl'plicity decl) opts |++ " ",
-                fine2pretty gamma (_decl'modty decl) opts
+                fine2pretty gamma (_decl'modty decl) opts |++ " "
               ]
 
 {-
@@ -482,7 +481,7 @@ seg2pretty ::
    Fine2PrettyOptions sys -> PrettyTree String
 seg2pretty gamma seg index opts =
     ribbon " {" \\\
-      prettyAnnots |++ " " ///
+      prettyAnnots ///
     (nameWithIndex (_segment'name seg) index)
         |++ " : " |+| prettyType |++ "}"
     where
@@ -497,7 +496,7 @@ dividedSeg2pretty :: forall v sys ty .
    ScCtx sys v Void -> Segment ty sys v -> Nat ->
    Fine2PrettyOptions sys -> PrettyTree String
 dividedSeg2pretty (Just dmu) gamma seg index opts = dividedSeg2pretty Nothing gamma seg' index opts
-  where seg' = over decl'modty (divModedModality dmu) $ seg
+  where seg' = over (decl'modty . modalityTo'mod) (divModedModality dmu) $ seg
 dividedSeg2pretty Nothing gamma seg index opts = seg2pretty gamma seg index opts
 
 instance (SysFinePretty sys, Functor (content sys),

@@ -178,14 +178,14 @@ etaExpand useHoles gamma t (Pi piBinding) = do
             MetaBlocked
             "Infer function body."
     UseEliminees -> return $ Expr2 $ TermElim
-            (idModedModality $ VarWkn <$> dgamma)
+            (idModalityTo $ VarWkn <$> dgamma)
             (VarWkn <$> t) (VarWkn <$> Pi piBinding) (App $ Var2 VarLast)
   return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) (ValRHS body $ binding'body piBinding)
 etaExpand useHoles gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
-  allowsEta (crispModalityTo dgamma' :\\ gamma) dmu "Need to know if eta is allowed." >>= \case
+  allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
         tmFst <- case useHoles of
           UseHoles -> newMetaTerm
@@ -194,7 +194,8 @@ etaExpand useHoles gamma t (Sigma sigmaBinding) = do
                    (_segment'content $ binding'segment $ sigmaBinding)
                    MetaBlocked
                    "Infer first projection."
-          UseEliminees -> return $ Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t (Sigma sigmaBinding) Fst
+          UseEliminees ->
+            return $ Expr2 $ TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmu) t (Sigma sigmaBinding) Fst
         tmSnd <- case useHoles of
           UseHoles -> newMetaTerm
                    --(eqDeg :: Degree sys _)
@@ -202,7 +203,7 @@ etaExpand useHoles gamma t (Sigma sigmaBinding) = do
                    (substLast2 tmFst $ binding'body sigmaBinding)
                    MetaBlocked
                    "Infer second projection."
-          UseEliminees -> return $ Expr2 $ TermElim (idModedModality dgamma) t (Sigma sigmaBinding) Snd
+          UseEliminees -> return $ Expr2 $ TermElim (idModalityTo dgamma) t (Sigma sigmaBinding) Snd
         return $ Just $ Just $ Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd
     Just False -> return $ Just Nothing
     Nothing -> return $ Nothing
@@ -210,7 +211,7 @@ etaExpand useHoles gamma t (BoxType boxSeg) = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   let dmu = _segment'modty $ boxSeg
-  allowsEta (crispModedModality dgamma' :\\ gamma) dmu "Need to know if eta is allowed." >>= \case
+  allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
       let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType boxSeg
       tmUnbox <- case useHoles of
@@ -220,7 +221,8 @@ etaExpand useHoles gamma t (BoxType boxSeg) = do
                    (_segment'content boxSeg)
                    MetaBlocked
                    "Infer box content."
-          UseEliminees -> return $ Expr2 $ TermElim (modedApproxLeftAdjointProj dmu) t (BoxType boxSeg) Unbox
+          UseEliminees ->
+            return $ Expr2 $ TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmu) t (BoxType boxSeg) Unbox
       return $ Just $ Just $ Expr2 $ TermCons $ ConsBox boxSeg tmUnbox
     Just False -> return $ Just Nothing
     Nothing -> return $ Nothing

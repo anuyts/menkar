@@ -200,7 +200,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
   let dgamma' = ctx'mode gamma
   let dgamma = unVarFromCtx <$> dgamma'
   -- Top-relatedness is always ok.
-  itIsTopDeg <- isTopDeg (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
+  itIsTopDeg <- isTopDeg (crispModalityTo dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
     "Need to know whether required degree of relatedness is Top."
   case itIsTopDeg of
     -- It's certainly about top-relatedness
@@ -225,7 +225,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
            We only do this for whn-terms, because otherwise you risk solving a meta with itself.
            If we're RELATING a meta to a term, then we cannot necessarily whsolve, because we might be e.g. in the unit type.
         -}
-        itIsEqDeg <- isEqDeg (crispModedModality dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
+        itIsEqDeg <- isEqDeg (crispModalityTo dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
           "Need to know if I'm checking equality."
         solved <- case itIsEqDeg of
           Just True -> case (t1, t2, isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of

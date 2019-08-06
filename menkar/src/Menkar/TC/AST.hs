@@ -123,15 +123,16 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
     (AnErrorTermQName, AnTokenTermNV, TermQName qname ldivVal) -> do
       let (LeftDivided d2 d1mu telescope) = ldivVal
       let ldivModAppliedValRHS = (leftDivided'content .~ telescoped2modalQuantified d2 telescope) ldivVal
+      let commonCod = _leftDivided'originalMode $ ldivVal
       addNewConstraint
-        (JudRel ModalityTo (Eta True) (Const ModLeq)
+        (JudRel analyzableToken (Eta True) (Const ModLeq)
           (duplicateCtx gamma)
           (Twice1
-            (_modApplied'modality . _leftDivided'content $ ldivModAppliedValRHS)
-            (_leftDivided'modality $ ldivModAppliedValRHS)
+            (withDom $ _modApplied'modality . _leftDivided'content $ ldivModAppliedValRHS)
+            (withDom $ _leftDivided'modality $ ldivModAppliedValRHS)
           )
           (Twice1 U1 U1)
-          ClassifUnknown
+          (ClassifWillBe $ Twice1 commonCod commonCod)
         )
         "Checking that definition is accessible."
       return $ _val'type . _modApplied'content . _leftDivided'content $ ldivModAppliedValRHS
@@ -148,10 +149,10 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
           let dgamma = unVarFromCtx <$> ctx'mode gamma
           let dmuElim = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
           tyEliminee <- newMetaType {-(eqDeg :: Degree sys _)-}
-                        (VarFromCtx <$> dmuElim :\\ gamma) "Infer type of eliminee."
+                        (VarFromCtx <$> withDom dmuElim :\\ gamma) "Infer type of eliminee."
           -----
           addNewConstraint
-            (JudTerm (VarFromCtx <$> dmuElim :\\ gamma) eliminee tyEliminee)
+            (JudTerm (VarFromCtx <$> withDom dmuElim :\\ gamma) eliminee tyEliminee)
             "Type-check the eliminee."
           -----
           -----
@@ -172,15 +173,16 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
     (AnErrorTermProblem, _, _) -> unreachable
     (AnErrorVar, AnTokenTerm, Var2 v) -> do
       let ldivSeg = unVarFromCtx <$> lookupVar gamma v
+      let commonCod = _leftDivided'originalMode $ ldivSeg
       addNewConstraint
-        (JudRel AnTokenModedModality (Eta True) (Const ModLeq)
-          (crispModedModality dgamma' :\\ duplicateCtx gamma)
+        (JudRel AnTokenModalityTo (Eta True) (Const ModLeq)
+          (crispModalityTo dgamma' :\\ duplicateCtx gamma)
           (Twice1
             (_decl'modty . _leftDivided'content $ ldivSeg)
-            (_leftDivided'modality $ ldivSeg)
+            (withDom $ _leftDivided'modality $ ldivSeg)
           )
           (Twice1 U1 U1)
-          ClassifUnknown
+          (ClassifWillBe $ Twice1 commonCod commonCod)
         )
         "Checking that variable is accessible."
       return $ _decl'content . _leftDivided'content $ ldivSeg
