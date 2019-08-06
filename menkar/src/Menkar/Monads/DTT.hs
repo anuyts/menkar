@@ -244,8 +244,8 @@ catchBlocks :: (Monad m, SysTC sys) => TCT sys m (TCResult sys) -> TCT sys m (TC
 catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blockingMetas -> do
     iD <- BlockedConstraintID <$> (tcState'blockedConstraintCounter <<%= (+1))
-    withParent blockParent $ addNewConstraint (JudBlock iD) blockReason
-    let blockedConstraint = BlockedConstraint blockParent blockingMetas Nothing Nothing blockReason
+    constraintJudBlock <- withParent blockParent $ defConstraint (JudBlock iD) blockReason
+    let blockedConstraint = BlockedConstraint constraintJudBlock blockingMetas Nothing Nothing blockReason
     tcState'blockedConstraintMap %= insert (getBlockedConstraintID iD) blockedConstraint
     -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
     sequenceA_ $ reverse blockingMetas <&> \blockingMeta -> do
@@ -380,12 +380,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
                     . _JustUnsafe . blockedConstraint'constraint
                   -- Add an unblocking constraint, which will call tcUnblock
                   withParent constraintJudBlock $ do
-                    constraintJudUnblock <-
-                      defConstraint (JudUnblock blockedConstraintID) $ "Meta ?" ++ show meta ++ " has been resolved."
-                    addConstraint constraintJudUnblock
-                    -- Register the unblocking constraint with the blockedConstraint
-                    tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID)
-                      . _JustUnsafe . blockedConstraint'constraintUnblock .= Just constraintJudUnblock
+                    addNewConstraint (JudUnblock blockedConstraintID) $ "Meta ?" ++ show meta ++ " has been resolved."
                   {-
                   -- Informative judgement: we consider to unblock.
                   constraintJudUnblock <- withParent constraintJudBlock $
@@ -408,6 +403,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
     throwError $ TCErrorBlocked parent reason []
 
   tcUnblock blockedConstraintID = do
+    constraintJudUnblock <- fromMaybe unreachable <$> useMaybeParent
     blockedConstraint <- use $ tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
     let blockingMetas = _blockedConstraint'metas blockedConstraint
     (_, maybeUnit) <- forReturnList blockingMetas $ \(ForSomeDeBruijnLevel blockingMeta) -> do
@@ -418,7 +414,11 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
         Left _ -> return $ Left ()
         Right solution -> do
           let t = _solutionInfo'solution solution
-          addTask PriorityDefault $ catchBlocks $ _blockingMeta'cont blockingMeta $ unsafeCoerce <$> t
+          tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe %=
+            -- Register the unblocking meta with the blockedConstraint
+            (blockedConstraint'unblockedBy .~ (Just $ _blockingMeta'meta blockingMeta)) .
+            -- Register the unblocking constraint with the blockedConstraint
+            (blockedConstraint'constraintUnblock .~ Just constraintJudUnblock)
           return $ Right ()
     case maybeUnit of
       Just () -> return ()

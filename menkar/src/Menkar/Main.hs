@@ -72,8 +72,14 @@ mapGeneralMainState f (GeneralMainState s) = GeneralMainState $ f s
 printConstraint :: (Sys sys) => IORef (MainState sys) -> Constraint sys -> IO ()
 printConstraint ref c = do
   mainState <- readIORef ref
-  putStrLn $ "Constraint " ++ show (_constraint'id c) ++ ":"
-  putStr $ jud2string (_constraint'judgement c) $ _main'fine2prettyOptions mainState
+  putStrLn $ "Constraint " ++ show (_constraint'id c)
+  putStrLn $ jud2string (_constraint'judgement c) $ _main'fine2prettyOptions mainState
+
+printConstraintWithReason :: (Sys sys) => IORef (MainState sys) -> Constraint sys -> IO ()
+printConstraintWithReason ref c = do
+  putStrLn $ _constraint'reason c
+  putStrLn ""
+  printConstraint ref c
 
 printTrace :: (Sys sys) => IORef (MainState sys) -> Constraint sys -> IO ()
 printTrace ref c = do
@@ -81,10 +87,7 @@ printTrace ref c = do
     Nothing -> return ()
     Just parent -> do
       printTrace ref parent
-      putStrLn ""
-  putStrLn $ _constraint'reason c
-  putStrLn ""
-  printConstraint ref c
+  printConstraintWithReason ref c
 
 {-
 printBlockInfo :: (Sys sys, DeBruijnLevel v) =>
@@ -150,12 +153,12 @@ printWorry ref s iD blockedConstraint = do
   putStrLn $ ""
   putStrLn $ "Constraints"
   putStrLn $ "-----------"
+  printConstraint ref $ fromMaybe unreachable $ _constraint'parent $ _blockedConstraint'constraint blockedConstraint
+  printConstraintWithReason ref $ _blockedConstraint'constraint blockedConstraint
   case _blockedConstraint'constraintUnblock blockedConstraint of
     Nothing -> return ()
-    Just constraintUnblock -> printConstraint ref constraintUnblock
-  printConstraint ref $ _blockedConstraint'constraint blockedConstraint
-  putStrLn $ _blockedConstraint'reason blockedConstraint
-  printConstraint ref $ fromMaybe unreachable $ _constraint'parent $ _blockedConstraint'constraint blockedConstraint
+    Just constraintUnblock -> do
+      printConstraintWithReason ref constraintUnblock
 
 printConstraintByIndex :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> IO ()
 printConstraintByIndex ref s i =
