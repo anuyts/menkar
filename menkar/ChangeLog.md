@@ -4,6 +4,13 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  Added a collection of "worries" to the type-checker's state. A worry is a blocked constraint.
+   This is to avoid phenomena such as the following:
+
+   1. Meta 5 is solved,
+   2. Problem X is unblocked because 5 is solved,
+   3. Meta 3 is solved,
+   4. Problem Y is unblocked because 3 is solved, but thinks 5 is still unsolved!
 *  Metavariables: Remember dependencies' modes, and weak-head-normalize them before trying to solve the metavariable.
 *  Properly check modalities for smart elimination judgements.
 *  Reimplement eta.
