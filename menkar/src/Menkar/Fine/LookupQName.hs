@@ -41,13 +41,13 @@ telescoped2quantified telescopedVal = ValRHS
   (telescoped2pi $ telescopedVal)
 -}
 
-telescoped2lambda :: Telescoped Type ValRHS sys v -> Term sys v
+telescoped2lambda :: (Multimode sys) => Telescoped Type ValRHS sys v -> Term sys v
 telescoped2lambda telescopedValRHS = _val'term $ telescoped2quantified telescopedValRHS
 
-telescoped2pi :: Telescoped Type ValRHS sys v -> Type sys v
+telescoped2pi :: (Multimode sys) => Telescoped Type ValRHS sys v -> Type sys v
 telescoped2pi telescopedValRHS = _val'type $ telescoped2quantified telescopedValRHS
 
-telescoped2quantified :: Telescoped Type ValRHS sys v -> ValRHS sys v
+telescoped2quantified :: (Multimode sys) => Telescoped Type ValRHS sys v -> ValRHS sys v
 telescoped2quantified (Telescoped valRHS) = valRHS
 telescoped2quantified (seg :|- telescopedValRHS) =
   let quantifiedValRHS = telescoped2quantified telescopedValRHS
@@ -63,9 +63,9 @@ telescoped2quantified (dmu :** telescopedValRHS) =
 
 telescoped2modalQuantified :: (Multimode sys) =>
   Mode sys v {-^ Mode of the telescope -} -> Telescoped Type ValRHS sys v -> ModApplied ValRHS sys v
-telescoped2modalQuantified cod (dmu@(ModedModality dom cod' mu) :** telescopedVal) =
-  let ModApplied dmu' val = telescoped2modalQuantified dom telescopedVal
-  in  ModApplied (compModedModality dmu dmu') val
+telescoped2modalQuantified cod (dmu@(ModalityTo dom mu) :** telescopedVal) =
+  let ModApplied nu val = telescoped2modalQuantified dom telescopedVal
+  in  ModApplied (compModedModality mu nu) val
 telescoped2modalQuantified d telescopedVal = ModApplied (idModedModality d) (telescoped2quantified telescopedVal)
 
 ----------------------------
@@ -268,11 +268,11 @@ lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
   where wkn :: (Functor f) => f (VarOpenCtx v' w) -> f (VarOpenCtx (VarInModule v') w)
         wkn = fmap (bimap VarInModule id)
         d = ctx'mode $ gamma :<...> modul
-lookupQName (dmu :\\ gamma) qname = case lookupQName gamma qname of
+lookupQName (dmu@(ModalityTo dom mu) :\\ gamma) qname = case lookupQName gamma qname of
   LookupResultVar v -> LookupResultVar v
   LookupResultNothing -> LookupResultNothing
-  LookupResultVal (LeftDivided dOrig dmu' seg) ->
-    LookupResultVal $ LeftDivided dOrig (compModedModality dmu' dmu) seg
+  LookupResultVal (LeftDivided dOrig nu seg) ->
+    LookupResultVal $ LeftDivided dOrig (compModedModality nu mu) seg
 lookupQName (CtxId gamma) qname = bimap Identity id !<$> lookupQName gamma qname
 lookupQName (CtxComp gamma) qname = bimap Compose id !<$> lookupQName gamma qname
 lookupQName (CtxOpaque d) qname = LookupResultNothing
@@ -320,8 +320,8 @@ lookupVar (seg :^^ gamma) (VarFirst) = LeftDivided d (idModedModality d) $ VarBe
   where d = ctx'mode (seg :^^ gamma)
 lookupVar (seg :^^ gamma) (VarLeftWkn v) = varLeftEat <$> lookupVar gamma v
 lookupVar (gamma :<...> modul) (VarInModule v) = bimap VarInModule id <$> lookupVar gamma v
-lookupVar (dmu :\\ gamma) v = LeftDivided dOrig (compModedModality dmu' dmu) seg
-  where LeftDivided dOrig dmu' seg = lookupVar gamma v
+lookupVar (dmu@(ModalityTo dom mu) :\\ gamma) v = LeftDivided dOrig (compModedModality nu mu) seg
+  where LeftDivided dOrig nu seg = lookupVar gamma v
 lookupVar (CtxId gamma) (Identity v) = bimap Identity id !<$> lookupVar gamma v
 lookupVar (CtxComp gamma) (Compose v) = bimap Compose id !<$> lookupVar gamma v
 lookupVar (CtxOpaque d) v = unreachable

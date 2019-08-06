@@ -131,6 +131,16 @@ deriving instance (SysTrav sys) => Generic1 (ModedModality sys)
 deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModedModality sys)
 -}
 
+data ModalityTo sys v = ModalityTo {
+  _modalityTo'dom :: Mode sys v,
+  _modalityTo'mod :: Modality sys v
+  }
+deriving instance (SysTrav sys) => Functor (ModalityTo sys)
+deriving instance (SysTrav sys) => Foldable (ModalityTo sys)
+deriving instance (SysTrav sys) => Traversable (ModalityTo sys)
+deriving instance (SysTrav sys) => Generic1 (ModalityTo sys)
+deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModalityTo sys)
+
 {-
 data ModedContramodality (sys :: KSys) (v :: *) =
   ModedContramodality {contramodality'dom :: Mode sys v, contramodality'rightAdjoint :: Modality sys v}
@@ -418,7 +428,7 @@ data TermNV (sys :: KSys) (v :: *) =
   {-| It is an error to construct a @'TermNV'@ using @'TermElim'@ with an eliminator that
       doesn't match the SHAPE of the eliminee's type -}
   TermElim
-    (ModedModality sys v) {-^ modality by which the eliminee is used -}
+    (ModalityTo sys v) {-^ modality by which the eliminee is used -}
     (Term sys v) {-^ eliminee -}
     (UniHSConstructor sys v) {-^ eliminee's type -}
     (Eliminator sys v) {-^ eliminator -} |
@@ -528,7 +538,8 @@ data Declaration
      (v :: *) =
   Declaration {
     _decl'name :: DeclName declSort,
-    _decl'modty :: ModedModality sys v,
+    --_decl'mode :: Mode sys v,
+    _decl'modty :: ModalityTo sys v,
     _decl'plicity :: Plicity sys v,
     _decl'content :: content sys v
   }
@@ -551,7 +562,7 @@ data TelescopedPartialDeclaration
      (v :: *) =
   TelescopedPartialDeclaration {
     _pdecl'names :: Maybe (Raw.DeclNames declSort),
-    --_pdecl'mode :: Compose Maybe (Mode sys) v,
+    _pdecl'mode :: Compose Maybe (Mode sys) v,
     _pdecl'modty :: Compose Maybe (Modality sys) v,
     _pdecl'plicity :: Compose Maybe (Plicity sys) v,
     _pdecl'content :: Telescoped ty (Maybe2 content) sys v
@@ -574,7 +585,7 @@ deriving instance (
 newPartialDeclaration :: TelescopedPartialDeclaration declSort ty content sys v
 newPartialDeclaration = TelescopedPartialDeclaration {
   _pdecl'names = Nothing,
-  --_pdecl'mode = Compose Nothing,
+  _pdecl'mode = Compose Nothing,
   _pdecl'modty = Compose Nothing,
   _pdecl'plicity = Compose Nothing,
   _pdecl'content = Telescoped $ Maybe2 $ Compose $ Nothing
@@ -595,8 +606,13 @@ _tdecl'name (mu :** tdecl) = _tdecl'name tdecl -}
 _segment'name :: Segment ty sys v -> Maybe Raw.Name
 _segment'name seg = case _decl'name seg of
   DeclNameSegment maybeName -> maybeName
+_segment'content :: Segment ty sys v -> ty sys v
 _segment'content = _decl'content
+--_segment'mode :: Segment ty sys v -> Mode sys v
+--_segment'mode = _decl'mode
+_segment'modty :: Segment ty sys v -> ModalityTo sys v
 _segment'modty = _decl'modty
+_segment'plicity :: Segment ty sys v -> Plicity sys v
 _segment'plicity = _decl'plicity
 
 data Telescoped
@@ -606,7 +622,7 @@ data Telescoped
      (v :: *) =
   Telescoped (rhs sys v) |
   Segment ty sys v :|- Telescoped ty rhs sys (VarExt v) |
-  ModedModality sys v :** Telescoped ty rhs sys v
+  ModalityTo sys v :** Telescoped ty rhs sys v
 deriving instance (SysTrav sys, Functor (ty sys), Functor (rhs sys)) => Functor (Telescoped ty rhs sys)
 deriving instance (SysTrav sys, Foldable (ty sys), Foldable (rhs sys)) => Foldable (Telescoped ty rhs sys)
 deriving instance (SysTrav sys, Traversable (ty sys), Traversable (rhs sys)) => Traversable (Telescoped ty rhs sys)

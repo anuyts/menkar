@@ -35,7 +35,7 @@ data AnalyzerToken (option :: AnalyzerOption) where
   --TokenSolve :: AnalyzerToken OptionSolve
 
 data AnalyzableToken sys (ast :: * -> *) where
-  AnTokenModedModality :: AnalyzableToken sys (ModedModality sys)
+  AnTokenModalityTo :: AnalyzableToken sys (ModalityTo sys)
   AnTokenBinding :: (Analyzable sys (rhs sys), ClassifExtraInput (rhs sys) ~ U1) =>
     AnalyzableToken sys (rhs sys) -> AnalyzableToken sys (Binding Type rhs sys)
   {-AnTokenClassifBinding :: (Analyzable sys rhs) =>
@@ -335,7 +335,7 @@ crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys
         Classification t u ->
         IfTrue doubled (Classification t u) ->
         Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
-crispExtCtxId token gamma _ _ = Just $ CtxId $ crispModedModality (ctx'mode gamma) :\\ gamma
+crispExtCtxId token gamma _ _ = Just $ CtxId $ crispModalityTo (ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a

@@ -30,14 +30,23 @@ class (SysSyntax (Term sys) sys, Multimode sys) => Degrees sys where
 
 --------------
 
+withDom :: (Multimode sys) => Modality sys v -> ModalityTo sys v
+withDom mu = ModalityTo (_modality'dom mu) mu
+
 idModedModality :: (Multimode sys) => (Mode sys) v -> ModedModality sys v
 idModedModality = idMod
 --idModedModality d = ModedModality d d (idMod d)
+idModalityTo :: (Multimode sys) => Mode sys v -> ModalityTo sys v
+idModalityTo d = ModalityTo d (idMod d)
 
 compModedModality :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v -> ModedModality sys v
 compModedModality = compMod
---compModedModality (ModedModality dmid dcod mu2) (ModedModality ddom dmid' mu1) = ModedModality ddom dcod (compMod mu2 dmid mu1)
+--compModedModality (ModedModality dmid dcod mu2) (ModedModality ddom dmid' mu1) =
+--  ModedModality ddom dcod (compMod mu2 dmid mu1)
+compModalityTo :: (Multimode sys) =>
+  ModalityTo sys v -> ModalityTo sys v -> ModalityTo sys v
+compModalityTo (ModalityTo _ nu) (ModalityTo dom mu) = ModalityTo dom $ nu `compMod` mu
 
 concatModedModalityDiagrammatically :: (Multimode sys) =>
   [ModedModality sys v] -> Mode sys v {-^ Codomain of the result -} -> ModedModality sys v
@@ -54,6 +63,8 @@ divModedModality = divMod
 crispModedModality :: (Multimode sys) => Mode sys v -> ModedModality sys v
 crispModedModality = crispMod
 --crispModedModality d = ModedModality dataMode d (crispMod d)
+crispModalityTo :: (Multimode sys) => Mode sys v -> ModalityTo sys v
+crispModalityTo d = ModalityTo dataMode (crispMod d)
 
 modedApproxLeftAdjointProj :: (Multimode sys) =>
   ModedModality sys v -> ModedModality sys v

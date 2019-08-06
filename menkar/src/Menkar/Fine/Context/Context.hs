@@ -58,7 +58,7 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) (w :: *) where
   {-| Context extended with siblings defined in a certain module. -}
   (:<...>) :: Ctx t sys v w -> ModuleRHS sys (VarOpenCtx v w) -> Ctx t sys (VarInModule v) w
   {-| Context divided by a modality. -}
-  (:\\) :: ModedModality sys (VarOpenCtx v w) -> Ctx t sys v w -> Ctx t sys v w
+  (:\\) :: ModalityTo sys (VarOpenCtx v w) -> Ctx t sys v w -> Ctx t sys v w
   {-| Pleasing GHC -}
   CtxId :: Ctx t sys v w -> Ctx t sys (Identity v) w
   CtxComp :: Ctx t sys (f (g v)) w -> Ctx t sys (Compose f g v) w
@@ -92,7 +92,7 @@ ctx'mode (CtxEmpty d) = VarBeforeCtx <$> d
 ctx'mode (gamma :.. seg) = bimap VarWkn id <$> ctx'mode gamma
 ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
 ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
-ctx'mode (dmu :\\ gamma) = _modality'dom dmu
+ctx'mode (dmu :\\ gamma) = _modalityTo'dom dmu
 ctx'mode (CtxId gamma) = bimap Identity id <$> ctx'mode gamma
 ctx'mode (CtxComp gamma) = bimap Compose id <$> ctx'mode gamma
 ctx'mode (CtxOpaque d) = d

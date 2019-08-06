@@ -68,6 +68,37 @@ instance (SysAnalyzer sys) => Analyzable sys (ModedModality sys) where
   extraClassif d t extraT = U1 :*: U1
 -}
 
+instance (SysAnalyzer sys) => Analyzable sys (ModalityTo sys) where
+  type Classif (ModalityTo sys) = Mode sys -- codomain
+  type Relation (ModalityTo sys) = Const ModRel
+  type ClassifExtraInput (ModalityTo sys) = U1
+  analyzableToken = AnTokenModalityTo
+  witClassif token = Witness
+
+  analyze token gamma (Classification (ModalityTo dom mu) U1 _) h = Right $ do
+    rdom <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ModalityTo unreachable unreachable)
+      (\ gamma' (Classification (ModalityTo dom' mu') U1 _) ->
+         Just $ Identity !<$> Classification dom' U1 (ClassifWillBe U1))
+      extCtxId
+      (const $ const U1)
+      (AddressInfo ["domain"] FocusWrapped omit)
+    rmu <- fmapCoe runIdentity <$> h Identity
+      (conditional $ ModalityTo unreachable unreachable)
+      (\ gamma' (Classification (ModalityTo dom' mu') U1 maybeCod') ->
+         Just $ Identity !<$> Classification mu' U1 (ClassifMustBe $ dom' :*: _modality'cod mu'))
+      extCtxId
+      extRelId
+      (AddressInfo ["modality"] FocusWrapped omit)
+    return $ case token of
+        TokenTrav -> AnalysisTrav $ ModalityTo (getAnalysisTrav rdom) (getAnalysisTrav rmu)
+        TokenTC -> AnalysisTC $ cod
+          where _ :*: cod = getAnalysisTC rmu
+        TokenRel -> AnalysisRel
+      
+  convRel token d = U1
+  extraClassif d t extraT = U1
+
 -------------------------
 
 instance (SysAnalyzer sys,
@@ -198,7 +229,7 @@ instance (SysAnalyzer sys,
 instance (SysAnalyzer sys, Analyzable sys (content sys)) => Analyzable sys (ModalBox content sys) where
   type Classif (ModalBox content sys) = ModalBox (Const1 (Classif (content sys))) sys
   type Relation (ModalBox content sys) = Relation (content sys)
-  type ClassifExtraInput (ModalBox content sys) = ModedModality sys :*: ClassifExtraInput (content sys)
+  type ClassifExtraInput (ModalBox content sys) = ModalityTo sys :*: ClassifExtraInput (content sys)
   analyzableToken = AnTokenModalBox analyzableToken
   witClassif token = haveClassif @sys @(content sys) Witness
 
@@ -221,7 +252,7 @@ instance (SysAnalyzer sys, Analyzable sys (content sys)) => Analyzable sys (Moda
 
   convRel token d = convRel (analyzableToken @sys @(content sys)) d
   extraClassif d (ModalBox content) (dmu :*: extraContent) =
-    dmu :*: extraClassif @sys @(content sys) (_modality'dom dmu) content extraContent
+    dmu :*: extraClassif @sys @(content sys) (_modalityTo'dom dmu) content extraContent
 
 -------------------------
 
@@ -248,9 +279,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
                 Just $ Identity !<$> Classification d' U1 (ClassifWillBe U1)
               otherwise -> Nothing
           )
-          (\ token' gamma' _ _ ->
-             Just $ CtxId $ crispModedModality (ctx'mode gamma') :\\ gamma'
-          )
+          crispExtCtxId
           (const $ const U1)
           (AddressInfo ["mode"] NoFocus omit)
         return $ case token of
@@ -406,7 +435,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               TokenRel -> AnalysisRel-}
             
   convRel token d = U1
-  extraClassif d t extraT = crispModedModality d :*: U1
+  extraClassif d t extraT = crispModalityTo d :*: U1
 
 -------------------------
 
@@ -624,7 +653,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
   type Classif (DependentEliminator sys) = U1
   type Relation (DependentEliminator sys) = ModedDegree sys
   type ClassifExtraInput (DependentEliminator sys) =
-    ModedModality sys :*: Term sys :*: UniHSConstructor sys :*: (Type sys :.: VarExt)
+    ModalityTo sys :*: Term sys :*: UniHSConstructor sys :*: (Type sys :.: VarExt)
   analyzableToken = AnTokenDependentEliminator
   witClassif token = Witness
 
@@ -651,7 +680,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                (Sigma binding', ElimSigma boundBoundPairClause') ->
                  let segFst' = Declaration
                        (DeclNameSegment Nothing)
-                       (compModedModality dmuElim' (_segment'modty $ binding'segment $ binding'))
+                       (compModalityTo dmuElim' (_segment'modty $ binding'segment $ binding'))
                        Explicit
                        (_segment'content $ binding'segment $ binding')
                      segSnd' = Declaration
@@ -692,7 +721,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                (BoxType seg', ElimBox boundBoxClause') ->
                  let segUnbox' = Declaration
                        (DeclNameSegment Nothing)
-                       (compModedModality dmuElim' (_segment'modty $ seg'))
+                       (compModalityTo dmuElim' (_segment'modty $ seg'))
                        Explicit
                        (_segment'content seg')
                      subst VarLast = Expr2 $ TermCons $ ConsBox (VarWkn <$> seg') (Var2 VarLast)
@@ -744,14 +773,16 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                maybeU1'
              ) -> case (tyEliminee', clauses') of
                (NatType, ElimNat zeroClause' boundBoundSucClause') ->
-                 let segPred' = Declaration
+                 let dgamma'_ = ctx'mode gamma'
+                     dgamma' = unVarFromCtx <$> dgamma'_
+                     segPred' = Declaration
                        (DeclNameSegment $ Nothing)
                        dmuElim'
                        Explicit
                        (hs2type $ NatType)
                      segHyp' = Declaration
                        (DeclNameSegment $ Nothing)
-                       (idModedModality $ VarWkn . unVarFromCtx <$> ctx'mode gamma')
+                       (idModalityTo $ VarWkn <$> dgamma')
                        Explicit
                        motive'
                      substS :: VarExt u -> Term sys (VarExt (VarExt u))
@@ -783,7 +814,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
 instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
   type Classif (Eliminator sys) = Type sys
   type Relation (Eliminator sys) = ModedDegree sys
-  type ClassifExtraInput (Eliminator sys) = ModedModality sys :*: Term sys :*: UniHSConstructor sys
+  type ClassifExtraInput (Eliminator sys) = ModalityTo sys :*: Term sys :*: UniHSConstructor sys
   analyzableToken = AnTokenEliminator
   witClassif token = Witness
 
@@ -811,7 +842,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
                  Just $ CtxId $ VarFromCtx <$> _segment'modty (binding'segment binding') :\\ gamma'
                otherwise -> Nothing
           )
-          (const $ fmapCoe Identity . modedDivDeg (_segment'modty $ binding'segment binding))
+          (const $ fmapCoe Identity . modedDivDeg (_modalityTo'mod $ _segment'modty $ binding'segment binding))
           (AddressInfo ["argument"] NoFocus omit)
         return $ case token of
           TokenTrav -> AnalysisTrav $ App $ runIdentity !<$> getAnalysisTrav rarg
@@ -830,7 +861,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
         TokenTC -> AnalysisTC $
           substLast2 (Expr2 $
             TermElim
-              (modedApproxLeftAdjointProj $ _segment'modty $ binding'segment binding)
+              (withDom $ approxLeftAdjointProj $ _modalityTo'mod $ _segment'modty $ binding'segment binding)
               eliminee
               (Sigma binding)
               Fst
@@ -969,7 +1000,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ Identity !<$> Classification dmuElim' U1
-                (ClassifMustBe $ _modality'dom dmuElim' :*: (unVarFromCtx <$> ctx'mode gamma'))
+                (ClassifMustBe $ unVarFromCtx <$> ctx'mode gamma')
             otherwise -> Nothing
         )
         crispExtCtxId
@@ -980,7 +1011,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
         (\ gamma' -> \ case
             (Classification (TermElim dmuElim' eliminee' tyEliminee' eliminator') U1 maybeTy') ->
               Just $ Identity !<$> Classification tyEliminee' U1
-                (ClassifMustBe $ ModalBox $ Const1 $ _modality'dom dmuElim')
+                (ClassifMustBe $ ModalBox $ Const1 $ _modalityTo'dom dmuElim')
             otherwise -> Nothing
         )
         (\ token' gamma' input1 condInput2 -> case input1 of
@@ -988,7 +1019,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
               Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
             otherwise -> Nothing
         )
-        (const $ fmapCoe Identity . modedDivDeg dmuElim)
+        (const $ fmapCoe Identity . modedDivDeg (_modalityTo'mod dmuElim))
         (AddressInfo ["type of eliminee"] NoFocus omit)
       reliminee <- fmapCoe runIdentity <$> h Identity
         (conditional $ TermElim (getAnalysisTrav rdmuElim) unreachable (getAnalysisTrav rtyEliminee) unreachable)
@@ -1002,7 +1033,7 @@ instance SysAnalyzer sys => Analyzable sys (TermNV sys) where
               Just $ CtxId $ VarFromCtx <$> dmuElim' :\\ gamma'
             otherwise -> Nothing
         )
-        (const $ fmapCoe Identity . modedDivDeg dmuElim)
+        (const $ fmapCoe Identity . modedDivDeg (_modalityTo'mod dmuElim))
         (AddressInfo ["eliminee"] FocusEliminee omit)
       reliminator <- fmapCoe runIdentity <$> h Identity
         (conditional $
@@ -1101,7 +1132,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
       (conditional $ Declaration name unreachable unreachable unreachable)
       (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
          Just $ Identity !<$>
-         Classification dmu' U1 (ClassifMustBe $ _modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma')))
+         Classification dmu' U1 (ClassifMustBe $ unVarFromCtx <$> ctx'mode gamma'))
       crispExtCtxId
       (const $ const $ Const $ ModEq)
       (AddressInfo ["modality"] FocusWrapped omit)
@@ -1146,7 +1177,7 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
 -}
   convRel token d = convRel (analyzableToken @sys @(rhs sys)) d
   extraClassif d decl extraDecl =
-    extraClassif @sys @(rhs sys) (_modality'dom $ _decl'modty $ decl) (_decl'content decl) extraDecl
+    extraClassif @sys @(rhs sys) (_modalityTo'dom $ _decl'modty $ decl) (_decl'content decl) extraDecl
 
 -------------------------
 
@@ -1222,7 +1253,7 @@ instance (SysAnalyzer sys,
           (\ gamma' -> \ case
               (Classification (dmu' :** telescopedRHS') U1 maybeU1') ->
                 Just $ Identity !<$> Classification dmu' U1
-                  (ClassifMustBe $ _modality'dom dmu' :*: (unVarFromCtx <$> ctx'mode gamma'))
+                  (ClassifMustBe $ unVarFromCtx <$> ctx'mode gamma')
               otherwise -> Nothing
           )
           crispExtCtxId
@@ -1240,7 +1271,8 @@ instance (SysAnalyzer sys,
                 Just $ CtxId $ VarFromCtx <$> dmu' :\\ gamma'
               otherwise -> Nothing
           )
-          (const $ fmapCoe Identity . (\ (ddegSeg :*: ddegRHS) -> modedDivDeg dmu ddegSeg :*: modedDivDeg dmu ddegRHS))
+          (const $ fmapCoe Identity . (\ (ddegSeg :*: ddegRHS) ->
+                                         divDeg (_modalityTo'mod dmu) ddegSeg :*: divDeg (_modalityTo'mod dmu) ddegRHS))
           (AddressInfo ["tail"] FocusWrapped EntirelyBoring)
         return $ case token of
           TokenTrav -> AnalysisTrav $ getAnalysisTrav rdmu :** getAnalysisTrav rtelescopedRHS
