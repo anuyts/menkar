@@ -380,12 +380,13 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
                     . _JustUnsafe . blockedConstraint'constraint
                   -- Add an unblocking constraint, which will call tcUnblock
                   withParent constraintJudBlock $ do
-                    constraintJudUnblock <-
+                    {-constraintJudUnblock <-
                       defConstraint (JudUnblock blockedConstraintID) $ "Meta ?" ++ show meta ++ " has been resolved."
                     addConstraint constraintJudUnblock
                     -- Register the unblocking constraint with the blockedConstraint
                     tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID)
-                      . _JustUnsafe . blockedConstraint'constraintUnblock .= Just constraintJudUnblock
+                      . _JustUnsafe . blockedConstraint'constraintUnblock .= Just constraintJudUnblock-}
+                    addNewConstraint (JudUnblock blockedConstraintID) $ "Meta ?" ++ show meta ++ " has been resolved."
                   {-
                   -- Informative judgement: we consider to unblock.
                   constraintJudUnblock <- withParent constraintJudBlock $
@@ -408,23 +409,31 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
     throwError $ TCErrorBlocked parent reason []
 
   tcUnblock blockedConstraintID = do
-    blockedConstraint <- use $ tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
-    let blockingMetas = _blockedConstraint'metas blockedConstraint
-    (_, maybeUnit) <- forReturnList blockingMetas $ \(ForSomeDeBruijnLevel blockingMeta) -> do
-      let meta = _blockingMeta'meta blockingMeta
-      ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
-      let maybeSolution = _metaInfo'maybeSolution metaInfo
-      case maybeSolution of
-        Left _ -> return $ Left ()
-        Right solution -> do
-          let t = _solutionInfo'solution solution
-          tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
-            . blockedConstraint'unblockedBy .= (Just $ _blockingMeta'meta blockingMeta)
-          catchBlocks $ _blockingMeta'cont blockingMeta $ unsafeCoerce <$> t
-          return $ Right ()
-    case maybeUnit of
-      Just () -> return ()
-      Nothing -> tcFail $ "This is a bug: I'm asked to unblock a worry but all blocking metas are still unsolved."
+    maybeMeta <- use $ tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
+      . blockedConstraint'unblockedBy
+    case maybeMeta of
+      Just meta -> return () -- This thing has been unblocked before.
+      Nothing -> do
+        constraintJudUnblock <- fromMaybe unreachable <$> useMaybeParent
+        blockedConstraint <- use $ tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
+        let blockingMetas = _blockedConstraint'metas blockedConstraint
+        (_, maybeUnit) <- forReturnList blockingMetas $ \(ForSomeDeBruijnLevel blockingMeta) -> do
+          let meta = _blockingMeta'meta blockingMeta
+          ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
+          let maybeSolution = _metaInfo'maybeSolution metaInfo
+          case maybeSolution of
+            Left _ -> return $ Left ()
+            Right solution -> do
+              let t = _solutionInfo'solution solution
+              tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe %=
+                (blockedConstraint'unblockedBy .~ (Just $ _blockingMeta'meta blockingMeta))
+                .
+                (blockedConstraint'constraintUnblock .~ Just constraintJudUnblock)
+              catchBlocks $ _blockingMeta'cont blockingMeta $ unsafeCoerce <$> t
+              return $ Right ()
+        case maybeUnit of
+          Just () -> return ()
+          Nothing -> tcFail $ "This is a bug: I'm asked to unblock a worry but all blocking metas are still unsolved."
 
   tcReport reason = do
     parent <- fromMaybe unreachable <$> useMaybeParent
