@@ -2,6 +2,7 @@
 
 module Menkar.Main where
 
+import Menkar.ID
 import qualified Menkar.Parser as P
 import qualified Menkar.Scoper as S
 import Menkar.Monads.DTT
@@ -85,6 +86,7 @@ printTrace ref c = do
   putStrLn ""
   printConstraint ref c
 
+{-
 printBlockInfo :: (Sys sys, DeBruijnLevel v) =>
   IORef (MainState sys) ->
   TCState sys m ->
@@ -98,6 +100,7 @@ printBlockInfo ref s (blockingMetas, blockInfo, constraintJudBlock) = do
   putStrLn $ "Blocked on:" ++ (fold $ (" ?" ++) . show <$> blockingMetas)
   putStrLn $ "See constraint: " ++ show (_constraint'id constraintJudBlock)-}
   printConstraint ref $ _blockInfo'parent blockInfo
+-}
 
 printMetaInfo :: (Sys sys, DeBruijnLevel v) => IORef (MainState sys) -> TCState sys m -> Int -> MetaInfo sys m v -> IO ()
 printMetaInfo ref s meta info = do
@@ -119,11 +122,10 @@ printMetaInfo ref s meta info = do
       putStrLn $ fine2string (ctx2scCtx $ _metaInfo'context info) (_solutionInfo'solution solutionInfo)
                  $ mainState ^. main'fine2prettyOptions
       printConstraint ref $ _solutionInfo'parent solutionInfo
-    Left blocks -> do
-      putStrLn "Unsolved"
-      putStrLn "--------"
-      putStrLn $ "Blocking " ++ (show $ length blocks) ++ " constraints."
-      sequenceA_ $ blocks <&> printBlockInfo ref s
+    Left blockedConstraintIDs -> do
+      putStrLn $ "Unsolved"
+      putStrLn $ "--------"
+      putStrLn $ "Blocking worries: " ++ (join $ (++ ", ") . show <$> blockedConstraintIDs)
   putStrLn $ ""
   putStrLn $ "Creation"
   putStrLn $ "--------"
@@ -131,6 +133,29 @@ printMetaInfo ref s meta info = do
   case _metaInfo'maybeParent info of
     Nothing -> putStrLn "(Created at scope-checking time.)"
     Just parent -> printConstraint ref parent
+printBlockingMeta :: (Sys sys, DeBruijnLevel v) => IORef (MainState sys) -> TCState sys m -> BlockingMeta sys m v -> IO ()
+printBlockingMeta ref s (BlockingMeta meta cont reasonAwait) =
+  putStrLn $ "?" ++ show meta ++ " : " ++ reasonAwait
+printWorry :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> BlockedConstraintID -> BlockedConstraint sys m -> IO ()
+printWorry ref s iD blockedConstraint = do
+  mainState <- readIORef ref
+  case _blockedConstraint'unblockedBy blockedConstraint of
+    Nothing -> putStrLn $ "Still blocked."
+    Just meta -> putStrLn $ "Unblocked by ?" ++ show meta
+  putStrLn $ ""
+  putStrLn $ "Blocking metas"
+  putStrLn $ "--------------"
+  sequenceA_ $ _blockedConstraint'metas blockedConstraint <&>
+    \ (ForSomeDeBruijnLevel blockingMeta) -> printBlockingMeta ref s blockingMeta
+  putStrLn $ ""
+  putStrLn $ "Constraints"
+  putStrLn $ "-----------"
+  case _blockedConstraint'constraintUnblock blockedConstraint of
+    Nothing -> return ()
+    Just constraintUnblock -> printConstraint ref constraintUnblock
+  printConstraint ref $ _blockedConstraint'constraint blockedConstraint
+  putStrLn $ _blockedConstraint'reason blockedConstraint
+  printConstraint ref $ fromMaybe unreachable $ _constraint'parent $ _blockedConstraint'constraint blockedConstraint
 
 printConstraintByIndex :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> IO ()
 printConstraintByIndex ref s i =
@@ -143,18 +168,36 @@ printMeta ref s meta =
   if (meta < 0 || meta >= _tcState'metaCounter s)
   then putStrLn $ "Meta index out of bounds."
   else do
-    let metaInfo = fromMaybe unreachable $ view (tcState'metaMap . at meta) s
+    let metaInfo = view (tcState'metaMap . at meta . _JustUnsafe) s
     forThisDeBruijnLevel (printMetaInfo ref s meta) metaInfo
+printWorryByID :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> BlockedConstraintID -> IO ()
+printWorryByID ref s iD@(BlockedConstraintID i) =
+  if (i < 0 || i > _tcState'blockedConstraintCounter s)
+  then putStrLn $ "Worry index out of bounds."
+  else do
+    let blockedConstraint = view (tcState'blockedConstraintMap . at i . _JustUnsafe) s
+    printWorry ref s iD blockedConstraint
 
-summarizeUnsolvedMeta :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> MetaInfo sys m v -> IO ()
-summarizeUnsolvedMeta ref s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
+summarizeMetaIfUnsolved :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> MetaInfo sys m v -> IO ()
+summarizeMetaIfUnsolved ref s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
   Right solutionInfo -> return ()
   Left blocks -> putStrLn $
-    "?" ++ show meta ++ "    (" ++ show (length blocks) ++ " constraints)    Creation: " ++ _metaInfo'reason metaInfo
+    "?" ++ show meta ++ "    (" ++ show (length blocks) ++ " worries)    Creation: " ++ _metaInfo'reason metaInfo
+summarizeWorryIfBothering ::
+  (Sys sys) => IORef (MainState sys) -> TCState sys m -> BlockedConstraintID -> BlockedConstraint sys m -> IO ()
+summarizeWorryIfBothering ref s iD blockedConstraint = case _blockedConstraint'unblockedBy blockedConstraint of
+  Just _ -> return ()
+  Nothing -> putStrLn $
+    show iD
+      ++ "  (constraint: " ++ (show $ _constraint'id $ _blockedConstraint'constraint blockedConstraint) ++ ")   "
+      ++ "Reason: " ++ _blockedConstraint'reason blockedConstraint
 
 printUnsolvedMetas :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 printUnsolvedMetas ref s = sequenceA_ $ flip mapWithKey (_tcState'metaMap s) $ \ meta metaInfo ->
-  summarizeUnsolvedMeta ref s meta `forThisDeBruijnLevel` metaInfo
+  summarizeMetaIfUnsolved ref s meta `forThisDeBruijnLevel` metaInfo
+printBotheringWorries :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
+printBotheringWorries ref s = sequenceA_ $ flip mapWithKey (_tcState'blockedConstraintMap s) $ \ iD blockedConstraint ->
+  summarizeWorryIfBothering ref s (BlockedConstraintID iD) blockedConstraint
 
 printReport :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> TCReport sys -> IO ()
 printReport ref s report = do
@@ -169,6 +212,9 @@ printOverview ref s = do
   let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
   putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
     ++ show nUnsolved ++ " unsolved (metas),"
+  let nBothering = length $ filter (isNothing . _blockedConstraint'unblockedBy) $ toList $ _tcState'blockedConstraintMap s
+  putStrLn $ (show $ _tcState'blockedConstraintCounter s) ++ " worries (worry i), of which "
+    ++ show nBothering ++ " still bothering me (worries),"
   putStrLn $ (show $ _tcState'constraintCounter s) ++ " constraints (constraint i),"
   putStrLn $ (show $ length $ _tcState'reports s) ++ " reports (reports)."
 
@@ -183,15 +229,17 @@ prompt prefix = do
 
 giveHelp :: (Sys sys) => IORef (MainState sys) -> IO ()
 giveHelp ref = do
-  putStrLn $ "q       quit          Quit Menkar."
-  putStrLn $ "o       overview      Give an overview of the type-checking results."
-  putStrLn $ "m       metas         Give an overview of the unsolved meta-variables."
-  putStrLn $ "m i     meta i        Give information about meta-variable ?i (where i is an integer)."
   putStrLn $ "c i     constraint i  Give information about constraint i (where i is an integer)."
   putStrLn $ "c 0     constraint 0  Print the internal representation of the entire program."
-  putStrLn $ "r       reports       List other reports produced during type-checking (including goals)."
   putStrLn $ "h       help          Print this help."
+  putStrLn $ "m       metas         Give an overview of the unsolved meta-variables."
+  putStrLn $ "m i     meta i        Give information about meta-variable ?i (where i is an integer)."
+  putStrLn $ "o       overview      Give an overview of the type-checking results."
+  putStrLn $ "q       quit          Quit Menkar."
+  putStrLn $ "r       reports       List other reports produced during type-checking (including goals)."
   putStrLn $ "s help  set help      Get help on the set command."
+  putStrLn $ "w       worries       Give an overview of the worries still bothering me."
+  putStrLn $ "w i     worry i       Give information about worry i (where i is an integer)."
   --putStrLn "Type 'quit' to quit. Other than that, I ain't got much to tell ya, to be fair."
 
 runCommandMeta :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> [String] -> IO ()
@@ -208,6 +256,12 @@ runCommandConstraint ref s args = case args of
   _ -> putStrLn $ "Command 'constraint' expects one integer argument, e.g. 'constraint 5'."
 runCommandReports :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 runCommandReports ref s = sequenceA_ $ _tcState'reports s <&> printReport ref s
+runCommandWorry :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> [String] -> IO ()
+runCommandWorry ref s args = case args of
+  [arg] -> case quickRead arg :: Maybe Int of
+    Just i -> printWorryByID ref s (BlockedConstraintID i)
+    Nothing -> putStrLn $ "Argument to 'worry' should be an integer."
+  _ -> putStrLn $ "Command 'worry' expects one integer argument, e.g. 'worry 5'."
 
 ------------------------
 
@@ -320,6 +374,10 @@ runCommand ref s ("reports" : _) = runCommandReports ref s
 runCommand ref s ("r" : _) = runCommandReports ref s
 runCommand ref s ("set" : args) = runCommandSet ref s args
 runCommand ref s ("s" : args) = runCommandSet ref s args
+runCommand ref s ("worries" : _) = printBotheringWorries ref s
+runCommand ref s ("w" : []) = printBotheringWorries ref s
+runCommand ref s ("worry" : args) = runCommandWorry ref s args
+runCommand ref s ("w" : args) = runCommandWorry ref s args
 runCommand ref s ("git" : _) = putStrLn $ "I do not take git commands, for my name is Menkar."
 runCommand ref s (command : args) = do
   putStrLn $ "Unknown command : " ++ command

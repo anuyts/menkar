@@ -12,6 +12,11 @@ import Data.Hashable
 import Data.Kind
 import GHC.Generics
 
+{- For some reason, this document corrupts the state of the compiler. Sometimes you have to add a comment here
+   to get the compiler to reconsider this document. E.g. you can add a dot below:
+   .........
+-}
+
 data Eliminator (sys :: KSys) =
   ElimDots |
   --ElimEnd ArgSpec {-^ should not be 'ArgSpecExplicit'.-} |
@@ -164,8 +169,3 @@ file2nestedModules (File toplevelmodule@(EntryLR HeaderToplevelModule lhs rhs)) 
         }
       modul = EntryLR HeaderModule lhs' (coerceRHSToplevel rhs)
   in wrapInModules moduleNames modul
-
-{- For some reason, this document corrupts the state of the compiler. Sometimes you have to add a comment here
-   to get the compiler to reconsider this document. E.g. you can add a dot below:
-   .........
--}
