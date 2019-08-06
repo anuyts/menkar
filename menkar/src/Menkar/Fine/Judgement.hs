@@ -169,8 +169,8 @@ data Judgement (sys :: KSys) where
     Judgement sys
 -}
 
-  JudBlock :: BlockedConstraintID -> Judgement sys
-  JudUnblock :: BlockedConstraintID -> Judgement sys
+  JudBlock :: WorryID -> Judgement sys
+  JudUnblock :: WorryID -> Judgement sys
 
 -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
 -- | Premises: @'JudCtx'@

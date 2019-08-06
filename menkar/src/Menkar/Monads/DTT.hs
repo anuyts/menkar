@@ -63,16 +63,16 @@ data BlockingMeta (sys :: KSys) (m :: * -> *) (v :: *) = BlockingMeta {
   _blockingMeta'reasonAwait :: String
   }
 
-data BlockedConstraint (sys :: KSys) (m :: * -> *) = BlockedConstraint {
-  _blockedConstraint'constraint :: Constraint sys,
+data Worry (sys :: KSys) (m :: * -> *) = Worry {
+  _worry'constraint :: Constraint sys,
   {-| From outermost to innermost. -}
-  _blockedConstraint'metas :: [ForSomeDeBruijnLevel (BlockingMeta sys m)],
+  _worry'metas :: [ForSomeDeBruijnLevel (BlockingMeta sys m)],
   {-| Nothing if still blocked, otherwise the meta that unblocked it. -}
-  _blockedConstraint'unblockedBy :: Maybe MetaID,
+  _worry'unblockedBy :: Maybe MetaID,
   {-| A @JudUnblock@, if already scheduled. Note that the existence of this judgement does not imply that it has
       already been processed. -}
-  _blockedConstraint'constraintUnblock :: Maybe (Constraint sys),
-  _blockedConstraint'reason :: String
+  _worry'constraintUnblock :: Maybe (Constraint sys),
+  _worry'reason :: String
   }
 
 {-
@@ -93,7 +93,7 @@ data MetaInfo (sys :: KSys) m v = MetaInfo {
       If unsolved, a list of blocked problems, from new to old, from outermost to innermost.
   -}
   _metaInfo'maybeSolution :: Either
-    [BlockedConstraintID] {- All blocks blocked on the current, unsolved meta. -}
+    [WorryID] {- All blocks blocked on the current, unsolved meta. -}
     (SolutionInfo sys m v)
   }
 isDormant :: MetaInfo sys m v -> Bool
@@ -121,8 +121,8 @@ data TCState sys m = TCState {
   _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo sys m)),
   _tcState'constraintCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint sys),
-  _tcState'blockedConstraintCounter :: Int,
-  _tcState'blockedConstraintMap :: IntMap (BlockedConstraint sys m),
+  _tcState'worryCounter :: Int,
+  _tcState'worryMap :: IntMap (Worry sys m),
   _tcState'reports :: [(TCReport sys)],
   _tcState'newTasks :: [(PriorityConstraint, TCT sys m ())],
     -- ^ always empty unless during constraint check; to be run from back to front
@@ -186,7 +186,7 @@ getTC opts initState program = runIdentity $ getTCT opts initState program
 ----------------------------------------------------------------------------
 makeLenses ''MetaInfo
 makeLenses ''BlockingMeta
-makeLenses ''BlockedConstraint
+makeLenses ''Worry
 makeLenses ''TCState
 makeLenses ''TCReport
 ----------------------------------------------------------------------------
@@ -243,10 +243,10 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
 catchBlocks :: (Monad m, SysTC sys) => TCT sys m (TCResult sys) -> TCT sys m (TCResult sys)
 catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blockingMetas -> do
-    iD <- BlockedConstraintID <$> (tcState'blockedConstraintCounter <<%= (+1))
+    iD <- WorryID <$> (tcState'worryCounter <<%= (+1))
     constraintJudBlock <- withParent blockParent $ defConstraint (JudBlock iD) blockReason
-    let blockedConstraint = BlockedConstraint constraintJudBlock blockingMetas Nothing Nothing blockReason
-    tcState'blockedConstraintMap %= insert (getBlockedConstraintID iD) blockedConstraint
+    let worry = Worry constraintJudBlock blockingMetas Nothing Nothing blockReason
+    tcState'worryMap %= insert (getWorryID iD) worry
     -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
     sequenceA_ $ reverse blockingMetas <&> \blockingMeta -> do
       tcState'metaMap . at (forThisDeBruijnLevel _blockingMeta'meta blockingMeta) . _JustUnsafe
@@ -272,7 +272,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
           Right (SolutionInfo _ solution) -> do
             -- Substitute the dependencies into the solution and return.
             return $ Just $ join $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
-          Left blockedConstraintIDs -> shiftDC $ \ kCurrent -> do
+          Left worryIDs -> shiftDC $ \ kCurrent -> do
             -- Prepend the continuation with substituting the dependencies into the solution.
             let kCurrentAdjusted =
                   kCurrent . fmap (join .
@@ -353,7 +353,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
       Right _ -> do
         throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
       -- Blocks contains the constraints blocked on the current meta, and their whereabouts.
-      Left blockedConstraintIDs -> do
+      Left worryIDs -> do
         -- Call the closure provided by the caller to obtain the solution for the meta.
         -- ('a' is just something that the caller wants back.)
         (maybeSolution, a) <- getSolution $ _metaInfo'context metaInfo
@@ -366,27 +366,27 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
             tcState'metaMap . at meta . _JustUnsafe .=
               ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
             -- Consider to unblock blocked constraints
-            sequenceA_ $ blockedConstraintIDs <&>
+            sequenceA_ $ worryIDs <&>
               {- @meta@ (introduced above) is currently being solved.
                  @block@ represents a problem blocked by this meta.
                  @k@ expresses how to unblock the problem if THIS meta is solved.
                  @blockingMetas@ is a list of other metas that can unblock this problem; they have their own @k@.
               -}
               -- \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) ->
-              \ blockedConstraintID -> do
+              \ worryID -> do
                   -- Get the blocking constraint
                   constraintJudBlock <- use $
-                    tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID)
-                    . _JustUnsafe . blockedConstraint'constraint
+                    tcState'worryMap . at (getWorryID worryID)
+                    . _JustUnsafe . worry'constraint
                   -- Add an unblocking constraint, which will call tcUnblock
                   withParent constraintJudBlock $ do
                     {-constraintJudUnblock <-
-                      defConstraint (JudUnblock blockedConstraintID) $ "Meta ?" ++ show meta ++ " has been resolved."
+                      defConstraint (JudUnblock worryID) $ "Meta ?" ++ show meta ++ " has been resolved."
                     addConstraint constraintJudUnblock
-                    -- Register the unblocking constraint with the blockedConstraint
-                    tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID)
-                      . _JustUnsafe . blockedConstraint'constraintUnblock .= Just constraintJudUnblock-}
-                    addNewConstraint (JudUnblock blockedConstraintID) $ "Meta ?" ++ show meta ++ " has been resolved."
+                    -- Register the unblocking constraint with the worry
+                    tcState'worryMap . at (getWorryID worryID)
+                      . _JustUnsafe . worry'constraintUnblock .= Just constraintJudUnblock-}
+                    addNewConstraint (JudUnblock worryID) $ "Meta ?" ++ show meta ++ " has been resolved."
                   {-
                   -- Informative judgement: we consider to unblock.
                   constraintJudUnblock <- withParent constraintJudBlock $
@@ -408,15 +408,15 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
     parent <- fromMaybe unreachable <$> useMaybeParent
     throwError $ TCErrorBlocked parent reason []
 
-  tcUnblock blockedConstraintID = do
-    maybeMeta <- use $ tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
-      . blockedConstraint'unblockedBy
+  tcUnblock worryID = do
+    maybeMeta <- use $ tcState'worryMap . at (getWorryID worryID) . _JustUnsafe
+      . worry'unblockedBy
     case maybeMeta of
       Just meta -> return () -- This thing has been unblocked before.
       Nothing -> do
         constraintJudUnblock <- fromMaybe unreachable <$> useMaybeParent
-        blockedConstraint <- use $ tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe
-        let blockingMetas = _blockedConstraint'metas blockedConstraint
+        worry <- use $ tcState'worryMap . at (getWorryID worryID) . _JustUnsafe
+        let blockingMetas = _worry'metas worry
         (_, maybeUnit) <- forReturnList blockingMetas $ \(ForSomeDeBruijnLevel blockingMeta) -> do
           let meta = _blockingMeta'meta blockingMeta
           ForSomeDeBruijnLevel metaInfo <- use $ tcState'metaMap . at meta . _JustUnsafe
@@ -425,10 +425,10 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
             Left _ -> return $ Left ()
             Right solution -> do
               let t = _solutionInfo'solution solution
-              tcState'blockedConstraintMap . at (getBlockedConstraintID blockedConstraintID) . _JustUnsafe %=
-                (blockedConstraint'unblockedBy .~ (Just $ _blockingMeta'meta blockingMeta))
+              tcState'worryMap . at (getWorryID worryID) . _JustUnsafe %=
+                (worry'unblockedBy .~ (Just $ _blockingMeta'meta blockingMeta))
                 .
-                (blockedConstraint'constraintUnblock .~ Just constraintJudUnblock)
+                (worry'constraintUnblock .~ Just constraintJudUnblock)
               catchBlocks $ _blockingMeta'cont blockingMeta $ unsafeCoerce <$> t
               return $ Right ()
         case maybeUnit of

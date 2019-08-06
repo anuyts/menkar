@@ -303,10 +303,10 @@ jud2pretty (JudSys jud) opts = sysJud2pretty jud opts
 jud2pretty (JudUnblock meta) opts =
   ribbon ("Unblocked by: ?" ++ show meta) \\\
   [ribbon " (But will only resume here if this is the outermost currently solved meta, listed first.)"]-}
-jud2pretty (JudBlock blockedConstraintID) opts =
-  ribbon $ "Blocked: worry " ++ show (getBlockedConstraintID blockedConstraintID)
-jud2pretty (JudUnblock blockedConstraintID) opts =
-  ribbon $ "Unblock: worry " ++ show (getBlockedConstraintID blockedConstraintID)
+jud2pretty (JudBlock worryID) opts =
+  ribbon $ "Blocked: worry " ++ show (getWorryID worryID)
+jud2pretty (JudUnblock worryID) opts =
+  ribbon $ "Unblock: worry " ++ show (getWorryID worryID)
 
 {-
 jud2pretty (JudType gamma ty) opts =

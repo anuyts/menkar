@@ -1,8 +1,8 @@
 module Menkar.ID where
 
-newtype BlockedConstraintID = BlockedConstraintID {getBlockedConstraintID :: Int}
-instance Show BlockedConstraintID where
-  show (BlockedConstraintID i) = show i
+newtype WorryID = WorryID {getWorryID :: Int}
+instance Show WorryID where
+  show (WorryID i) = show i
 
 type MetaID = Int
 pattern MetaID meta = (meta :: Int) :: MetaID

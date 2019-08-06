@@ -134,7 +134,7 @@ class (
       For every call to @'awaitMeta'@ that didn't yield a result, the continuation as of that point
       is saved. The first time one of the corresponding metas is resolved, the continuation from that point will be run. -}
   tcBlock :: String -> tc a
-  tcUnblock :: BlockedConstraintID -> tc ()
+  tcUnblock :: WorryID -> tc ()
   tcReport :: String -> tc ()
   tcFail :: String -> tc a
   --leqMod :: Modality sys v -> Modality sys v -> tc Bool
