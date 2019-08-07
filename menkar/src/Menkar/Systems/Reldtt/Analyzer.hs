@@ -7,6 +7,7 @@ import Menkar.System
 import Menkar.Systems.Reldtt.Basic
 import Menkar.Systems.Reldtt.Fine
 import Menkar.Analyzer
+import Menkar.TC.QuickEq
 
 import Data.Functor.Functor1
 import Data.Omissible
@@ -14,6 +15,7 @@ import Control.Exception.AssertFalse
 import Data.Constraint.Witness
 import Data.Constraint.Conditional
 import Data.Functor.Coerce
+import Data.Functor.Compose
 
 import GHC.Generics
 import Util
@@ -25,7 +27,7 @@ import Data.Kind hiding (Type)
 type instance SysAnalyzerError Reldtt = ReldttAnalyzerError
 type instance SysAnalyzableToken Reldtt = ReldttAnalyzableToken
 
-data ReldttAnalyzerError = AnErrorModtySnout
+data ReldttAnalyzerError = AnErrorModtySnout | AnErrorChainModtyMeta
 data ReldttAnalyzableToken (t :: * -> *) where
   --AnTokenReldttMode :: ReldttAnalyzableToken ReldttMode
   --AnTokenChainModty :: ReldttAnalyzableToken ChainModty
@@ -163,6 +165,8 @@ instance Analyzable Reldtt ChainModty where
           ChainModtyTerm (getAnalysisTrav rdom) (getAnalysisTrav rcod) (getAnalysisTrav rt)
         TokenTC -> AnalysisTC $ dom :*: cod
         TokenRel -> AnalysisRel
+
+    ChainModtyMeta dom cod meta depcies -> Left $ AnErrorSys $ AnErrorChainModtyMeta
       
   convRel token d = U1 :*: U1
   extraClassif d t extraT = U1 :*: U1
@@ -697,6 +701,17 @@ instance SysAnalyzer Reldtt where
           Const snout2 = t2
       in  snout1 == snout2
     (AnErrorModtySnout, _) -> unreachable
+    (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality) -> case (t1, t2) of
+      (ChainModtyMeta dom1 cod1 meta1 (Compose depcies1), ChainModtyMeta dom2 cod2 meta2 (Compose depcies2)) ->
+        meta1 == meta2
+        && length depcies1 == length depcies2
+        && and (zip depcies1 depcies2 <&> \ (d1 :*: depcy1, d2 :*: depcy2) ->
+                   quickEq @Reldtt depcy1 depcy2 U1 U1
+               )
+      (ChainModtyMeta _ _ _ _, _) -> False
+      (_, ChainModtyMeta _ _ _ _) -> False
+      otherwise -> unreachable
+    (AnErrorChainModtyMeta, _) -> unreachable
     {-(AnErrorKnownModty, AnTokenKnownModty) -> case (t1, t2) of
       (KnownModty snout1 tail1, KnownModty snout2 tail2) ->
         (snout1 == snout2) && case (tail1, tail2) of
@@ -704,3 +719,9 @@ instance SysAnalyzer Reldtt where
           (TailDisc cod1, TailDisc cod2) -> quickEq cod1 cod2 U1 U1
           --()
     -}
+--------------------------------
+
+instance Solvable Reldtt ChainModty where
+  astAlreadyChecked chmu _ = chmu
+  unMeta (ChainModtyMeta dom cod meta (Compose depcies)) = Just (MetaBlocked, meta, depcies)
+  unMeta _ = Nothing

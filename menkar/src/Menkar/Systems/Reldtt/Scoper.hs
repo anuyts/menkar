@@ -86,12 +86,13 @@ instance SysScoper Reldtt where
   newMetaModtyNoCheck gamma reason = do
     dom <- newMetaModeNoCheck gamma $ reason ++ " (domain)"
     cod <- newMetaModeNoCheck gamma $ reason ++ " (codomain)"
-    tmu <- newMetaTermNoCheck gamma MetaBlocked Nothing reason
+    newMetaChainModtyNoCheck gamma dom cod reason
+    {-tmu <- newMetaTermNoCheck gamma MetaBlocked Nothing reason
     --(meta, depcies) <- newMetaID gamma reason
     return $ wrapInChainModty dom cod tmu
       --ChainModtyMeta ddom dcod meta (Compose depcies)
     --Expr2 (TermMeta )
-    --wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason
+    --wrapInChainModty ddom dcod <$> newMetaTermNoCheck maybeParent gamma MetaBlocked Nothing reason-}
 
   newMetaClassif4sysASTNoCheck sysToken gamma t extraT reason =
     case (sysToken, t) of
@@ -109,3 +110,14 @@ instance SysScoper Reldtt where
         dom <- newMetaModeNoCheck gamma reason
         cod <- newMetaModeNoCheck gamma reason
         return $ dom :*: cod
+
+newMetaChainModtyNoCheck ::
+  (DeBruijnLevel v, MonadScoper Reldtt sc) =>
+  Ctx Type Reldtt v Void ->
+  Mode Reldtt v ->
+  Mode Reldtt v ->
+  String ->
+  sc (ChainModty v)
+newMetaChainModtyNoCheck gamma dom cod reason = do
+    (meta, depcies) <- newMetaID gamma reason
+    return $ ChainModtyMeta dom cod meta (Compose depcies)

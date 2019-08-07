@@ -249,13 +249,13 @@ checkEtaForNormalType gamma t ty = do
     Just (Just tExpanded) -> do
       addNewConstraint
         (JudTermRel
-          (Eta True)
+          (Eta False)
           (modedEqDeg $ unVarFromCtx <$> ctx'mode gamma)
           (duplicateCtx gamma)
           (Twice2 t tExpanded)
           (Twice2 ty' ty')
         )
-        "Eta-expand"
+        "Eta-expand."
       return True
 
 {- | Equate a term to its eta-expansion if it exists.
@@ -302,7 +302,8 @@ checkEta ::
   tc Bool
 checkEta token gamma t extraT ct = case token of
   AnTokenTerm -> checkEtaTerm gamma t ct
-  AnTokenSys sysToken -> checkEtaSys sysToken gamma t extraT ct
+  AnTokenMultimode mToken -> checkEtaMultimodeOrSys (Left mToken) gamma t extraT ct
+  AnTokenSys sysToken -> checkEtaMultimodeOrSys (Right sysToken) gamma t extraT ct
   otherwise -> unreachable -- There are no other solvable AST types.
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>

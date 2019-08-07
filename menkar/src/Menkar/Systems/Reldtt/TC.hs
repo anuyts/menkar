@@ -208,9 +208,38 @@ instance SysTC Reldtt where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc _
       byAnalysis = newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs
 
+  -- Eta --
+  ---------
+
+  checkEtaMultimodeOrSys token gamma t extraT ct = case token of
+    Left AnTokenModality -> do
+      let dom :*: cod = ct
+      (cod, metasCod) <- runWriterT $ whnormalizeMode gamma cod "Want to know if codomain is zero"
+      case (cod, metasCod) of
+        (_, _:_) -> tcBlock $ "Need to know if codomain is zero."
+        (ReldttMode (BareMode (ModeTermZero)), _) -> do
+          addNewConstraint
+            (JudRel analyzableToken (Eta False) (Const ModEq)
+              (duplicateCtx gamma)
+              (Twice1 t (ChainModtyKnown $ forgetKnownModty $ dom))
+              (Twice1 U1 U1)
+              (ClassifWillBe $ Twice1 (dom :*: cod) (dom :*: cod))
+            )
+            "Eta-expand modality."
+          return True
+        otherwise -> return False
+    otherwise -> unreachable -- There are no other solvable AST types.
+
   etaExpandSysType useHoles gamma t systy = case systy of
     SysTypeMode -> return $ Just Nothing
     SysTypeModty dom cod -> do
+      let mu = t
+      chmu <- case useHoles of
+        UseHoles -> newMetaChainModtyNoCheck gamma dom cod "Infer underlying modality represented by this term."
+        UseEliminees -> return $ ChainModtyTerm dom cod mu
+      return $ Just $ Just $ BareModty $ ModtyTermChain $ chmu
+
+      {-do
       (cod, metasCod) <- runWriterT $ whnormalizeMode gamma cod "Want to know if codomain is zero."
       case (cod, metasCod) of
         (_, _:_) -> return Nothing
@@ -221,4 +250,18 @@ instance SysTC Reldtt where
             UseHoles -> ChainModtyTerm dom cod <$>
               newMetaTerm gamma (BareSysType $ SysTypeModty dom cod) MetaBlocked "Infer chain modality."
             UseEliminees -> return $ ChainModtyTerm dom cod t
-          return $ Just $ Just $ BareModty $ ModtyTermChain $ chmu
+          return $ Just $ Just $ BareModty $ ModtyTermChain $ chmu-}
+
+newMetaChainModty :: 
+  (DeBruijnLevel v, MonadTC Reldtt tc) =>
+  Ctx Type Reldtt v Void ->
+  Mode Reldtt v ->
+  Mode Reldtt v ->
+  String ->
+  tc (ChainModty v)
+newMetaChainModty gamma dom cod reason = do
+  chmu <- newMetaChainModtyNoCheck gamma dom cod reason
+  addNewConstraint
+    (Jud analyzableToken gamma chmu U1 (ClassifMustBe $ dom :*: cod))
+    reason
+  return chmu

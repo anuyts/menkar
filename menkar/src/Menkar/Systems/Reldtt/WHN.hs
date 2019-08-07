@@ -125,10 +125,8 @@ compChainModty (ChainModtyKnown kmu) (ChainModtyLink knu trho chsigma) =
   ChainModtyLink (kmu `compKnownModty` knu) trho chsigma
 compChainModty (ChainModtyKnown kmu) (ChainModtyKnown knu) =
   ChainModtyKnown (kmu `compKnownModty` knu)
-compChainModty chmu@(ChainModtyKnown kmu) chnu@(ChainModtyTerm dom cod tnu) =
-  ChainModtyTerm dom (_knownModty'cod kmu) $ BareModty $ ModtyTermComp chmu chnu
-compChainModty chmu@(ChainModtyTerm dom cod tmu) chnu =
-  ChainModtyTerm (_chainModty'dom chnu) cod $ BareModty $ ModtyTermComp chmu chnu
+compChainModty chmu chnu =
+  ChainModtyTerm (_chainModty'dom chnu) (_chainModty'cod chmu) $ BareModty $ ModtyTermComp chmu chnu
 
 {-
 whnormalizeComp :: forall whn v .

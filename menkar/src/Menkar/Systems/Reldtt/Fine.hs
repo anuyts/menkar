@@ -1,5 +1,6 @@
 module Menkar.Systems.Reldtt.Fine where
 
+import Menkar.ID
 import Menkar.Fine
 import Menkar.System
 import Menkar.Systems.Reldtt.Basic
@@ -159,13 +160,16 @@ data ChainModty v =
   ChainModtyKnown (KnownModty v) |
   {-| It is an error to use this constructor on a term that is not whnormal (whblocked is not allowed). -}
   ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
-  {-| Reduces for whnormal terms... (weird, I know) -}
+  {-| Reduces for ALL whnormal terms... (weird, I know) -}
   ChainModtyTerm
     (Mode Reldtt v) {-^ domain -}
     (Mode Reldtt v) {-^ codomain -}
-    (Term Reldtt v) {-^ the modality -}
-    --Int {-^ meta index -}
-    --(Compose [] (Term Reldtt) v) {-^ dependencies -}
+    (Term Reldtt v) {-^ the modality -} |
+  ChainModtyMeta
+    (Mode Reldtt v) {-^ domain -}
+    (Mode Reldtt v) {-^ codomain -}
+    MetaID {-^ Meta's index -}
+    (Compose [] (Mode Reldtt :*: Term Reldtt) v) {-^ dependencies -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 wrapInChainModty :: Mode Reldtt v -> Mode Reldtt v -> Term Reldtt v -> ChainModty v
@@ -176,10 +180,12 @@ _chainModty'dom :: ChainModty v -> Mode Reldtt v
 _chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
 _chainModty'dom (ChainModtyLink kmu termNu chainRho) = _chainModty'dom $ chainRho
 _chainModty'dom (ChainModtyTerm dom cod tmu) = dom
+_chainModty'dom (ChainModtyMeta dom cod meta depcies) = dom
 _chainModty'cod :: ChainModty v -> Mode Reldtt v
 _chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyLink kmu termNu chainRho) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyTerm dom cod tmu) = cod
+_chainModty'cod (ChainModtyMeta dom cod meta depcies) = cod
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])

@@ -60,21 +60,6 @@ class SysWHN sys => SysTC sys where
     ClassifInfo (Twice1 (Classif t) v) ->
     tc ()
 
-  -- Eta --
-  ---------
-
-  {- | Equate an AST to its eta-expansion if it exists.
-       Returns whether an eta-expansion exists, or blocks if this is unclear.
-  -}
-  checkEtaSys :: forall tc t v .
-    (MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
-    SysAnalyzableToken sys t ->
-    Ctx Type sys v Void ->
-    t v ->
-    ClassifExtraInput t v ->
-    Classif t v ->
-    tc Bool
-
   -- Solver --
   ------------
   
@@ -107,6 +92,21 @@ class SysWHN sys => SysTC sys where
     ClassifInfo (Twice1 (Classif t) v) ->
     String ->
     tc (t vOrig)
+
+  -- Eta --
+  ---------
+
+  {- | Equate an AST to its eta-expansion if it exists.
+       Returns whether an eta-expansion exists, or blocks if this is unclear.
+  -}
+  checkEtaMultimodeOrSys :: forall tc t v .
+    (MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
+    MultimodeOrSysAnalyzableToken sys t ->
+    Ctx Type sys v Void ->
+    t v ->
+    ClassifExtraInput t v ->
+    Classif t v ->
+    tc Bool
 
   {-| Returns an eta-expansion if eta is certainly allowed, @Just Nothing@ if it's not allowed, and @Nothing@ if unclear.
   -}
