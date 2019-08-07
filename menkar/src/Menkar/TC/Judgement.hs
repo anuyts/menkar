@@ -9,6 +9,7 @@ import Menkar.Fine.LookupQName
 import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Monad.Monad
 import Control.Exception.AssertFalse
+import Menkar.Analyzer.Class
 import Menkar.TC.AST
 --import Menkar.TC.Term
 import Menkar.TC.SmartElim
@@ -26,7 +27,7 @@ import Data.Functor.Compose
 import Control.Monad
 import Control.Monad.Writer.Lazy
 
-checkConstraint ::
+checkConstraint :: forall sys tc .
   (SysTC sys, MonadTC sys tc) =>
   Constraint sys -> tc ()
 checkConstraint parent = withParent parent $ case _constraint'judgement parent of
@@ -79,13 +80,13 @@ checkConstraint parent = withParent parent $ case _constraint'judgement parent o
     checkTermRel parent eta (ModedDegree dgamma deg) gamma t1 t2 ty1 ty2
   -}
 
-  JudEta gamma t tyT -> case t of
-    Expr2 (TermMeta MetaBlocked meta (Compose depcies) maybeAlg) -> do
-      maybeT <- awaitMeta "If it's solved, then I needn't bother." meta depcies
+  JudEta token gamma (t :: t _) tyT -> case unMeta t of
+    Just (MetaBlocked, meta, depcies) -> do
+      maybeT <- awaitMeta @sys @tc @t "If it's solved, then I needn't bother." meta depcies
       case maybeT of
-        Nothing -> void $ checkEta gamma t tyT
+        Nothing -> void $ _checkEta gamma t tyT
         Just _ -> return () -- every known term is obviously equal to its eta-expansion.
-    _ -> unreachable
+    otherwise -> unreachable
 
   JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->
     checkSmartElim gamma eliminee tyEliminee eliminators result tyResult

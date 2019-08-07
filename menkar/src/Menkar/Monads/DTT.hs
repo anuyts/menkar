@@ -16,6 +16,7 @@ import Menkar.PrettyPrint.Fine
 import Menkar.PrettyPrint.Aux.Context
 import Menkar.System
 import Menkar.Fine.Judgement
+import Menkar.Analyzer.Class
 
 import Text.PrettyPrint.Tree
 import Control.Exception.AssertFalse
@@ -54,12 +55,12 @@ type TCResult (sys :: KSys) = () --TCSuccess | TCWaiting
 
 data SolutionInfo (sys :: KSys) (m :: * -> *) (v :: *) = SolutionInfo {
   _solutionInfo'parent :: Constraint sys,
-  _solutionInfo'solution :: Term sys v
+  _solutionInfo'solution :: ForSomeSolvableAST sys v
   }
 
 data BlockingMeta (sys :: KSys) (m :: * -> *) (v :: *) = BlockingMeta {
   _blockingMeta'meta :: Int,
-  _blockingMeta'cont :: (Term sys v -> TCT sys m (TCResult sys)),
+  _blockingMeta'cont :: (ForSomeSolvableAST sys v -> TCT sys m (TCResult sys)),
   _blockingMeta'reasonAwait :: String
   }
 

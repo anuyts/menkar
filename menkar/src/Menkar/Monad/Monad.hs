@@ -28,7 +28,7 @@ data Constraint sys = Constraint {
 
 data PriorityConstraint = PriorityDefault | PriorityFork | PriorityEta deriving (Eq, Ord)
 getJudgementPriority :: Judgement sys -> PriorityConstraint
-getJudgementPriority (JudEta gamma t ty) = PriorityEta
+getJudgementPriority (JudEta token gamma t ty) = PriorityEta
 getJudgementPriority _ = PriorityDefault
 getConstraintPriority :: Constraint sys -> PriorityConstraint
 getConstraintPriority = getJudgementPriority . _constraint'judgement
@@ -85,7 +85,7 @@ class (
          are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
          run with the soluiton.
       It is an error to await the same meta twice. -}
-  awaitMeta :: Solvable sys t => String -> Int -> [(Mode sys :*: Term sys) v] -> whn (Maybe (t v))
+  awaitMeta :: forall t v . Solvable sys t => String -> Int -> [(Mode sys :*: Term sys) v] -> whn (Maybe (t v))
 
 instance (MonadWHN sys whn, MonadTrans mT, MonadFail (mT whn)) => MonadWHN sys (mT whn) where
   awaitMeta reason meta depcies = lift $ awaitMeta reason meta depcies

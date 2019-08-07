@@ -272,7 +272,7 @@ checkEta gamma t ty = do
   case isBlockedOrMeta (unType whnTy) metas of
     False -> do
       parent' <- defConstraint
-                   (JudEta gamma t whnTy)
+                   (JudEta analyzableToken gamma t whnTy)
                    "Weak-head-normalized type."
       withParent parent' $ case unType whnTy of
         Var2 v -> return False

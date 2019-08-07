@@ -93,14 +93,14 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
   let dgamma = unVarFromCtx <$> dgamma'
   case (anErr, analyzableToken @sys @t, t) of
     (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> do
-      maybeT <- awaitMeta "I want to know what I'm supposed to type-check." meta depcies
+      maybeT <- awaitMeta @sys @tc @(Term sys) "I want to know what I'm supposed to type-check." meta depcies
       t' <- case maybeT of
         Nothing -> do
           -- Ideally, terms are type-checked only once. Hence, the first encounter is the best
           -- place to request eta-expansion.
           case neutrality of
             MetaBlocked -> addNewConstraint
-              (JudEta gamma (Expr2 t) ty)
+              (JudEta analyzableToken gamma (Expr2 t) ty)
               "Eta-expand meta if possible."
             MetaNeutral -> return ()
           tcBlock "I want to know what I'm supposed to type-check."

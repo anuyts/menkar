@@ -2,6 +2,7 @@
 
 module Menkar.Analyzer.Class where
 
+import Menkar.ID
 import Menkar.Basic.Context
 import Menkar.Fine.Syntax
 import Menkar.Fine.Context
@@ -472,6 +473,7 @@ typetrick gamma inputT h = fmap getAnalysisTC <$>
 
 class (Analyzable sys t, Traversable t, CanSwallow (Term sys) t) => Solvable sys t where
   astAlreadyChecked :: forall v . (DeBruijnLevel v) => t v -> Classif t v -> t v
+  unMeta :: forall v . (DeBruijnLevel v) => t v -> Maybe (MetaNeutrality, MetaID, [(Mode sys :*: Term sys) v])
 
 -----------------------------------
 
