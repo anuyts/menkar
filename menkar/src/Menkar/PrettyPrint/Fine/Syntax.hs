@@ -12,6 +12,7 @@ import Menkar.Basic.Context
 import Menkar.Fine.Context
 import Menkar.PrettyPrint.Aux.Context
 import Menkar.Fine.LookupQName
+import Menkar.Analyzer.Class
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
 
@@ -33,6 +34,38 @@ import GHC.Generics
 
 charYielding :: Char
 charYielding = '\x2198'
+
+haveFine2Pretty :: forall sys t a .
+  (SysFinePretty sys) =>
+  AnalyzableToken sys t ->
+  ((Fine2Pretty sys t) => a) ->
+  a
+haveFine2Pretty token a = case token of
+  AnTokenModalityTo -> a
+  AnTokenBinding token -> haveFine2Pretty token a
+  AnTokenNamedBinding token -> haveFine2Pretty token a
+  AnTokenModalBox token -> haveFine2Pretty token a
+  AnTokenUniHSConstructor -> a
+  AnTokenConstructorTerm -> a
+  AnTokenType -> a
+  AnTokenDependentEliminator -> a
+  AnTokenEliminator -> a
+  AnTokenTermNV -> a
+  AnTokenTerm -> a
+  AnTokenDeclaration token -> haveFine2Pretty token a
+  AnTokenTelescoped token -> haveFine2Pretty token a
+  AnTokenValRHS -> a
+  AnTokenModuleRHS -> a
+  AnTokenEntry -> a
+  AnTokenU1 -> a
+  AnTokenPair1 ltoken rtoken -> haveFine2Pretty ltoken $ haveFine2Pretty rtoken $ a
+  AnTokenConst1 token -> haveFine2Pretty token a
+  AnTokenSys systoken -> sysHaveFine2Pretty systoken a
+  AnTokenMultimode AnTokenMode -> a
+  AnTokenMultimode AnTokenModality -> a
+  AnTokenMultimode AnTokenDegree -> a
+  AnTokenSysTerm -> a
+  AnTokenSysUniHSConstructor -> a
 
 ---------------------------
 {-
@@ -329,7 +362,7 @@ meta2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose may
           Nothing -> metaNoSolution
           Just (ForSomeDeBruijnLevel t) ->
             ["\x27ea" ++|
-              fine2pretty gamma (join $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
+              fine2pretty gamma (swallow $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
             |++ "\x27eb"]
   where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma . snd1 <$> depcies
         metaNoSolution = case maybeAlg of
@@ -578,6 +611,14 @@ instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Entry sys Void) where
   show entry = "[Entry|\n" ++ fine2string @sys ScCtxEmpty entry omit ++ "\n|]"
+
+--------------------------------------------------
+
+instance (SysFinePretty sys) => Fine2Pretty sys (ForSomeSolvableAST sys) where
+  fine2pretty gamma (ForSomeSolvableAST (t :: t _)) opts = haveFine2Pretty (analyzableToken @sys @t) $
+    fine2pretty gamma t opts
+
+--------------------------------------------------
 
 twice2pretty gamma ty1 ty2 opts =
     ribbonEmpty \\\ [fine2pretty gamma ty1 opts, ribbon " =[]= ", fine2pretty gamma ty2 opts]

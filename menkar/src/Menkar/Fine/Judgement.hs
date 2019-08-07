@@ -56,6 +56,7 @@ data Judgement (sys :: KSys) where
     AnalyzableToken sys t {-^ It would be cleaner to have a SolvableToken here. -} ->
     Ctx Type sys v Void ->
     t v ->
+    ClassifExtraInput t v ->
     Classif t v ->
     Judgement sys
     

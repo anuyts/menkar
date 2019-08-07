@@ -6,6 +6,7 @@ import Menkar.System.Fine
 import Menkar.Fine.Syntax
 import Menkar.Basic.Context
 import Menkar.PrettyPrint.Aux.Context
+import Menkar.Analyzer.Class
 
 import Text.PrettyPrint.Tree
 import Data.Omissible
@@ -31,7 +32,7 @@ data Fine2PrettyOptions sys = Fine2PrettyOptions {
   _fine2pretty'humanReadableMetas :: Bool,
   _fine2pretty'printAlgorithm :: PrintAlgorithmVerbosity,
   -- | When printing a solved meta, print its solution instead.
-  _fine2pretty'printSolutions :: Maybe (IntMap (ForSomeDeBruijnLevel (Term sys))),
+  _fine2pretty'printSolutions :: Maybe (IntMap (ForSomeDeBruijnLevel (ForSomeSolvableAST sys))),
   -- | When printing contexts, explicity print left divisions, rather than computing the divided
   -- | modality.
   _fine2pretty'explicitLeftDivision :: Bool,

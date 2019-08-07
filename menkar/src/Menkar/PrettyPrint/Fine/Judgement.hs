@@ -35,38 +35,6 @@ vdash_ = vdash : " "
 _vdash = [' ', vdash]
 _vdash_ = [' ', vdash, ' ']
 
-haveFine2Pretty :: forall sys t a .
-  (SysFinePretty sys) =>
-  AnalyzableToken sys t ->
-  ((Fine2Pretty sys t) => a) ->
-  a
-haveFine2Pretty token a = case token of
-  AnTokenModalityTo -> a
-  AnTokenBinding token -> haveFine2Pretty token a
-  AnTokenNamedBinding token -> haveFine2Pretty token a
-  AnTokenModalBox token -> haveFine2Pretty token a
-  AnTokenUniHSConstructor -> a
-  AnTokenConstructorTerm -> a
-  AnTokenType -> a
-  AnTokenDependentEliminator -> a
-  AnTokenEliminator -> a
-  AnTokenTermNV -> a
-  AnTokenTerm -> a
-  AnTokenDeclaration token -> haveFine2Pretty token a
-  AnTokenTelescoped token -> haveFine2Pretty token a
-  AnTokenValRHS -> a
-  AnTokenModuleRHS -> a
-  AnTokenEntry -> a
-  AnTokenU1 -> a
-  AnTokenPair1 ltoken rtoken -> haveFine2Pretty ltoken $ haveFine2Pretty rtoken $ a
-  AnTokenConst1 token -> haveFine2Pretty token a
-  AnTokenSys systoken -> sysHaveFine2Pretty systoken a
-  AnTokenMultimode AnTokenMode -> a
-  AnTokenMultimode AnTokenModality -> a
-  AnTokenMultimode AnTokenDegree -> a
-  AnTokenSysTerm -> a
-  AnTokenSysUniHSConstructor -> a
-
 token2string :: forall sys t . (SysFinePretty sys) => AnalyzableToken sys t -> String
 token2string token = case token of
   AnTokenModalityTo -> "modality-with-domain"
@@ -268,10 +236,15 @@ jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) 
         dgamma = unVarFromCtx <$> dgamma'
         extraCT1 = extraClassif @sys dgamma t1 extraT1
         extraCT2 = extraClassif @sys dgamma t2 extraT2
-jud2pretty (JudEta gamma t ty) opts =
+jud2pretty (JudEta token gamma t extraT ct) opts = haveFine2Pretty token $
   ctx2pretty gamma opts \\\ [
-    _vdash_ ++| fine2pretty (ctx2scCtx gamma) t opts |++ " = eta-expansion",
-    " : " ++| fine2pretty (ctx2scCtx gamma) ty opts]
+    ribbon _vdash_ \\\ [
+        "(" ++| classification2pretty (ctx2scCtx gamma) (Classification t extraT (ClassifWillBe ct)) extraCT opts |++ ")",
+        ribbon " = eta-expansion"]
+    ]
+  where dgamma' = ctx'mode gamma
+        dgamma = unVarFromCtx <$> dgamma'
+        extraCT = extraClassif @sys dgamma t extraT
 jud2pretty (JudSmartElim gamma eliminee tyEliminee eliminators result tyResult) opts =
   ctx2pretty gamma opts \\\ [
     ribbon _vdash_ \\\ [

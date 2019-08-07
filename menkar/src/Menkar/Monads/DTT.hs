@@ -272,12 +272,16 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
             -- Substitute the dependencies into the solution and return.
-            return $ Just $ join $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> solution
+            return $ Just $ swallow $
+              snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> unsafeForceSolvableAST solution
           Left worryIDs -> shiftDC $ \ kCurrent -> do
             -- Prepend the continuation with substituting the dependencies into the solution.
-            let kCurrentAdjusted =
-                  kCurrent . fmap (join .
-                  (fmap $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma)))
+            let kCurrentAdjusted = kCurrent
+                  . fmap (
+                    swallow
+                    . (fmap $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma))
+                    . unsafeForceSolvableAST
+                  )
             let allowContinuationToBlockOnCurrentMeta :: forall x .
                   (x -> TCT sys m (TCResult sys)) ->
                   (x -> TCT sys m (TCResult sys))
@@ -364,8 +368,9 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
           -- The caller provides 'solution :: Term sys v'.
           Just solution -> do
             -- Save the solution
-            tcState'metaMap . at meta . _JustUnsafe .=
-              ForSomeDeBruijnLevel (set metaInfo'maybeSolution (Right $ SolutionInfo parent solution) metaInfo)
+            tcState'metaMap . at meta . _JustUnsafe .= ForSomeDeBruijnLevel (
+              metaInfo & metaInfo'maybeSolution .~ (Right $ SolutionInfo parent $ ForSomeSolvableAST solution)
+              )
             -- Consider to unblock blocked constraints
             sequenceA_ $ worryIDs <&>
               {- @meta@ (introduced above) is currently being solved.

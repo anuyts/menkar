@@ -28,7 +28,7 @@ data Constraint sys = Constraint {
 
 data PriorityConstraint = PriorityDefault | PriorityFork | PriorityEta deriving (Eq, Ord)
 getJudgementPriority :: Judgement sys -> PriorityConstraint
-getJudgementPriority (JudEta token gamma t ty) = PriorityEta
+getJudgementPriority (JudEta token gamma t extraT ct) = PriorityEta
 getJudgementPriority _ = PriorityDefault
 getConstraintPriority :: Constraint sys -> PriorityConstraint
 getConstraintPriority = getJudgementPriority . _constraint'judgement

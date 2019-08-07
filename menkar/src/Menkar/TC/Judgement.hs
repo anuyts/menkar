@@ -80,12 +80,12 @@ checkConstraint parent = withParent parent $ case _constraint'judgement parent o
     checkTermRel parent eta (ModedDegree dgamma deg) gamma t1 t2 ty1 ty2
   -}
 
-  JudEta token gamma (t :: t _) tyT -> case unMeta t of
+  JudEta token gamma (t :: t _) extraT ct -> case unMeta t of
     Just (MetaBlocked, meta, depcies) -> do
       maybeT <- awaitMeta @sys @tc @t "If it's solved, then I needn't bother." meta depcies
       case maybeT of
-        Nothing -> void $ _checkEta gamma t tyT
-        Just _ -> return () -- every known term is obviously equal to its eta-expansion.
+        Nothing -> void $ checkEta token gamma t extraT ct
+        Just _ -> return () -- every known AST is obviously equal to its eta-expansion.
     otherwise -> unreachable
 
   JudSmartElim gamma eliminee tyEliminee eliminators result tyResult ->

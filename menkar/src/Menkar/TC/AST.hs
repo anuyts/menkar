@@ -100,7 +100,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
           -- place to request eta-expansion.
           case neutrality of
             MetaBlocked -> addNewConstraint
-              (JudEta analyzableToken gamma (Expr2 t) ty)
+              (JudEta analyzableToken gamma (Expr2 t) U1 ty)
               "Eta-expand meta if possible."
             MetaNeutral -> return ()
           tcBlock "I want to know what I'm supposed to type-check."

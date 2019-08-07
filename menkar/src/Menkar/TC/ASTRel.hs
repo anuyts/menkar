@@ -261,18 +261,18 @@ checkEtaForNormalType gamma t ty = do
 {- | Equate a term to its eta-expansion if it exists.
      Returns whether an eta-expansion exists, or blocks if this is unclear.
 -}
-checkEta ::
+checkEtaTerm :: 
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Ctx Type sys v Void ->
   Term sys v ->
   Type sys v ->
   tc Bool
-checkEta gamma t ty = do
+checkEtaTerm gamma t ty = do
   (whnTy, metas) <- runWriterT $ whnormalizeType gamma ty "Normalizing type."
   case isBlockedOrMeta (unType whnTy) metas of
     False -> do
       parent' <- defConstraint
-                   (JudEta analyzableToken gamma t whnTy)
+                   (JudEta analyzableToken gamma t U1 whnTy)
                    "Weak-head-normalized type."
       withParent parent' $ case unType whnTy of
         Var2 v -> return False
@@ -288,6 +288,22 @@ checkEta gamma t ty = do
           TermSys whnSysTy -> return False -- checkEtaWHNSysTy gamma t whnSysTy
           TermProblem _ -> tcFail $ "Nonsensical type."
     True -> tcBlock "Need to weak-head-normalize type before I can eta-expand."
+
+{- | Equate an AST to its eta-expansion if it exists.
+     Returns whether an eta-expansion exists, or blocks if this is unclear.
+-}
+checkEta ::
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
+  AnalyzableToken sys t ->
+  Ctx Type sys v Void ->
+  t v ->
+  ClassifExtraInput t v ->
+  Classif t v ->
+  tc Bool
+checkEta token gamma t extraT ct = case token of
+  AnTokenTerm -> checkEtaTerm gamma t ct
+  AnTokenSys sysToken -> checkEtaSys sysToken gamma t extraT ct
+  otherwise -> unreachable -- There are no other solvable AST types.
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   ModedDegree sys v ->
