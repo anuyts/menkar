@@ -391,6 +391,8 @@ whnormalizeChainModty gamma chmu@(ChainModtyMeta dom cod meta (Compose depcies))
   case maybeSolution of
     Nothing -> chmu <$ tell [meta]
     Just solution -> whnormalizeChainModty gamma solution reason
+whnormalizeChainModty gamma chmu@(ChainModtyAlreadyChecked dom cod chmuChecked) reason =
+  whnormalizeChainModty gamma chmuChecked reason
 
 {-
 whnormalizeChainModty :: forall whn v .

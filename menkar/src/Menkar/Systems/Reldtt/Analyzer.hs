@@ -27,7 +27,10 @@ import Data.Kind hiding (Type)
 type instance SysAnalyzerError Reldtt = ReldttAnalyzerError
 type instance SysAnalyzableToken Reldtt = ReldttAnalyzableToken
 
-data ReldttAnalyzerError = AnErrorModtySnout | AnErrorChainModtyMeta
+data ReldttAnalyzerError =
+  AnErrorModtySnout |
+  AnErrorChainModtyMeta |
+  AnErrorChainModtyAlreadyChecked
 data ReldttAnalyzableToken (t :: * -> *) where
   --AnTokenReldttMode :: ReldttAnalyzableToken ReldttMode
   --AnTokenChainModty :: ReldttAnalyzableToken ChainModty
@@ -167,6 +170,8 @@ instance Analyzable Reldtt ChainModty where
         TokenRel -> AnalysisRel
 
     ChainModtyMeta dom cod meta depcies -> Left $ AnErrorSys $ AnErrorChainModtyMeta
+    
+    ChainModtyAlreadyChecked dom cod chmu -> Left $ AnErrorSys $ AnErrorChainModtyAlreadyChecked
       
   convRel token d = U1 :*: U1
   extraClassif d t extraT = U1 :*: U1

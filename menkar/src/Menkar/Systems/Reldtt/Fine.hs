@@ -169,7 +169,11 @@ data ChainModty v =
     (Mode Reldtt v) {-^ domain -}
     (Mode Reldtt v) {-^ codomain -}
     MetaID {-^ Meta's index -}
-    (Compose [] (Mode Reldtt :*: Term Reldtt) v) {-^ dependencies -}
+    (Compose [] (Mode Reldtt :*: Term Reldtt) v) {-^ dependencies -} |
+  ChainModtyAlreadyChecked
+    (Mode Reldtt v) {-^ domain -}
+    (Mode Reldtt v) {-^ codomain -}
+    (ChainModty v) {-^ underlying chain modality -}
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt))
 
 wrapInChainModty :: Mode Reldtt v -> Mode Reldtt v -> Term Reldtt v -> ChainModty v
@@ -181,11 +185,13 @@ _chainModty'dom (ChainModtyKnown kmu) = _knownModty'dom $ kmu
 _chainModty'dom (ChainModtyLink kmu termNu chainRho) = _chainModty'dom $ chainRho
 _chainModty'dom (ChainModtyTerm dom cod tmu) = dom
 _chainModty'dom (ChainModtyMeta dom cod meta depcies) = dom
+_chainModty'dom (ChainModtyAlreadyChecked dom cod chmu) = dom
 _chainModty'cod :: ChainModty v -> Mode Reldtt v
 _chainModty'cod (ChainModtyKnown kmu) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyLink kmu termNu chainRho) = _knownModty'cod $ kmu
 _chainModty'cod (ChainModtyTerm dom cod tmu) = cod
 _chainModty'cod (ChainModtyMeta dom cod meta depcies) = cod
+_chainModty'cod (ChainModtyAlreadyChecked dom cod chmu) = cod
 
 extDisc :: ModtySnout -> ModtySnout
 extDisc (ModtySnout kdom kcod []) = (ModtySnout kdom (kcod + 1) [KnownDegEq])
