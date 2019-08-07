@@ -114,7 +114,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
           -}
         Just t' -> return t'
       childConstraint <- defConstraint
-        (Jud analyzableToken gamma t' extraT maybeCT)
+        (Jud analyzableToken gamma t' extraT (classifMust2will maybeCT))
         "Look up meta."
       withParent childConstraint $ checkAST gamma t' U1 (classifMust2will maybeCT)
     (AnErrorTermMeta, _, _) -> unreachable

@@ -19,7 +19,7 @@ import Data.Functor.Coerce
 
 import Control.Monad.Trans.Class
 import Control.Monad.Writer.Class
-import Control.Monad.Trans.Writer.Lazy hiding (listen)
+import Control.Monad.Trans.Writer.Lazy hiding (listen, tell)
 import Control.Monad.Trans.Maybe
 import Control.Monad.State.Lazy
 import Control.Applicative
@@ -386,6 +386,11 @@ whnormalizeChainModty gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
       (ChainModtyLink (idKnownModty cod) tmu $ ChainModtyKnown $ idKnownModty dom)
       reason
     otherwise -> return $ ChainModtyTerm dom cod tmu
+whnormalizeChainModty gamma chmu@(ChainModtyMeta dom cod meta (Compose depcies)) reason = do
+  maybeSolution <- awaitMeta reason meta depcies
+  case maybeSolution of
+    Nothing -> chmu <$ tell [meta]
+    Just solution -> whnormalizeChainModty gamma solution reason
 
 {-
 whnormalizeChainModty :: forall whn v .

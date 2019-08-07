@@ -69,6 +69,21 @@ instance SysTC Reldtt where
       when (any (== KnownDegProblem) krevdegs) $ tcFail "Problematic degree encountered."
       return U1
     (AnErrorModtySnout, _, _) -> unreachable
+    (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, chmu@(ChainModtyMeta dom cod meta (Compose depcies))) -> do
+      maybeChmu <- awaitMeta @Reldtt @_ @ChainModty "I want to know what modality I'm supposed to type-check." meta depcies
+      chmu' <- case maybeChmu of
+        Just chmu' -> return chmu'
+        Nothing -> do
+          -- request eta-expansion.
+          addNewConstraint
+            (JudEta analyzableToken gamma chmu U1 (fromClassifInfo (_modality'dom chmu :*: _modality'cod chmu) maybeCT))
+            "Eta-expand meta if possible"
+          tcBlock "I want to know what modality I'm supposed to type-check."
+      childConstraint <- defConstraint
+        (Jud analyzableToken gamma chmu' U1 (classifMust2will maybeCT))
+        "Look up meta."
+      withParent childConstraint $ checkAST gamma chmu' U1 (classifMust2will maybeCT)
+    (AnErrorChainModtyMeta, _, _) -> unreachable
 
   -- Relatedness-checker --
   -------------------------
