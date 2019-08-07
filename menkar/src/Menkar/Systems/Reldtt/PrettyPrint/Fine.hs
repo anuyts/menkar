@@ -24,6 +24,7 @@ import Text.PrettyPrint.Tree
 import Control.Monad.DoUntilFail
 import Control.Exception.AssertFalse
 import Data.Functor.Coerce
+import Data.Functor.Compose
 
 import Control.Monad
 import GHC.Generics
@@ -39,6 +40,7 @@ instance Fine2Pretty Reldtt ChainModty where
         [" \8728(" ++| fine2pretty gamma trho opts |++ ")\8728 "] /+/
       fine2pretty gamma chsigma opts
     ChainModtyTerm dom cod tmu -> "(" ++| fine2pretty gamma tmu opts |++ ")"
+    ChainModtyMeta dom cod meta (Compose depcies) -> meta2pretty gamma MetaBlocked meta depcies Nothing opts
 
 instance Fine2Pretty Reldtt ReldttDegree where
   fine2pretty gamma deg opts = case deg of

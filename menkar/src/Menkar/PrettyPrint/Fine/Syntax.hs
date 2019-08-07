@@ -4,6 +4,7 @@ module Menkar.PrettyPrint.Fine.Syntax where
 
 import Prelude hiding (lookup)
 
+import Menkar.ID
 import Menkar.PrettyPrint.Fine.Class
 import Menkar.System.PrettyPrint
 import Menkar.System.Fine
@@ -353,8 +354,14 @@ var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel Pr
 meta2pretty :: (DeBruijnLevel v,
                        SysFinePretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-  ScCtx sys v Void -> TermNV sys v -> Fine2PrettyOptions sys -> PrettyTree String
-meta2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)) opts =
+  ScCtx sys v Void ->
+  MetaNeutrality ->
+  MetaID ->
+  [(Mode sys :*: Term sys) v] ->
+  Maybe (Algorithm sys v) ->
+  Fine2PrettyOptions sys ->
+  PrettyTree String
+meta2pretty gamma neutrality meta depcies maybeAlg opts =
   ribbon ("?" ++ show meta ++ neutSuffix)
   \\\ case _fine2pretty'printSolutions opts of
         Nothing -> metaNoSolution
@@ -373,7 +380,6 @@ meta2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose may
         neutSuffix = case neutrality of
           MetaBlocked -> ""
           MetaNeutral -> "-neutral"
-meta2pretty gamma t opts = unreachable
 
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
@@ -382,7 +388,7 @@ instance (SysFinePretty sys,
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) opts =
     elimination2pretty gamma (Just mod) (Just eliminee) (Just tyEliminee) eliminator opts
   fine2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)) opts =
-    meta2pretty gamma tMeta opts
+    meta2pretty gamma neutrality meta depcies maybeAlg opts
   fine2pretty gamma TermWildcard opts = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) opts = Raw.unparse' qname
     {-
