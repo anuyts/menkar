@@ -96,6 +96,9 @@ instance SysTC Reldtt where
               Const ModLeq -> (<=)
         when (not $ snout1 ==/<= snout2) $ tcFail "False."
       (AnErrorModtySnout, _, _, _) -> unreachable
+      (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, _, _) ->
+        unreachable -- terms are neutral at this point
+      (AnErrorChainModtyMeta, _, _, _) -> unreachable
       
   checkMultimodeOrSysASTRel token eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs = case token of
     Left AnTokenMode -> byAnalysis
@@ -188,6 +191,9 @@ instance SysTC Reldtt where
         ModLeq -> unreachable -- There's no unique solution here and there are no metas.
         ModEq -> return $ Const snout2
       (AnErrorModtySnout, _, _) -> unreachable
+      (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, _) ->
+        unreachable -- terms are neutral at this point
+      (AnErrorChainModtyMeta, _, _) -> unreachable
 
   newRelatedMultimodeOrSysAST token eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
     case token of
