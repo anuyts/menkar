@@ -118,12 +118,12 @@ instance SysTC Reldtt where
           case getConst relT of
             ModLeq -> return False
             ModEq -> case (metasT1, metasT2, t1, t2) of
-              (_:_, [] , ChainModtyTerm _ _ (Expr2 (TermMeta neut1 meta1 (Compose depcies1) (Compose maybeAlg1))), _) ->
-                isNothing <$> tryToSolveImmediately          gamma  neut1 meta1 depcies1 maybeAlg1 (BareChainModty t2)
+              (_:_, [] , ChainModtyMeta _ _ meta1 (Compose depcies1), _) ->
+                isNothing <$> tryToSolveImmediately          gamma  MetaBlocked meta1 depcies1 Nothing (BareChainModty t2)
                    (BareSysType $ SysTypeModty dom1 cod1)
                    (BareSysType $ SysTypeModty dom2 cod2)
-              ([] , _:_, _, ChainModtyTerm _ _ (Expr2 (TermMeta neut2 meta2 (Compose depcies2) (Compose maybeAlg2)))) ->
-                isNothing <$> tryToSolveImmediately (flipCtx gamma) neut2 meta2 depcies2 maybeAlg2 (BareChainModty t1)
+              ([] , _:_, _, ChainModtyMeta _ _ meta2 (Compose depcies2)) ->
+                isNothing <$> tryToSolveImmediately (flipCtx gamma) MetaBlocked meta2 depcies2 Nothing (BareChainModty t1)
                    (BareSysType $ SysTypeModty dom2 cod2)
                    (BareSysType $ SysTypeModty dom1 cod1)
               otherwise -> return False
@@ -141,24 +141,10 @@ instance SysTC Reldtt where
           unless etaSolved $ case (metasT1, metasT2, t1, t2) of
             ([], _  , ChainModtyTerm _ _ _, _) -> unreachable
             (_  , [] , _, ChainModtyTerm _ _ _) -> unreachable
-            ([] , [] , _, _) ->
-              checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs
-            (_:_, [] , ChainModtyTerm _ _ tmu1, _) -> tcBlock $ "Cannot solve relation: left side is blocked."
-            {-do
-            let tmu2 = BareChainModty t2
-            checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
-              (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
-              --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))-}
-            (_:_, [] , _, _) -> unreachable
-            ([] , _:_, _, ChainModtyTerm _ _ tmu2) -> tcBlock $ "Cannot solve relation: right side is blocked."
-            {-do
-            let tmu1 = BareChainModty t1
-            checkTermRel (Eta False) (modedEqDeg dataMode) gamma (Twice1 tmu1 tmu2)
-              (ClassifWillBe $ Twice1 (BareSysType $ SysTypeModty dom1 cod1) (BareSysType $ SysTypeModty dom2 cod2))
-              --(maybeCTs <&> mapTwice1 (\ (dom :*: cod) -> BareSysType $ SysTypeModty dom cod))-}
-            ([] , _:_, _, _) -> unreachable
-            (_:_, _:_, _, _) ->
-              tcBlock "Cannot solve inequality: both sides are blocked on a meta-variable."
+            ([] , [] , _, _) -> checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs
+            (_:_, [] , _, _) -> tcBlock $ "Cannot solve relation: left side is blocked."
+            ([] , _:_, _, _) -> tcBlock $ "Cannot solve relation: right side is blocked."
+            (_:_, _:_, _, _) -> tcBlock $ "Cannot solve inequality: both sides are blocked on a meta-variable."
     Left AnTokenDegree -> do
       (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
       (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
