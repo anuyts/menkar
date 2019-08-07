@@ -8,7 +8,7 @@ import Menkar.Fine.Syntax
 import Menkar.Fine.Judgement
 import Menkar.Fine.Context
 import qualified Menkar.Raw.Syntax as Raw
-import Menkar.System.Analyzer
+import Menkar.Analyzer
 --import Menkar.Scoper.Monad
 
 import Data.Void
@@ -85,7 +85,7 @@ class (
          are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
          run with the soluiton.
       It is an error to await the same meta twice. -}
-  awaitMeta :: String -> Int -> [(Mode sys :*: Term sys) v] -> whn (Maybe (Term sys v))
+  awaitMeta :: Solvable sys t => String -> Int -> [(Mode sys :*: Term sys) v] -> whn (Maybe (t v))
 
 instance (MonadWHN sys whn, MonadTrans mT, MonadFail (mT whn)) => MonadWHN sys (mT whn) where
   awaitMeta reason meta depcies = lift $ awaitMeta reason meta depcies
@@ -119,11 +119,12 @@ class (
       The returned result of type 'a' is just passed back to the caller.
   -}
   solveMeta ::
+    (Solvable sys t) =>
     Int ->
     (forall v .
       (Eq v, DeBruijnLevel v) =>
       Ctx Type sys v Void ->
-      tc (Maybe (Term sys v), a)
+      tc (Maybe (t v), a)
     ) -> tc a
   --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
   ---}
@@ -141,7 +142,7 @@ class (
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
   --selfcontained :: Constraint sys -> tc () -> tc ()
 
-await :: (MonadWHN sys whn) =>
+await :: (MonadWHN sys whn, SysAnalyzer sys) =>
   String -> Term sys v -> whn (Maybe (Term sys v))
 await reason (Expr2 (TermMeta flagEta meta (Compose depcies) alg)) = runMaybeT $ do
   term <- MaybeT $ awaitMeta reason meta depcies
