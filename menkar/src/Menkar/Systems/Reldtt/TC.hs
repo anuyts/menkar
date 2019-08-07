@@ -119,13 +119,13 @@ instance SysTC Reldtt where
             ModLeq -> return False
             ModEq -> case (metasT1, metasT2, t1, t2) of
               (_:_, [] , ChainModtyMeta _ _ meta1 (Compose depcies1), _) ->
-                isNothing <$> tryToSolveImmediately          gamma  MetaBlocked meta1 depcies1 Nothing (BareChainModty t2)
-                   (BareSysType $ SysTypeModty dom1 cod1)
-                   (BareSysType $ SysTypeModty dom2 cod2)
+                isNothing <$> tryToSolveImmediately          gamma  MetaBlocked meta1 depcies1 Nothing t2
+                   (dom1 :*: cod1)
+                   (dom2 :*: cod2)
               ([] , _:_, _, ChainModtyMeta _ _ meta2 (Compose depcies2)) ->
-                isNothing <$> tryToSolveImmediately (flipCtx gamma) MetaBlocked meta2 depcies2 Nothing (BareChainModty t1)
-                   (BareSysType $ SysTypeModty dom2 cod2)
-                   (BareSysType $ SysTypeModty dom1 cod1)
+                isNothing <$> tryToSolveImmediately (flipCtx gamma) MetaBlocked meta2 depcies2 Nothing t1
+                   (dom2 :*: cod2)
+                   (dom1 :*: cod1)
               otherwise -> return False
         -- If this failed, then we try eta and otherwise compare normal chains.
         unless solved $ do

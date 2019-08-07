@@ -471,7 +471,7 @@ typetrick gamma inputT h = fmap getAnalysisTC <$>
 
 -------------------------------------------------
 
-class (Analyzable sys t, Traversable t, CanSwallow (Term sys) t) => Solvable sys t where
+class (Analyzable sys t, Traversable t, CanSwallow (Term sys) t, ClassifExtraInput t ~ U1) => Solvable sys t where
   astAlreadyChecked :: forall v . (DeBruijnLevel v) => t v -> Classif t v -> t v
   unMeta :: forall v . (DeBruijnLevel v) => t v -> Maybe (MetaNeutrality, MetaID, [(Mode sys :*: Term sys) v])
 

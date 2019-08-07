@@ -179,21 +179,21 @@ getSubstAndPartialInv depcies = do
           let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
           return (subst, partialInv)
 
-tryToSolveBy :: forall sys tc v .
-  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+tryToSolveBy :: forall sys tc t v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
   Ctx (Twice2 Type) sys v Void ->
   MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
+  t v ->
+  Classif t v ->
+  Classif t v ->
   (forall vOrig . (DeBruijnLevel vOrig) =>
     Ctx Type sys vOrig Void ->
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
-    tc (Maybe (Term sys vOrig), Maybe String)
+    tc (Maybe (t vOrig), Maybe String)
   ) ->
   tc (Maybe String)
-tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 procedure = do
+tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
   depcies1 <- sequenceA $ depcies1 <&> \ (d :*: depcy) ->
     fmap ((d :*:) . fst) $ runWriterT $ whnormalize (CtxOpaque $ VarFromCtx <$> d) depcy (Type $ Expr2 $ TermWildcard)
       "Trying to weak-head-normalize meta dependency to a variable"
@@ -201,7 +201,7 @@ tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 procedure = do
         MetaBlocked -> Nothing
         MetaNeutral -> case t2 of
           -- If a neutral meta is being equated to a constructor, eta-expansion is our only hope.
-          (Expr2 (TermCons _)) -> Just $ "Cannot solve neutral meta-variable with constructor expression."
+          --(Expr2 (TermCons _)) -> Just $ "Cannot solve neutral meta-variable with constructor expression."
           otherwise -> Nothing
   case maybeProblem of
     Just msg -> return $ Just msg
@@ -210,18 +210,18 @@ tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 procedure = do
         Left msg -> return (Nothing, Just msg)
         Right (subst, partialInv) -> procedure gammaOrig subst partialInv  
 
-tryToSolveAgainstWHN :: forall sys tc v .
-  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Degree sys v ->
+tryToSolveAgainstWHN :: forall sys tc t v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
+  Relation t v ->
   Ctx (Twice2 Type) sys v Void ->
   MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
+  t v ->
+  Classif t v ->
+  Classif t v ->
   tc (Maybe String)
-tryToSolveAgainstWHN deg gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 =
-  tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 $ \ gammaOrig subst partialInv -> do
-    t1orig <- newRelatedAST' deg gammaOrig gamma subst partialInv t2 U1 U1 (ClassifWillBe $ Twice1 ty1 ty2)
+tryToSolveAgainstWHN rel gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 =
+  tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 $ \ gammaOrig subst partialInv -> do
+    t1orig <- newRelatedAST' rel gammaOrig gamma subst partialInv t2 U1 U1 (ClassifWillBe $ Twice1 ct1 ct2)
     return (Just t1orig, Nothing)
   {-do
   let maybeProblem = case neut1 of
@@ -242,17 +242,17 @@ tryToSolveAgainstWHN deg gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 =
 {- Either solves the meta right away and returns 'Nothing', or does nothing and returns 'Just' why not.
    Never blocks.
 -}
-tryToSolveImmediately :: forall sys tc v .
-  (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
+tryToSolveImmediately :: forall sys tc t v .
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
   Ctx (Twice2 Type) sys v Void ->
   MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
-  Term sys v ->
-  Type sys v ->
-  Type sys v ->
+  t v ->
+  Classif t v ->
+  Classif t v ->
   tc (Maybe String)
-tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 =
-  tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2 $ \ gammaOrig subst partialInv -> do
-    case sequenceA $ partialInv <$> (Expr2 $ TermAlreadyChecked t2 ty2) of
+tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 =
+  tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 $ \ gammaOrig subst partialInv -> do
+    case sequenceA $ partialInv <$> astAlreadyChecked @sys t2 ct2 of
       Nothing ->
         return (Nothing, Just "Cannot solve meta-variable immediately: candidate solution may have more dependencies.")
       Just t2orig -> return (Just t2orig, Nothing)
