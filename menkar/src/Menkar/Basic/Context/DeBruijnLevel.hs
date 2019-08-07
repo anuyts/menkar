@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.List hiding (take, length)
 import Data.Functor.Compose
 import Data.Functor.Identity
+import Unsafe.Coerce
 
 -------------------------------------------------
 
@@ -80,3 +81,5 @@ mapDeBruijnLevel f (ForSomeDeBruijnLevel a) = ForSomeDeBruijnLevel $ f a
 atThisDeBruijnLevel :: forall f a b . (Functor f) =>
   (forall v . DeBruijnLevel v => a v -> f (b v)) -> ForSomeDeBruijnLevel a -> f (ForSomeDeBruijnLevel b)
 atThisDeBruijnLevel g (ForSomeDeBruijnLevel a) = ForSomeDeBruijnLevel <$> g a
+unsafeForceDeBruijnLevel :: forall v a . (Functor a, DeBruijnLevel v) => ForSomeDeBruijnLevel a -> a v
+unsafeForceDeBruijnLevel (ForSomeDeBruijnLevel a) = unsafeCoerce <$> a

@@ -21,6 +21,7 @@ import Data.Functor.Compose
 import GHC.Generics
 import Data.Maybe
 import Control.Monad
+import Unsafe.Coerce
 
 data BoolToken (bool :: Bool) where
   TokenTrue :: BoolToken True
@@ -466,3 +467,28 @@ typetrick gamma inputT h = fmap getAnalysisTC <$>
     \ wkn maybeGamma inputS _ _ addressInfo _ ->
       AnalysisTC <$> h wkn (fromMaybe unreachable maybeGamma) inputS addressInfo
   )
+
+-------------------------------------------------
+
+class (Analyzable sys t, Traversable t, CanSwallow (Term sys) t) => Solvable sys t where
+  astAlreadyChecked :: forall v . (DeBruijnLevel v) => t v -> Classif t v -> t v
+
+-----------------------------------
+
+data ForSomeSolvableAST sys v = forall t . (Solvable sys t) => ForSomeSolvableAST (t v)
+deriving instance Functor (ForSomeSolvableAST sys)
+deriving instance Foldable (ForSomeSolvableAST sys)
+deriving instance Traversable (ForSomeSolvableAST sys)
+instance CanSwallow (Term sys) (ForSomeSolvableAST sys) where
+  swallow (ForSomeSolvableAST t) = ForSomeSolvableAST $ swallow t
+
+forThisSolvableAST :: forall sys v x . (forall t . (Solvable sys t) => t v -> x) -> ForSomeSolvableAST sys v -> x
+forThisSolvableAST f (ForSomeSolvableAST t) = f t
+
+atThisSolvableAST :: forall sys f v w . (Functor f) =>
+  (forall t . Solvable sys t => t v -> f (t w)) ->
+  (ForSomeSolvableAST sys v -> f (ForSomeSolvableAST sys w))
+atThisSolvableAST g (ForSomeSolvableAST t) = ForSomeSolvableAST <$> g t
+
+unsafeForceSolvableAST :: forall t sys v . (Solvable sys t) => ForSomeSolvableAST sys v -> t v
+unsafeForceSolvableAST (ForSomeSolvableAST s) = unsafeCoerce s
