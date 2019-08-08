@@ -14,6 +14,7 @@ import Menkar.WHN
 import Control.Exception.AssertFalse
 import Data.Constraint.Conditional
 import Data.Functor.Functor1
+import Data.Constraint.Witness
 
 import Data.Void
 import Control.Lens
@@ -250,8 +251,14 @@ tryToSolveImmediately :: forall sys tc t v .
   Classif t v ->
   Classif t v ->
   tc (Maybe String)
-tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 =
+tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 = have (witClassif @sys @t analyzableToken) $
   tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 $ \ gammaOrig subst partialInv -> do
+    --whnormalize the type (classifier) a bit to decrease the amount of variables you depend on
+    let extraCT2 = extraClassif @sys @t (unVarFromCtx <$> ctx'mode gamma) t2 U1
+    cct2 <- newMetaClassif4astNoCheck (sndCtx gamma) ct2 extraCT2 "Inferring a classifier's classifier."
+      -- It is assumed that a classifier's classifier needs no metas.
+    (whnct2, _) <- runWriterT $ whnormalizeAST (sndCtx gamma) ct2 extraCT2 cct2 "Weak-head-normalize type of solution."
+    --solve
     case sequenceA $ partialInv <$> astAlreadyChecked @sys t2 ct2 of
       Nothing ->
         return (Nothing, Just "Cannot solve meta-variable immediately: candidate solution may have more dependencies.")
