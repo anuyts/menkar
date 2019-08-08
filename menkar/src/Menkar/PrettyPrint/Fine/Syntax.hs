@@ -103,7 +103,7 @@ instance (SysFinePretty sys,
 binding2pretty :: (DeBruijnLevel v,
                   SysFinePretty sys,
                   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
-                  String -> ScCtx sys v Void -> Binding Type rhs sys v -> Fine2PrettyOptions sys -> PrettyTree String
+                  String -> ScCtx sys v -> Binding Type rhs sys v -> Fine2PrettyOptions sys -> PrettyTree String
 binding2pretty opstring gamma binding opts =
   fine2pretty gamma (binding'segment binding) opts
   \\\ [" " ++ opstring ++ " " ++|
@@ -208,7 +208,7 @@ typed2pretty' tPretty tyPretty opts
 typed2pretty :: (DeBruijnLevel v,
                        SysFinePretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-  ScCtx sys v Void ->
+  ScCtx sys v ->
   Term sys v ->
   Type sys v ->
   Fine2PrettyOptions sys ->
@@ -240,7 +240,7 @@ instance (SysFinePretty sys,
 elimination2pretty :: (DeBruijnLevel v,
                        SysFinePretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         ScCtx sys v Void ->
+         ScCtx sys v ->
          Maybe (ModalityTo sys v) ->
          Maybe (Term sys v) ->
          Maybe (UniHSConstructor sys v) ->
@@ -345,7 +345,7 @@ nameWithIndex :: Maybe Raw.Name -> Int -> PrettyTree String
 nameWithIndex maybeName index = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName)
     |++ (toSubscript $ show $ index)
 
-var2pretty :: DeBruijnLevel v => ScCtx sys v Void -> v -> Fine2PrettyOptions sys -> PrettyTree String
+var2pretty :: DeBruijnLevel v => ScCtx sys v -> v -> Fine2PrettyOptions sys -> PrettyTree String
 var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel Proxy v)
 
 {-| Term is required to be a meta.
@@ -353,7 +353,7 @@ var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel Pr
 meta2pretty :: (DeBruijnLevel v,
                        SysFinePretty sys,
                        Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-  ScCtx sys v Void ->
+  ScCtx sys v ->
   MetaNeutrality ->
   MetaID ->
   [(Mode sys :*: Term sys) v] ->
@@ -458,7 +458,7 @@ instance (SysFinePretty sys,
   show plic = "[Plicity|\n" ++ fine2string @sys ScCtxEmpty plic omit ++ "\n|]"
 
 declName2pretty :: forall v sys declSort . DeBruijnLevel v =>
-  ScCtx sys v Void -> DeclName declSort -> Fine2PrettyOptions sys -> PrettyTree String
+  ScCtx sys v -> DeclName declSort -> Fine2PrettyOptions sys -> PrettyTree String
 declName2pretty gamma (DeclNameVal name) opts = Raw.unparse' name
 declName2pretty gamma (DeclNameModule str) opts = ribbon str
 declName2pretty gamma (DeclNameSegment maybeName) opts =
@@ -470,7 +470,7 @@ instance Show (DeclName declSort) where
 telescope2pretties :: (DeBruijnLevel v,
          SysFinePretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
-         ScCtx sys v Void -> Telescope ty sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
+         ScCtx sys v -> Telescope ty sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 telescope2pretties gamma (Telescoped Unit2) opts = []
 telescope2pretties gamma (seg :|- telescope) opts =
   (fine2pretty gamma seg opts) : telescope2pretties (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) telescope opts
@@ -495,7 +495,7 @@ instance (SysFinePretty sys, Functor (ty sys),
 declAnnots2pretties :: (DeBruijnLevel v,
          SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-         ScCtx sys v Void -> Declaration declSort content sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
+         ScCtx sys v -> Declaration declSort content sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 declAnnots2pretties gamma decl opts = [
                 fine2pretty gamma (_decl'plicity decl) opts |++ " ",
                 fine2pretty gamma (_decl'modty decl) opts |++ " "
@@ -504,7 +504,7 @@ declAnnots2pretties gamma decl opts = [
 {-
 tdeclAnnots2pretties :: (SysFinePretty sys, Functor (ty sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys ty) =>
-         ScCtx sys v Void -> TelescopedDeclaration declSort ty content sys v -> [PrettyTree String]
+         ScCtx sys v -> TelescopedDeclaration declSort ty content sys v -> [PrettyTree String]
 tdeclAnnots2pretties gamma tdecl =
         getConst (mapTelescopedSc (
             \ wkn gammadelta decl -> Const $ declAnnots2pretties gammadelta decl
@@ -515,7 +515,7 @@ seg2pretty ::
   (DeBruijnLevel v,
    SysFinePretty sys, Functor (ty sys),
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
-   ScCtx sys v Void -> Segment ty sys v -> Int ->
+   ScCtx sys v -> Segment ty sys v -> Int ->
    Fine2PrettyOptions sys -> PrettyTree String
 seg2pretty gamma seg index opts =
     ribbon " {" \\\
@@ -531,7 +531,7 @@ dividedSeg2pretty :: forall v sys ty .
    Multimode sys, Functor (ty sys),
    SysFinePretty sys, Fine2Pretty sys (ty sys)) =>
    Maybe (ModedModality sys v) ->
-   ScCtx sys v Void -> Segment ty sys v -> Int ->
+   ScCtx sys v -> Segment ty sys v -> Int ->
    Fine2PrettyOptions sys -> PrettyTree String
 dividedSeg2pretty (Just dmu) gamma seg index opts = dividedSeg2pretty Nothing gamma seg' index opts
   where seg' = over (decl'modty . modalityTo'mod) (divModedModality dmu) $ seg
@@ -583,7 +583,7 @@ instance (SysFinePretty sys,
 moduleContents2pretty ::
   (SysFinePretty sys, DeBruijnLevel v,
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
-  ScCtx sys v Void -> ModuleRHS sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
+  ScCtx sys v -> ModuleRHS sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 moduleContents2pretty gamma moduleRHS opts = case unPrintModuleVerbosity $ _fine2pretty'printModule opts of
   Nothing -> [ribbon "..."]
   Just p ->

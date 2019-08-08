@@ -23,7 +23,7 @@ class (SysAnalyzer sys,
   sysClassif2pretty :: forall t v .
     (DeBruijnLevel v, Multimode sys, Analyzable sys t) =>
     SysAnalyzableToken sys t ->
-    ScCtx sys v Void ->
+    ScCtx sys v ->
     ClassifExtraInput t v ->
     Classif t v ->
     ClassifExtraInput (Classif t) v ->
@@ -32,7 +32,7 @@ class (SysAnalyzer sys,
   sysRelation2pretty :: forall t v .
     (DeBruijnLevel v, Multimode sys,Analyzable sys t) =>
     SysAnalyzableToken sys t ->
-    ScCtx sys v Void ->
+    ScCtx sys v ->
     ClassifExtraInput t v ->
     ClassifExtraInput t v ->
     Relation t v ->

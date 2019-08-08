@@ -70,7 +70,7 @@ modrel2pretty ModEq  = ribbon "="
 relation2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
-  ScCtx sys v Void ->
+  ScCtx sys v ->
   ClassifExtraInput t v ->
   ClassifExtraInput t v ->
   Relation t v ->
@@ -118,7 +118,7 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
 classif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
-  ScCtx sys v Void ->
+  ScCtx sys v ->
   ClassifExtraInput t v ->
   Classif t v ->
   ClassifExtraInput (Classif t) v ->
@@ -180,7 +180,7 @@ classif2pretty token gamma extraT ct extraCT opts =
 maybeClassif2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t) =>
   AnalyzableToken sys t ->
-  ScCtx sys v Void ->
+  ScCtx sys v ->
   ClassifExtraInput t v ->
   ClassifInfo (Classif t v) ->
   ClassifExtraInput (Classif t) v ->
@@ -194,7 +194,7 @@ maybeClassif2pretty token gamma extraT (ClassifUnknown) extraCT opts = ribbon ":
 
 classification2pretty :: forall sys t v .
   (DeBruijnLevel v, Multimode sys, SysFinePretty sys, Analyzable sys t, Fine2Pretty sys t) =>
-  ScCtx sys v Void ->
+  ScCtx sys v ->
   Classification t v ->
   ClassifExtraInput (Classif t) v ->
   Fine2PrettyOptions sys ->

@@ -29,7 +29,7 @@ class SysWHN sys => SysTC sys where
   checkSysASTUnanalyzable :: forall tc v t .
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
     SysAnalyzerError sys ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     t v ->
     ClassifExtraInput t v ->
     ClassifInfo (Classif t v) ->
@@ -44,7 +44,7 @@ class SysWHN sys => SysTC sys where
     SysAnalyzerError sys ->
     Eta ->
     Relation t v ->
-    Ctx (Twice2 Type) sys v Void ->
+    Ctx (Twice2 Type) sys v ->
     Twice1 t v ->
     Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
@@ -54,7 +54,7 @@ class SysWHN sys => SysTC sys where
     MultimodeOrSysAnalyzableToken sys t ->
     Eta ->
     Relation t v ->
-    Ctx (Twice2 Type) sys v Void ->
+    Ctx (Twice2 Type) sys v ->
     Twice1 t v ->
     Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) ->
@@ -67,8 +67,8 @@ class SysWHN sys => SysTC sys where
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     SysAnalyzerError sys ->
     Relation t v ->
-    Ctx Type sys vOrig Void ->
-    Ctx (Twice2 Type) sys v Void ->
+    Ctx Type sys vOrig ->
+    Ctx (Twice2 Type) sys v ->
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     t v ->
@@ -82,8 +82,8 @@ class SysWHN sys => SysTC sys where
     MultimodeOrSysAnalyzableToken sys t ->
     Eta ->
     Relation t v ->
-    Ctx Type sys vOrig Void ->
-    Ctx (Twice2 Type) sys v Void ->
+    Ctx Type sys vOrig ->
+    Ctx (Twice2 Type) sys v ->
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     t v ->
@@ -102,7 +102,7 @@ class SysWHN sys => SysTC sys where
   checkEtaMultimodeOrSys :: forall tc t v .
     (MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
     MultimodeOrSysAnalyzableToken sys t ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     t v ->
     ClassifExtraInput t v ->
     Classif t v ->
@@ -113,7 +113,7 @@ class SysWHN sys => SysTC sys where
   etaExpandSysType :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
     UseHolesOrEliminees ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Term sys v ->
     SysUniHSConstructor sys v ->
     tc (Maybe (Maybe (Term sys v)))
@@ -123,7 +123,7 @@ class SysWHN sys => SysTC sys where
   -- | ABOLISH THIS: eta isn't supported for non-universe types.
   checkEtaWHNSysTy :: forall tc v .
     (MonadTC sys tc, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Term sys v ->
     SysTerm sys v {-^ The type -} ->
     tc Bool
@@ -136,7 +136,7 @@ newMetaClassif4ast :: forall sys tc t v .
    SysAnalyzer sys,
    Analyzable sys t) =>
   --AnalyzableToken sys t ->
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   String ->
@@ -159,8 +159,8 @@ newMetaClassif4ast gamma t extraT reason =
 newRelatedMetaMode :: forall sys tc v vOrig .
     (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig) =>
     Eta ->
-    Ctx Type sys vOrig Void ->
-    Ctx (Twice2 Type) sys v Void ->
+    Ctx Type sys vOrig ->
+    Ctx (Twice2 Type) sys v ->
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     Mode sys v ->

@@ -59,8 +59,8 @@ instance Omissible (Fine2PrettyOptions sys) where
 ---------------------------
 
 class Fine2Pretty sys t where
-  fine2pretty :: forall v . DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> PrettyTree String
-  fine2string :: forall v . DeBruijnLevel v => ScCtx sys v Void -> t v -> Fine2PrettyOptions sys -> String
+  fine2pretty :: forall v . DeBruijnLevel v => ScCtx sys v -> t v -> Fine2PrettyOptions sys -> PrettyTree String
+  fine2string :: forall v . DeBruijnLevel v => ScCtx sys v -> t v -> Fine2PrettyOptions sys -> String
   fine2string gamma x opts = render (fine2pretty gamma x opts) $ _fine2pretty'renderOptions opts
 
 instance Fine2Pretty sys t => Fine2Pretty sys (Box1 t) where
