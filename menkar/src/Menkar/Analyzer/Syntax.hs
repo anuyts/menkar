@@ -1331,7 +1331,7 @@ instance SysAnalyzer sys => Analyzable sys (ModuleRHS sys) where
         (\ gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') ->
            Just $ Classification (revEntries' !! indexRev) U1 (ClassifWillBe U1))
         (\ token' gamma' (Classification moduleRHS'@(ModuleRHS (Compose revEntries')) U1 maybeU1') _ ->
-           Just $ gamma' :<...> VarFromCtx <$> ModuleRHS (Compose $ tails revEntries' !! indexRev))
+           Just $ gamma' :<...> VarFromCtx <$> ModuleRHS (Compose $ tails revEntries' !! (indexRev + 1)))
         (const $ fmapCoe VarInModule)
         (AddressInfo [show (index + 1) ++ "th entry"] FocusWrapped omit)
     return $ case token of
