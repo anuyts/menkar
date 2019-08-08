@@ -84,6 +84,9 @@ instance SysTC Reldtt where
         "Look up meta."
       withParent childConstraint $ checkAST gamma chmu' U1 (classifMust2will maybeCT)
     (AnErrorChainModtyMeta, _, _) -> unreachable
+    (AnErrorChainModtyAlreadyChecked, AnTokenMultimode AnTokenModality,
+     chmu@(ChainModtyAlreadyChecked dom cod chmuChecked)) -> return $ dom :*: cod
+    (AnErrorChainModtyAlreadyChecked, _, _) -> unreachable
 
   -- Relatedness-checker --
   -------------------------
@@ -99,6 +102,9 @@ instance SysTC Reldtt where
       (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, _, _) ->
         unreachable -- terms are neutral at this point
       (AnErrorChainModtyMeta, _, _, _) -> unreachable
+      (AnErrorChainModtyAlreadyChecked, AnTokenMultimode AnTokenModality, _, _) ->
+        unreachable -- terms are neutral at this point
+      (AnErrorChainModtyAlreadyChecked, _, _, _) -> unreachable
       
   checkMultimodeOrSysASTRel token eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) maybeCTs = case token of
     Left AnTokenMode -> byAnalysis
@@ -180,6 +186,9 @@ instance SysTC Reldtt where
       (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, _) ->
         unreachable -- terms are neutral at this point
       (AnErrorChainModtyMeta, _, _) -> unreachable
+      (AnErrorChainModtyAlreadyChecked, AnTokenMultimode AnTokenModality, _) ->
+        unreachable -- terms are neutral at this point
+      (AnErrorChainModtyAlreadyChecked, _, _) -> unreachable
 
   newRelatedMultimodeOrSysAST token eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs reason =
     case token of

@@ -717,6 +717,10 @@ instance SysAnalyzer Reldtt where
       (_, ChainModtyMeta _ _ _ _) -> False
       otherwise -> unreachable
     (AnErrorChainModtyMeta, _) -> unreachable
+    (AnErrorChainModtyAlreadyChecked, AnTokenMultimode AnTokenModality) -> case (t1, t2) of
+      (ChainModtyAlreadyChecked _ _ chmu1, ChainModtyAlreadyChecked _ _ chmu2) -> quickEq @Reldtt chmu1 chmu2 U1 U1
+      otherwise -> False
+    (AnErrorChainModtyAlreadyChecked, _) -> unreachable
     {-(AnErrorKnownModty, AnTokenKnownModty) -> case (t1, t2) of
       (KnownModty snout1 tail1, KnownModty snout2 tail2) ->
         (snout1 == snout2) && case (tail1, tail2) of
@@ -727,6 +731,6 @@ instance SysAnalyzer Reldtt where
 --------------------------------
 
 instance Solvable Reldtt ChainModty where
-  astAlreadyChecked chmu _ = chmu
+  astAlreadyChecked chmu (dom :*: cod) = ChainModtyAlreadyChecked dom cod chmu
   unMeta (ChainModtyMeta dom cod meta (Compose depcies)) = Just (MetaBlocked, meta, depcies)
   unMeta _ = Nothing
