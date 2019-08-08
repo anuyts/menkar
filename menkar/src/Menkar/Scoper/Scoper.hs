@@ -27,7 +27,6 @@ import Data.HashMap.Lazy
 import Data.Functor.Identity
 import Data.Coerce
 import Control.Lens
-import Data.Number.Nat
 import Data.List
 import GHC.Generics
 
@@ -53,7 +52,7 @@ eliminator gamma (Raw.ElimUnbox) = return $ SmartElimUnbox
 
 natLiteral :: forall sys sc v .
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
-  Nat -> sc (Term sys v)
+  Int -> sc (Term sys v)
 natLiteral n
   | n == 0 = return $ Expr2 $ TermCons $ ConsZero
   | otherwise = Expr2 . TermCons . ConsSuc <$> natLiteral (n - 1)

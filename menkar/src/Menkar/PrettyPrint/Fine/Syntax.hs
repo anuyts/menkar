@@ -29,7 +29,6 @@ import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
 import Control.Monad
-import Data.Number.Nat
 import Data.IntMap.Lazy hiding (map, size)
 import GHC.Generics
 
@@ -342,7 +341,7 @@ deriving instance (SysFinePretty sys,
                    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys))
     => Show (Type sys Void)
 
-nameWithIndex :: Maybe Raw.Name -> Nat -> PrettyTree String
+nameWithIndex :: Maybe Raw.Name -> Int -> PrettyTree String
 nameWithIndex maybeName index = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybeName)
     |++ (toSubscript $ show $ index)
 
@@ -516,7 +515,7 @@ seg2pretty ::
   (DeBruijnLevel v,
    SysFinePretty sys, Functor (ty sys),
    Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (ty sys)) =>
-   ScCtx sys v Void -> Segment ty sys v -> Nat ->
+   ScCtx sys v Void -> Segment ty sys v -> Int ->
    Fine2PrettyOptions sys -> PrettyTree String
 seg2pretty gamma seg index opts =
     ribbon " {" \\\
@@ -532,7 +531,7 @@ dividedSeg2pretty :: forall v sys ty .
    Multimode sys, Functor (ty sys),
    SysFinePretty sys, Fine2Pretty sys (ty sys)) =>
    Maybe (ModedModality sys v) ->
-   ScCtx sys v Void -> Segment ty sys v -> Nat ->
+   ScCtx sys v Void -> Segment ty sys v -> Int ->
    Fine2PrettyOptions sys -> PrettyTree String
 dividedSeg2pretty (Just dmu) gamma seg index opts = dividedSeg2pretty Nothing gamma seg' index opts
   where seg' = over (decl'modty . modalityTo'mod) (divModedModality dmu) $ seg

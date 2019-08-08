@@ -16,13 +16,12 @@ import Control.Exception.AssertFalse
 import Data.Void
 import Data.Functor.Compose
 import Data.Proxy
-import Data.Number.Nat
 import Data.Maybe
 import GHC.Generics (U1 (..))
 import GHC.Stack
 
 -- | These are de Bruijn LEVELS, not INDICES!!!
-var :: (HasCallStack, DeBruijnLevel v) => Nat -> Term Trivial v
+var :: (HasCallStack, DeBruijnLevel v) => Int -> Term Trivial v
 var n = Var2 $ fromMaybe unreachable $ forDeBruijnLevel Proxy n
 
 val :: Opness -> String -> Telescoped Type ValRHS Trivial v -> Entry Trivial v

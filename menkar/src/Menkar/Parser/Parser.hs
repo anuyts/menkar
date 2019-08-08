@@ -15,7 +15,6 @@ import qualified Text.Megaparsec.Char.Lexer as MPL
 import Control.Monad.Identity
 import Control.Applicative
 import Data.Char
-import Data.Number.Nat
 import Data.Maybe
 import Data.Void
 --import Data.Ord

@@ -17,17 +17,16 @@ import Control.Exception.AssertFalse
 import Data.Void
 import Data.Functor.Compose
 import Data.Proxy
-import Data.Number.Nat
 import Data.Maybe
 import GHC.Generics (U1 (..))
 import GHC.Stack
 
 -- | These are de Bruijn LEVELS, not INDICES!!!
-var :: (HasCallStack, DeBruijnLevel v) => Nat -> Term Reldtt v
+var :: (HasCallStack, DeBruijnLevel v) => Int -> Term Reldtt v
 var n = Var2 $ fromMaybe unreachable $ forDeBruijnLevel Proxy n
-dvar :: (HasCallStack, DeBruijnLevel v) => Nat -> Mode Reldtt v
+dvar :: (HasCallStack, DeBruijnLevel v) => Int -> Mode Reldtt v
 dvar n = ReldttMode $ var n
-mvar :: (HasCallStack, DeBruijnLevel v) => Nat -> Mode Reldtt v -> Mode Reldtt v -> Modality Reldtt v
+mvar :: (HasCallStack, DeBruijnLevel v) => Int -> Mode Reldtt v -> Mode Reldtt v -> Modality Reldtt v
 mvar n dom cod = ChainModtyTerm dom cod $ var n
 
 val :: Opness -> String -> Modality Reldtt v -> Telescoped Type ValRHS Reldtt v -> Entry Reldtt v

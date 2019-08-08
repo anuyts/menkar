@@ -7,10 +7,9 @@ import Menkar.Basic.Context.Variable
 import Data.Bifunctor
 import Control.Exception.AssertFalse
 import Data.Void
-import Data.Number.Nat
 import Data.Proxy
 import Data.Maybe
-import Data.List hiding (take, length)
+import Data.List
 import Data.Functor.Compose
 import Data.Functor.Identity
 import Unsafe.Coerce
@@ -18,11 +17,11 @@ import Unsafe.Coerce
 -------------------------------------------------
 
 class Eq v => DeBruijnLevel v where
-  size :: Proxy v -> Nat
+  size :: Proxy v -> Int
   size p = length $ listAll p
-  getDeBruijnLevel :: Proxy v -> v -> Nat
+  getDeBruijnLevel :: Proxy v -> v -> Int
   getDeBruijnLevel p v = fromIntegral $ fromMaybe unreachable $ elemIndex v $ listAll p
-  forDeBruijnLevel :: Proxy v -> Nat -> Maybe v
+  forDeBruijnLevel :: Proxy v -> Int -> Maybe v
   forDeBruijnLevel p n = ((Just <$> listAll p) ++ repeat Nothing) `genericIndex` n
   listAll :: Proxy v -> [v]
   listAll p = fromMaybe unreachable . forDeBruijnLevel p <$> take (size p) [0..]

@@ -6,7 +6,6 @@ import Menkar.System.Basic
 import Menkar.System.Raw
 import Menkar.Basic.Syntax
 
-import Data.Number.Nat
 import Data.String.Utils (replace)
 import Data.Hashable
 import Data.Kind
@@ -29,7 +28,7 @@ data Eliminator (sys :: KSys) =
 data ExprC (sys :: KSys) =
   ExprQName QName |
   ExprParens (Expr sys) |
-  ExprNatLiteral Nat |
+  ExprNatLiteral Int |
   ExprImplicit |
   ExprGoal String |
   ExprSys (SysExprC sys)

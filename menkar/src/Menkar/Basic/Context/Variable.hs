@@ -4,7 +4,6 @@ import Control.Exception.AssertFalse
 
 import Data.Bifunctor
 import Data.Void
-import Data.Number.Nat
 
 import GHC.Stack
 
