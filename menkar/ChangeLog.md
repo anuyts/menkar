@@ -4,6 +4,11 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+*  Contexts are now closed, reducing the need for renaming variables and causing a significant speedup.
+*  All uses of natural numbers have been replaced with integers, causing a significant speedup.
+*  All renamings that could theoretically be done using coercions, are now done using `unsafeCoerce`, causing a significant speedup.
+*  Declarations are now checked without a reference to themselves in scope (bugfix).
+*  The type-checking monad now supports metavariables of arbitrary `Solvable` ASTs.
 *  Added a collection of "worries" to the type-checker's state. A worry is a blocked constraint.
    This is to avoid phenomena such as the following:
 
