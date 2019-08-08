@@ -34,7 +34,7 @@ data Judgement (sys :: KSys) where
   -- Quantified class constraints `SysAnalyzer sys => Analyzable sys t` would be more appropriate here.
   Jud :: (DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
     AnalyzableToken sys t ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     t v ->
     ClassifExtraInput t v ->
     ClassifInfo (Classif t v) {-^ Unknown not allowed for AnalyzerError cases. -} ->
@@ -43,7 +43,7 @@ data Judgement (sys :: KSys) where
     AnalyzableToken sys t ->
     Eta ->
     Relation t v ->
-    Ctx (Twice2 Type) sys v Void ->
+    Ctx (Twice2 Type) sys v ->
     Twice1 t v ->
     Twice1 (ClassifExtraInput t) v ->
     ClassifInfo (Twice1 (Classif t) v) {-^ Will or unknown; not must. Unknown not allowed for terms. -} ->
@@ -54,7 +54,7 @@ data Judgement (sys :: KSys) where
   -- | Only allowed for meta terms.
   JudEta :: (DeBruijnLevel v, Solvable sys t) =>
     AnalyzableToken sys t {-^ It would be cleaner to have a SolvableToken here. -} ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     t v ->
     ClassifExtraInput t v ->
     Classif t v ->
@@ -63,7 +63,7 @@ data Judgement (sys :: KSys) where
   -- | @'JudSmartElim' gamma t tyT es r@ means @gamma |- (t : tyT) es ~> r@.
   -- | Premises: @'JudCtx gamma', 'JudType gamma tyT', 'JudTerm gamma t tyT', 'JudTerm gamma r _'@
   JudSmartElim :: (DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Term sys v {-^ eliminee -} ->
     Type sys v ->
     [(ModedModality sys :*: SmartEliminator sys) v] {-^ eliminators -} ->
@@ -74,7 +74,7 @@ data Judgement (sys :: KSys) where
   -- | @'JudGoal' gamma goalname t tyT@ means that goal @goalname@ equals term @t@.
   -- | Premises: @'JudTerm' gamma t tyT@
   JudGoal :: (DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     String ->
     Term sys v ->
     Type sys v ->
@@ -83,7 +83,7 @@ data Judgement (sys :: KSys) where
   -- | @'JudResolve' gamma t r tyT@ means @gamma |- t ~> r : tyT@ where @t@ is a resolution call.
   -- | Premises?
   JudResolve :: (DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     {- resolution call goes here -> -}
     Term sys v ->
     Type sys v ->

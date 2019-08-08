@@ -9,7 +9,7 @@ import Menkar.System.MagicContext
 import Data.Void
 import GHC.Generics
 
-magicContext :: forall sys . (Multimode sys, SysMagicContext sys) => Ctx Type sys (VarInModule Void) Void
+magicContext :: forall sys . (Multimode sys, SysMagicContext sys) => Ctx Type sys (VarInModule Void)
 magicContext = CtxEmpty dataMode :<...> absurd <$> magicModule
 
 magicModuleCorrect :: forall sys . (SysAnalyzer sys, SysMagicContext sys) => Judgement sys

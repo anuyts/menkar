@@ -13,25 +13,25 @@ import GHC.Generics
 
 class (SysSyntax (Term sys) sys, Raw.SysRawPretty sys) => SysScoper sys where
   rawRootAnnots :: [Raw.Annotation sys]
-  scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void -> 
+  scopeAnnotation :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v -> 
     String -> Maybe (Raw.ExprC sys) -> sc (Annotation sys v)
-  scopeSysExprC :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v Void ->
+  scopeSysExprC :: (MonadScoper sys sc, DeBruijnLevel v) => Ctx Type sys v ->
     Raw.SysExprC sys -> sc (Term sys v)
   newMetaModeNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>
-    Ctx Type sys v Void -> String -> sc (Mode sys v)
+    Ctx Type sys v -> String -> sc (Mode sys v)
   newMetaModtyNoCheck :: (MonadScoper sys sc, DeBruijnLevel v) =>
-    Ctx Type sys v Void -> String -> sc (Modality sys v)
+    Ctx Type sys v -> String -> sc (Modality sys v)
   newMetaClassif4sysASTNoCheck :: forall sc t v .
     (MonadScoper sys sc, DeBruijnLevel v, SysAnalyzer sys, Analyzable sys t) =>
     SysAnalyzableToken sys t ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     t v ->
     ClassifExtraInput t v ->
     String ->
     sc (Classif t v)
 
 newMetaModedModalityNoCheck :: (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   String ->
   sc (ModedModality sys v)
 newMetaModedModalityNoCheck = newMetaModtyNoCheck
@@ -44,7 +44,7 @@ newMetaModedModalityNoCheck = newMetaModtyNoCheck
 newMetaClassif4astNoCheck :: forall sys sc t v .
   (MonadScoper sys sc, DeBruijnLevel v, SysScoper sys, SysAnalyzer sys, Analyzable sys t) =>
   --AnalyzableToken sys t ->
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   String ->

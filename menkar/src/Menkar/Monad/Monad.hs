@@ -40,7 +40,7 @@ class (
     (sys :: KSys)
     (sc :: * -> *)
     | sc -> sys where
-  newMetaID :: (DeBruijnLevel v) => Ctx Type sys v Void -> String -> sc (Int, [(Mode sys :*: Term sys) v])
+  newMetaID :: (DeBruijnLevel v) => Ctx Type sys v -> String -> sc (Int, [(Mode sys :*: Term sys) v])
   scopeFail :: String -> sc a
 
   {-| After scoping, before type-checking, metas are put to sleep.
@@ -51,7 +51,7 @@ class (
   -}
 newMetaTermNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     MetaNeutrality ->
     Maybe (Algorithm sys v) ->
     String ->
@@ -62,7 +62,7 @@ newMetaTermNoCheck gamma neutrality maybeAlg reason = do
   
 newMetaTypeNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     String ->
     sc (Type sys v)
 newMetaTypeNoCheck gamma reason =
@@ -123,7 +123,7 @@ class (
     Int ->
     (forall v .
       (Eq v, DeBruijnLevel v) =>
-      Ctx Type sys v Void ->
+      Ctx Type sys v ->
       tc (Maybe (t v), a)
     ) -> tc a
   --{-| Returns the value of the meta, if existent. Awakens the scoper-induced meta if still asleep.
@@ -162,7 +162,7 @@ addNewConstraint judgement parent reason = addConstraint =<< defConstraint judge
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTerm :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Type sys v ->
   MetaNeutrality ->
   String ->
@@ -184,7 +184,7 @@ newMetaTerm gamma ty neutrality reason = do
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaType :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   String ->
   tc (Type sys v)
 newMetaType gamma reason = do
@@ -199,7 +199,7 @@ newMetaType gamma reason = do
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
   ModedDegree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   Type sys v ->
   String ->
   tc (Type sys v)

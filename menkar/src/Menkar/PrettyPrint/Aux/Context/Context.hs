@@ -41,63 +41,47 @@ segment2scSegment :: Segment ty sys v -> ScSegment sys v
 segment2scSegment fineSeg = ScSegment $ _segment'name fineSeg
 
 {-| Scoping context. Type arguments analogous to @'Ctx'@. -}
-data ScCtx (sys :: KSys) (v :: *) (w :: *) where
-  ScCtxEmpty :: ScCtx sys Void w
-  (::..) :: ScCtx sys v w -> ScSegment sys (VarOpenCtx v w) -> ScCtx sys (VarExt v) w
-  (::^^) :: ScSegment sys w -> ScCtx sys v (VarExt w) -> ScCtx sys (VarLeftExt v) w
-  (::<...>) :: ScCtx sys v w -> ModuleRHS sys (VarOpenCtx v w) -> ScCtx sys (VarInModule v) w
-  (::\\) :: () -> ScCtx sys v w -> ScCtx sys v w
-  ScCtxId :: ScCtx sys v w -> ScCtx sys (Identity v) w
-  ScCtxComp :: ScCtx sys (f (g v)) w -> ScCtx sys (Compose f g v) w
-deriving instance (SysTrav sys) => Functor (ScCtx sys v)
-deriving instance (SysTrav sys) => Foldable (ScCtx sys v)
-deriving instance (SysTrav sys) => Traversable (ScCtx sys v)
-instance (SysSyntax (Term sys) sys) =>
-    CanSwallow (Term sys) (ScCtx sys v) where
-  swallow ScCtxEmpty = ScCtxEmpty
-  swallow (gamma ::.. seg) = swallow gamma ::.. swallow (fmap sequenceA seg)
-  swallow (seg ::^^ gamma) = swallow seg ::^^ swallow (fmap sequenceA gamma)
-  swallow (gamma ::<...> modul) = swallow gamma ::<...> swallow (fmap sequenceA modul)
-  swallow (() ::\\ gamma) = () ::\\ swallow gamma
-  swallow (ScCtxId gamma) = ScCtxId $ swallow gamma
-  swallow (ScCtxComp gamma) = ScCtxComp $ swallow gamma
-infixl 3 ::.., ::^^, ::<...>, ::\\
-ctx2scCtx :: Ctx ty sys v w -> ScCtx sys v w
+data ScCtx (sys :: KSys) (v :: *) where
+  ScCtxEmpty :: ScCtx sys Void
+  (::..) :: ScCtx sys v -> ScSegment sys v -> ScCtx sys (VarExt v)
+  (::<...>) :: ScCtx sys v -> ModuleRHS sys v -> ScCtx sys (VarInModule v)
+  (::\\) :: () -> ScCtx sys v -> ScCtx sys v
+  ScCtxId :: ScCtx sys v -> ScCtx sys (Identity v)
+  ScCtxComp :: ScCtx sys (f (g v)) -> ScCtx sys (Compose f g v)
+infixl 3 ::.., ::<...>, ::\\
+  
+ctx2scCtx :: Ctx ty sys v -> ScCtx sys v
 ctx2scCtx (CtxEmpty d) = ScCtxEmpty
 ctx2scCtx (gamma :.. seg) = ctx2scCtx gamma ::.. segment2scSegment seg
-ctx2scCtx (seg :^^ gamma) = segment2scSegment seg ::^^ ctx2scCtx gamma
 ctx2scCtx (gamma :<...> modul) = ctx2scCtx gamma ::<...> modul
 ctx2scCtx (dmu :\\ gamma) = () ::\\ ctx2scCtx gamma
 ctx2scCtx (CtxId   gamma) = ScCtxId   $ ctx2scCtx gamma
 ctx2scCtx (CtxComp gamma) = ScCtxComp $ ctx2scCtx gamma
 ctx2scCtx (CtxOpaque d) = unreachable
 
-scGetName :: ScCtx sys v w -> v -> Maybe Raw.Name
+scGetName :: ScCtx sys v -> v -> Maybe Raw.Name
 scGetName ScCtxEmpty v = absurd v
 scGetName (gamma ::.. seg) (VarWkn v) = scGetName gamma v
 scGetName (gamma ::.. seg) (VarLast) = scSegment'name seg
-scGetName (seg ::^^ gamma) (VarLeftWkn v) = scGetName gamma v
-scGetName (seg ::^^ gamma) (VarFirst) = scSegment'name seg
 scGetName (gamma ::<...> modul) (VarInModule v) = scGetName gamma v
 scGetName (() ::\\ gamma) v = scGetName gamma v
 scGetName (ScCtxId gamma) (Identity v) = scGetName gamma v
 scGetName (ScCtxComp gamma) (Compose v) = scGetName gamma v
 
-scListVariablesRev :: ScCtx sys v w -> [v]
+scListVariablesRev :: ScCtx sys v -> [v]
 scListVariablesRev ScCtxEmpty = []
 scListVariablesRev (gamma ::.. _) = VarLast : (VarWkn <$> scListVariablesRev gamma)
-scListVariablesRev (_ ::^^ gamma) = (VarLeftWkn <$> scListVariablesRev gamma) ++ [VarFirst]
 scListVariablesRev (gamma ::<...> _) = VarInModule <$> scListVariablesRev gamma
 scListVariablesRev (() ::\\ gamma) = scListVariablesRev gamma
 scListVariablesRev (ScCtxId gamma) = Identity !<$> scListVariablesRev gamma
 scListVariablesRev (ScCtxComp gamma) = Compose !<$> scListVariablesRev gamma
-scListVariables :: ScCtx sys v w -> [v]
+scListVariables :: ScCtx sys v -> [v]
 scListVariables = reverse . scListVariablesRev
 
 {-| @'mapTelescopedSc' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescopedSc :: (Functor h, SysTrav sys, Functor (ty sys)) =>
-  (forall w . (v -> w) -> ScCtx sys w Void -> rhs1 sys w -> h (rhs2 sys w)) ->
-  (ScCtx sys v Void -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
+  (forall w . (v -> w) -> ScCtx sys w -> rhs1 sys w -> h (rhs2 sys w)) ->
+  (ScCtx sys v -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedSc f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescopedSc f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescopedSc (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
@@ -105,22 +89,21 @@ mapTelescopedSc f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescopedSc f (() ::\\ gamma) stuff
 {-| @'mapTelescopedScDB' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescopedScDB :: (DeBruijnLevel v, Functor h, SysTrav sys, Functor (ty sys)) =>
-  (forall w . DeBruijnLevel w => (v -> w) -> ScCtx sys w Void -> rhs1 sys w -> h (rhs2 sys w)) ->
-  (ScCtx sys v Void -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
+  (forall w . DeBruijnLevel w => (v -> w) -> ScCtx sys w -> rhs1 sys w -> h (rhs2 sys w)) ->
+  (ScCtx sys v -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedScDB f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescopedScDB f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescopedScDB (f . (. VarWkn)) (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) stuff
 mapTelescopedScDB f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescopedScDB f (() ::\\ gamma) stuff
   
-haveScDB :: ScCtx sys v Void -> ((DeBruijnLevel v) => t) -> t
+haveScDB :: ScCtx sys v -> ((DeBruijnLevel v) => t) -> t
 haveScDB (ScCtxEmpty) t = t
 haveScDB (gamma ::.. _) t = haveScDB gamma t
-haveScDB (_ ::^^ gamma) t = todo
 haveScDB (gamma ::<...> _) t = haveScDB gamma t
 haveScDB (_ ::\\ gamma) t = haveScDB gamma t
 haveScDB (ScCtxId gamma) t = haveScDB gamma t
 haveScDB (ScCtxComp gamma) t = haveScDB gamma t
 
-_scCtx'sizeProxy :: ScCtx sys v w -> Proxy v
+_scCtx'sizeProxy :: ScCtx sys v -> Proxy v
 _scCtx'sizeProxy gamma = Proxy

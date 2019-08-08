@@ -21,8 +21,8 @@ import Data.Kind
 
 {-| @'mapTelescoped' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescoped :: (Functor h, SysTrav sys, Functor (ty sys)) =>
-  (forall w . (v -> w) -> Ctx ty sys w Void -> rhs1 sys w -> h (rhs2 sys w)) ->
-  (Ctx ty sys v Void -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
+  (forall w . (v -> w) -> Ctx ty sys w -> rhs1 sys w -> h (rhs2 sys w)) ->
+  (Ctx ty sys v -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescoped f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescoped f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescoped (f . (. VarWkn)) (gamma :.. (VarFromCtx <$> seg)) stuff
@@ -30,8 +30,8 @@ mapTelescoped f gamma (dmu :** stuff) = (dmu :**) <$>
   mapTelescoped f ((VarFromCtx <$> dmu) :\\ gamma) stuff
 {-| @'mapTelescopedDB' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescopedDB :: (Functor h, SysTrav sys, Functor (ty sys), DeBruijnLevel v) =>
-  (forall w . DeBruijnLevel w => (v -> w) -> Ctx ty sys w Void -> rhs1 sys w -> h (rhs2 sys w)) ->
-  (Ctx ty sys v Void -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
+  (forall w . DeBruijnLevel w => (v -> w) -> Ctx ty sys w -> rhs1 sys w -> h (rhs2 sys w)) ->
+  (Ctx ty sys v -> Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedDB f gamma (Telescoped rhs) = Telescoped <$> f id gamma rhs
 mapTelescopedDB f gamma (seg :|- stuff) = (seg :|-) <$>
   mapTelescopedDB (f . (. VarWkn)) (gamma :.. (VarFromCtx <$> seg)) stuff
@@ -40,67 +40,47 @@ mapTelescopedDB f gamma (dmu :** stuff) = (dmu :**) <$>
 
 --------------------------
 
-{- | @'Ctx' t sys v w@ is the type of contexts with
+{- | @'Ctx' t sys v@ is the type of contexts with
      types of type @t@,
      modes of type @mode@,
      modalities of type @modty@,
-     introducing @v@-many variables,
-     and itself depending on variables of type @w@.
+     introducing @v@-many variables.
 -}
-data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) (w :: *) where
+data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) where
   {-| Empty context. -}
-  CtxEmpty :: Mode sys w -> Ctx t sys Void w
+  CtxEmpty :: Mode sys Void -> Ctx t sys Void
   {-| Extended context -}
-  (:..) :: Ctx t sys v w -> Segment t sys (VarOpenCtx v w) -> Ctx t sys (VarExt v) w
-  {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
+  (:..) :: Ctx t sys v -> Segment t sys v -> Ctx t sys (VarExt v)
+  {- {-| This is useful for affine DTT: you can extend a context with a shape variable up front, hide
       it right away and annotate some further variables as quantified over the new variable. -}
-  (:^^) :: Segment t sys w -> Ctx t sys v (VarExt w) -> Ctx t sys (VarLeftExt v) w
+  (:^^) :: Segment t sys w -> Ctx t sys v (VarExt w) -> Ctx t sys (VarLeftExt v) w -}
   {-| Context extended with siblings defined in a certain module. -}
-  (:<...>) :: Ctx t sys v w -> ModuleRHS sys (VarOpenCtx v w) -> Ctx t sys (VarInModule v) w
+  (:<...>) :: Ctx t sys v -> ModuleRHS sys v -> Ctx t sys (VarInModule v)
   {-| Context divided by a modality. -}
-  (:\\) :: ModalityTo sys (VarOpenCtx v w) -> Ctx t sys v w -> Ctx t sys v w
+  (:\\) :: ModalityTo sys v -> Ctx t sys v -> Ctx t sys v
   {-| Pleasing GHC -}
-  CtxId :: Ctx t sys v w -> Ctx t sys (Identity v) w
-  CtxComp :: Ctx t sys (f (g v)) w -> Ctx t sys (Compose f g v) w
+  CtxId :: Ctx t sys v -> Ctx t sys (Identity v)
+  CtxComp :: Ctx t sys (f (g v)) -> Ctx t sys (Compose f g v)
   {-| Opaque context of a given mode. Used only for WHN.
       Necessary for whnormalizing meta dependencies, which should be enclosed in a LeftDivided.
   -}
-  CtxOpaque :: DeBruijnLevel v => Mode sys (VarOpenCtx v w) -> Ctx t sys v w
+  CtxOpaque :: DeBruijnLevel v => Mode sys v -> Ctx t sys v
 --type role Ctx representational nominal nominal representational
 infixr 3 :\\
-infixl 3 :.., :^^, :<...>
-deriving instance (SysTrav sys, Functor (t sys)) => Functor (Ctx t sys v)
-deriving instance (SysTrav sys, Foldable (t sys)) => Foldable (Ctx t sys v)
-deriving instance (SysTrav sys, Traversable (t sys)) => Traversable (Ctx t sys v)
-instance (
-    SysSyntax (Term sys) sys,
-    Functor (t sys),
-    CanSwallow (Term sys) (t sys)
-  ) =>
-    CanSwallow (Term sys) (Ctx t sys v) where
-  swallow (CtxEmpty d) = CtxEmpty $ swallow d
-  swallow (gamma :.. seg) = swallow gamma :.. swallow (fmap sequenceA seg)
-  swallow (seg :^^ gamma) = swallow seg :^^ swallow (fmap sequenceA gamma)
-  swallow (gamma :<...> modul) = swallow gamma :<...> swallow (fmap sequenceA modul)
-  swallow (kappa :\\ gamma) = swallow (fmap sequenceA kappa) :\\ swallow gamma
-  swallow (CtxId gamma) = CtxId $ swallow gamma
-  swallow (CtxComp gamma) = CtxComp $ swallow gamma
-  swallow (CtxOpaque d) = CtxOpaque $ swallow (fmap sequenceA d)
+infixl 3 :.., :<...>
 
-ctx'mode :: Multimode sys => Ctx ty sys v w -> Mode sys (VarOpenCtx v w)
-ctx'mode (CtxEmpty d) = VarBeforeCtx <$> d
-ctx'mode (gamma :.. seg) = bimap VarWkn id <$> ctx'mode gamma
-ctx'mode (seg :^^ gamma) = varLeftEat <$> ctx'mode gamma
-ctx'mode (gamma :<...> modul) = bimap VarInModule id <$> ctx'mode gamma
+ctx'mode :: Multimode sys => Ctx ty sys v -> Mode sys v
+ctx'mode (CtxEmpty d) = d
+ctx'mode (gamma :.. seg) = VarWkn <$> ctx'mode gamma
+ctx'mode (gamma :<...> modul) = VarInModule !<$> ctx'mode gamma
 ctx'mode (dmu :\\ gamma) = _modalityTo'dom dmu
-ctx'mode (CtxId gamma) = bimap Identity id <$> ctx'mode gamma
-ctx'mode (CtxComp gamma) = bimap Compose id <$> ctx'mode gamma
+ctx'mode (CtxId gamma) = Identity !<$> ctx'mode gamma
+ctx'mode (CtxComp gamma) = Compose !<$> ctx'mode gamma
 ctx'mode (CtxOpaque d) = d
 
-haveDB :: Ctx ty sys v w -> ((DeBruijnLevel v) => t) -> t
+haveDB :: Ctx ty sys v -> ((DeBruijnLevel v) => t) -> t
 haveDB (CtxEmpty d) t = t
 haveDB (gamma :.. seg) t = haveDB gamma t
-haveDB (seg :^^ gamma) t = todo
 haveDB (gamma :<...> modul) t = haveDB gamma t
 haveDB (dmu :\\ gamma) t = haveDB gamma t
 haveDB (CtxId gamma) t = haveDB gamma t
@@ -126,10 +106,9 @@ mapCtx :: (
     CanSwallow (Term sys) (ty1 sys)
   ) =>
   (forall sys' v' . ty0 sys' v' -> ty1 sys' v') ->
-  Ctx ty0 sys v w -> Ctx ty1 sys v w
+  Ctx ty0 sys v -> Ctx ty1 sys v
 mapCtx f (CtxEmpty d) = CtxEmpty d
 mapCtx f (gamma :.. seg) = mapCtx f gamma :.. mapSegment f seg
-mapCtx f (seg :^^ gamma) = mapSegment f seg :^^ mapCtx f gamma
 mapCtx f (gamma :<...> modul) = mapCtx f gamma :<...> modul
 mapCtx f (dmu :\\ gamma) = dmu :\\ mapCtx f gamma
 mapCtx f (CtxId gamma) = CtxId $ mapCtx f gamma
@@ -141,7 +120,7 @@ duplicateCtx :: (
     Functor (ty sys),
     CanSwallow (Term sys) (ty sys)
   ) =>
-  Ctx ty sys v w -> Ctx (Twice2 ty) sys v w
+  Ctx ty sys v -> Ctx (Twice2 ty) sys v
 duplicateCtx = mapCtx (\ty -> Twice2 ty ty)
 
 fstCtx, sndCtx :: (
@@ -149,7 +128,7 @@ fstCtx, sndCtx :: (
     Functor (ty sys),
     CanSwallow (Term sys) (ty sys)
   ) =>
-  Ctx (Twice2 ty) sys v w -> Ctx ty sys v w
+  Ctx (Twice2 ty) sys v -> Ctx ty sys v
 fstCtx = mapCtx (\(Twice2 ty1 ty2) -> ty1)
 sndCtx = mapCtx (\(Twice2 ty1 ty2) -> ty2)
 
@@ -158,23 +137,11 @@ flipCtx :: (
     Functor (ty sys),
     CanSwallow (Term sys) (ty sys)
   ) =>
-  Ctx (Twice2 ty) sys v w -> Ctx (Twice2 ty) sys v w
+  Ctx (Twice2 ty) sys v -> Ctx (Twice2 ty) sys v
 flipCtx = mapCtx (\(Twice2 ty1 ty2) -> Twice2 ty2 ty1)
 
-ctx'sizeProxy :: Ctx ty sys v w -> Proxy v
+ctx'sizeProxy :: Ctx ty sys v -> Proxy v
 ctx'sizeProxy gamma = Proxy
-
-externalizeCtx :: (SysTrav sys, Functor (ty sys)) => Ctx ty sys v Void -> Ctx ty sys v v
-externalizeCtx (CtxEmpty d) = CtxEmpty d
-externalizeCtx (gamma :.. seg) =
-  VarWkn <$> externalizeCtx gamma :.. VarBeforeCtx . VarWkn . unVarFromCtx <$> seg
-externalizeCtx (seg :^^ gamma) = todo
-externalizeCtx (gamma :<...> modul) =
-  VarInModule <$> externalizeCtx gamma :<...> VarBeforeCtx . VarInModule . unVarFromCtx <$> modul
-externalizeCtx (dmu :\\ gamma) = externalizeVar <$> dmu :\\ externalizeCtx gamma
-externalizeCtx (CtxId gamma) = CtxId $ Identity !<$> externalizeCtx gamma
-externalizeCtx (CtxComp gamma) = CtxComp $ Compose !<$> externalizeCtx gamma
-externalizeCtx (CtxOpaque d) = CtxOpaque $ externalizeVar <$> d
 
 {-
 -- TODO: you need a left division here!

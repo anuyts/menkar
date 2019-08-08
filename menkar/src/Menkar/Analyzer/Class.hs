@@ -284,7 +284,7 @@ class (Functor t,
     (Monad f, DeBruijnLevel vOut, DeBruijnLevel v, IsAnalyzerOption option sys,
      AnalyzerAssumption option vOut v) =>
     AnalyzerToken option ->
-    Ctx (TypeForOption option) sys vOut Void ->
+    Ctx (TypeForOption option) sys vOut ->
     Classification t v ->
     (forall s ext .
       (Analyzable sys s, DeBruijnLevel (ext vOut), DeBruijnLevel (ext v), Traversable ext) =>
@@ -295,16 +295,16 @@ class (Functor t,
       -}
       (IfTrav option (t vOut)) ->
       (forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) => 
-        Ctx (TypeForOption option) sys u Void ->
+        Ctx (TypeForOption option) sys u ->
         Classification t u ->
         Maybe (Classification s (ext u))
       ) ->
       (forall u doubled . (DeBruijnLevel u, DeBruijnLevel (ext u), IsDoubledness doubled sys) =>
         BoolToken doubled ->
-        Ctx (TypeMaybeTwice doubled) sys u Void ->
+        Ctx (TypeMaybeTwice doubled) sys u ->
         Classification t u ->
         IfTrue doubled (Classification t u) ->
-        Maybe (Ctx (TypeMaybeTwice doubled) sys (ext u) Void)
+        Maybe (Ctx (TypeMaybeTwice doubled) sys (ext u))
       ) ->
       ({-forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>-}
         Mode sys v -> Relation t v -> Relation s (ext v)
@@ -320,10 +320,10 @@ class (Functor t,
 
 extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) =>
         BoolToken doubled ->
-        Ctx (TypeMaybeTwice doubled) sys u Void ->
+        Ctx (TypeMaybeTwice doubled) sys u ->
         Classification t u ->
         IfTrue doubled (Classification t u) ->
-        Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
+        Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u))
 extCtxId token gamma _ _ = Just $ CtxId gamma
 extRelId :: forall sys r v .
   (Functor r) =>
@@ -333,10 +333,10 @@ extRelId :: forall sys r v .
 extRelId = const $ fmapCoe Identity
 crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys) => 
         BoolToken doubled ->
-        Ctx (TypeMaybeTwice doubled) sys u Void ->
+        Ctx (TypeMaybeTwice doubled) sys u ->
         Classification t u ->
         IfTrue doubled (Classification t u) ->
-        Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u) Void)
+        Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u))
 crispExtCtxId token gamma _ _ = Just $ CtxId $ crispModalityTo (ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
@@ -383,14 +383,14 @@ analyzeOld :: forall sys t option f v .
     --{-| When AST-nodes do not have the same head. -}
     --(forall a . IfDoubled option (f a)) ->
     {-| For adding stuff to the context. -}
-    Ctx (TypeForOption option) sys v Void ->
+    Ctx (TypeForOption option) sys v ->
     Classification t v ->
     IfDoubled option (Classification t v) ->
     IfDoubled option (Relation t v) ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
-      Maybe (Ctx (TypeForOption option) sys w Void) ->
+      Maybe (Ctx (TypeForOption option) sys w) ->
       Classification s w ->
       IfDoubled option (Maybe (Classification s w)) ->
       IfDoubled option (Relation s w) ->
@@ -413,12 +413,12 @@ analyzeOld token gamma inputT1 condInputT2 condRel h =
 
 subASTsTyped :: forall sys f t v .
   (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys, Multimode sys) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Classification t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
-    Ctx Type sys w Void ->
+    Ctx Type sys w ->
     Classification s w ->
     AddressInfo ->
     f (s w)
@@ -432,13 +432,13 @@ subASTsTyped gamma inputT h = fmap getAnalysisTrav <$>
  
 subASTs :: forall sys f t v .
   (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys, Multimode sys) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
-    Ctx Type sys w Void ->
+    Ctx Type sys w ->
     s w ->
     ClassifExtraInput s w ->
     AddressInfo ->
@@ -452,12 +452,12 @@ subASTs gamma t extraInputT h = subASTsTyped gamma
   
 typetrick :: forall sys f t v .
   (Monad f, Analyzable sys t, DeBruijnLevel v, SysTrav sys, Multimode sys) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Classification t v ->
   (forall s w .
     (Analyzable sys s, DeBruijnLevel w) =>
     (v -> w) ->
-    Ctx Type sys w Void ->
+    Ctx Type sys w ->
     Classification s w ->
     AddressInfo ->
     f (Classif s w)
