@@ -16,7 +16,7 @@ import GHC.Generics
 class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   whnormalizeSysTerm :: forall whn v .
     (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     SysTerm sys v ->
     Type sys v ->
     String ->
@@ -24,7 +24,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   whnormalizeMultimodeOrSysAST :: forall whn t v .
     (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
     MultimodeOrSysAnalyzableToken sys t ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     t v ->
     ClassifExtraInput t v ->
     Classif t v ->
@@ -39,7 +39,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   -}
   leqMod :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Modality sys v -> Modality sys v ->
     Mode sys v -> Mode sys v ->
     String ->
@@ -51,7 +51,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   -}
   leqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Degree sys v -> 
     Degree sys v -> 
     Mode sys v ->
@@ -60,7 +60,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     
   isEqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Degree sys v -> 
     Mode sys v ->
     String ->
@@ -69,7 +69,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
 
   isTopDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Degree sys v -> 
     Mode sys v ->
     String ->
@@ -82,7 +82,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   -- | Should at least imply that @nu . mu <= id@ as a judgemental inequality.
   allowsEta :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     ModedModality sys v ->
     --Mode sys v {-^ the codomain -} ->
     String ->
@@ -99,7 +99,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   allowsProjections :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
     Constraint sys ->
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     ModedModality sys v ->
     Mode sys v {-^ the codomain -} ->
     String ->
@@ -112,7 +112,7 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
 
 whnormalizeMode :: forall sys whn v .
     (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Mode sys v ->
     String ->
     whn (Mode sys v)
@@ -120,7 +120,7 @@ whnormalizeMode gamma d reason =
   whnormalizeMultimodeOrSysAST (Left AnTokenMode) gamma d U1 U1 reason
 whnormalizeModality :: forall sys whn v .
     (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Modality sys v ->
     Mode sys v ->
     Mode sys v ->
@@ -130,7 +130,7 @@ whnormalizeModality gamma mu dom cod reason =
   whnormalizeMultimodeOrSysAST (Left AnTokenModality) gamma mu U1 (dom :*: cod) reason
 whnormalizeDegree :: forall sys whn v .
     (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v Void ->
+    Ctx Type sys v ->
     Degree sys v ->
     Mode sys v ->
     String ->

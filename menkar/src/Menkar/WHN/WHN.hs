@@ -19,7 +19,7 @@ import Control.Monad.Writer.Class
 import GHC.Generics
 
 tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   ModalityTo sys v {-^ how eliminee is used -} ->
   Term sys v {-^ eliminee, whnormal -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
@@ -30,7 +30,7 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   whn (Term sys v)
 tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let returnElim = return (Expr2 $ TermElim dmu whnEliminee tyEliminee e) -- <$ tell metasEliminee
   case e of
     ElimDep motive clauses -> case clauses of
@@ -74,7 +74,7 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
    In summary, we don't eta-expand.
 -}
 whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   ModalityTo sys v {-^ how eliminee is used -} ->
   Term sys v {-^ eliminee -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
@@ -85,11 +85,11 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   whn (Term sys v)
 -- careful with glue/weld!
 whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
-  let dgamma = unVarFromCtx <$> ctx'mode gamma
+  let dgamma = ctx'mode gamma
   -- -- WHNormalize the eliminee
   -- -- The following line SHOULDN'T BE NECESSARY!
   -- (whnEliminee, metasEliminee)
-  --     <- listen $ whnormalize ((VarFromCtx <$> dmu) :\\ gamma) whnEliminee (hs2type tyEliminee) reason
+  --     <- listen $ whnormalize ((dmu) :\\ gamma) whnEliminee (hs2type tyEliminee) reason
   let useDependentEta = tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
   case metasEliminee of
     -- The eliminee is blocked: Try to rely on eta instead
@@ -133,7 +133,7 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
             in whnormalize gamma (join $ subst <$> (_val'term $ binding'body binding)) tyResult reason
           -- Function extensionality over a lambda: WHNormalize the body. (The analyzer doesn't do that!)
           (Lam (Binding seg (ValRHS body cod)), Funext) -> do
-            whnBody <- whnormalize (gamma :.. VarFromCtx <$> seg) body cod reason
+            whnBody <- whnormalize (gamma :.. seg) body cod reason
             case whnBody of
               -- Body is refl: Elimination reduces to refl.
               Expr2 (TermCons (ConsRefl tyAmbient t)) ->
@@ -208,7 +208,7 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
       (Expr2 _) -> unreachable
 
 whnormalizeNV :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   TermNV sys v ->
   Type sys v ->
   [Int] ->
@@ -258,7 +258,7 @@ whnormalizeAST' :: forall sys whn v t .
    DeBruijnLevel v,
    MonadWriter [Int] whn,
    Analyzable sys t) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   Classif t v ->
@@ -279,7 +279,7 @@ whnormalizeAST :: forall sys whn v t .
    DeBruijnLevel v,
    MonadWriter [Int] whn,
    Analyzable sys t) => 
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   Classif t v ->
@@ -320,7 +320,7 @@ whnormalizeAST gamma t extraT classifT reason =
      writes the indices of all metavariables that could (each in itself) unblock the situation.
 -}
 whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Term sys v ->
   Type sys v ->
   String ->
@@ -335,7 +335,7 @@ whnormalize gamma (Expr2 t) ty reason = do
   whnormalizeNV gamma prewhnT ty metas reason
 
 whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Type sys v ->
   String ->
   whn (Type sys v)
