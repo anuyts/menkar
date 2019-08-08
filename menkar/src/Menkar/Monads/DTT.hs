@@ -68,10 +68,12 @@ data Worry (sys :: KSys) (m :: * -> *) = Worry {
   _worry'constraint :: Constraint sys,
   {-| From outermost to innermost. -}
   _worry'metas :: [ForSomeDeBruijnLevel (BlockingMeta sys m)],
+  {-| Whether a judgement has been scheduled (but may not yet have been created) to unblock this worry. -}
+  _worry'unblockScheduled :: Bool,
   {-| Nothing if still blocked, otherwise the meta that unblocked it. -}
   _worry'unblockedBy :: Maybe MetaID,
   {-| A @JudUnblock@, if already scheduled. Note that the existence of this judgement does not imply that it has
-      already been processed. -}
+      already been processed. (Actually it does in the current implementation, but let's not count on that.) -}
   _worry'constraintUnblock :: Maybe (Constraint sys),
   _worry'reason :: String
   }
@@ -246,7 +248,7 @@ catchBlocks action = resetDC $ action `catchError` \case
   TCErrorBlocked blockParent blockReason blockingMetas -> do
     iD <- WorryID <$> (tcState'worryCounter <<%= (+1))
     constraintJudBlock <- withParent blockParent $ defConstraint (JudBlock iD) blockReason
-    let worry = Worry constraintJudBlock blockingMetas Nothing Nothing blockReason
+    let worry = Worry constraintJudBlock blockingMetas False Nothing Nothing blockReason
     tcState'worryMap %= insert (getWorryID iD) worry
     -- Need to reverse, as we're moving a list by popping and pushing, hence reversing.
     sequenceA_ $ reverse blockingMetas <&> \blockingMeta -> do
@@ -357,15 +359,15 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
       -- If it's solved, throw an error.
       Right _ -> do
         throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
-      -- Blocks contains the constraints blocked on the current meta, and their whereabouts.
+      -- worryIDs contains the worries blocked on (among others) the current meta.
       Left worryIDs -> do
         -- Call the closure provided by the caller to obtain the solution for the meta.
         -- ('a' is just something that the caller wants back.)
         (maybeSolution, a) <- getSolution $ _metaInfo'context metaInfo
         case maybeSolution of
-          -- If the caller fails to provide a solution, abort and pass back 'a'.
+          -- If the caller fails to provide a solution, abort and pass back @a@.
           Nothing -> return a
-          -- The caller provides 'solution :: Term sys v'.
+          -- The caller provides @solution :: Term sys v@.
           Just solution -> do
             -- Save the solution
             tcState'metaMap . at meta . _JustUnsafe .= ForSomeDeBruijnLevel (
@@ -381,18 +383,21 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
               -- \ block@(blockingMetas, BlockInfo blockParent reasonBlock reasonAwait k, constraintJudBlock) ->
               \ worryID -> do
                   -- Get the blocking constraint
-                  constraintJudBlock <- use $
-                    tcState'worryMap . at (getWorryID worryID)
-                    . _JustUnsafe . worry'constraint
-                  -- Add an unblocking constraint, which will call tcUnblock
-                  withParent constraintJudBlock $ do
+                  worry <- use $
+                    tcState'worryMap . at (getWorryID worryID) . _JustUnsafe
+                  let unblockScheduled = _worry'unblockScheduled worry
+                  let constraintJudBlock = _worry'constraint worry
+                  unless unblockScheduled $ withParent constraintJudBlock $ do
+                    -- Add an unblocking constraint, which will call tcUnblock
                     {-constraintJudUnblock <-
                       defConstraint (JudUnblock worryID) $ "Meta ?" ++ show meta ++ " has been resolved."
-                    addConstraint constraintJudUnblock
-                    -- Register the unblocking constraint with the worry
+                    addConstraint constraintJudUnblock -}
+                    addNewConstraint (JudUnblock worryID) $ "Meta ?" ++ show meta ++ " has been resolved."
+                    -- Record that you have scheduled an unblocking constraint.
+                    tcState'worryMap . at (getWorryID worryID) . _JustUnsafe . worry'unblockScheduled .= True
+                    {- -- Register the unblocking constraint with the worry
                     tcState'worryMap . at (getWorryID worryID)
                       . _JustUnsafe . worry'constraintUnblock .= Just constraintJudUnblock-}
-                    addNewConstraint (JudUnblock worryID) $ "Meta ?" ++ show meta ++ " has been resolved."
                   {-
                   -- Informative judgement: we consider to unblock.
                   constraintJudUnblock <- withParent constraintJudBlock $
