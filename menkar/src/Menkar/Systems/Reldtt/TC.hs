@@ -70,6 +70,12 @@ instance SysTC Reldtt where
       return U1
     (AnErrorModtySnout, _, _) -> unreachable
     (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, chmu@(ChainModtyMeta dom cod meta (Compose depcies))) -> do
+      addNewConstraint
+        (Jud analyzableToken gamma dom U1 (ClassifWillBe U1))
+        "Modality metavariable: checking domain annotation."
+      addNewConstraint
+        (Jud analyzableToken gamma cod U1 (ClassifWillBe U1))
+        "Modality metavariable: checking codomain annotation."
       maybeChmu <- awaitMeta @Reldtt @_ @ChainModty "I want to know what modality I'm supposed to type-check." meta depcies
       chmu' <- case maybeChmu of
         Just chmu' -> return chmu'
@@ -79,10 +85,11 @@ instance SysTC Reldtt where
             (JudEta analyzableToken gamma chmu U1 (fromClassifInfo (_modality'dom chmu :*: _modality'cod chmu) maybeCT))
             "Eta-expand meta if possible"
           tcBlock "I want to know what modality I'm supposed to type-check."
-      childConstraint <- defConstraint
-        (Jud analyzableToken gamma chmu' U1 (classifMust2will maybeCT))
+      addNewConstraint
+        (Jud analyzableToken gamma chmu' U1 (ClassifMustBe $ dom :*: cod))
         "Look up meta."
-      withParent childConstraint $ checkAST gamma chmu' U1 (classifMust2will maybeCT)
+      --withParent childConstraint $ checkAST gamma chmu' U1 (classifMust2will maybeCT)
+      return $ dom :*: cod
     (AnErrorChainModtyMeta, _, _) -> unreachable
     (AnErrorChainModtyAlreadyChecked, AnTokenMultimode AnTokenModality,
      chmu@(ChainModtyAlreadyChecked dom cod chmuChecked)) -> return $ dom :*: cod
