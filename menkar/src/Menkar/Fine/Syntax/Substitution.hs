@@ -184,6 +184,16 @@ deriving instance Generic1 Syn
 
 --------------------------------------------
 
+{-| Coyoneda fuses fmaps, making stuff more efficient. -}
 instance (CanSwallow e h) => CanSwallow e (Coyoneda h) where
   swallow (Coyoneda q hx) = Coyoneda id $ substitute q hx
   substitute h (Coyoneda q hx) = Coyoneda id $ substitute (h . q) hx
+
+coy :: f x -> Coyoneda f x
+coy = liftCoyoneda
+
+uncoy :: (Functor f) => Coyoneda f x -> f x
+uncoy = lowerCoyoneda
+
+pattern Coy x <- (lowerCoyoneda -> x)
+  where Coy x = coy x

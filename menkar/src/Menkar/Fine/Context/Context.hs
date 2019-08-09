@@ -15,6 +15,7 @@ import Data.Maybe
 import GHC.Generics
 import Data.Functor.Identity
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import Control.Lens
 import Data.Proxy
 import Data.Kind
@@ -69,14 +70,14 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) where
 infixr 3 :\\
 infixl 3 :.., :<...>
 
-ctx'mode :: Multimode sys => Ctx ty sys v -> Mode sys v
-ctx'mode (CtxEmpty d) = d
+ctx'mode :: Multimode sys => Ctx ty sys v -> Coyoneda (Mode sys) v
+ctx'mode (CtxEmpty d) = coy d
 ctx'mode (gamma :.. seg) = VarWkn <$> ctx'mode gamma
 ctx'mode (gamma :<...> modul) = VarInModule !<$> ctx'mode gamma
-ctx'mode (dmu :\\ gamma) = _modalityTo'dom dmu
+ctx'mode (dmu :\\ gamma) = coy $ _modalityTo'dom dmu
 ctx'mode (CtxId gamma) = Identity !<$> ctx'mode gamma
 ctx'mode (CtxComp gamma) = Compose !<$> ctx'mode gamma
-ctx'mode (CtxOpaque d) = d
+ctx'mode (CtxOpaque d) = coy d
 
 haveDB :: Ctx ty sys v -> ((DeBruijnLevel v) => t) -> t
 haveDB (CtxEmpty d) t = t

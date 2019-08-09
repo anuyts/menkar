@@ -68,15 +68,10 @@ scGetName (() ::\\ gamma) v = scGetName gamma v
 scGetName (ScCtxId gamma) (Identity v) = scGetName gamma v
 scGetName (ScCtxComp gamma) (Compose v) = scGetName gamma v
 
-scListVariablesRev :: ScCtx sys v -> [v]
-scListVariablesRev ScCtxEmpty = []
-scListVariablesRev (gamma ::.. _) = VarLast : (VarWkn <$> scListVariablesRev gamma)
-scListVariablesRev (gamma ::<...> _) = VarInModule <$> scListVariablesRev gamma
-scListVariablesRev (() ::\\ gamma) = scListVariablesRev gamma
-scListVariablesRev (ScCtxId gamma) = Identity !<$> scListVariablesRev gamma
-scListVariablesRev (ScCtxComp gamma) = Compose !<$> scListVariablesRev gamma
-scListVariables :: ScCtx sys v -> [v]
-scListVariables = reverse . scListVariablesRev
+scListVariablesRev :: forall v sys . ScCtx sys v -> [v]
+scListVariablesRev gamma = haveScDB gamma $ listAllRev @v
+scListVariables :: forall v sys . ScCtx sys v -> [v]
+scListVariables gamma = haveScDB gamma $ listAll @v
 
 {-| @'mapTelescopedSc' f gamma <theta |- rhs>@ yields @<theta |- f wkn (gamma.theta) rhs>@ -}
 mapTelescopedSc :: (Functor h, SysTrav sys, Functor (ty sys)) =>

@@ -6,13 +6,14 @@ import Menkar.System.Fine
 import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Functor.Coerce
+import Control.Exception.AssertFalse
 
 import Data.Bifunctor
 import Data.Maybe
 import Control.Lens
 import Data.Functor.Identity
 import Data.Functor.Compose
-import Control.Exception.AssertFalse
+import Data.Functor.Coyoneda
 import Data.Void
 import Data.Kind hiding (Type)
 
@@ -230,13 +231,13 @@ lookupQNameModule modul qname =
   lookupQNameEntryList (fmap (fmapCoe (\ (VarInModule v) -> v)) $ view moduleRHS'entries modul) qname
 
 lookupQName :: (Multimode sys) =>
-  Ctx Type sys v -> Raw.QName -> LookupResult sys v
-lookupQName (CtxEmpty _) qname = LookupResultNothing
+  Ctx Type sys v -> Raw.QName -> Coyoneda (LookupResult sys) v
+lookupQName (CtxEmpty _) qname = coy LookupResultNothing
 lookupQName (gamma :.. seg) qname = case _segment'name seg of
   Nothing -> wkn $ lookupQName gamma qname
   Just varname -> case qname of
     Raw.Qualified [] name -> if name == varname
-                                then LookupResultVar VarLast
+                                then coy $ LookupResultVar VarLast
                                      {-Just $ LeftDivided d (ModedModality d (idMod d)) $
                                      (wkn $ _segment'modty seg)
                                      :** Telescoped (ValRHS (Var3 $ VarFromCtx $ VarLast) (wkn $ _segment'content seg))-}
@@ -244,23 +245,20 @@ lookupQName (gamma :.. seg) qname = case _segment'name seg of
     _ -> wkn $ lookupQName gamma qname
   where wkn :: (Functor f) => f v' -> f (VarExt v')
         wkn = fmap VarWkn
-        d = ctx'mode $ gamma :.. seg
 lookupQName (gamma :<...> modul) qname = case lookupQNameModule modul qname of
-  Just t -> LookupResultVal $ LeftDivided
+  Just t -> coy $ LookupResultVal $ LeftDivided
                      d (idModedModality d)
-                     (wkn t)
-  Nothing -> wkn $ lookupQName gamma qname
-  where wkn :: (Functor f) => f v' -> f (VarInModule v')
-        wkn = fmapCoe VarInModule
-        d = ctx'mode $ gamma :<...> modul
-lookupQName (dmu@(ModalityTo dom mu) :\\ gamma) qname = case lookupQName gamma qname of
-  LookupResultVar v -> LookupResultVar v
-  LookupResultNothing -> LookupResultNothing
-  LookupResultVal (LeftDivided dOrig nu seg) ->
-    LookupResultVal $ LeftDivided dOrig (compModedModality nu mu) seg
+                     (VarInModule !<$> t)
+  Nothing -> VarInModule !<$> lookupQName gamma qname
+  where d = uncoy $ ctx'mode $ gamma :<...> modul
+lookupQName (dmu@(ModalityTo dom mu) :\\ gamma) qname = case uncoy (lookupQName gamma qname) of
+    LookupResultVar v -> coy $ LookupResultVar v
+    LookupResultNothing -> coy $ LookupResultNothing
+    LookupResultVal (LeftDivided dOrig nu seg) ->
+      coy $ LookupResultVal $ LeftDivided dOrig (compModedModality nu mu) seg
 lookupQName (CtxId gamma) qname = Identity !<$> lookupQName gamma qname
 lookupQName (CtxComp gamma) qname = Compose !<$> lookupQName gamma qname
-lookupQName (CtxOpaque d) qname = LookupResultNothing
+lookupQName (CtxOpaque d) qname = coy $ LookupResultNothing
 
 ------------------------
 
@@ -296,14 +294,14 @@ lookupVarType gamma v = unreachable
 -}
 
 lookupVar :: (Multimode sys) =>
-  Ctx Type sys v -> v -> LeftDivided (Segment Type) sys v
+  Ctx Type sys v -> v -> Coyoneda (LeftDivided (Segment Type) sys) v
 lookupVar (CtxEmpty d) v = absurd v
-lookupVar (gamma :.. seg) (VarLast) = LeftDivided d (idModedModality d) $ VarWkn <$> seg
-  where d = ctx'mode (gamma :.. seg)
+lookupVar (gamma :.. seg) (VarLast) = VarWkn <$> (coy $ LeftDivided d (idModedModality d) $ seg)
+  where d = uncoy $ ctx'mode gamma
 lookupVar (gamma :.. seg) (VarWkn v) = VarWkn <$> lookupVar gamma v
 lookupVar (gamma :<...> modul) (VarInModule v) = VarInModule !<$> lookupVar gamma v
-lookupVar (dmu@(ModalityTo dom mu) :\\ gamma) v = LeftDivided dOrig (compModedModality nu mu) seg
-  where LeftDivided dOrig nu seg = lookupVar gamma v
+lookupVar (dmu@(ModalityTo dom mu) :\\ gamma) v = coy $ LeftDivided dOrig (compModedModality nu mu) seg
+  where LeftDivided dOrig nu seg = uncoy $ lookupVar gamma v
 lookupVar (CtxId gamma) (Identity v) = Identity !<$> lookupVar gamma v
 lookupVar (CtxComp gamma) (Compose v) = Compose !<$> lookupVar gamma v
 lookupVar (CtxOpaque d) v = unreachable
