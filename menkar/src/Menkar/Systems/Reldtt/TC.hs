@@ -31,6 +31,7 @@ import Data.Void
 import GHC.Generics
 import Data.Functor.Compose
 import Data.Functor.Constant
+import Data.Functor.Coyoneda
 import Data.Maybe
 import Data.List.Ordered
 
@@ -101,7 +102,7 @@ instance SysTC Reldtt where
   checkUnanalyzableSysASTRel' sysError eta rel gamma (Twice1 t1 t2 :: Twice1 t v) (Twice1 extraT1 extraT2) maybeCTs =
     case (sysError, analyzableToken @Reldtt @t, t1, t2) of
       (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const snout1, Const snout2) -> do
-        let (==/<=) = case rel of
+        let (==/<=) = case uncoy rel of
               Const ModEq -> (==)
               Const ModLeq -> (<=)
         when (not $ snout1 ==/<= snout2) $ tcFail "False."
@@ -128,7 +129,7 @@ instance SysTC Reldtt where
       withParent parent $ do
         -- If one side is a meta and the other is WHN, then we can solve immediately.
         solved <- do
-          case getConst relT of
+          case getConst $ uncoy relT of
             ModLeq -> return False
             ModEq -> case (metasT1, metasT2, t1, t2) of
               (_:_, [] , ChainModtyMeta _ _ meta1 (Compose depcies1), _) ->
@@ -172,7 +173,7 @@ instance SysTC Reldtt where
     Right AnTokenModtySnout -> unreachable
     Right AnTokenModtyTail -> unreachable
     Right AnTokenKnownModty -> do
-      case relKnownModty (getConst relT) t1 t2 of
+      case relKnownModty (getConst $ uncoy relT) t1 t2 of
         Nothing -> -- This may occur when something is ill-typed.
           tcFail "Modalities are presumed to have equal (co)domain."
         Just True -> return ()
@@ -186,7 +187,7 @@ instance SysTC Reldtt where
 
   newRelatedSysASTUnanalyzable' sysError relT gammaOrig gamma subst partialInv (t2 :: t v) extraT1orig extraT2 maybeCTs =
     case (sysError, analyzableToken @Reldtt @t, t2) of
-      (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const snout2) -> case getConst relT of
+      (AnErrorModtySnout, AnTokenSys AnTokenModtySnout, Const snout2) -> case getConst $ uncoy relT of
         ModLeq -> unreachable -- There's no unique solution here and there are no metas.
         ModEq -> return $ Const snout2
       (AnErrorModtySnout, _, _) -> unreachable
@@ -241,7 +242,7 @@ instance SysTC Reldtt where
         (_, _:_) -> tcBlock $ "Need to know if codomain is zero."
         (ReldttMode (BareMode (ModeTermZero)), _) -> do
           addNewConstraint
-            (JudRel analyzableToken (Eta False) (Const ModEq)
+            (JudRel analyzableToken (Eta False) (coy $ Const ModEq)
               (duplicateCtx gamma)
               (Twice1 t (ChainModtyKnown $ forgetKnownModty $ dom))
               (Twice1 U1 U1)
