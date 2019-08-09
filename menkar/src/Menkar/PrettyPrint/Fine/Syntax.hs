@@ -23,7 +23,6 @@ import Data.Functor.Functor1
 
 import Data.Void
 import Data.Maybe
-import Data.Proxy
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
@@ -346,7 +345,7 @@ nameWithIndex maybeName index = (fromMaybe (ribbon "_") $ Raw.unparse' <$> maybe
     |++ (toSubscript $ show $ index)
 
 var2pretty :: DeBruijnLevel v => ScCtx sys v -> v -> Fine2PrettyOptions sys -> PrettyTree String
-var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel Proxy v)
+var2pretty gamma v opts = nameWithIndex (scGetName gamma v) (getDeBruijnLevel v)
 
 {-| Term is required to be a meta.
 -}
@@ -368,7 +367,7 @@ meta2pretty gamma neutrality meta depcies maybeAlg opts =
           Nothing -> metaNoSolution
           Just (ForSomeDeBruijnLevel t) ->
             ["\x27ea" ++|
-              fine2pretty gamma (swallow $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> t) opts
+              fine2pretty gamma (swallow $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel <$> t) opts
             |++ "\x27eb"]
   where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma . snd1 <$> depcies
         metaNoSolution = case maybeAlg of
@@ -462,7 +461,7 @@ declName2pretty :: forall v sys declSort . DeBruijnLevel v =>
 declName2pretty gamma (DeclNameVal name) opts = Raw.unparse' name
 declName2pretty gamma (DeclNameModule str) opts = ribbon str
 declName2pretty gamma (DeclNameSegment maybeName) opts =
-  nameWithIndex maybeName (size (Proxy :: Proxy v))
+  nameWithIndex maybeName (size @v)
 instance Show (DeclName declSort) where
   show declName = "[DeclName|\n" ++ (render (declName2pretty ScCtxEmpty declName $? id) $? id) ++ "\n|]"
 
@@ -541,8 +540,8 @@ instance (SysFinePretty sys, Functor (content sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys),
          Fine2Pretty sys (content sys)) =>
          Fine2Pretty sys (Declaration declSort content sys) where
-  fine2pretty gamma decl opts = case _decl'name decl of
-    DeclNameSegment maybeRawName -> seg2pretty gamma decl (size $ _scCtx'sizeProxy gamma) opts
+  fine2pretty (gamma :: ScCtx _ v) decl opts = case _decl'name decl of
+    DeclNameSegment maybeRawName -> seg2pretty gamma decl (size @v) opts
     DeclNameVal rawName ->
       case _fine2pretty'printEntry opts of
         PrintEntryName -> declName2pretty gamma (_decl'name decl) opts

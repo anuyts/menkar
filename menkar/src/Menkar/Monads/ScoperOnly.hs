@@ -26,7 +26,6 @@ import Text.PrettyPrint.Tree
 import Data.Functor.Compose
 import Data.Void
 import Data.Maybe
-import Data.Proxy
 import GHC.Generics
 
 import qualified Menkar.Parser as P -- for testscope
@@ -53,7 +52,7 @@ instance MonadFail SimpleScoper where
 instance MonadScoper Trivial SimpleScoper where
   newMetaID gamma reason = do
     i <- fresh
-    return (i, listAll Proxy <&> \ (v :: v) ->
+    return (i, listAll <&> \ (v :: v) ->
         let d :: TrivMode v
             d = fmap unVarFromCtx $ _modalityTo'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
         in  d :*: Var2 v

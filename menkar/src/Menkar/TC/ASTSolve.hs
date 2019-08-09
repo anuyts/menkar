@@ -23,7 +23,6 @@ import Control.Monad
 import Control.Monad.Writer.Lazy
 import Data.List
 import Data.List.Unique
-import Data.Proxy
 import Data.Maybe
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Writer.Lazy
@@ -176,8 +175,8 @@ getSubstAndPartialInv depcies = do
         _:_ -> Left "Cannot solve meta-variable: it has undergone contraction of dependencies."
         -- All variables are unique
         [] -> do
-          let subst = (depcyVars !!) . fromIntegral . (getDeBruijnLevel Proxy)
-          let partialInv = join . fmap (forDeBruijnLevel Proxy . fromIntegral) . flip elemIndex depcyVars
+          let subst = (depcyVars !!) . fromIntegral . getDeBruijnLevel
+          let partialInv = join . fmap (forDeBruijnLevel . fromIntegral) . flip elemIndex depcyVars
           return (subst, partialInv)
 
 tryToSolveBy :: forall sys tc t v .

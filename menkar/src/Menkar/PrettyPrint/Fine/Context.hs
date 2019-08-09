@@ -18,7 +18,6 @@ import Data.Omissible
 
 import Data.Void
 import Data.Maybe
-import Data.Proxy
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
@@ -36,7 +35,7 @@ ctx2pretty (CtxEmpty d) opts =
 ctx2pretty (gamma :.. seg) opts = haveDB gamma $
   ctx2pretty gamma opts
     \+\ [
-      seg2pretty (ctx2scCtx gamma) seg (size $ ctx'sizeProxy gamma) opts
+      seg2pretty (ctx2scCtx gamma) seg (size @v) opts
     ]
 ctx2pretty (gamma :<...> modul) opts = haveDB gamma $
   case _fine2pretty'printModuleInContext opts of

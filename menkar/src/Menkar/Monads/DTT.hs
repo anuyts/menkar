@@ -31,7 +31,6 @@ import Data.Maybe
 import Data.Either
 import Data.Functor.Identity
 import Data.Functor.Compose
-import Data.Proxy
 import Data.IntMap.Strict
 import Data.Foldable
 import Data.Monoid
@@ -227,7 +226,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     maybeParent <- useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
-    let depcies = listAll Proxy <&> \ v ->
+    let depcies = listAll <&> \ v ->
           let d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
           in  d :*: Var2 v
     return (meta, depcies)
@@ -236,7 +235,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
   newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
-    let depcies = Compose $ Var2 <$> listAll Proxy
+    let depcies = Compose $ Var2 <$> listAll
     return $ Expr2 $ TermMeta neutrality meta depcies (Compose maybeAlg)
   -}
 
@@ -270,18 +269,18 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
       -- If a meta is awaited, then we assume it is created legally and the monad knows, so it's in the metaMap.
       Nothing -> unreachable
       -- Obtain MetaInfo.
-      Just (ForSomeDeBruijnLevel (MetaInfo _ gamma reasonMeta maybeSolution)) -> do
+      Just (ForSomeDeBruijnLevel (MetaInfo _ (gamma :: Ctx _ _ vOrig) reasonMeta maybeSolution)) -> do
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
             -- Substitute the dependencies into the solution and return.
             return $ Just $ swallow $
-              snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel Proxy <$> unsafeForceSolvableAST solution
+              snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel <$> unsafeForceSolvableAST solution
           Left worryIDs -> shiftDC $ \ kCurrent -> do
             -- Prepend the continuation with substituting the dependencies into the solution.
             let kCurrentAdjusted = kCurrent
                   . fmap (
                     swallow
-                    . (fmap $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel (ctx'sizeProxy gamma))
+                    . (fmap $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel @vOrig)
                     . unsafeForceSolvableAST
                   )
             let allowContinuationToBlockOnCurrentMeta :: forall x .

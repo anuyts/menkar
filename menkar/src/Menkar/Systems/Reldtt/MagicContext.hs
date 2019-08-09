@@ -16,14 +16,13 @@ import Control.Exception.AssertFalse
 
 import Data.Void
 import Data.Functor.Compose
-import Data.Proxy
 import Data.Maybe
 import GHC.Generics (U1 (..))
 import GHC.Stack
 
 -- | These are de Bruijn LEVELS, not INDICES!!!
 var :: (HasCallStack, DeBruijnLevel v) => Int -> Term Reldtt v
-var n = Var2 $ fromMaybe unreachable $ forDeBruijnLevel Proxy n
+var n = Var2 $ fromMaybe unreachable $ forDeBruijnLevel n
 dvar :: (HasCallStack, DeBruijnLevel v) => Int -> Mode Reldtt v
 dvar n = ReldttMode $ var n
 mvar :: (HasCallStack, DeBruijnLevel v) => Int -> Mode Reldtt v -> Mode Reldtt v -> Modality Reldtt v

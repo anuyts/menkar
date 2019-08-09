@@ -31,7 +31,6 @@ import Control.Monad
 import System.IO
 import Data.IntMap.Strict hiding (filter, toList)
 import Data.Maybe hiding (mapMaybe)
-import Data.Proxy
 import Data.Functor.Identity
 import Data.Functor.Compose
 import Data.Foldable
@@ -110,7 +109,7 @@ printMetaInfo ref s meta info = do
   mainState <- readIORef ref
   putStrLn $ "Context:"
   putStrLn $ "--------"
-  let tMeta = Expr2 $ TermMeta MetaBlocked meta (Compose $ (unreachable :*:) . Var2 <$> listAll Proxy) (Compose Nothing)
+  let tMeta = Expr2 $ TermMeta MetaBlocked meta (Compose $ (unreachable :*:) . Var2 <$> listAll) (Compose Nothing)
   putStr $ jud2string (JudTerm (_metaInfo'context info) tMeta (Type $ Expr2 $ TermWildcard))
            $ _main'fine2prettyOptions mainState
   putStrLn $ ""

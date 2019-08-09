@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Menkar.Basic.Context.DeBruijnLevel where
 
 import Prelude hiding (take, length)
@@ -7,41 +9,59 @@ import Menkar.Basic.Context.Variable
 import Data.Bifunctor
 import Control.Exception.AssertFalse
 import Data.Void
-import Data.Proxy
 import Data.Maybe
 import Data.List
 import Data.Functor.Compose
 import Data.Functor.Identity
+import Data.Functor.Coerce
 import Unsafe.Coerce
 
 -------------------------------------------------
 
 class Eq v => DeBruijnLevel v where
-  size :: Proxy v -> Int
-  size p = length $ listAll p
-  getDeBruijnLevel :: Proxy v -> v -> Int
-  getDeBruijnLevel p v = fromIntegral $ fromMaybe unreachable $ elemIndex v $ listAll p
-  forDeBruijnLevel :: Proxy v -> Int -> Maybe v
-  forDeBruijnLevel p n = ((Just <$> listAll p) ++ repeat Nothing) `genericIndex` n
-  listAll :: Proxy v -> [v]
-  listAll p = fromMaybe unreachable . forDeBruijnLevel p <$> take (size p) [0..]
-  {-# MINIMAL size, getDeBruijnLevel, forDeBruijnLevel | listAll #-}
+  size :: Int
+  
+  getDeBruijnLevel :: v -> Int
+  getDeBruijnLevel v = size @v - 1 - getDeBruijnIndex v
+  --getDeBruijnLevel v = fromIntegral $ fromMaybe unreachable $ elemIndex v $ listAll @v
+  
+  forDeBruijnLevel :: Int -> Maybe v
+  forDeBruijnLevel n = forDeBruijnIndex @v (size @v - 1 - n)
+  --forDeBruijnLevel n = ((Just <$> listAll @v) ++ repeat Nothing) `genericIndex` n
+  
+  getDeBruijnIndex :: v -> Int
+  getDeBruijnIndex v = size @v - 1 - getDeBruijnLevel v
+  
+  forDeBruijnIndex :: Int -> Maybe v
+  forDeBruijnIndex n = forDeBruijnLevel @v (size @v - 1 - n)
+  
+  listAll :: [v]
+  listAll = reverse listAllRev
+  
+  listAllRev :: [v]
+  listAllRev = reverse listAll
+  
+  {-# MINIMAL size, (getDeBruijnIndex | getDeBruijnLevel), (forDeBruijnIndex | forDeBruijnLevel), (listAll | listAllRev) #-}
 
 instance DeBruijnLevel Void where
-  size p = 0
-  getDeBruijnLevel p = absurd
-  forDeBruijnLevel p n = Nothing
+  size = 0
+  getDeBruijnLevel = absurd
+  forDeBruijnLevel n = Nothing
+  getDeBruijnIndex = absurd
+  forDeBruijnIndex n = Nothing
+  listAll = []
+  listAllRev = []
 
-proxyUnVarWkn :: Proxy (VarExt v) -> Proxy v
-proxyUnVarWkn Proxy = Proxy
 instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
-  size p = size (proxyUnVarWkn p) + 1
-  getDeBruijnLevel p (VarWkn v) = getDeBruijnLevel Proxy v
-  getDeBruijnLevel p VarLast = size p - 1
-  forDeBruijnLevel p n
-    | n == size p - 1 = Just VarLast
-    | otherwise = VarWkn <$> forDeBruijnLevel Proxy n
+  size = size @v + 1
+  getDeBruijnLevel (VarWkn v) = getDeBruijnLevel v
+  getDeBruijnLevel VarLast = size @v
+  forDeBruijnIndex n
+    | n == 0 = Just VarLast
+    | otherwise = VarWkn <$> forDeBruijnIndex (n - 1)
+  listAllRev = VarLast : (VarWkn <$> listAllRev)
 
+{-
 proxyUnVarLeftWkn :: Proxy (VarLeftExt v) -> Proxy v
 proxyUnVarLeftWkn Proxy = Proxy
 instance DeBruijnLevel v => DeBruijnLevel (VarLeftExt v) where
@@ -51,24 +71,35 @@ instance DeBruijnLevel v => DeBruijnLevel (VarLeftExt v) where
   forDeBruijnLevel p n
     | n == size p - 1 = Just VarFirst
     | otherwise = VarLeftWkn <$> forDeBruijnLevel Proxy n
+-}
 
 instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
-  size p = size $ runVarInModule <$> p
-  getDeBruijnLevel p (VarInModule v) = getDeBruijnLevel Proxy v
-  forDeBruijnLevel p n = VarInModule <$> forDeBruijnLevel Proxy n
+  size = size @v
+  getDeBruijnLevel (VarInModule v) = getDeBruijnLevel v
+  getDeBruijnIndex (VarInModule v) = getDeBruijnIndex v
+  forDeBruijnLevel n = VarInModule !<$> forDeBruijnLevel n
+  forDeBruijnIndex n = VarInModule !<$> forDeBruijnIndex n
+  listAll = VarInModule !<$> listAll
+  listAllRev = VarInModule !<$> listAllRev
 
 deriving instance Eq (f (g v)) => Eq (Compose f g v)
 instance DeBruijnLevel (f (g v)) => DeBruijnLevel (Compose f g v) where
-  size p = size (Proxy :: Proxy (f (g v)))
-  getDeBruijnLevel p (Compose v) = getDeBruijnLevel Proxy v
-  forDeBruijnLevel p n = Compose <$> forDeBruijnLevel Proxy n
-  listAll p = Compose <$> listAll Proxy
+  size = size @(f (g v))
+  getDeBruijnLevel (Compose v) = getDeBruijnLevel v
+  getDeBruijnIndex (Compose v) = getDeBruijnIndex v
+  forDeBruijnLevel n = Compose !<$> forDeBruijnLevel n
+  forDeBruijnIndex n = Compose !<$> forDeBruijnIndex n
+  listAll = Compose !<$> listAll
+  listAllRev = Compose !<$> listAllRev
 
 instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
-  size p = size (Proxy :: Proxy v)
-  getDeBruijnLevel p (Identity v) = getDeBruijnLevel Proxy v
-  forDeBruijnLevel p n = Identity <$> forDeBruijnLevel Proxy n
-  listAll p = Identity <$> listAll Proxy
+  size = size @v
+  getDeBruijnLevel (Identity v) = getDeBruijnLevel v
+  getDeBruijnIndex (Identity v) = getDeBruijnIndex v
+  forDeBruijnLevel n = Identity !<$> forDeBruijnLevel n
+  forDeBruijnIndex n = Identity !<$> forDeBruijnIndex n
+  listAll = Identity !<$> listAll
+  listAllRev = Identity !<$> listAllRev
 
 ----------------------------------
 

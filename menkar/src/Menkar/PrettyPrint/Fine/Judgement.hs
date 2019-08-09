@@ -23,7 +23,6 @@ import Data.Functor.Functor1
 
 import Data.Void
 import Data.Maybe
-import Data.Proxy
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
@@ -129,13 +128,13 @@ classif2pretty token gamma extraT ct extraCT opts =
     (AnTokenModalityTo, U1, cod, _) ->
       "_ -> " ++| fine2pretty gamma cod opts
     (AnTokenBinding token, U1, _ :*: boundCRHS, _ :*: seg :*: Comp1 extraCRHS) ->
-      (nameWithIndex (_namedBinding'name boundCRHS) (size $ _scCtx'sizeProxy gamma))
+      (nameWithIndex (_namedBinding'name boundCRHS) (size @v))
         |++ " -> " |+|
         classif2pretty token
           (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
           U1 (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
     (AnTokenNamedBinding token, seg :*: Comp1 extraRHS, boundCRHS, seg' :*: Comp1 extraCRHS) ->
-      (nameWithIndex (_namedBinding'name boundCRHS) (size $ _scCtx'sizeProxy gamma))
+      (nameWithIndex (_namedBinding'name boundCRHS) (size @v))
         |++ " -> " |+|
         classif2pretty token
           (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
