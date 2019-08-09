@@ -41,7 +41,7 @@ library:
   source-dirs: src
 
 executables:
-  menkar-exe:
+  menkar:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

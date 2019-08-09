@@ -78,8 +78,8 @@ Menkar is now installed as `menkar-exe`.
 ### Running
 Type-check the concatenation of three files:
 ```
-menkar-exe trivial path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
-menkar-exe reldtt path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
+menkar trivial path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
+menkar reldtt path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
 ```
 
 ## Other remarks
