@@ -20,12 +20,12 @@ import Data.Void
 import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
-import Control.Monad.Writer.Lazy
+import Control.Monad.Writer.Strict
 import Data.List
 import Data.List.Unique
 import Data.Maybe
 import Control.Monad.Trans.Maybe
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Writer.Strict
 import GHC.Generics
 import Control.Applicative
 

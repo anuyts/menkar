@@ -18,7 +18,7 @@ import Menkar.Systems.Trivial.Trivial
 import Control.Exception.AssertFalse
 import Data.Omissible
 
-import Control.Monad.State.Lazy
+import Control.Monad.State.Strict
 import Control.Monad.Fail
 import Control.Lens
 import GHC.Generics (U1 (..))

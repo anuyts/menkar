@@ -19,11 +19,10 @@ import Menkar.System.Scoper
 import Menkar.PrettyPrint.Raw.Syntax
 import Menkar.PrettyPrint.Aux.Context
 
-import Control.Monad.State.Lazy
+import Control.Monad.State.Strict
 import Control.Monad.List
 import Data.Functor.Compose
 import Data.Void
-import Data.HashMap.Lazy
 import Data.Functor.Identity
 import Data.Coerce
 import Control.Lens

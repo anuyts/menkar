@@ -14,7 +14,7 @@ import Data.Monoid
 import Data.Functor.Const
 import Control.Lens
 import GHC.Generics
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Writer.Strict
 
 {-
 instance Monoid a => Monad (Const a) where

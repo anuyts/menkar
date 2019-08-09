@@ -38,7 +38,7 @@ import Control.Monad.Cont
 import Control.Monad.Trans.Cont
 import Control.Monad.Trans.Reader hiding (ask)
 import Control.Monad.Reader.Class
-import Control.Monad.State.Lazy
+import Control.Monad.State.Strict
 import Control.Monad.List
 import Control.Monad.Except
 import Control.Monad.Fail

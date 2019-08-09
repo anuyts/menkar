@@ -22,9 +22,9 @@ import Data.Functor.Coerce
 
 import Control.Monad.Trans.Class
 import Control.Monad.Writer.Class
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Writer.Strict
 import Control.Monad.Trans.Maybe
-import Control.Monad.State.Lazy
+import Control.Monad.State.Strict
 import Control.Applicative
 import Control.Lens
 import Data.Void

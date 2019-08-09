@@ -11,7 +11,7 @@ import Menkar.Analyzer.Class
 import Text.PrettyPrint.Tree
 import Data.Omissible
 
-import Data.IntMap.Lazy hiding (map, size)
+import Data.IntMap.Strict hiding (map, size)
 import Control.Lens
 import Data.Void
 

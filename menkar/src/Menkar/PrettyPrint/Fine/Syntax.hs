@@ -28,7 +28,7 @@ import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
 import Control.Monad
-import Data.IntMap.Lazy hiding (map, size)
+import Data.IntMap.Strict hiding (map, size)
 import GHC.Generics
 
 charYielding :: Char

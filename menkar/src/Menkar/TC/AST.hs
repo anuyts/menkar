@@ -24,7 +24,7 @@ import Data.Void
 import Control.Lens
 import Data.Functor.Compose
 import Control.Monad
-import Control.Monad.Writer.Lazy
+import Control.Monad.Writer.Strict
 import GHC.Generics
 
 ----------------------------

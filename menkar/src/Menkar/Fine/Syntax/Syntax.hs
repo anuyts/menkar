@@ -11,7 +11,6 @@ import qualified Menkar.Raw.Syntax as Raw
 
 import GHC.Generics
 import Data.Functor.Compose
-import Data.HashMap.Lazy
 import Data.Functor.Identity
 import Data.Maybe
 import Control.Exception.AssertFalse
