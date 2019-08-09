@@ -19,6 +19,7 @@ import Data.Constraint.Witness
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import Control.Monad
 import Control.Monad.Writer.Strict
 import Data.List
@@ -34,7 +35,7 @@ import Control.Applicative
 -- | Immediately calls the analyzer.
 newRelatedAST' :: forall sys tc t v vOrig .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
-  Relation t v ->
+  Coyoneda (Relation t) v ->
   Ctx Type sys vOrig ->
   Ctx (Twice2 Type) sys v ->
   (vOrig -> v) ->
@@ -111,7 +112,7 @@ newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 mayb
 newRelatedAST :: forall sys tc t v vOrig .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
   Eta ->
-  Relation t v ->
+  Coyoneda (Relation t) v ->
   Ctx Type sys vOrig ->
   Ctx (Twice2 Type) sys v ->
   (vOrig -> v) ->
@@ -136,7 +137,7 @@ newRelatedAST eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 m
 newRelatedMetaTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Eta ->
-  ModedDegree sys v ->
+  Coyoneda (ModedDegree sys) v ->
   Ctx Type sys vOrig ->
   Ctx (Twice2 Type) sys v ->
   (vOrig -> v) ->
@@ -212,7 +213,7 @@ tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
 
 tryToSolveAgainstWHN :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
-  Relation t v ->
+  Coyoneda (Relation t) v ->
   Ctx (Twice2 Type) sys v ->
   MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
   t v ->

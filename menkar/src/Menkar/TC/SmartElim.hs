@@ -77,7 +77,7 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
             )
             "End of elimination: Checking elimination modality."
           addNewConstraint
-            (JudRel analyzableToken (Eta True) (Const ModEq)
+            (JudRel analyzableToken (Eta True) (coy $ Const ModEq)
               (crispCtx $ duplicateCtx gamma)
               (Twice1 muElim (idMod $ uncoyDGamma))
               (Twice1 U1 U1)
@@ -86,7 +86,7 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
             "End of elimination: Checking whether actual elimination modality equals expected modality (namely identity)."
       addNewConstraint
         (JudTypeRel
-          (modedEqDeg uncoyDGamma)
+          (hoistcoy modedEqDeg dgamma)
           (duplicateCtx gamma)
           (Twice2 tyEliminee tyResult)
         )
@@ -94,7 +94,7 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
       addNewConstraint
         (JudTermRel
           (Eta True)
-          (modedEqDeg uncoyDGamma)
+          (hoistcoy modedEqDeg dgamma)
           (duplicateCtx gamma)
           (Twice2 eliminee result)
           (Twice2 tyEliminee tyResult)
@@ -125,7 +125,7 @@ discard gamma eliminee tyEliminee dmuInfer eliminators result tyResult = do
     )
     "Doing nothing: Checking elimination modality."
   addNewConstraint
-    (JudRel analyzableToken (Eta True) (Const ModEq)
+    (JudRel analyzableToken (Eta True) (coy $ Const ModEq)
       (crispCtx $ duplicateCtx gamma)
       (Twice1
         (idMod dImmedResult)
@@ -172,7 +172,7 @@ unbox gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
     )
     "Unboxing: Checking elimination modality."
   addNewConstraint
-    (JudRel analyzableToken (Eta True) (Const ModEq)
+    (JudRel analyzableToken (Eta True) (coy $ Const ModEq)
       (crispCtx $ duplicateCtx gamma)
       (Twice1
         dmuUnbox
@@ -224,7 +224,7 @@ projFst gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
     )
     "First projection: Checking elimination modality."
   addNewConstraint
-    (JudRel analyzableToken (Eta True) (Const ModEq)
+    (JudRel analyzableToken (Eta True) (coy $ Const ModEq)
       (crispCtx $ duplicateCtx gamma)
       (Twice1 dmuProjFst dmuInfer)
       (Twice1 U1 U1)
@@ -285,7 +285,7 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
     )
     "Second projection: Checking elimination modality."
   addNewConstraint
-    (JudRel analyzableToken (Eta True) (Const ModEq)
+    (JudRel analyzableToken (Eta True) (coy $ Const ModEq)
       (crispCtx $ duplicateCtx gamma)
       (Twice1
         (idMod $ _modality'dom dmuElimTotal)
@@ -340,7 +340,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
         )
         "Applying function: Checking modality annotation on argument."
       addNewConstraint
-        (JudRel analyzableToken (Eta True) (Const ModEq)
+        (JudRel analyzableToken (Eta True) (coy $ Const ModEq)
           (crispCtx $ duplicateCtx gamma)
           (Twice1
             dmuArg
@@ -360,7 +360,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
     )
     "Applying function: Checking elimination modality."
   addNewConstraint
-    (JudRel analyzableToken (Eta True) (Const ModEq)
+    (JudRel analyzableToken (Eta True) (coy $ Const ModEq)
       (crispCtx $ duplicateCtx gamma)
       (Twice1
         (idModedModality $ dImmedResult)
@@ -464,7 +464,7 @@ popModality gamma eliminee tyEliminee eliminators result tyResult =
         )
         "Type-checking modality of next smart elimination, which I will need to split."
       addNewConstraint
-        (JudRel (analyzableToken @sys @(Modality sys)) (Eta True) (Const ModEq)
+        (JudRel (analyzableToken @sys @(Modality sys)) (Eta True) (coy $ Const ModEq)
           (crispCtx $ duplicateCtx gamma)
           (Twice1
             (_modality'mod $ compModedModality dmuRemaining dmuPoppee)

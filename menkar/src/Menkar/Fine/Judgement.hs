@@ -14,6 +14,7 @@ import Data.Bifunctor
 import Data.Maybe
 import GHC.Generics
 import Data.Functor.Identity
+import Data.Functor.Coyoneda
 import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 
@@ -42,7 +43,7 @@ data Judgement (sys :: KSys) where
   JudRel :: (DeBruijnLevel v, Analyzable sys t) =>
     AnalyzableToken sys t ->
     Eta ->
-    Relation t v ->
+    Coyoneda (Relation t) v ->
     Ctx (Twice2 Type) sys v ->
     Twice1 t v ->
     Twice1 (ClassifExtraInput t) v ->

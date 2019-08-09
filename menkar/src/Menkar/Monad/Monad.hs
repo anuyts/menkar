@@ -14,6 +14,7 @@ import Menkar.Analyzer
 import Data.Void
 import Control.Monad.Trans.Class
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import Control.Monad.Trans.Maybe
 import Control.Monad.Fail
 import Data.Kind hiding (Type, Constraint)
@@ -198,7 +199,7 @@ newMetaType gamma reason = do
 -- | No eta flag is given: it is set to @False@, as there is no eta-equality in the universe.
 -- | No algorithm is given: this isn't used by the scoper anyway.
 newMetaTypeRel :: (MonadTC sys tc, DeBruijnLevel v, SysAnalyzer sys) =>
-  ModedDegree sys v ->
+  Coyoneda (ModedDegree sys) v ->
   Ctx (Twice2 Type) sys v ->
   Type sys v ->
   String ->

@@ -10,6 +10,7 @@ import Menkar.Monad.Monad
 import Data.Void
 import Data.Constraint.Witness
 import Data.Functor.Const
+import Data.Functor.Coyoneda
 import GHC.Generics
 
 class SysWHN sys => SysTC sys where
@@ -43,7 +44,7 @@ class SysWHN sys => SysTC sys where
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     SysAnalyzerError sys ->
     Eta ->
-    Relation t v ->
+    Coyoneda (Relation t) v ->
     Ctx (Twice2 Type) sys v ->
     Twice1 t v ->
     Twice1 (ClassifExtraInput t) v ->
@@ -53,7 +54,7 @@ class SysWHN sys => SysTC sys where
     (MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
     MultimodeOrSysAnalyzableToken sys t ->
     Eta ->
-    Relation t v ->
+    Coyoneda (Relation t) v ->
     Ctx (Twice2 Type) sys v ->
     Twice1 t v ->
     Twice1 (ClassifExtraInput t) v ->
@@ -66,7 +67,7 @@ class SysWHN sys => SysTC sys where
   newRelatedSysASTUnanalyzable' :: forall tc t v vOrig .
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     SysAnalyzerError sys ->
-    Relation t v ->
+    Coyoneda (Relation t) v ->
     Ctx Type sys vOrig ->
     Ctx (Twice2 Type) sys v ->
     (vOrig -> v) ->
@@ -81,7 +82,7 @@ class SysWHN sys => SysTC sys where
     (MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
     MultimodeOrSysAnalyzableToken sys t ->
     Eta ->
-    Relation t v ->
+    Coyoneda (Relation t) v ->
     Ctx Type sys vOrig ->
     Ctx (Twice2 Type) sys v ->
     (vOrig -> v) ->
@@ -167,5 +168,5 @@ newRelatedMetaMode :: forall sys tc v vOrig .
     String ->
     tc (Mode sys vOrig)
 newRelatedMetaMode eta gammaOrig gamma subst partialInv d2 reason =
-  newRelatedMultimodeOrSysAST (Left AnTokenMode) eta U1 gammaOrig gamma subst partialInv d2 U1 U1
+  newRelatedMultimodeOrSysAST (Left AnTokenMode) eta (coy U1) gammaOrig gamma subst partialInv d2 U1 U1
     (ClassifWillBe $ Twice1 U1 U1) reason
