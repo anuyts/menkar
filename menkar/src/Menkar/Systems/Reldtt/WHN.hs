@@ -132,7 +132,7 @@ compChainModty chmu chnu =
 whnormalizeComp :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
   Constraint Reldtt ->
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   Term Reldtt v ->
   Term Reldtt v ->
   Term Reldtt v ->
@@ -261,7 +261,7 @@ knownApproxLeftAdjointProj kmu@(KnownModty snout@(ModtySnout idom icod krevdegs)
 
 whnormalizeModtyTail :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   ModtyTail v ->
   String ->
   whn (ModtyTail v)
@@ -297,7 +297,7 @@ whnormalizeModtyTail gamma tail reason =
 -- Why bother?
 whnormalizeKnownModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   KnownModty v ->
   String ->
   whn (KnownModty v)
@@ -335,7 +335,7 @@ whnormalizeKnownModty gamma mu@(KnownModty snout tail) reason = do
 
 whnormalizeChainModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   ChainModty v ->
   String ->
   whn (ChainModty v)
@@ -397,7 +397,7 @@ whnormalizeChainModty gamma chmu@(ChainModtyAlreadyChecked dom cod chmuChecked) 
 {-
 whnormalizeChainModty :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   ChainModty v ->
   String ->
   whn (ChainModty v)
@@ -412,7 +412,7 @@ whnormalizeChainModty gamma chmu reason = do
 
 whnormalizeModeTerm :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   ModeTerm v ->
   String ->
   whn (ModeTerm v)
@@ -428,7 +428,7 @@ whnormalizeModeTerm gamma d reason = case d of
 
 whnormalizeModtyTerm :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   ModtyTerm v ->
   String ->
   whn (ModtyTerm v)
@@ -453,7 +453,7 @@ whnormalizeModtyTerm gamma mu reason = case mu of
   
 whnormalizeReldttDegree :: forall whn v .
   (MonadWHN Reldtt whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   ReldttDegree v ->
   String ->
   whn (ReldttDegree v)

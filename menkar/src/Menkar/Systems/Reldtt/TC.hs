@@ -36,7 +36,7 @@ import Data.List.Ordered
 
 {-tryToSolveChainModty :: forall tc v .
   (MonadTC Reldtt tc, DeBruijnLevel v) =>
-  Ctx (Twice2 Type) Reldtt v Void ->
+  Ctx (Twice2 Type) Reldtt v ->
   ChainModty v ->
   ChainModty v ->
   ClassifInfo (Twice1 (ReldttMode :*: ReldttMode) v) ->
@@ -277,7 +277,7 @@ instance SysTC Reldtt where
 
 newMetaChainModty :: 
   (DeBruijnLevel v, MonadTC Reldtt tc) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   Mode Reldtt v ->
   Mode Reldtt v ->
   String ->

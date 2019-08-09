@@ -24,7 +24,7 @@ import GHC.Generics
 import Util (snocView)
 
 scopeTailAspect :: (MonadScoper Reldtt sc, DeBruijnLevel v) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   Raw.ModtyTailAspect ->
   sc (ModtyTail v)
 scopeTailAspect gamma (Raw.ModtyTailAspect str rawD) = do
@@ -113,7 +113,7 @@ instance SysScoper Reldtt where
 
 newMetaChainModtyNoCheck ::
   (DeBruijnLevel v, MonadScoper Reldtt sc) =>
-  Ctx Type Reldtt v Void ->
+  Ctx Type Reldtt v ->
   Mode Reldtt v ->
   Mode Reldtt v ->
   String ->
