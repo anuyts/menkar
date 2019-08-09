@@ -19,6 +19,7 @@ import Data.Kind hiding (Type)
 import Data.Void
 import Data.Functor.Identity
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import GHC.Generics
 import Data.Maybe
 import Control.Monad
@@ -307,7 +308,7 @@ class (Functor t,
         Maybe (Ctx (TypeMaybeTwice doubled) sys (ext u))
       ) ->
       ({-forall u . (DeBruijnLevel u, DeBruijnLevel (ext u)) =>-}
-        Mode sys v -> Relation t v -> Relation s (ext v)
+        Coyoneda (Mode sys) v -> Coyoneda (Relation t) v -> Coyoneda (Relation s) (ext v)
       ) ->
       AddressInfo ->
       f (Analysis option s (ext vOut))
@@ -315,8 +316,8 @@ class (Functor t,
     Either (AnalyzerError sys) (f (Analysis option t vOut))
   -- | The conversion relation, used to compare expected and actual classifier.
   -- | The token is only given to pass Haskell's ambiguity check.
-  convRel :: AnalyzableToken sys t -> Mode sys v -> Relation (Classif t) v
-  extraClassif :: Mode sys v -> t v -> ClassifExtraInput t v -> ClassifExtraInput (Classif t) v
+  convRel :: AnalyzableToken sys t -> Coyoneda (Mode sys) v -> Relation (Classif t) v
+  extraClassif :: Coyoneda (Mode sys) v -> t v -> ClassifExtraInput t v -> ClassifExtraInput (Classif t) v
 
 extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) =>
         BoolToken doubled ->
@@ -327,9 +328,9 @@ extCtxId :: forall sys t option u doubled . (DeBruijnLevel u) =>
 extCtxId token gamma _ _ = Just $ CtxId gamma
 extRelId :: forall sys r v .
   (Functor r) =>
-  Mode sys v ->
-  r v ->
-  r (Identity v)
+  Coyoneda (Mode sys) v ->
+  Coyoneda r v ->
+  Coyoneda r (Identity v)
 extRelId = const $ fmapCoe Identity
 crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys) => 
         BoolToken doubled ->
@@ -337,7 +338,7 @@ crispExtCtxId :: forall sys t option u doubled . (DeBruijnLevel u, Multimode sys
         Classification t u ->
         IfTrue doubled (Classification t u) ->
         Maybe (Ctx (TypeMaybeTwice doubled) sys (Identity u))
-crispExtCtxId token gamma _ _ = Just $ CtxId $ crispModalityTo (ctx'mode gamma) :\\ gamma
+crispExtCtxId token gamma _ _ = Just $ CtxId $ crispModalityTo (uncoy $ ctx'mode gamma) :\\ gamma
 
 haveClassif :: forall sys t a . (Analyzable sys t) => (Analyzable sys (Classif t) => a) -> a
 haveClassif a = have (witClassif (analyzableToken :: AnalyzableToken sys t)) a
@@ -386,14 +387,14 @@ analyzeOld :: forall sys t option f v .
     Ctx (TypeForOption option) sys v ->
     Classification t v ->
     IfDoubled option (Classification t v) ->
-    IfDoubled option (Relation t v) ->
+    IfDoubled option (Coyoneda (Relation t) v) ->
     (forall s w .
       (Analyzable sys s, DeBruijnLevel w) =>
       (v -> w) ->
       Maybe (Ctx (TypeForOption option) sys w) ->
       Classification s w ->
       IfDoubled option (Maybe (Classification s w)) ->
-      IfDoubled option (Relation s w) ->
+      IfDoubled option (Coyoneda (Relation s) w) ->
       AddressInfo ->
       (t v -> Maybe (s w)) ->
       f (Analysis option s w)

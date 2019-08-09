@@ -195,5 +195,9 @@ coy = liftCoyoneda
 uncoy :: (Functor f) => Coyoneda f x -> f x
 uncoy = lowerCoyoneda
 
+hoistcoy = hoistCoyoneda
+cutcoy :: (Functor f) => (f x -> g y) -> Coyoneda f x -> Coyoneda g y
+cutcoy f = coy . f . uncoy
+
 pattern Coy x <- (lowerCoyoneda -> x)
   where Coy x = coy x
