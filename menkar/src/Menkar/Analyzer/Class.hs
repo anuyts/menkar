@@ -482,6 +482,7 @@ deriving instance Functor (ForSomeSolvableAST sys)
 deriving instance Foldable (ForSomeSolvableAST sys)
 deriving instance Traversable (ForSomeSolvableAST sys)
 instance CanSwallow (Term sys) (ForSomeSolvableAST sys) where
+  substitute h (ForSomeSolvableAST t) = ForSomeSolvableAST $ substitute h t
   swallow (ForSomeSolvableAST t) = ForSomeSolvableAST $ swallow t
 
 forThisSolvableAST :: forall sys v x . (forall t . (Solvable sys t) => t v -> x) -> ForSomeSolvableAST sys v -> x

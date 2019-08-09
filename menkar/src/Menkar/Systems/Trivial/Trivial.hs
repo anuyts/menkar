@@ -13,6 +13,7 @@ import Text.PrettyPrint.Tree
 import Data.Omissible
 import Data.Constraint.Witness
 import Control.Exception.AssertFalse
+import Data.Functor.Functor1
 
 import GHC.Generics
 import Data.Void
@@ -89,9 +90,6 @@ instance Multimode Trivial where
   _modality'cod TrivModality = TrivMode
   --term2mode t = U1
   --term2modty t = U1
-
-absurd1 :: V1 x -> a
-absurd1 v = undefined
 
 trivModedModality = TrivModedModality
 

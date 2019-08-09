@@ -273,14 +273,13 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
             -- Substitute the dependencies into the solution and return.
-            return $ Just $ swallow $
-              snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel <$> unsafeForceSolvableAST solution
+            return $ Just $ substitute (snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel) $
+              unsafeForceSolvableAST solution
           Left worryIDs -> shiftDC $ \ kCurrent -> do
             -- Prepend the continuation with substituting the dependencies into the solution.
             let kCurrentAdjusted = kCurrent
                   . fmap (
-                    swallow
-                    . (fmap $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel @vOrig)
+                    substitute (snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel @vOrig)
                     . unsafeForceSolvableAST
                   )
             let allowContinuationToBlockOnCurrentMeta :: forall x .

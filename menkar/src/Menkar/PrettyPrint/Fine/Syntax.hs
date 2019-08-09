@@ -367,7 +367,7 @@ meta2pretty gamma neutrality meta depcies maybeAlg opts =
           Nothing -> metaNoSolution
           Just (ForSomeDeBruijnLevel t) ->
             ["\x27ea" ++|
-              fine2pretty gamma (swallow $ snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel <$> t) opts
+              fine2pretty gamma (substitute (snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel) t) opts
             |++ "\x27eb"]
   where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma . snd1 <$> depcies
         metaNoSolution = case maybeAlg of

@@ -697,7 +697,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                        boundBoundPairClause'
                        (segFst' :*: Comp1 (segSnd' :*: Comp1 U1))
                        (ClassifMustBe $ NamedBinding Nothing $ Const1 $ NamedBinding Nothing $ Const1 $
-                         swallow $ subst <$> motive'
+                         substitute subst motive'
                        )
                otherwise -> Nothing
           )
@@ -730,7 +730,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                        boundBoxClause'
                        (segUnbox' :*: Comp1 U1)
                        (ClassifMustBe $ NamedBinding Nothing $ Const1 $
-                         swallow $ subst <$> motive'
+                         substitute subst motive'
                        )
                otherwise -> Nothing
           )
@@ -792,7 +792,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                        boundBoundSucClause'
                        (segPred' :*: Comp1 (segHyp' :*: Comp1 U1))
                        (ClassifMustBe $ NamedBinding Nothing $ Const1 $ NamedBinding Nothing $ Const1 $
-                         swallow $ substS <$> motive'
+                         substitute substS motive'
                        )
                otherwise -> Nothing
           )
