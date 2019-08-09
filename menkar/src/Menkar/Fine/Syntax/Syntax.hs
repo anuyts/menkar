@@ -12,6 +12,7 @@ import qualified Menkar.Raw.Syntax as Raw
 import GHC.Generics
 import Data.Functor.Compose
 import Data.Functor.Identity
+import Data.Functor.Coyoneda
 import Data.Maybe
 import Control.Exception.AssertFalse
 import Control.Lens
@@ -438,7 +439,7 @@ data TermNV (sys :: KSys) (v :: *) =
     (Compose [] (Mode sys :*: Term sys) v) {-^ Dependencies -}
     (Compose Maybe (Algorithm sys) v) {-^ Human readable representation -} |
   TermWildcard {-^ A meta that need not be solved. -} |
-  TermQName Raw.QName (LeftDivided (Telescoped Type ValRHS) sys v) |
+  TermQName Raw.QName (Coyoneda (LeftDivided (Telescoped Type ValRHS) sys) v) |
   TermAlreadyChecked (Term sys v) (Type sys v) {-^ Term that has already been checked and need not be checked again. -} |
   TermAlgorithm
     (Algorithm sys v)

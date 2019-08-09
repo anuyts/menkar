@@ -37,12 +37,12 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
       ElimSigma pairClause -> case tyEliminee of
         Sigma sigmaBinding -> do
           let dmuSigma = _segment'modty $ binding'segment sigmaBinding
-          allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmuSigma) reason >>= \case
+          allowsEta (crispCtx gamma) (_modalityTo'mod dmuSigma) reason >>= \case
             Just True -> do
               let tmFst = Expr2 $
                     TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmuSigma) whnEliminee tyEliminee Fst
               let tmSnd = Expr2 $
-                    TermElim (idModalityTo dgamma)                                        whnEliminee tyEliminee Snd
+                    TermElim (idModalityTo $ uncoy dgamma)                                whnEliminee tyEliminee Snd
               let subst v = case v of
                     VarWkn (VarWkn w) -> Var2 w
                     VarWkn VarLast -> tmFst
@@ -53,7 +53,7 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
       ElimBox boxClause -> case tyEliminee of
         BoxType boxSeg -> do
           let dmuBox = _segment'modty boxSeg
-          allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmuBox) reason >>= \case
+          allowsEta (crispCtx gamma) (_modalityTo'mod dmuBox) reason >>= \case
             Just True -> do
               let tmUnbox = Expr2 $
                     TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmuBox) whnEliminee tyEliminee Unbox

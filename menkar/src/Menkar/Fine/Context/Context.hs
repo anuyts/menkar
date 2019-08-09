@@ -162,3 +162,6 @@ getSegment (segT :^^ gamma) (VarLeftWkn v) = (<$> getSegment gamma v) $
 getSegment (segT :<...> _) (VarInModule v) = bimap VarInModule id <$> getSegment segT v
 getSegment (kappa :\\ gamma) v = todo
 -}
+
+crispCtx :: (Multimode sys) => Ctx ty sys v -> Ctx ty sys v
+crispCtx gamma = crispModalityTo (uncoy $ ctx'mode gamma) :\\ gamma

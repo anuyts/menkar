@@ -24,6 +24,7 @@ import Control.Monad.List
 import Data.Functor.Compose
 import Data.Void
 import Data.Functor.Identity
+import Data.Functor.Coyoneda
 import Data.Coerce
 import Control.Lens
 import Data.List
@@ -43,7 +44,7 @@ eliminator gamma (Raw.ElimDots) = return SmartElimDots
 --eliminator gamma (Raw.ElimEnd argSpec) = return $ SmartElimEnd argSpec
 eliminator gamma (Raw.ElimArg argSpec rawExpr) = do
   let dgamma' = ctx'mode gamma
-  dmu <- newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring modality of argument."
+  dmu <- newMetaModtyNoCheck (crispCtx gamma) "Inferring modality of argument."
   fineExpr <- expr (withDom dmu :\\ gamma) rawExpr
   return $ SmartElimArg argSpec dmu fineExpr
 eliminator gamma (Raw.ElimProj projSpec) = return $ SmartElimProj projSpec
@@ -61,12 +62,12 @@ qname :: forall sys sc v .
   Ctx Type sys v ->
   Raw.QName ->
   sc (Term sys v)
-qname gamma rawQName =
-  let maybeLdivTelescopedVal = lookupQName gamma rawQName
-  in case maybeLdivTelescopedVal of
-       LookupResultNothing -> scopeFail $ "Not in scope: " ++ Raw.unparse rawQName
-       LookupResultVar v -> return $ Var2 v
-       LookupResultVal ldivTelescopedVal -> return $ Expr2 $ TermQName rawQName $ ldivTelescopedVal
+qname gamma rawQName = case lookupQName gamma rawQName of
+  Coyoneda (f :: u -> v) (maybeLdivTelescopedVal :: LookupResult sys u) ->
+    case maybeLdivTelescopedVal of
+      LookupResultNothing -> scopeFail $ "Not in scope: " ++ Raw.unparse rawQName
+      LookupResultVar v -> return $ Var2 $ f v
+      LookupResultVal ldivTelescopedVal -> return $ Expr2 $ TermQName rawQName $ Coyoneda f ldivTelescopedVal
   
 {-| @'exprC' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 exprC :: forall sys sc v .
@@ -94,9 +95,9 @@ elimination :: forall sys sc v .
 elimination gamma (Raw.Elimination rawEliminee rawElims) = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
-  dmus <- forM rawElims $ \_ -> newMetaModedModalityNoCheck (crispModalityTo dgamma' :\\ gamma)
+  dmus <- forM rawElims $ \_ -> newMetaModedModalityNoCheck (crispCtx gamma)
                                   "Inferring elimination modality."
-  let dmuTotal : dmuTails = flip concatModedModalityDiagrammatically dgamma <$> tails dmus
+  let dmuTotal : dmuTails = flip concatModedModalityDiagrammatically (uncoy dgamma) <$> tails dmus
   fineEliminee <- exprC (withDom dmuTotal :\\ gamma) rawEliminee
   --fineTy <- type4newImplicit gamma
   fineElims <- forM (zip3 dmus dmuTails rawElims) $
@@ -135,7 +136,7 @@ simpleLambda ::
 simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) rawBody =
   do
     let dgamma' = ctx'mode gamma
-    dmu <- newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Infer domain mode/modality."
+    dmu <- newMetaModtyNoCheck (crispCtx gamma) "Infer domain mode/modality."
     fineTy <- Type <$> newMetaTermNoCheck {-eqDeg-} (withDom dmu :\\ gamma) MetaBlocked Nothing "Infer domain."
     maybeName <- case boundArg of
       Raw.ExprQName (Raw.Qualified [] name) -> return $ Just name
@@ -367,7 +368,7 @@ buildDeclaration gamma generateContent partDecl = do
         -- allocate all implicits BEFORE name fork
         mu <- case _pdecl'modty partDecl of
           Compose (Just mu') -> return mu'
-          Compose Nothing -> newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Infer modality."
+          Compose Nothing -> newMetaModtyNoCheck (crispCtx gamma) "Infer modality."
         let d = case _pdecl'mode partDecl of
               Compose (Just d') -> d'
               Compose Nothing -> _modality'dom mu
@@ -513,7 +514,7 @@ segments2telescoped gamma (fineSeg:fineSegs) = do
   case maybeNewName of
     Nothing -> return ()
     Just newName -> case lookupQName gamma (Raw.Qualified [] newName) of
-      LookupResultNothing -> return ()
+      Coyoneda _ LookupResultNothing -> return ()
       _ -> scopeFail $ "Shadowing is not allowed in variable names; already in scope: " ++ Raw.unparse newName
   -- Actual action:
   (fineSeg :|-) <$> segments2telescoped (gamma :.. (fineSeg)) (fmap VarWkn <$> fineSegs)
@@ -539,7 +540,7 @@ modalLock gamma (Raw.ModalLock rawAnnots) = do
     Nothing -> newMetaModeNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring domain of modality."
     Just dom -> return dom-}
   mu <- case maybeMu of
-    Nothing -> newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring modality."
+    Nothing -> newMetaModtyNoCheck (crispCtx gamma) "Inferring modality."
     Just mu -> return mu
   let dom = case maybeDom of
         Nothing -> _modality'dom mu
@@ -603,7 +604,7 @@ val gamma rawLHS (Raw.RHSVal rawExpr) = do
         return $ ValRHS fineTm fineTy
     ) gamma
   case lookupQName gamma (Raw.Qualified [] $ _val'name val) of
-    LookupResultNothing -> return val
+    Coyoneda _ LookupResultNothing -> return val
     _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ Raw.unparse (_val'name val)
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
