@@ -27,7 +27,7 @@ checkASTRel' :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
   Eta ->
   Relation t v ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   Twice1 t v ->
   Twice1 (ClassifExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
@@ -44,7 +44,7 @@ checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = d
         (Just _, Nothing) -> tcFail  "False"
         (Just (Classification (s1 :: s _) extraS1 maybeCS1),
          Just (Classification (s2 :: s _) extraS2 maybeCS2)) -> do
-          let relS = extractRel (unVarFromCtx <$> ctx'mode gamma) relT
+          let relS = extractRel (ctx'mode gamma) relT
           let gammadelta = fromMaybe unreachable $ extCtx TokenTrue gamma inputT1 (conditional inputT2)
               -- Cannot fail because we already know that the shapes of t1 and t2 match.
           let eta = case _addressInfo'focus addressInfo of
@@ -106,7 +106,7 @@ checkASTRel :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
   Eta ->
   Relation t v ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   Twice1 t v ->
   Twice1 (ClassifExtraInput t) v ->
   ClassifInfo (Twice1 (Classif t) v) ->
@@ -125,7 +125,7 @@ checkASTRel eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) ma
 checkTermRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   ModedDegree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   Term sys v ->
   Term sys v ->
   [Int] ->
@@ -164,17 +164,17 @@ checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
 etaExpand ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   UseHolesOrEliminees ->
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Term sys v ->
   UniHSConstructor sys v ->
   tc (Maybe (Maybe (Term sys v)))
 etaExpand useHoles gamma t (Pi piBinding) = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   body <- case useHoles of
     UseHoles -> newMetaTerm
             --(eqDeg :: Degree sys _)
-            (gamma :.. (VarFromCtx <$> binding'segment piBinding))
+            (gamma :.. (binding'segment piBinding))
             (binding'body piBinding)
             MetaBlocked
             "Infer function body."
@@ -184,14 +184,14 @@ etaExpand useHoles gamma t (Pi piBinding) = do
   return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) (ValRHS body $ binding'body piBinding)
 etaExpand useHoles gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
   allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
         tmFst <- case useHoles of
           UseHoles -> newMetaTerm
                    --(eqDeg :: Degree sys _)
-                   (VarFromCtx <$> dmu :\\ gamma)
+                   (dmu :\\ gamma)
                    (_segment'content $ binding'segment $ sigmaBinding)
                    MetaBlocked
                    "Infer first projection."
@@ -210,7 +210,7 @@ etaExpand useHoles gamma t (Sigma sigmaBinding) = do
     Nothing -> return $ Nothing
 etaExpand useHoles gamma t (BoxType boxSeg) = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let dmu = _segment'modty $ boxSeg
   allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
@@ -218,7 +218,7 @@ etaExpand useHoles gamma t (BoxType boxSeg) = do
       tmUnbox <- case useHoles of
           UseHoles -> newMetaTerm
                    --(eqDeg :: Degree sys _)
-                   (VarFromCtx <$> dmu :\\ gamma)
+                   (dmu :\\ gamma)
                    (_segment'content boxSeg)
                    MetaBlocked
                    "Infer box content."
@@ -236,7 +236,7 @@ etaExpand useHoles gamma t (SysType sysType) = etaExpandSysType useHoles gamma t
 
 checkEtaForNormalType :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Term sys v ->
   UniHSConstructor sys v ->
   tc Bool
@@ -250,7 +250,7 @@ checkEtaForNormalType gamma t ty = do
       addNewConstraint
         (JudTermRel
           (Eta False)
-          (modedEqDeg $ unVarFromCtx <$> ctx'mode gamma)
+          (modedEqDeg $ ctx'mode gamma)
           (duplicateCtx gamma)
           (Twice2 t tExpanded)
           (Twice2 ty' ty')
@@ -263,7 +263,7 @@ checkEtaForNormalType gamma t ty = do
 -}
 checkEtaTerm :: 
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Term sys v ->
   Type sys v ->
   tc Bool
@@ -295,7 +295,7 @@ checkEtaTerm gamma t ty = do
 checkEta ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
   AnalyzableToken sys t ->
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   Classif t v ->
@@ -308,7 +308,7 @@ checkEta token gamma t extraT ct = case token of
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   ModedDegree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   Term sys v ->
   Term sys v ->
   [Int] ->
@@ -318,7 +318,7 @@ etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   tc ()
 etaExpandIfApplicable deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   maybeMaybeExpandT1 <- etaExpand UseEliminees (fstCtx gamma) t1 ty1
   maybeMaybeExpandT2 <- etaExpand UseEliminees (sndCtx gamma) t2 ty2
   let maybeMaybeExpansions = getCompose $ (,) <$> Compose maybeMaybeExpandT1 <*> Compose maybeMaybeExpandT2
@@ -342,14 +342,14 @@ checkTermRel :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Eta ->
   ModedDegree sys v ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   Twice1 (Term sys) v ->
   ClassifInfo (Twice1 (Type sys) v) ->
   tc ()
 checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
   let Twice1 ty1 ty2 = fromClassifInfo unreachable maybeTys
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   -- Top-relatedness is always ok.
   itIsTopDeg <- isTopDeg (crispModalityTo dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
     "Need to know whether required degree of relatedness is Top."

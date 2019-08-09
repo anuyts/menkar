@@ -45,7 +45,7 @@ import Control.Monad.Trans.Maybe
 -}
 checkSmartElimDone :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Type sys v ->
   Maybe (Modality sys v) ->
@@ -54,7 +54,7 @@ checkSmartElimDone :: forall sys tc v .
   tc ()
 checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
       let dgamma' = ctx'mode gamma
-      let dgamma = unVarFromCtx <$> dgamma'
+      let dgamma = dgamma'
       case maybeMuElim of
         Nothing -> return ()
         Just muElim -> do
@@ -101,7 +101,7 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
 
 discard :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Type sys v ->
   ModedModality sys v {-^ The modality by which we need to unbox (likely to be inferred.) -} ->
@@ -111,7 +111,7 @@ discard :: forall sys tc v .
   tc ()
 discard gamma eliminee tyEliminee dmuInfer eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
   let dImmedResult = elimineeMode gamma eliminators
   addNewConstraint
@@ -146,7 +146,7 @@ discard gamma eliminee tyEliminee dmuInfer eliminators result tyResult = do
 
 unbox :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Segment Type sys v ->
   ModedModality sys v {-^ The modality by which we need to unbox (likely to be inferred.) -} ->
@@ -156,7 +156,7 @@ unbox :: forall sys tc v .
   tc ()
 unbox gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let dmuBox = _modalityTo'mod $ _segment'modty boxSeg
   let dmuUnbox = modedApproxLeftAdjointProj dmuBox
   let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
@@ -198,7 +198,7 @@ unbox gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
 
 projFst :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Type sys v ->
   ModedModality sys v {-^ The modality by which we need to project (likely to be inferred.) -} ->
@@ -208,7 +208,7 @@ projFst :: forall sys tc v .
   tc ()
 projFst gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let dmuSigma = _modalityTo'mod $ _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma
   let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
@@ -247,7 +247,7 @@ projFst gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
 
 projSnd :: forall sys tc v . 
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Type sys v ->
   ModedModality sys v {-^ The modality by which we need to project (likely to be inferred.) -} ->
@@ -257,7 +257,7 @@ projSnd :: forall sys tc v .
   tc ()
 projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let dmuSigma = _modalityTo'mod $ _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma
   let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
@@ -269,7 +269,7 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
                 Fst
               )
   let tmSnd = (Expr2 $ TermElim
-                (idModalityTo $ unVarFromCtx <$> ctx'mode gamma)
+                (idModalityTo $ ctx'mode gamma)
                 eliminee
                 (Sigma sigmaBinding)
                 Snd
@@ -309,7 +309,7 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
 
 apply :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Type sys v ->
   Maybe (ModedModality sys v)
@@ -322,7 +322,7 @@ apply :: forall sys tc v .
   tc ()
 apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
   let dImmedResult = elimineeMode gamma eliminators
   let dmuPi = _modalityTo'mod $ _segment'modty $ binding'segment $ piBinding
@@ -379,7 +379,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
   let argChecked = Expr2 $ TermAlreadyChecked arg tyArg
   addNewConstraint
     (JudTerm
-      (VarFromCtx <$> withDom dmuArg :\\ VarFromCtx <$> withDom dmuElimTotal :\\ gamma)
+      (withDom dmuArg :\\ withDom dmuElimTotal :\\ gamma)
       arg
       (_decl'content $ binding'segment $ piBinding)
     )
@@ -388,7 +388,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
     (JudSmartElim
       gamma
       (Expr2 $ TermElim
-        (idModalityTo $ unVarFromCtx <$> ctx'mode gamma)
+        (idModalityTo $ ctx'mode gamma)
         eliminee
         (Pi piBinding)
         (App argChecked)
@@ -402,7 +402,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
 
 insertImplicitArgument :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Binding Type Type sys v ->
   ModedModality sys v {-^ The modality by which the application depends on the function (likely to be inferred.) -} ->
@@ -411,26 +411,26 @@ insertImplicitArgument :: forall sys tc v .
   Type sys v ->
   tc ()
 insertImplicitArgument gamma eliminee piBinding dmuInfer eliminators result tyResult = do
-  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
+  let dgamma :: Mode sys v = ctx'mode gamma
   let dmuArg = _segment'modty $ binding'segment $ piBinding
   let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
   let tyArg = _segment'content $ binding'segment $ piBinding
-  arg <- newMetaTermNoCheck (VarFromCtx <$> dmuArg :\\ VarFromCtx <$> withDom dmuElimTotal :\\ gamma)
+  arg <- newMetaTermNoCheck (dmuArg :\\ withDom dmuElimTotal :\\ gamma)
            {-tyArg-} MetaBlocked Nothing "Inferring implicit argument."
   apply gamma eliminee piBinding Nothing arg dmuInfer eliminators result tyResult
 
 elimineeMode ::
   (SysTC sys, Multimode sys, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   [(ModedModality sys :*: SmartEliminator sys) v] ->
   Mode sys v
 elimineeMode gamma eliminators = case eliminators of
-            [] -> unVarFromCtx <$> ctx'mode gamma
+            [] -> ctx'mode gamma
             ((:*:) dmu2 _ : _) -> _modality'dom dmu2
 
 popModality :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Type sys v ->
   [(ModedModality sys :*: SmartEliminator sys) v] ->
@@ -480,7 +480,7 @@ popModality gamma eliminee tyEliminee eliminators result tyResult =
 -}
 autoEliminate ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Type sys v ->
   [(ModedModality sys :*: SmartEliminator sys) v] ->
@@ -507,7 +507,7 @@ autoEliminate gamma eliminee tyEliminee eliminators result tyResult maybeAlterna
 
 checkSmartElimForNormalType ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
+  Ctx Type sys v {-^ The context of the SmartElim judgement, or equivalently of its result. -} ->
   Term sys v ->
   Type sys v ->
   [(ModedModality sys :*: SmartEliminator sys) v] ->
@@ -516,7 +516,7 @@ checkSmartElimForNormalType ::
   tc ()
 checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   case (tyEliminee, eliminators) of
     -- No eliminators: Check that it's done. (Previously claimed to be unreachable, but I don't see why.)
     (_, []) ->
@@ -591,7 +591,7 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
 
 checkSmartElim :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   Term sys v ->
   Type sys v ->
   [(ModedModality sys :*: SmartEliminator sys) v] ->
@@ -601,12 +601,12 @@ checkSmartElim :: forall sys tc v .
 checkSmartElim gamma eliminee tyEliminee [] result tyResult =
   checkSmartElimDone gamma eliminee tyEliminee Nothing result tyResult
 checkSmartElim gamma eliminee tyEliminee eliminators result tyResult = do
-  let dgamma :: Mode sys v = unVarFromCtx <$> ctx'mode gamma
+  let dgamma :: Mode sys v = ctx'mode gamma
   let dmuElimTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
   let dEliminee = _modality'dom dmuElimTotal
   (whnTyEliminee, metasTyEliminee) <-
     runWriterT $ whnormalizeType
-      (VarFromCtx <$> withDom dmuElimTotal :\\ gamma)
+      (withDom dmuElimTotal :\\ gamma)
       tyEliminee
       "Weak-head-normalizing type of eliminee."
   case metasTyEliminee of

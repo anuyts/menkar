@@ -35,7 +35,7 @@ import GHC.Generics
 quickInferNoCheckUnsafe :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   [String] -> 
@@ -54,7 +54,7 @@ quickInferNoCheckUnsafe parent gamma t extraT address = do
 quickInferNoCheck :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   [String] -> 
@@ -68,7 +68,7 @@ quickInferNoCheck parent gamma t extraT address = case (analyzableToken :: Analy
 quickInfer :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
   Constraint sys ->
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   [String] -> 
@@ -81,7 +81,7 @@ quickInfer parent gamma t extraT address = do
 
 checkSpecialAST :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   AnalyzerError sys ->
   t v ->
   ClassifExtraInput t v ->
@@ -90,7 +90,7 @@ checkSpecialAST :: forall sys tc v t .
 checkSpecialAST gamma anErr t extraT maybeCT = do
   let ty = fromClassifInfo unreachable maybeCT
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   case (anErr, analyzableToken @sys @t, t) of
     (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> do
       maybeT <- awaitMeta @sys @tc @(Term sys) "I want to know what I'm supposed to type-check." meta depcies
@@ -146,13 +146,13 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
         "Type-check the result."
       case alg of
         AlgSmartElim eliminee (Compose eliminators) -> do
-          let dgamma = unVarFromCtx <$> ctx'mode gamma
+          let dgamma = ctx'mode gamma
           let dmuElim = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
           tyEliminee <- newMetaType {-(eqDeg :: Degree sys _)-}
-                        (VarFromCtx <$> withDom dmuElim :\\ gamma) "Infer type of eliminee."
+                        (withDom dmuElim :\\ gamma) "Infer type of eliminee."
           -----
           addNewConstraint
-            (JudTerm (VarFromCtx <$> withDom dmuElim :\\ gamma) eliminee tyEliminee)
+            (JudTerm (withDom dmuElim :\\ gamma) eliminee tyEliminee)
             "Type-check the eliminee."
           -----
           -----
@@ -172,7 +172,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
     (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail $ "Erroneous term."
     (AnErrorTermProblem, _, _) -> unreachable
     (AnErrorVar, AnTokenTerm, Var2 v) -> do
-      let ldivSeg = unVarFromCtx <$> lookupVar gamma v
+      let ldivSeg = lookupVar gamma v
       let commonCod = _leftDivided'originalMode $ ldivSeg
       addNewConstraint
         (JudRel AnTokenModalityTo (Eta True) (Const ModLeq)
@@ -193,14 +193,14 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
 {-| Equality of expected and actual classifier is checked on the outside IF requested. -}
 checkAST :: forall sys tc v t .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t, Analyzable sys (Classif t)) =>
-  Ctx Type sys v Void ->
+  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   ClassifInfo (Classif t v) ->
   tc (Classif t v)
 checkAST gamma t extraT maybeCT = do
   let dgamma' = ctx'mode gamma
-  let dgamma = unVarFromCtx <$> dgamma'
+  let dgamma = dgamma'
   maybeCTInferred <- sequenceA $ typetrick gamma (Classification t extraT maybeCT) $
     \ wkn gammadelta (Classification (s :: s w) extraS maybeCS) addressInfo ->
       haveClassif @sys @s $

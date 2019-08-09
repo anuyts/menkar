@@ -36,8 +36,8 @@ import Control.Applicative
 newRelatedAST' :: forall sys tc t v vOrig .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
   Relation t v ->
-  Ctx Type sys vOrig Void ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx Type sys vOrig ->
+  Ctx (Twice2 Type) sys v ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   t v ->
@@ -57,7 +57,7 @@ newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 mayb
       let inputT1 :: Classification t v = subst <$> inputT1orig
       let Classification _  extraS1orig maybeCS1orig = fromMaybe unreachable $ extract gammaOrig inputT1orig
       let Classification s2 extraS2     maybeCS2 = fromMaybe unreachable $ extract (sndCtx gamma) inputT2
-      let relS = extractRel (unVarFromCtx <$> ctx'mode gamma) relT
+      let relS = extractRel (ctx'mode gamma) relT
       let gammadeltaOrig = fromMaybe unreachable $ extCtx TokenFalse gammaOrig inputT1orig typesArentDoubled
       let gammadelta     = fromMaybe unreachable $ extCtx TokenTrue  gamma     inputT1     (conditional inputT2)
       let eta = case _addressInfo'focus addressInfo of
@@ -113,8 +113,8 @@ newRelatedAST :: forall sys tc t v vOrig .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig, Analyzable sys t) =>
   Eta ->
   Relation t v ->
-  Ctx Type sys vOrig Void ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx Type sys vOrig ->
+  Ctx (Twice2 Type) sys v ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   t v ->
@@ -138,8 +138,8 @@ newRelatedMetaTerm :: forall sys tc v vOrig .
   (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Eta ->
   ModedDegree sys v ->
-  Ctx Type sys vOrig Void ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx Type sys vOrig ->
+  Ctx (Twice2 Type) sys v ->
   (vOrig -> v) ->
   (v -> Maybe vOrig) ->
   Term sys v ->
@@ -182,13 +182,13 @@ getSubstAndPartialInv depcies = do
 
 tryToSolveBy :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
   t v ->
   Classif t v ->
   Classif t v ->
   (forall vOrig . (DeBruijnLevel vOrig) =>
-    Ctx Type sys vOrig Void ->
+    Ctx Type sys vOrig ->
     (vOrig -> v) ->
     (v -> Maybe vOrig) ->
     tc (Maybe (t vOrig), Maybe String)
@@ -196,7 +196,7 @@ tryToSolveBy :: forall sys tc t v .
   tc (Maybe String)
 tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
   depcies1 <- sequenceA $ depcies1 <&> \ (d :*: depcy) ->
-    fmap ((d :*:) . fst) $ runWriterT $ whnormalize (CtxOpaque $ VarFromCtx <$> d) depcy (Type $ Expr2 $ TermWildcard)
+    fmap ((d :*:) . fst) $ runWriterT $ whnormalize (CtxOpaque $ d) depcy (Type $ Expr2 $ TermWildcard)
       "Trying to weak-head-normalize meta dependency to a variable"
   let maybeProblem = case neut1 of
         MetaBlocked -> Nothing
@@ -206,7 +206,7 @@ tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
           otherwise -> Nothing
   case maybeProblem of
     Just msg -> return $ Just msg
-    Nothing -> solveMeta meta1 $ \ (gammaOrig :: Ctx Type sys vOrig Void) ->
+    Nothing -> solveMeta meta1 $ \ (gammaOrig :: Ctx Type sys vOrig) ->
       case getSubstAndPartialInv @sys @v @vOrig depcies1 of
         Left msg -> return (Nothing, Just msg)
         Right (subst, partialInv) -> procedure gammaOrig subst partialInv  
@@ -214,7 +214,7 @@ tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
 tryToSolveAgainstWHN :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
   Relation t v ->
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
   t v ->
   Classif t v ->
@@ -245,7 +245,7 @@ tryToSolveAgainstWHN rel gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 =
 -}
 tryToSolveImmediately :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
-  Ctx (Twice2 Type) sys v Void ->
+  Ctx (Twice2 Type) sys v ->
   MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
   t v ->
   Classif t v ->
@@ -254,7 +254,7 @@ tryToSolveImmediately :: forall sys tc t v .
 tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 = have (witClassif @sys @t analyzableToken) $
   tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 $ \ gammaOrig subst partialInv -> do
     --whnormalize the type (classifier) a bit to decrease the amount of variables you depend on
-    let extraCT2 = extraClassif @sys @t (unVarFromCtx <$> ctx'mode gamma) t2 U1
+    let extraCT2 = extraClassif @sys @t (ctx'mode gamma) t2 U1
     cct2 <- newMetaClassif4astNoCheck (sndCtx gamma) ct2 extraCT2 "Inferring a classifier's classifier."
       -- It is assumed that a classifier's classifier needs no metas.
     (whnct2, _) <- runWriterT $ whnormalizeAST (sndCtx gamma) ct2 extraCT2 cct2 "Weak-head-normalize type of solution."
