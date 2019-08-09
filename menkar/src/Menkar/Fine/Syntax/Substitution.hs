@@ -7,6 +7,7 @@ import Control.Exception.AssertFalse
 import Data.Functor.Functor1
 
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import Control.Applicative
 import GHC.Generics
 import Data.Kind
@@ -180,3 +181,9 @@ instance Functor Syn where
 
 deriving instance Generic1 Syn
 -}
+
+--------------------------------------------
+
+instance (CanSwallow e h) => CanSwallow e (Coyoneda h) where
+  swallow (Coyoneda q hx) = Coyoneda id $ substitute q hx
+  substitute h (Coyoneda q hx) = Coyoneda id $ substitute (h . q) hx

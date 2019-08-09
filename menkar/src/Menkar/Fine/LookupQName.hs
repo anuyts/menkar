@@ -220,7 +220,7 @@ lookupQNameEntryList (EntryModule modul : entries) qname = case qname of
   Raw.Qualified (moduleStr : qual) name ->
     if moduleStr == _module'name modul
     then fmap ((_decl'modty modul :**) . joinTelescoped) $ mapTelescopedSimple (
-        \ wkn moduleRHS -> lookupQNameModule moduleRHS qname
+        \ wkn moduleRHS -> lookupQNameModule moduleRHS (Raw.Qualified qual name)
       ) $ _decl'content modul
     else lookupQNameEntryList entries qname
     
