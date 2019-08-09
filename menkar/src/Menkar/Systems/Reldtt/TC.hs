@@ -203,8 +203,7 @@ instance SysTC Reldtt where
       Left AnTokenModality -> do
         dom1orig <- newRelatedMetaMode (Eta True) gammaOrig gamma subst partialInv (_chainModty'dom t2) "Inferring domain."
         cod1orig <- newRelatedMetaMode (Eta True) gammaOrig gamma subst partialInv (_chainModty'cod t2) "Inferring codomain."
-        s1orig <- newMetaTermNoCheck gammaOrig MetaBlocked Nothing reason
-        let t1orig = ChainModtyTerm dom1orig cod1orig s1orig
+        t1orig <- newMetaChainModtyNoCheck gammaOrig dom1orig cod1orig reason
         let t1 = subst <$> t1orig
         addNewConstraint
           (JudRel (AnTokenMultimode AnTokenModality) eta relT gamma (Twice1 t1 t2) (Twice1 U1 U1) maybeCTs)
