@@ -16,6 +16,7 @@ import Data.Constraint.Conditional
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import Control.Monad
 import Control.Monad.Writer.Strict
 import GHC.Generics
@@ -26,7 +27,7 @@ import Data.Maybe
 checkASTRel' :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
   Eta ->
-  Relation t v ->
+  Coyoneda (Relation t) v ->
   Ctx (Twice2 Type) sys v ->
   Twice1 t v ->
   Twice1 (ClassifExtraInput t) v ->
@@ -105,7 +106,7 @@ checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = d
 checkASTRel :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Analyzable sys t) =>
   Eta ->
-  Relation t v ->
+  Coyoneda (Relation t) v ->
   Ctx (Twice2 Type) sys v ->
   Twice1 t v ->
   Twice1 (ClassifExtraInput t) v ->
@@ -124,7 +125,7 @@ checkASTRel eta relT gamma ts@(Twice1 t1 t2) extraTs@(Twice1 extraT1 extraT2) ma
 
 checkTermRelNoEta :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  ModedDegree sys v ->
+  Coyoneda (ModedDegree sys) v ->
   Ctx (Twice2 Type) sys v ->
   Term sys v ->
   Term sys v ->
@@ -179,14 +180,14 @@ etaExpand useHoles gamma t (Pi piBinding) = do
             MetaBlocked
             "Infer function body."
     UseEliminees -> return $ Expr2 $ TermElim
-            (idModalityTo $ VarWkn <$> dgamma)
+            (idModalityTo $ uncoy $ VarWkn <$> dgamma)
             (VarWkn <$> t) (VarWkn <$> Pi piBinding) (App $ Var2 VarLast)
   return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) (ValRHS body $ binding'body piBinding)
 etaExpand useHoles gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
-  allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
+  allowsEta (crispCtx gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
         tmFst <- case useHoles of
           UseHoles -> newMetaTerm
@@ -204,7 +205,7 @@ etaExpand useHoles gamma t (Sigma sigmaBinding) = do
                    (substLast2 tmFst $ binding'body sigmaBinding)
                    MetaBlocked
                    "Infer second projection."
-          UseEliminees -> return $ Expr2 $ TermElim (idModalityTo dgamma) t (Sigma sigmaBinding) Snd
+          UseEliminees -> return $ Expr2 $ TermElim (idModalityTo $ uncoy dgamma) t (Sigma sigmaBinding) Snd
         return $ Just $ Just $ Expr2 $ TermCons $ Pair sigmaBinding tmFst tmSnd
     Just False -> return $ Just Nothing
     Nothing -> return $ Nothing
@@ -212,7 +213,7 @@ etaExpand useHoles gamma t (BoxType boxSeg) = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
   let dmu = _segment'modty $ boxSeg
-  allowsEta (crispModalityTo dgamma' :\\ gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
+  allowsEta (crispCtx gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
       let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType boxSeg
       tmUnbox <- case useHoles of
@@ -250,7 +251,7 @@ checkEtaForNormalType gamma t ty = do
       addNewConstraint
         (JudTermRel
           (Eta False)
-          (modedEqDeg $ ctx'mode gamma)
+          (hoistcoy modedEqDeg $ ctx'mode gamma)
           (duplicateCtx gamma)
           (Twice2 t tExpanded)
           (Twice2 ty' ty')
@@ -307,7 +308,7 @@ checkEta token gamma t extraT ct = case token of
   otherwise -> unreachable -- There are no other solvable AST types.
 
 etaExpandIfApplicable :: (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
-  ModedDegree sys v ->
+  Coyoneda (ModedDegree sys) v ->
   Ctx (Twice2 Type) sys v ->
   Term sys v ->
   Term sys v ->
@@ -341,7 +342,7 @@ etaExpandIfApplicable deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
 checkTermRel :: forall sys tc v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
   Eta ->
-  ModedDegree sys v ->
+  Coyoneda (ModedDegree sys) v ->
   Ctx (Twice2 Type) sys v ->
   Twice1 (Term sys) v ->
   ClassifInfo (Twice1 (Type sys) v) ->
@@ -351,7 +352,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
   -- Top-relatedness is always ok.
-  itIsTopDeg <- isTopDeg (crispModalityTo dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
+  itIsTopDeg <- isTopDeg (crispCtx $ fstCtx gamma) (_degree'deg $ uncoy deg) (uncoy dgamma)
     "Need to know whether required degree of relatedness is Top."
   case itIsTopDeg of
     -- It's certainly about top-relatedness
@@ -376,7 +377,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
            We only do this for whn-terms, because otherwise you risk solving a meta with itself.
            If we're RELATING a meta to a term, then we cannot necessarily whsolve, because we might be e.g. in the unit type.
         -}
-        itIsEqDeg <- isEqDeg (crispModalityTo dgamma' :\\ fstCtx gamma) (_degree'deg deg) dgamma
+        itIsEqDeg <- isEqDeg (crispCtx $ fstCtx gamma) (_degree'deg $ uncoy deg) (uncoy dgamma)
           "Need to know if I'm checking equality."
         solved <- case itIsEqDeg of
           Just True -> case (t1, t2, isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
