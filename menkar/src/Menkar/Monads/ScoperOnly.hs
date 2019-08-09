@@ -54,7 +54,7 @@ instance MonadScoper Trivial SimpleScoper where
     i <- fresh
     return (i, listAll <&> \ (v :: v) ->
         let d :: TrivMode v
-            d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
+            d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
         in  d :*: Var2 v
       )
   scopeFail msg = SimpleScoper $ lift $ Left msg

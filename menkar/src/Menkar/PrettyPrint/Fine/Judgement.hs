@@ -26,6 +26,7 @@ import Data.Maybe
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
+import Data.Functor.Coyoneda
 import Control.Lens
 import GHC.Generics
 
@@ -223,7 +224,7 @@ jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) 
                  (Classification t1 extraT1 (fstTwice1 <$> maybeCTs))
                  extraCT1 opts
         |++ ")",
-       relation2pretty token (ctx2scCtx gamma) extraT1 extraT2 relT opts,
+       relation2pretty token (ctx2scCtx gamma) extraT1 extraT2 (uncoy relT) opts,
        "(" ++| classification2pretty
                  (ctx2scCtx gamma)
                  (Classification t2 extraT2 (sndTwice1 <$> maybeCTs))

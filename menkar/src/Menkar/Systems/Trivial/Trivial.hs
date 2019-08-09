@@ -122,7 +122,7 @@ instance Analyzable Trivial TrivMode where
     TokenTrav -> return $ AnalysisTrav TrivMode
     TokenTC -> return $ AnalysisTC U1
     TokenRel -> return $ AnalysisRel
-  convRel token TrivMode = U1
+  convRel token d = U1
   extraClassif d t extraT = U1
 
 instance Analyzable Trivial TrivModality where
@@ -135,7 +135,7 @@ instance Analyzable Trivial TrivModality where
     TokenTrav -> return $ AnalysisTrav TrivModality
     TokenTC -> return $ AnalysisTC $ TrivMode :*: TrivMode
     TokenRel -> return $ AnalysisRel
-  convRel token TrivMode = U1 :*: U1
+  convRel token d = U1 :*: U1
   extraClassif d t extraT = U1 :*: U1
   
 instance Analyzable Trivial TrivDegree where
@@ -148,7 +148,7 @@ instance Analyzable Trivial TrivDegree where
     TokenTrav -> return $ AnalysisTrav TrivDegree
     TokenTC -> return $ AnalysisTC $ TrivMode
     TokenRel -> return $ AnalysisRel
-  convRel token TrivMode = U1
+  convRel token d = U1
   extraClassif d t extraT = U1
 
 instance Analyzable Trivial TrivTerm where
@@ -158,7 +158,7 @@ instance Analyzable Trivial TrivTerm where
   analyzableToken = AnTokenSysTerm --AnTokenSys AnTokenTrivTerm
   witClassif token = Witness
   analyze token gamma (Classification syst _ _) h = case syst of {}
-  convRel token TrivMode = TrivModedDegree
+  convRel token d = TrivModedDegree
   extraClassif d t extraT = U1
   
 instance Analyzable Trivial TrivUniHSConstructor where
@@ -168,7 +168,7 @@ instance Analyzable Trivial TrivUniHSConstructor where
   analyzableToken = AnTokenSysUniHSConstructor --AnTokenSys AnTokenTrivUniHSConstructor
   witClassif token = Witness
   analyze token gamma (Classification systy _ _) h = case systy of {}
-  convRel token TrivMode = U1
+  convRel token d = U1
   extraClassif d t extraT = TrivModalityTo :*: U1
 
 instance SysAnalyzer Trivial where

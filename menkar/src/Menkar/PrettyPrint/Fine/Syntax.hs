@@ -26,6 +26,7 @@ import Data.Maybe
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
+import Data.Functor.Coyoneda
 import Control.Lens
 import Control.Monad
 import Data.IntMap.Strict hiding (map, size)
@@ -646,3 +647,6 @@ instance (Fine2Pretty sys f, Fine2Pretty sys g) => Fine2Pretty sys (f :*: g) whe
 
 instance (Fine2Pretty sys t) => Fine2Pretty sys (Const1 t a) where
   fine2pretty gamma (Const1 t) opts = fine2pretty gamma t opts
+
+instance (Fine2Pretty sys t, Functor t) => Fine2Pretty sys (Coyoneda t) where
+  fine2pretty gamma t opts = fine2pretty gamma (uncoy t) opts
