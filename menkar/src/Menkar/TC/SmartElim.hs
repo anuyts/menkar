@@ -20,6 +20,7 @@ import Data.Void
 import Control.Lens
 import Data.Functor.Compose
 import Data.Functor.Constant
+import Data.Functor.Coyoneda
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Control.Monad.Trans.Maybe
@@ -55,12 +56,13 @@ checkSmartElimDone :: forall sys tc v .
 checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
       let dgamma' = ctx'mode gamma
       let dgamma = dgamma'
+      let uncoyDGamma = uncoy dgamma
       case maybeMuElim of
         Nothing -> return ()
         Just muElim -> do
           {-addNewConstraint
             (JudRel analyzableToken (Eta True) U1
-              (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+              (crispCtx $ duplicateCtx gamma)
               (Twice1 (_modality'dom muElim) (_modality'cod muElim))
               (Twice1 U1 U1)
               (ClassifWillBe $ Twice1 U1 U1)
@@ -68,23 +70,23 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
             "End of elimination: checking if modes match."-}
           addNewConstraint
             (Jud analyzableToken
-              (crispModalityTo dgamma' :\\ gamma)
+              (crispCtx gamma)
               (muElim)
               U1
-              (ClassifMustBe $ dgamma :*: dgamma)
+              (ClassifMustBe $ uncoyDGamma :*: uncoyDGamma)
             )
             "End of elimination: Checking elimination modality."
           addNewConstraint
             (JudRel analyzableToken (Eta True) (Const ModEq)
-              (crispModalityTo dgamma' :\\ duplicateCtx gamma)
-              (Twice1 muElim (idMod dgamma))
+              (crispCtx $ duplicateCtx gamma)
+              (Twice1 muElim (idMod $ uncoyDGamma))
               (Twice1 U1 U1)
-              (ClassifWillBe $ Twice1 (dgamma :*: dgamma) (dgamma :*: dgamma))
+              (ClassifWillBe $ Twice1 (uncoyDGamma :*: uncoyDGamma) (uncoyDGamma :*: uncoyDGamma))
             )
             "End of elimination: Checking whether actual elimination modality equals expected modality (namely identity)."
       addNewConstraint
         (JudTypeRel
-          (modedEqDeg dgamma)
+          (modedEqDeg uncoyDGamma)
           (duplicateCtx gamma)
           (Twice2 tyEliminee tyResult)
         )
@@ -92,7 +94,7 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
       addNewConstraint
         (JudTermRel
           (Eta True)
-          (modedEqDeg dgamma)
+          (modedEqDeg uncoyDGamma)
           (duplicateCtx gamma)
           (Twice2 eliminee result)
           (Twice2 tyEliminee tyResult)
@@ -112,11 +114,11 @@ discard :: forall sys tc v .
 discard gamma eliminee tyEliminee dmuInfer eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
-  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
   let dImmedResult = elimineeMode gamma eliminators
   addNewConstraint
     (Jud analyzableToken
-      (crispModalityTo dgamma' :\\ gamma)
+      (crispCtx gamma)
       dmuInfer
       U1
       (ClassifMustBe $ dImmedResult :*: dImmedResult)
@@ -124,7 +126,7 @@ discard gamma eliminee tyEliminee dmuInfer eliminators result tyResult = do
     "Doing nothing: Checking elimination modality."
   addNewConstraint
     (JudRel analyzableToken (Eta True) (Const ModEq)
-      (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+      (crispCtx $ duplicateCtx gamma)
       (Twice1
         (idMod dImmedResult)
         dmuInfer
@@ -159,11 +161,11 @@ unbox gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
   let dgamma = dgamma'
   let dmuBox = _modalityTo'mod $ _segment'modty boxSeg
   let dmuUnbox = modedApproxLeftAdjointProj dmuBox
-  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
   let dImmedResult = elimineeMode gamma eliminators
   addNewConstraint
     (Jud analyzableToken
-      (crispModalityTo dgamma' :\\ gamma)
+      (crispCtx gamma)
       dmuInfer
       U1
       (ClassifMustBe $ _modality'dom dmuUnbox :*: dImmedResult)
@@ -171,7 +173,7 @@ unbox gamma eliminee boxSeg dmuInfer eliminators result tyResult = do
     "Unboxing: Checking elimination modality."
   addNewConstraint
     (JudRel analyzableToken (Eta True) (Const ModEq)
-      (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+      (crispCtx $ duplicateCtx gamma)
       (Twice1
         dmuUnbox
         dmuInfer
@@ -211,11 +213,11 @@ projFst gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
   let dgamma = dgamma'
   let dmuSigma = _modalityTo'mod $ _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma
-  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
   let dImmedResult = elimineeMode gamma eliminators
   addNewConstraint
     (Jud analyzableToken
-      (crispModalityTo dgamma' :\\ gamma)
+      (crispCtx gamma)
       dmuInfer
       U1
       (ClassifMustBe $ _modality'dom dmuProjFst :*: dImmedResult)
@@ -223,7 +225,7 @@ projFst gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
     "First projection: Checking elimination modality."
   addNewConstraint
     (JudRel analyzableToken (Eta True) (Const ModEq)
-      (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+      (crispCtx $ duplicateCtx gamma)
       (Twice1 dmuProjFst dmuInfer)
       (Twice1 U1 U1)
       (ClassifMustBe $ (\x -> Twice1 x x) $ _modality'dom dmuProjFst :*: dImmedResult)
@@ -260,7 +262,7 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
   let dgamma = dgamma'
   let dmuSigma = _modalityTo'mod $ _segment'modty $ binding'segment sigmaBinding
   let dmuProjFst = modedApproxLeftAdjointProj dmuSigma
-  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
   let dImmedResult = elimineeMode gamma eliminators
   let tmFst = (Expr2 $ TermElim
                 (withDom dmuProjFst)
@@ -269,14 +271,14 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
                 Fst
               )
   let tmSnd = (Expr2 $ TermElim
-                (idModalityTo $ ctx'mode gamma)
+                (idModalityTo $ uncoy $ ctx'mode gamma)
                 eliminee
                 (Sigma sigmaBinding)
                 Snd
               )
   addNewConstraint
     (Jud analyzableToken
-      (crispModalityTo dgamma' :\\ gamma)
+      (crispCtx gamma)
       dmuInfer
       U1
       (ClassifMustBe $ dImmedResult :*: dImmedResult)
@@ -284,7 +286,7 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
     "Second projection: Checking elimination modality."
   addNewConstraint
     (JudRel analyzableToken (Eta True) (Const ModEq)
-      (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+      (crispCtx $ duplicateCtx gamma)
       (Twice1
         (idMod $ _modality'dom dmuElimTotal)
         (dmuInfer)
@@ -323,7 +325,7 @@ apply :: forall sys tc v .
 apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyResult = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
-  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
   let dImmedResult = elimineeMode gamma eliminators
   let dmuPi = _modalityTo'mod $ _segment'modty $ binding'segment $ piBinding
   dmuArg <- case maybeDmuArg of
@@ -331,7 +333,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
     Just dmuArg -> dmuArg <$ do
       addNewConstraint
         (Jud analyzableToken
-          (crispModalityTo dgamma' :\\ gamma)
+          (crispCtx gamma)
           dmuArg
           U1
           (ClassifMustBe $ _modality'dom dmuPi :*: _modality'cod dmuPi)
@@ -339,7 +341,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
         "Applying function: Checking modality annotation on argument."
       addNewConstraint
         (JudRel analyzableToken (Eta True) (Const ModEq)
-          (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+          (crispCtx $ duplicateCtx gamma)
           (Twice1
             dmuArg
             dmuPi
@@ -351,7 +353,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
   -- dmuInfer should be the identity.
   addNewConstraint
     (Jud analyzableToken
-      (crispModalityTo dgamma' :\\ gamma)
+      (crispCtx gamma)
       dmuInfer
       U1
       (ClassifMustBe $ dImmedResult :*: dImmedResult)
@@ -359,7 +361,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
     "Applying function: Checking elimination modality."
   addNewConstraint
     (JudRel analyzableToken (Eta True) (Const ModEq)
-      (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+      (crispCtx $ duplicateCtx gamma)
       (Twice1
         (idModedModality $ dImmedResult)
         (dmuInfer)
@@ -388,7 +390,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
     (JudSmartElim
       gamma
       (Expr2 $ TermElim
-        (idModalityTo $ ctx'mode gamma)
+        (idModalityTo $ uncoy $ ctx'mode gamma)
         eliminee
         (Pi piBinding)
         (App argChecked)
@@ -411,9 +413,9 @@ insertImplicitArgument :: forall sys tc v .
   Type sys v ->
   tc ()
 insertImplicitArgument gamma eliminee piBinding dmuInfer eliminators result tyResult = do
-  let dgamma :: Mode sys v = ctx'mode gamma
+  let dgamma :: Coyoneda (Mode sys) v = ctx'mode gamma
   let dmuArg = _segment'modty $ binding'segment $ piBinding
-  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+  let dmuElimTotal = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
   let tyArg = _segment'content $ binding'segment $ piBinding
   arg <- newMetaTermNoCheck (dmuArg :\\ withDom dmuElimTotal :\\ gamma)
            {-tyArg-} MetaBlocked Nothing "Inferring implicit argument."
@@ -425,7 +427,7 @@ elimineeMode ::
   [(ModedModality sys :*: SmartEliminator sys) v] ->
   Mode sys v
 elimineeMode gamma eliminators = case eliminators of
-            [] -> ctx'mode gamma
+            [] -> uncoy $ ctx'mode gamma
             ((:*:) dmu2 _ : _) -> _modality'dom dmu2
 
 popModality :: forall sys tc v .
@@ -444,18 +446,18 @@ popModality gamma eliminee tyEliminee eliminators result tyResult =
       let dgamma' = ctx'mode gamma
       let ModedModality domSplittee codSplittee muSplittee = dmuSplittee
       --let domElimTail = elimineeMode gamma eliminators'
-      {-midSplittee <- newMetaModeNoCheck (crispModalityTo dgamma' :\\ gamma)
+      {-midSplittee <- newMetaModeNoCheck (crispCtx gamma)
                "Inferring output mode of next implicit elimination."-}
-      muPoppee <- newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma)
+      muPoppee <- newMetaModtyNoCheck (crispCtx gamma)
                 "Inferring modality of next implicit elimination."
-      muRemaining <- newMetaModtyNoCheck (crispModalityTo dgamma' :\\ gamma) $
+      muRemaining <- newMetaModtyNoCheck (crispCtx gamma) $
         "Inferring composite of the modalities of all eliminations as of (not including) the next implicit one, " ++
         "until (and including) the next explicit one."
       let dmuPoppee = muPoppee --ModedModality domSplittee midSplittee muPoppee
       let dmuRemaining = muRemaining --ModedModality midSplittee codSplittee muLeft
       addNewConstraint
         (Jud (analyzableToken)
-          (crispModalityTo dgamma' :\\ gamma)
+          (crispCtx gamma)
           dmuSplittee
           U1
           (ClassifMustBe $ _modality'dom dmuPoppee :*: _modality'cod dmuRemaining)
@@ -463,7 +465,7 @@ popModality gamma eliminee tyEliminee eliminators result tyResult =
         "Type-checking modality of next smart elimination, which I will need to split."
       addNewConstraint
         (JudRel (analyzableToken @sys @(Modality sys)) (Eta True) (Const ModEq)
-          (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+          (crispCtx $ duplicateCtx gamma)
           (Twice1
             (_modality'mod $ compModedModality dmuRemaining dmuPoppee)
             (muSplittee)
@@ -601,8 +603,8 @@ checkSmartElim :: forall sys tc v .
 checkSmartElim gamma eliminee tyEliminee [] result tyResult =
   checkSmartElimDone gamma eliminee tyEliminee Nothing result tyResult
 checkSmartElim gamma eliminee tyEliminee eliminators result tyResult = do
-  let dgamma :: Mode sys v = ctx'mode gamma
-  let dmuElimTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+  let dgamma :: Coyoneda (Mode sys) v = ctx'mode gamma
+  let dmuElimTotal :: ModedModality sys v = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
   let dEliminee = _modality'dom dmuElimTotal
   (whnTyEliminee, metasTyEliminee) <-
     runWriterT $ whnormalizeType

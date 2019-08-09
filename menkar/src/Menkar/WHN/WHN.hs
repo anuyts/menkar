@@ -14,6 +14,7 @@ import Data.Void
 import Data.Maybe
 import Control.Monad.Writer
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import Data.Monoid
 import Control.Monad.Writer.Class
 import GHC.Generics
@@ -236,12 +237,12 @@ whnormalizeNV gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty metas 
 -- Wildcard: unreachable
 whnormalizeNV gamma TermWildcard ty metas reason = unreachable
 -- QName: Extract the enclosed value, turn the telescope into box-constructors and lambdas, and return.
-whnormalizeNV gamma (TermQName qname leftDividedTelescopedVal) ty metas reason =
+whnormalizeNV gamma (TermQName qname (Coyoneda f leftDividedTelescopedVal)) ty metas reason =
     let moduleMode = _leftDivided'originalMode leftDividedTelescopedVal
         telescopedVal = _leftDivided'content leftDividedTelescopedVal
         ModApplied _ quantifiedVal = telescoped2modalQuantified moduleMode telescopedVal
         quantifiedTerm = _val'term quantifiedVal
-    in  whnormalize gamma quantifiedTerm ty reason
+    in  whnormalize gamma (f <$> quantifiedTerm) ty reason
 whnormalizeNV gamma (TermAlreadyChecked t ty) ty' metas reason = whnormalize gamma t ty' reason
 -- Results annotated with an algorithm for solving them: whnormalize the result.
 whnormalizeNV gamma (TermAlgorithm alg result) ty metas reason = whnormalize gamma result ty reason

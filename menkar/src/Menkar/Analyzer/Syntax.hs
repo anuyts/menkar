@@ -214,7 +214,7 @@ instance (SysAnalyzer sys,
            )
          )
       )
-      (const $ cutcoy unComp1)
+      (const $ cutcoy unComp1) -- Technically you can do a specialized hoistcoy here.
       (AddressInfo ["body"] FocusWrapped WorthMentioning)
     return $ case token of
       TokenTrav -> AnalysisTrav $ NamedBinding name $ getAnalysisTrav rbody

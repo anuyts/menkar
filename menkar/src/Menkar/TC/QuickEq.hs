@@ -12,6 +12,7 @@ import Data.Functor.Identity
 import Data.Functor.Compose
 import Data.Monoid
 import Data.Functor.Const
+import Data.Functor.Coyoneda
 import Control.Lens
 import GHC.Generics
 import Control.Monad.Trans.Writer.Strict
@@ -56,12 +57,12 @@ quickEq t t' extraT extraT' =
          (AnErrorTermMeta, _, _) -> unreachable
          (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
          (AnErrorTermWildcard, _, _) -> unreachable
-         (AnErrorTermQName, AnTokenTermNV, TermQName qname ldivVal) -> case t' of
-           TermQName qname' ldivVal' ->
+         (AnErrorTermQName, AnTokenTermNV, TermQName qname (Coyoneda f ldivVal)) -> case t' of
+           TermQName qname' (Coyoneda f' ldivVal') ->
              qname == qname'
              && quickEq @sys
-               (_leftDivided'content $ ldivVal)
-               (_leftDivided'content $ ldivVal')
+               (_leftDivided'content $ f  <$> ldivVal)
+               (_leftDivided'content $ f' <$> ldivVal')
                U1 U1
            _ -> False
          (AnErrorTermQName, _, _) -> unreachable
