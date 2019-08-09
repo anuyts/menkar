@@ -89,7 +89,7 @@ data BlockInfo (sys :: KSys) (m :: * -> *) (v :: *) = BlockInfo {
 
 data MetaInfo (sys :: KSys) m v = MetaInfo {
   _metaInfo'maybeParent :: Maybe (Constraint sys),
-  _metaInfo'context :: Ctx Type sys v Void,
+  _metaInfo'context :: Ctx Type sys v,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
   {-| If solved, info about the solution.
@@ -228,7 +228,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
     let depcies = listAll Proxy <&> \ v ->
-          let d = fmap unVarFromCtx $ _modalityTo'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
+          let d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ lookupVar gamma v
           in  d :*: Var2 v
     return (meta, depcies)
     
