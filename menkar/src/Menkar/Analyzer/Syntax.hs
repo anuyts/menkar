@@ -171,7 +171,7 @@ instance (SysAnalyzer sys,
              fmap VarFromCtx . _decl'content . _classifBinding'segment . _classification'get <$>
              condInput2
            )
-           (VarFromCtx <$> seg1)
+           (seg1)
       )
       unComp1
       (AddressInfo ["body"] False EntirelyBoring)
@@ -304,7 +304,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (AddressInfo ["binding"] NoFocus EntirelyBoring)
             return $ case token of
               TokenTrav -> AnalysisTrav $ Pi $ getAnalysisTrav rbinding
-              TokenTC -> AnalysisTC $ ModalBox $ Const1 $ unVarFromCtx <$> ctx'mode gamma
+              TokenTC -> AnalysisTC $ ModalBox $ Const1 $ ctx'mode gamma
               TokenRel -> AnalysisRel
 
       Sigma binding -> do
@@ -431,7 +431,7 @@ instance (SysAnalyzer sys) => Analyzable sys (UniHSConstructor sys) where
               (AddressInfo ["binding"] False EntirelyBoring)
             return $ case token of
               TokenTrav -> AnalysisTrav $ binder $ getAnalysisTrav rbinding
-              TokenTC -> AnalysisTC $ unVarFromCtx <$> ctx'mode gamma
+              TokenTC -> AnalysisTC $ ctx'mode gamma
               TokenRel -> AnalysisRel-}
             
   convRel token d = U1
@@ -1158,14 +1158,14 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
   {-
   analyze token fromType gamma (Classification seg@(Declaration name dmu plic ty) extra maybeTy maybeRel) h = Right $ do
     let dgamma' = ctx'mode gamma
-    let dgamma = unVarFromCtx <$> dgamma'
+    let dgamma = dgamma'
     
     rdmu <- h id (crispModedModality dgamma' :\\ gamma)
       (Classification dmu U1 (ClassifMustBe $ _modality'dom dmu :*: dgamma) (toIfRel token $ Const ModEq))
       (AddressInfo ["modality"] True omit)
       (Just . _decl'modty)
     -- TODO plic
-    rty <- h id (VarFromCtx <$> dmu :\\ gamma)
+    rty <- h id (dmu :\\ gamma)
       (Classification ty extra (classifMust2will maybeTy) maybeRel)
       (AddressInfo ["type"] True omit)
       (Just . _decl'content)

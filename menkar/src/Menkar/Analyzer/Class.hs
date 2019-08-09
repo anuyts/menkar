@@ -407,7 +407,7 @@ analyzeOld token gamma inputT1 condInputT2 condRel h =
     (extendCtx (tokenCheckDoubled token) gamma inputT1 condInputT2)
     (fromMaybe unreachable $ extractT gamma inputT1)
     (extractT gamma <$> condInputT2)
-    (extractRel (unVarFromCtx <$> ctx'mode gamma) <$> condRel)
+    (extractRel (ctx'mode gamma) <$> condRel)
     info
     (\ t1' -> _classification'get <$> extractT gamma (classification'get .~ t1' $ inputT1))
 

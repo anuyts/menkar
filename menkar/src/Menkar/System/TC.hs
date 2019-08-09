@@ -146,7 +146,7 @@ newMetaClassif4ast gamma t extraT reason =
   haveClassif @sys @(Classif t) $
   do
     let dgamma' = ctx'mode gamma
-    let dgamma = unVarFromCtx <$> dgamma'
+    let dgamma = dgamma'
     ct <- newMetaClassif4astNoCheck gamma t extraT reason
     let extraCT = extraClassif @sys @t dgamma t extraT
     cct <- newMetaClassif4astNoCheck gamma ct extraCT reason

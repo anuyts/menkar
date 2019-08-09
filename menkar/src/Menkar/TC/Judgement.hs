@@ -65,18 +65,18 @@ checkConstraint parent = withParent parent $ case _constraint'judgement parent o
              (Type $ Expr2 $ TermCons $ ConsUniHS $ NatType)
              "Infer universe level of type."-}
     addNewConstraint
-      (JudTerm gamma ty (hs2type $ UniHS (unVarFromCtx <$> ctx'mode gamma) {-lvl-}))
+      (JudTerm gamma ty (hs2type $ UniHS (ctx'mode gamma) {-lvl-}))
       (Just parent)
       "Checking that type lives in a Hofmann-Streicher universe."
 
   JudTypeRel deg gamma (Twice2 ty1 ty2) -> do
-    let dgamma = unVarFromCtx <$> ctx'mode gamma
+    let dgamma = ctx'mode gamma
     checkTypeRel parent (ModedDegree dgamma deg) gamma ty1 ty2
 
   JudTerm gamma t ty -> checkTerm parent gamma t ty
 
   JudTermRel eta deg gamma (Twice2 t1 t2) (Twice2 ty1 ty2) -> do
-    let dgamma = unVarFromCtx <$> ctx'mode gamma
+    let dgamma = ctx'mode gamma
     checkTermRel parent eta (ModedDegree dgamma deg) gamma t1 t2 ty1 ty2
   -}
 

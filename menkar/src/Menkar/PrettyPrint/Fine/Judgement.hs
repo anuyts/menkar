@@ -82,7 +82,7 @@ relation2pretty token gamma extraT1 extraT2 relT opts = case (token, relT) of
     let seg1 :*: Comp1 extraBody1 = extraT1
         seg2 :*: Comp1 extraBody2 = extraT2
     in  -- it would be cleaner to actually print the variable binding here.
-        relation2pretty token (gamma ::.. VarFromCtx <$> segment2scSegment seg1) extraBody1 extraBody2 rel opts
+        relation2pretty token (gamma ::.. segment2scSegment seg1) extraBody1 extraBody2 rel opts
   (AnTokenModalBox token, rel) ->
     let dmu1 :*: extraContent1 = extraT1
         dmu2 :*: extraContent2 = extraT2
@@ -213,7 +213,7 @@ jud2pretty (Jud token gamma t extraT maybeCT) opts = haveFine2Pretty token $
   ctx2pretty gamma opts \\\
     [_vdash_ ++| classification2pretty (ctx2scCtx gamma) (Classification t extraT maybeCT) extraCT opts]
   where dgamma' = ctx'mode gamma
-        dgamma = unVarFromCtx <$> dgamma'
+        dgamma = dgamma'
         extraCT = extraClassif @sys dgamma t extraT
 jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs) opts = haveFine2Pretty token $
   ctx2pretty gamma opts \\\ [
@@ -232,7 +232,7 @@ jud2pretty (JudRel token eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) 
       ]
   ]
   where dgamma' = ctx'mode gamma
-        dgamma = unVarFromCtx <$> dgamma'
+        dgamma = dgamma'
         extraCT1 = extraClassif @sys dgamma t1 extraT1
         extraCT2 = extraClassif @sys dgamma t2 extraT2
 jud2pretty (JudEta token gamma t extraT ct) opts = haveFine2Pretty token $
@@ -242,7 +242,7 @@ jud2pretty (JudEta token gamma t extraT ct) opts = haveFine2Pretty token $
         ribbon " = eta-expansion"]
     ]
   where dgamma' = ctx'mode gamma
-        dgamma = unVarFromCtx <$> dgamma'
+        dgamma = dgamma'
         extraCT = extraClassif @sys dgamma t extraT
 jud2pretty (JudSmartElim gamma eliminee tyEliminee eliminators result tyResult) opts =
   ctx2pretty gamma opts \\\ [

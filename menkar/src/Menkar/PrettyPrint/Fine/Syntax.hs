@@ -106,7 +106,7 @@ binding2pretty :: (DeBruijnLevel v,
 binding2pretty opstring gamma binding opts =
   fine2pretty gamma (binding'segment binding) opts
   \\\ [" " ++ opstring ++ " " ++|
-       fine2pretty (gamma ::.. (VarFromCtx <$> segment2scSegment (binding'segment binding))) (binding'body binding) opts
+       fine2pretty (gamma ::.. (segment2scSegment (binding'segment binding))) (binding'body binding) opts
       ]
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
@@ -472,7 +472,7 @@ telescope2pretties :: (DeBruijnLevel v,
          ScCtx sys v -> Telescope ty sys v -> Fine2PrettyOptions sys -> [PrettyTree String]
 telescope2pretties gamma (Telescoped Unit2) opts = []
 telescope2pretties gamma (seg :|- telescope) opts =
-  (fine2pretty gamma seg opts) : telescope2pretties (gamma ::.. (VarFromCtx <$> segment2scSegment seg)) telescope opts
+  (fine2pretty gamma seg opts) : telescope2pretties (gamma ::.. (segment2scSegment seg)) telescope opts
 telescope2pretties gamma (dmu :** telescope) opts =
   ("{" ++| fine2pretty gamma dmu opts |++ "}") : telescope2pretties (() ::\\ gamma) telescope opts
 instance (SysFinePretty sys, Functor (ty sys),
@@ -588,7 +588,7 @@ moduleContents2pretty gamma moduleRHS opts = case unPrintModuleVerbosity $ _fine
   Just p ->
     (($ opts & fine2pretty'printEntry .~ p) .
      fine2pretty
-     (gamma ::<...> (VarFromCtx <$> moduleRHS))
+     (gamma ::<...> (moduleRHS))
      <$> (reverse $ view moduleRHS'entries moduleRHS)
     ) >>= (\ entry -> case p of
               PrintEntryEntirely -> [entry, ribbon "        "]

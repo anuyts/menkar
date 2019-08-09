@@ -55,25 +55,25 @@ newMetaClassif4astNoCheck gamma t extraT reason = do
       cod <- newMetaModeNoCheck gamma reason
       return $ cod
     (AnTokenBinding tokenRHS, Binding seg rhs) -> do
-      crhs <- newMetaClassif4astNoCheck (gamma :.. VarFromCtx <$> seg) rhs U1 reason
+      crhs <- newMetaClassif4astNoCheck (gamma :.. seg) rhs U1 reason
       return $ U1 :*: (NamedBinding (getDeclNameSegment . _decl'name $ seg) $ Const1 $ crhs)
                     --ClassifBinding seg crhs
 {-    (AnTokenClassifBinding tokenRHS, ClassifBinding seg rhs) -> do
       let Comp1 extraRHS = extraT
-      crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. VarFromCtx <$> seg) rhs extraRHS reason
+      crhs <- newMetaClassif4astNoCheck maybeParent (gamma :.. seg) rhs extraRHS reason
       return $ ClassifBinding seg crhs-}
     (AnTokenNamedBinding tokenRHS, NamedBinding maybeName (rhs :: rhs sys (VarExt v))) -> do
       --let seg = fst1 extraT
       --let extraRHS = unComp1 $ snd1 extraT
       let seg :*: Comp1 extraRHS = extraT
       crhs <- newMetaClassif4astNoCheck @sys @sc @(rhs sys) @(VarExt v)
-        (gamma :.. VarFromCtx <$> seg) rhs extraRHS reason
+        (gamma :.. seg) rhs extraRHS reason
       return $ NamedBinding (getDeclNameSegment . _decl'name $ seg) $ Const1 $ crhs
              --ClassifBinding seg crhs
     (AnTokenModalBox tokenContent, ModalBox (content :: content sys v)) -> do
       let dmu :*: extraContent = extraT
       cContent <- newMetaClassif4astNoCheck @sys @sc @(content sys) @v
-        (VarFromCtx <$> dmu :\\ gamma) content extraContent reason
+        (dmu :\\ gamma) content extraContent reason
       return $ ModalBox $ Const1 $ cContent
     (AnTokenUniHSConstructor, _) -> ModalBox . Const1 <$> newMetaModeNoCheck gamma reason
     (AnTokenConstructorTerm, _) -> newMetaTypeNoCheck gamma reason
