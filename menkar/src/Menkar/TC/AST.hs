@@ -23,6 +23,7 @@ import Data.Functor.Functor1
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
+import Data.Functor.Coyoneda
 import Control.Monad
 import Control.Monad.Writer.Strict
 import GHC.Generics
@@ -120,12 +121,13 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
     (AnErrorTermMeta, _, _) -> unreachable
     (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
     (AnErrorTermWildcard, _, _) -> unreachable
-    (AnErrorTermQName, AnTokenTermNV, TermQName qname ldivVal) -> do
+    (AnErrorTermQName, AnTokenTermNV, TermQName qname coyLDivVal) -> do
+      let ldivVal = uncoy $ coyLDivVal
       let (LeftDivided d2 d1mu telescope) = ldivVal
       let ldivModAppliedValRHS = (leftDivided'content .~ telescoped2modalQuantified d2 telescope) ldivVal
       let commonCod = _leftDivided'originalMode $ ldivVal
       addNewConstraint
-        (JudRel analyzableToken (Eta True) (Const ModLeq)
+        (JudRel analyzableToken (Eta True) (coy $ Const ModLeq)
           (duplicateCtx gamma)
           (Twice1
             (withDom $ _modApplied'modality . _leftDivided'content $ ldivModAppliedValRHS)
@@ -147,7 +149,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
       case alg of
         AlgSmartElim eliminee (Compose eliminators) -> do
           let dgamma = ctx'mode gamma
-          let dmuElim = concatModedModalityDiagrammatically (fst1 <$> eliminators) dgamma
+          let dmuElim = concatModedModalityDiagrammatically (fst1 <$> eliminators) $ uncoy dgamma
           tyEliminee <- newMetaType {-(eqDeg :: Degree sys _)-}
                         (withDom dmuElim :\\ gamma) "Infer type of eliminee."
           -----
@@ -172,11 +174,11 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
     (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail $ "Erroneous term."
     (AnErrorTermProblem, _, _) -> unreachable
     (AnErrorVar, AnTokenTerm, Var2 v) -> do
-      let ldivSeg = lookupVar gamma v
+      let ldivSeg = uncoy $ lookupVar gamma v
       let commonCod = _leftDivided'originalMode $ ldivSeg
       addNewConstraint
-        (JudRel AnTokenModalityTo (Eta True) (Const ModLeq)
-          (crispModalityTo dgamma' :\\ duplicateCtx gamma)
+        (JudRel AnTokenModalityTo (Eta True) (coy $ Const ModLeq)
+          (crispCtx $ duplicateCtx gamma)
           (Twice1
             (_decl'modty . _leftDivided'content $ ldivSeg)
             (withDom $ _leftDivided'modality $ ldivSeg)
@@ -235,7 +237,7 @@ checkAST gamma t extraT maybeCT = do
   case maybeCT of
         ClassifMustBe ct -> addNewConstraint
           (JudRel analyzableToken (Eta True)
-            (convRel (analyzableToken :: AnalyzableToken sys t) $ dgamma)
+            (coy $ convRel (analyzableToken :: AnalyzableToken sys t) $ dgamma)
             (duplicateCtx gamma)
             (Twice1 ctInferred ct)
             (Twice1 (extraClassif @sys dgamma t extraT) (extraClassif @sys dgamma t extraT))
