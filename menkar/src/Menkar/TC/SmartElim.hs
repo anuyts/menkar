@@ -611,11 +611,11 @@ checkSmartElim gamma eliminee tyEliminee eliminators result tyResult = do
       "Weak-head-normalizing type of eliminee."
   case metasTyEliminee of
     -- the type weak-head-normalizes
-    [] -> do
-      parent' <- defConstraint
+    [] -> checkSmartElimForNormalType gamma eliminee whnTyEliminee eliminators result tyResult
+      {-parent' <- defConstraint
                    (JudSmartElim gamma eliminee whnTyEliminee eliminators result tyResult)
                    "Weak-head-normalize type of eliminee."
-      withParent parent' $ checkSmartElimForNormalType gamma eliminee whnTyEliminee eliminators result tyResult
+      withParent parent' $ checkSmartElimForNormalType gamma eliminee whnTyEliminee eliminators result tyResult-}
     -- the type does not weak-head-normalize
     _ -> tcBlock "Need to know type in order to make sense of smart-elimination."
 
