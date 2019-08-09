@@ -15,7 +15,6 @@ import Control.Exception.AssertFalse
 import Data.Constraint.Witness
 import Data.Constraint.Conditional
 import Data.Functor.Coerce
-import Data.Functor.Compose
 
 import GHC.Generics
 import Util
@@ -23,6 +22,8 @@ import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
 import Data.Kind hiding (Type)
+import Data.Functor.Compose
+import Data.Functor.Coyoneda
 
 type instance SysAnalyzerError Reldtt = ReldttAnalyzerError
 type instance SysAnalyzableToken Reldtt = ReldttAnalyzableToken
@@ -55,7 +56,7 @@ instance Analyzable Reldtt ReldttMode where
       (\ gamma' (Classification (ReldttMode t') U1 maybeU1') ->
          Just $ Identity !<$> Classification t' U1 (ClassifMustBe $ BareSysType $ SysTypeMode))
       extCtxId
-      (\ d U1 -> modedEqDeg $ Identity !<$> d)
+      (\ d _ -> hoistcoy modedEqDeg $ Identity !<$> d)
       (AddressInfo ["underlying term of modality"] FocusWrapped EntirelyBoring)
     return $ case token of
       TokenTrav -> AnalysisTrav $ ReldttMode $ getAnalysisTrav $ rt
@@ -112,7 +113,7 @@ instance Analyzable Reldtt ChainModty where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d rel -> modedEqDeg $ Identity !<$> d)
+        (\ d rel -> hoistcoy modedEqDeg $ Identity !<$> d)
         (AddressInfo ["first neutral component"] FocusEliminee omit)
       rchainRho <- fmapCoe runIdentity <$> h Identity
         (conditional $ ChainModtyLink (getAnalysisTrav rkmu) (getAnalysisTrav rtermNu) unreachable)
@@ -140,7 +141,7 @@ instance Analyzable Reldtt ChainModty where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d rel -> U1)
+        (\ d rel -> coy U1)
         (AddressInfo ["modality represented by a term: domain annotation"] FocusWrapped omit)
       rcod <- fmapCoe runIdentity <$> h Identity
         (conditional $ ChainModtyTerm unreachable unreachable unreachable)
@@ -150,7 +151,7 @@ instance Analyzable Reldtt ChainModty where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d rel -> U1)
+        (\ d rel -> coy U1)
         (AddressInfo ["modality represented by a term: codomain annotation"] FocusWrapped omit)
       rt <- fmapCoe runIdentity <$> h Identity
         (conditional $ ChainModtyTerm (getAnalysisTrav rdom) (getAnalysisTrav rcod) unreachable)
@@ -161,7 +162,7 @@ instance Analyzable Reldtt ChainModty where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d rel -> modedEqDeg $ Identity !<$> d)
+        (\ d rel -> hoistcoy modedEqDeg $ Identity !<$> d)
         (AddressInfo ["modality represented by a term: that underlying term"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
@@ -245,7 +246,7 @@ instance Analyzable Reldtt ModtyTail where
             otherwise -> Nothing
         )
         extCtxId
-        (\ _ _ -> U1)
+        (\ _ _ -> coy U1)
         (AddressInfo ["codomain"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ TailDisc $ getAnalysisTrav rcod
@@ -261,7 +262,7 @@ instance Analyzable Reldtt ModtyTail where
             otherwise -> Nothing
         )
         extCtxId
-        (\ _ _ -> U1)
+        (\ _ _ -> coy U1)
         (AddressInfo ["domain"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ TailForget $ getAnalysisTrav rdom
@@ -277,7 +278,7 @@ instance Analyzable Reldtt ModtyTail where
             otherwise -> Nothing
         )
         extCtxId
-        (\ _ _ -> U1)
+        (\ _ _ -> coy U1)
         (AddressInfo ["domain"] FocusWrapped omit)
       rcod <- fmapCoe runIdentity <$> h Identity
         (conditional $ TailDiscForget unreachable unreachable)
@@ -287,7 +288,7 @@ instance Analyzable Reldtt ModtyTail where
             otherwise -> Nothing
         )
         extCtxId
-        (\ _ _ -> U1)
+        (\ _ _ -> coy U1)
         (AddressInfo ["codomain"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ TailDiscForget (getAnalysisTrav rdom) (getAnalysisTrav rcod)
@@ -303,7 +304,7 @@ instance Analyzable Reldtt ModtyTail where
             otherwise -> Nothing
         )
         extCtxId
-        (\ _ _ -> U1)
+        (\ _ _ -> coy U1)
         (AddressInfo ["mode"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ TailForget $ getAnalysisTrav rd
@@ -340,7 +341,7 @@ instance Analyzable Reldtt ReldttDegree where
             otherwise -> Nothing
         )
         extCtxId
-        (\_ _ -> U1)
+        (\_ _ -> coy U1)
         (AddressInfo ["mode"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ DegKnown (getAnalysisTrav rd) kdeg
@@ -356,7 +357,7 @@ instance Analyzable Reldtt ReldttDegree where
             otherwise -> Nothing
         )
         extCtxId
-        (\_ (Const modrel) -> Const modrel)
+        (\_ -> cutcoy $ \(Const modrel) -> Const modrel)
         (AddressInfo ["argument degree"] NoFocus omit)
       {-rdom <- fmapCoe runIdentity <$> h Identity
         (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable unreachable unreachable)
@@ -414,7 +415,7 @@ instance Analyzable Reldtt ReldttSysTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d deg -> U1)
+        (\ d deg -> coy U1)
         (AddressInfo ["underlying mode term"] FocusWrapped EntirelyBoring)
       return $ case token of
         TokenTrav -> AnalysisTrav $ SysTermMode $ getAnalysisTrav rmodeTerm
@@ -435,7 +436,7 @@ instance Analyzable Reldtt ReldttSysTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d deg -> U1)
+        (\ d deg -> coy U1)
         (AddressInfo ["underlying modality term"] FocusWrapped EntirelyBoring)
       return $ case token of 
         TokenTrav -> AnalysisTrav $ SysTermModty $ getAnalysisTrav rmodtyTerm
@@ -459,7 +460,7 @@ instance Analyzable Reldtt ReldttSysTerm where
           where dom :*: cod = getAnalysisTC rchmu
         TokenRel -> AnalysisRel-}
 
-  convRel token d = modedEqDeg d
+  convRel token d = modedEqDeg $ uncoy d
   extraClassif d t extraT = U1
 
 instance Analyzable Reldtt ModeTerm where
@@ -484,7 +485,7 @@ instance Analyzable Reldtt ModeTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d _ -> Identity !<$> modedEqDeg d)
+        (\ d _ -> Identity !<$> hoistcoy modedEqDeg d)
         (AddressInfo ["predecessor mode"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ ModeTermSuc $ getAnalysisTrav rt
@@ -516,7 +517,7 @@ instance Analyzable Reldtt ModtyTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d U1 -> Const ModEq)
+        (\ d _ -> coy $ Const ModEq)
         (AddressInfo ["underlying chain modality"] FocusWrapped WorthMentioning)
       return $ case token of 
         TokenTrav -> AnalysisTrav $ ModtyTermChain $ getAnalysisTrav rchmu
@@ -554,7 +555,7 @@ instance Analyzable Reldtt ModtyTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\d U1 -> Const ModEq)
+        (\d _ -> coy $ Const ModEq)
         (AddressInfo ["argument modality"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
@@ -603,7 +604,7 @@ instance Analyzable Reldtt ModtyTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\_ U1 -> Const ModEq)
+        (\_ _ -> coy $ Const ModEq)
         (AddressInfo ["precomposite"] FocusEliminee omit)
       rmu2 <- fmapCoe runIdentity <$> h Identity
         --(conditional $ ModtyTermComp (getAnalysisTrav rcod)
@@ -616,7 +617,7 @@ instance Analyzable Reldtt ModtyTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\_ U1 -> Const ModEq)
+        (\_ _ -> coy $ Const ModEq)
         (AddressInfo ["postcomposite"] FocusEliminee omit)
       return $ case token of
         --TokenTrav -> AnalysisTrav $ ModtyTermComp (getAnalysisTrav rcod)
@@ -652,7 +653,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
             otherwise -> Nothing
         )
         extCtxId
-        (\d deg -> U1)
+        (\d deg -> coy U1)
         (AddressInfo ["domain"] FocusWrapped omit)
       rcod <- fmapCoe runIdentity <$> h Identity
         (conditional $ SysTypeModty unreachable unreachable)
@@ -662,7 +663,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
             otherwise -> Nothing
         )
         extCtxId
-        (\d deg -> U1)
+        (\d deg -> coy U1)
         (AddressInfo ["codomain"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ SysTypeModty (getAnalysisTrav rdom) (getAnalysisTrav rcod)
@@ -695,7 +696,7 @@ instance Analyzable Reldtt ReldttUniHSConstructor where
         TokenRel -> AnalysisRel-}
 
   convRel token d = U1
-  extraClassif d t extraT = crispModalityTo d :*: U1
+  extraClassif d t extraT = crispModalityTo (uncoy d) :*: U1
 
 --------------------------------
 
