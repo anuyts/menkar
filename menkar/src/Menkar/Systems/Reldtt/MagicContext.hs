@@ -74,7 +74,46 @@ comp nu mu = ChainModtyTerm (_chainModty'dom mu) (_chainModty'cod nu) $
 
 ----------------------------------------------
 
--- | @val *id Nat : Set = Nat@
+-- | @val *id Mode : UniHS d0 = Mode@
+valMode :: Entry Reldtt Void
+valMode = val NonOp "Mode" (idMod dataMode) $
+  Telescoped (
+    ValRHS
+      (unType $ tyMode)
+      (hs2type $ UniHS $ ReldttMode $ BareMode $ ModeTermZero)
+  )
+
+-- | @val *id Modality {*id dom cod : Mode} : UniHS d0 = Modality dom cod@
+valModality :: Entry Reldtt Void
+valModality = val NonOp "Modality" (idMod dataMode) $
+  segEx NonOp "dom" {- var 0 -} (idMod dataMode) tyMode :|-
+  segEx NonOp "cod" {- var 1 -} (idMod dataMode) tyMode :|-
+  Telescoped (
+    ValRHS
+      (unType $ tyModty (dvar 0) (dvar 1))
+      (hs2type $ UniHS $ ReldttMode $ BareMode $ ModeTermZero)
+  )
+
+-- | @val *id d0 : Mode = d0@
+valD0 :: Entry Reldtt Void
+valD0 = val NonOp "d0" (idMod dataMode) $
+  Telescoped (
+    ValRHS
+      (BareMode $ ModeTermZero)
+      tyMode
+  )
+
+-- | @val *id dsuc {*id d : Mode} : Mode = dsuc d@
+valDSuc :: Entry Reldtt Void
+valDSuc = val NonOp "dsuc" (idMod dataMode) $
+  segEx NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
+  Telescoped (
+    ValRHS
+      (BareMode $ ModeTermSuc $ var 0)
+      tyMode
+  )
+
+-- | @val *id Nat {~ *id d : Mode} {*(forget d)} : UniHS d = Nat@
 valNat :: Entry Reldtt Void
 valNat = val NonOp "Nat" (idMod dataMode) $
   segIm NonOp "d" {- var 0 -} (idMod dataMode) tyMode :|-
@@ -518,7 +557,11 @@ valFunext = val NonOp "funext" (idMod dataMode) $
 -----------------
 
 magicEntries :: [Entry Reldtt Void]
-magicEntries = 
+magicEntries =
+  valMode :
+  valModality :
+  valD0 :
+  valDSuc :
   valNat :
   valSuc :
   valIndNat :
