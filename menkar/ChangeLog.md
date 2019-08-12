@@ -6,6 +6,7 @@ When releasing, change the changelog and `package.yaml`.
 
 *  Modifications aimed at performance gains:
 
+   *  Guard meta dependencies with the `Coyoneda` type, causing a **massive** speedup.
    *  Guard heavily substituted data with the `Coyoneda` type, causing a significant speedup.
    *  Make substitution (CanSwallow typeclass) more efficient.
    *  Use strict monads to no avail.
