@@ -289,6 +289,15 @@ deriving instance (
 
 ------------------------------------
 
+newtype Dependencies (sys :: KSys) (v :: *) =
+  Dependencies {getDependencies :: Coyoneda (Compose [] (Mode sys :*: Term sys)) v}
+deriving instance (SysTrav sys) => Functor (Dependencies sys)
+deriving instance (SysTrav sys) => Foldable (Dependencies sys)
+deriving instance (SysTrav sys) => Traversable (Dependencies sys)
+deriving instance (SysTrav sys) => Generic1 (Dependencies sys)
+deriving instance (SysSyntax (Term sys) sys) =>
+  CanSwallow (Term sys) (Dependencies sys)
+
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
 -}
@@ -436,7 +445,7 @@ data TermNV (sys :: KSys) (v :: *) =
   TermMeta
     MetaNeutrality
     Int {-^ Meta's index -}
-    (Compose [] (Mode sys :*: Term sys) v) {-^ Dependencies -}
+    (Dependencies sys v) {-^ Dependencies -}
     (Compose Maybe (Algorithm sys) v) {-^ Human readable representation -} |
   TermWildcard {-^ A meta that need not be solved. -} |
   TermQName Raw.QName (Coyoneda (LeftDivided (Telescoped Type ValRHS) sys) v) |

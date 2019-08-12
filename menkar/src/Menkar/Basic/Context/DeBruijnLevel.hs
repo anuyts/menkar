@@ -40,6 +40,9 @@ class Eq v => DeBruijnLevel v where
   
   listAllRev :: [v]
   listAllRev = reverse listAll
+
+  atDeBruijnLevel :: forall a . v -> [a] -> a
+  atDeBruijnLevel v as = as !! getDeBruijnLevel v
   
   {-# MINIMAL size, (getDeBruijnIndex | getDeBruijnLevel), (forDeBruijnIndex | forDeBruijnLevel), (listAll | listAllRev) #-}
 
@@ -51,6 +54,7 @@ instance DeBruijnLevel Void where
   forDeBruijnIndex n = Nothing
   listAll = []
   listAllRev = []
+  atDeBruijnLevel = absurd
 
 instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
   size = size @v + 1
@@ -60,6 +64,9 @@ instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
     | n == 0 = Just VarLast
     | otherwise = VarWkn <$> forDeBruijnIndex (n - 1)
   listAllRev = VarLast : (VarWkn <$> listAllRev)
+  atDeBruijnLevel v [] = unreachable
+  atDeBruijnLevel VarLast (a : as) = a
+  atDeBruijnLevel (VarWkn v) (a : as) = atDeBruijnLevel v as
 
 {-
 proxyUnVarLeftWkn :: Proxy (VarLeftExt v) -> Proxy v
@@ -81,6 +88,7 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   forDeBruijnIndex n = VarInModule !<$> forDeBruijnIndex n
   listAll = VarInModule !<$> listAll
   listAllRev = VarInModule !<$> listAllRev
+  atDeBruijnLevel (VarInModule v) = atDeBruijnLevel v
 
 deriving instance Eq (f (g v)) => Eq (Compose f g v)
 instance DeBruijnLevel (f (g v)) => DeBruijnLevel (Compose f g v) where
@@ -91,6 +99,7 @@ instance DeBruijnLevel (f (g v)) => DeBruijnLevel (Compose f g v) where
   forDeBruijnIndex n = Compose !<$> forDeBruijnIndex n
   listAll = Compose !<$> listAll
   listAllRev = Compose !<$> listAllRev
+  atDeBruijnLevel (Compose v) = atDeBruijnLevel v
 
 instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
   size = size @v
@@ -100,6 +109,7 @@ instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
   forDeBruijnIndex n = Identity !<$> forDeBruijnIndex n
   listAll = Identity !<$> listAll
   listAllRev = Identity !<$> listAllRev
+  atDeBruijnLevel (Identity v) = atDeBruijnLevel v
 
 ----------------------------------
 
