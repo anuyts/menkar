@@ -76,7 +76,7 @@ checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = d
   case attempt of
     Right AnalysisRel -> return ()
     Left anErr -> case (anErr, analyzableToken :: AnalyzableToken sys t, t1) of
-         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) ->
+         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) ->
            unreachable -- terms are neutral at this point
          (AnErrorTermMeta, _, _) -> unreachable
          (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
@@ -139,13 +139,13 @@ checkTermRelNoEta deg gamma t1 t2 metasT1 metasT2 ty1 ty2 = do
     -- "blocked ~ blocked": block
     (_, _, True, True) -> tcBlock $ "Cannot solve relation without eta: both sides are blocked."
     -- "meta ~ WHN": try to solve against WHN
-    (Expr2 (TermMeta neut1 meta1 (Compose depcies1) (Compose maybeAlg1)), _, True, False) -> do
+    (Expr2 (TermMeta neut1 meta1 depcies1 (Compose maybeAlg1)), _, True, False) -> do
       maybeProblem <- tryToSolveAgainstWHN deg          gamma  neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2
       case maybeProblem of
         Nothing -> return ()
         Just msg -> tcBlock msg
     -- "WHN ~ meta": try to solve against WHN
-    (_, Expr2 (TermMeta neut2 meta2 (Compose depcies2) (Compose maybeAlg2)), False, True) -> do
+    (_, Expr2 (TermMeta neut2 meta2 depcies2 (Compose maybeAlg2)), False, True) -> do
       maybeProblem <- tryToSolveAgainstWHN deg (flipCtx gamma) neut2 meta2 depcies2 maybeAlg2 t1 ty2 ty1
       case maybeProblem of
         Nothing -> return ()
@@ -251,7 +251,7 @@ checkEtaForNormalType gamma t ty = do
       addNewConstraint
         (JudTermRel
           (Eta False)
-          (hoistcoy modedEqDeg $ ctx'mode gamma)
+          (hoistCoy modedEqDeg $ ctx'mode gamma)
           (duplicateCtx gamma)
           (Twice2 t tExpanded)
           (Twice2 ty' ty')
@@ -382,13 +382,13 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
         solved <- case itIsEqDeg of
           Just True -> case (t1, t2, isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
             -- 'meta = whn'
-            (Expr2 (TermMeta neut1 meta1 (Compose depcies1) (Compose maybeAlg1)), _, True, False) -> do
+            (Expr2 (TermMeta neut1 meta1 depcies1 (Compose maybeAlg1)), _, True, False) -> do
               maybeProblem <- tryToSolveImmediately          gamma  neut1 meta1 depcies1 maybeAlg1 t2 ty1 ty2
               case maybeProblem of
                 Nothing -> return True
                 Just msg -> return False
             -- 'whn = meta'
-            (_, Expr2 (TermMeta neut2 meta2 (Compose depcies2) (Compose maybeAlg2)), False, True) -> do
+            (_, Expr2 (TermMeta neut2 meta2 depcies2 (Compose maybeAlg2)), False, True) -> do
               maybeProblem <- tryToSolveImmediately (flipCtx gamma) neut2 meta2 depcies2 maybeAlg2 t1 ty2 ty1
               case maybeProblem of
                 Nothing -> return True

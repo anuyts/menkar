@@ -93,7 +93,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
   case (anErr, analyzableToken @sys @t, t) of
-    (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> do
+    (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> do
       maybeT <- awaitMeta @sys @tc @(Term sys) "I want to know what I'm supposed to type-check." meta depcies
       t' <- case maybeT of
         Nothing -> do

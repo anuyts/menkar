@@ -120,4 +120,4 @@ newMetaChainModtyNoCheck ::
   sc (ChainModty v)
 newMetaChainModtyNoCheck gamma dom cod reason = do
     (meta, depcies) <- newMetaID gamma reason
-    return $ ChainModtyMeta dom cod meta (Compose depcies)
+    return $ ChainModtyMeta dom cod meta depcies

@@ -226,7 +226,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     maybeParent <- useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
-    let depcies = listAll <&> \ v ->
+    let depcies = Dependencies $ coy $ Compose $ forallVarsRev $ \ v ->
           let d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
           in  d :*: Var2 v
     return (meta, depcies)
@@ -235,7 +235,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
   newMetaTermNoCheck maybeParent gamma neutrality maybeAlg reason = do
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
-    let depcies = Compose $ Var2 <$> listAll
+    let depcies = Compose $ Var2 <$> listAllRev
     return $ Expr2 $ TermMeta neutrality meta depcies (Compose maybeAlg)
   -}
 
@@ -273,15 +273,11 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
             -- Substitute the dependencies into the solution and return.
-            return $ Just $ substitute (snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel) $
-              unsafeForceSolvableAST solution
+            return $ Just $ substitute (depcies2subst @sys @vOrig depcies) . unsafeForceSolvableAST $ solution
           Left worryIDs -> shiftDC $ \ kCurrent -> do
             -- Prepend the continuation with substituting the dependencies into the solution.
             let kCurrentAdjusted = kCurrent
-                  . fmap (
-                    substitute (snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel @vOrig)
-                    . unsafeForceSolvableAST
-                  )
+                  . fmap (substitute (depcies2subst @sys @vOrig depcies) . unsafeForceSolvableAST)
             let allowContinuationToBlockOnCurrentMeta :: forall x .
                   (x -> TCT sys m (TCResult sys)) ->
                   (x -> TCT sys m (TCResult sys))

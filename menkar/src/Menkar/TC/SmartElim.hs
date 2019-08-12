@@ -86,7 +86,7 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
             "End of elimination: Checking whether actual elimination modality equals expected modality (namely identity)."
       addNewConstraint
         (JudTypeRel
-          (hoistcoy modedEqDeg dgamma)
+          (hoistCoy modedEqDeg dgamma)
           (duplicateCtx gamma)
           (Twice2 tyEliminee tyResult)
         )
@@ -94,7 +94,7 @@ checkSmartElimDone gamma eliminee tyEliminee maybeMuElim result tyResult = do
       addNewConstraint
         (JudTermRel
           (Eta True)
-          (hoistcoy modedEqDeg dgamma)
+          (hoistCoy modedEqDeg dgamma)
           (duplicateCtx gamma)
           (Twice2 eliminee result)
           (Twice2 tyEliminee tyResult)

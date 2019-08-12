@@ -11,6 +11,7 @@ import Data.Functor.Coyoneda
 import Control.Applicative
 import GHC.Generics
 import Data.Kind
+import Data.Coerce
 
 -- | @substitute h fv = swallow (h <$> fv)@
 class CanSwallow (f :: * -> *) (g :: * -> *) where
@@ -195,9 +196,30 @@ coy = liftCoyoneda
 uncoy :: (Functor f) => Coyoneda f x -> f x
 uncoy = lowerCoyoneda
 
-hoistcoy = hoistCoyoneda
-cutcoy :: (Functor f) => (f x -> g y) -> Coyoneda f x -> Coyoneda g y
-cutcoy f = coy . f . uncoy
+hoistCoy = hoistCoyoneda
+hoistCoyLens :: forall m f g a . (Functor m) => (forall x . f x -> m (g x)) -> Coyoneda f a -> m (Coyoneda g a)
+hoistCoyLens h (Coyoneda (q :: b -> a) fb) = Coyoneda q <$> mgb
+  where mgb = h fb
+
+cutCoy :: (Functor f) => (f x -> g y) -> Coyoneda f x -> Coyoneda g y
+cutCoy f = coy . f . uncoy
+cutCoyLens :: forall m f g a . (Functor m, Functor f) => (f a -> m (g a)) -> Coyoneda f a -> m (Coyoneda g a)
+cutCoyLens h = fmap coy . h . uncoy
+
+-- | To understand this, consider what happens for @Compose [] Maybe@.
+popCoy :: forall g f x . (Functor g) => Coyoneda (Compose g f) x -> Compose g (Coyoneda f) x
+popCoy (Coyoneda (q :: y -> x) (Compose (gfy :: g (f y)))) =
+  Compose $ Coyoneda (q :: y -> x) <$> gfy
+
+-- | To understand this, consider what happens for @[] :.: Maybe@.
+copopCoy :: forall g f x . (Functor f) => Coyoneda (g :.: f) x -> ((Coyoneda g) :.: f) x
+copopCoy (Coyoneda (q :: y -> x) (Comp1 (gfy :: g (f y)))) =
+  Comp1 $ Coyoneda (fmap q :: f y -> f x) gfy
+-- | It is atypical to need this function.
+copopCoy' :: forall g f x . (Functor f) => Coyoneda (Compose g f) x -> Compose (Coyoneda g) f x
+copopCoy' (Coyoneda q (Compose gfy)) =
+  Compose $ Coyoneda (fmap q) gfy
 
 pattern Coy x <- (lowerCoyoneda -> x)
   where Coy x = coy x
+{-# COMPLETE Coy #-}

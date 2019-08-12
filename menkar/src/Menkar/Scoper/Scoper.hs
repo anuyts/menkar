@@ -81,7 +81,7 @@ exprC gamma (Raw.ExprNatLiteral n) = natLiteral n
 exprC gamma (Raw.ExprImplicit) =
   newMetaTermNoCheck {-eqDeg-} gamma MetaBlocked Nothing "Infer explicitly omitted value."
 exprC gamma (Raw.ExprGoal str) = do
-  let algGoal = AlgGoal str $ Compose $ Var2 <$> scListVariables (ctx2scCtx gamma)
+  let algGoal = AlgGoal str $ Compose $ forallVarsRev Var2
   result <- newMetaTermNoCheck {-eqDeg-} gamma MetaBlocked (Just $ algGoal) "Infer goal's value."
   return $ Expr2 $ TermAlgorithm algGoal result
 exprC gamma (Raw.ExprSys sysExprC) = scopeSysExprC gamma sysExprC

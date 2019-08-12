@@ -9,6 +9,8 @@ import Menkar.Fine.Syntax.Substitution hiding (Expr (..))
 import Menkar.Basic.Context
 import qualified Menkar.Raw.Syntax as Raw
 
+import Data.Functor.Functor1
+
 import GHC.Generics
 import Data.Functor.Compose
 import Data.Functor.Identity
@@ -289,14 +291,20 @@ deriving instance (
 
 ------------------------------------
 
+{-| Variables are stored in REVERSE order, i.e. in order of De Bruijn index. -}
 newtype Dependencies (sys :: KSys) (v :: *) =
   Dependencies {getDependencies :: Coyoneda (Compose [] (Mode sys :*: Term sys)) v}
 deriving instance (SysTrav sys) => Functor (Dependencies sys)
 deriving instance (SysTrav sys) => Foldable (Dependencies sys)
 deriving instance (SysTrav sys) => Traversable (Dependencies sys)
 deriving instance (SysTrav sys) => Generic1 (Dependencies sys)
+deriving instance (SysTrav sys) => Generic (Dependencies sys v)
+deriving instance (SysTrav sys) => Wrapped (Dependencies sys v)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Dependencies sys)
+
+depcies2subst :: forall sys vOrig v . (SysTrav sys, DeBruijnLevel vOrig) => Dependencies sys v -> vOrig -> Term sys v
+depcies2subst (Dependencies (Coyoneda q (Compose dts))) vOrig = q <$> snd1 (atVarRev vOrig dts)
 
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
@@ -401,7 +409,7 @@ deriving instance (SysSyntax (Term sys) sys) =>
 data Algorithm sys v =
   AlgGoal
     String {-^ goal's name -}
-    (Compose [] (Term sys) v) {-^ dependencies -} |
+    (Compose [] (Term sys) v) {-^ dependencies, in reverse order -} |
   AlgSmartElim
     (Term sys v) {-^ eliminee -}
     (Compose [] (ModedModality sys :*: SmartEliminator sys) v)

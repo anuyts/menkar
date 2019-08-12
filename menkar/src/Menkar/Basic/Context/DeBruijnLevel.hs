@@ -34,17 +34,26 @@ class Eq v => DeBruijnLevel v where
   
   forDeBruijnIndex :: Int -> Maybe v
   forDeBruijnIndex n = forDeBruijnLevel @v (size @v - 1 - n)
+
+  forallVars :: forall a . (v -> a) -> [a]
+  forallVars f = reverse $ forallVarsRev f
+
+  forallVarsRev :: forall a . (v -> a) -> [a]
+  forallVarsRev f = reverse $ forallVars f
   
   listAll :: [v]
-  listAll = reverse listAllRev
+  listAll = forallVars id
   
   listAllRev :: [v]
-  listAllRev = reverse listAll
+  listAllRev = forallVarsRev id
 
-  atDeBruijnLevel :: forall a . v -> [a] -> a
-  atDeBruijnLevel v as = as !! getDeBruijnLevel v
+  atVarRev :: forall a . v -> [a] -> a
+  atVarRev v as = as !! getDeBruijnLevel v
   
-  {-# MINIMAL size, (getDeBruijnIndex | getDeBruijnLevel), (forDeBruijnIndex | forDeBruijnLevel), (listAll | listAllRev) #-}
+  {-# MINIMAL size,
+      (getDeBruijnIndex | getDeBruijnLevel),
+      (forDeBruijnIndex | forDeBruijnLevel),
+      (forallVars | forallVarsRev) #-}
 
 instance DeBruijnLevel Void where
   size = 0
@@ -52,9 +61,9 @@ instance DeBruijnLevel Void where
   forDeBruijnLevel n = Nothing
   getDeBruijnIndex = absurd
   forDeBruijnIndex n = Nothing
-  listAll = []
-  listAllRev = []
-  atDeBruijnLevel = absurd
+  forallVars f = []
+  forallVarsRev f = []
+  atVarRev = absurd
 
 instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
   size = size @v + 1
@@ -63,10 +72,10 @@ instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
   forDeBruijnIndex n
     | n == 0 = Just VarLast
     | otherwise = VarWkn <$> forDeBruijnIndex (n - 1)
-  listAllRev = VarLast : (VarWkn <$> listAllRev)
-  atDeBruijnLevel v [] = unreachable
-  atDeBruijnLevel VarLast (a : as) = a
-  atDeBruijnLevel (VarWkn v) (a : as) = atDeBruijnLevel v as
+  forallVarsRev f = f VarLast : (forallVarsRev $ f . VarWkn)
+  atVarRev v [] = unreachable
+  atVarRev VarLast (a : as) = a
+  atVarRev (VarWkn v) (a : as) = atVarRev v as
 
 {-
 proxyUnVarLeftWkn :: Proxy (VarLeftExt v) -> Proxy v
@@ -86,9 +95,9 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   getDeBruijnIndex (VarInModule v) = getDeBruijnIndex v
   forDeBruijnLevel n = VarInModule !<$> forDeBruijnLevel n
   forDeBruijnIndex n = VarInModule !<$> forDeBruijnIndex n
-  listAll = VarInModule !<$> listAll
-  listAllRev = VarInModule !<$> listAllRev
-  atDeBruijnLevel (VarInModule v) = atDeBruijnLevel v
+  forallVars f = forallVars $ f . VarInModule
+  forallVarsRev f = forallVarsRev $ f . VarInModule
+  atVarRev (VarInModule v) = atVarRev v
 
 deriving instance Eq (f (g v)) => Eq (Compose f g v)
 instance DeBruijnLevel (f (g v)) => DeBruijnLevel (Compose f g v) where
@@ -97,9 +106,9 @@ instance DeBruijnLevel (f (g v)) => DeBruijnLevel (Compose f g v) where
   getDeBruijnIndex (Compose v) = getDeBruijnIndex v
   forDeBruijnLevel n = Compose !<$> forDeBruijnLevel n
   forDeBruijnIndex n = Compose !<$> forDeBruijnIndex n
-  listAll = Compose !<$> listAll
-  listAllRev = Compose !<$> listAllRev
-  atDeBruijnLevel (Compose v) = atDeBruijnLevel v
+  forallVars f = forallVars $ f . Compose
+  forallVarsRev f = forallVarsRev $ f . Compose
+  atVarRev (Compose v) = atVarRev v
 
 instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
   size = size @v
@@ -107,9 +116,9 @@ instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
   getDeBruijnIndex (Identity v) = getDeBruijnIndex v
   forDeBruijnLevel n = Identity !<$> forDeBruijnLevel n
   forDeBruijnIndex n = Identity !<$> forDeBruijnIndex n
-  listAll = Identity !<$> listAll
-  listAllRev = Identity !<$> listAllRev
-  atDeBruijnLevel (Identity v) = atDeBruijnLevel v
+  forallVars f = forallVars $ f . Identity
+  forallVarsRev f = forallVarsRev $ f . Identity
+  atVarRev (Identity v) = atVarRev v
 
 ----------------------------------
 

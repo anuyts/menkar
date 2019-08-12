@@ -40,7 +40,7 @@ instance Fine2Pretty Reldtt ChainModty where
         [" \8728(" ++| fine2pretty gamma trho opts |++ ")\8728 "] /+/
       fine2pretty gamma chsigma opts
     ChainModtyTerm dom cod tmu -> "(" ++| fine2pretty gamma tmu opts |++ ")"
-    ChainModtyMeta dom cod meta (Compose depcies) -> meta2pretty gamma MetaBlocked meta depcies Nothing opts
+    ChainModtyMeta dom cod meta depcies -> meta2pretty gamma MetaBlocked meta depcies Nothing opts
     ChainModtyAlreadyChecked dom cod chmuChecked -> fine2pretty gamma chmuChecked opts
 
 instance Fine2Pretty Reldtt ReldttDegree where

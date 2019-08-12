@@ -386,7 +386,7 @@ whnormalizeChainModty gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
       (ChainModtyLink (idKnownModty cod) tmu $ ChainModtyKnown $ idKnownModty dom)
       reason
     otherwise -> return $ ChainModtyTerm dom cod tmu
-whnormalizeChainModty gamma chmu@(ChainModtyMeta dom cod meta (Compose depcies)) reason = do
+whnormalizeChainModty gamma chmu@(ChainModtyMeta dom cod meta depcies) reason = do
   maybeSolution <- awaitMeta reason meta depcies
   case maybeSolution of
     Nothing -> chmu <$ tell [meta]

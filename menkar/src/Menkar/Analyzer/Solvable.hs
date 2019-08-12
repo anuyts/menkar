@@ -27,5 +27,5 @@ import Control.Monad
 
 instance SysAnalyzer sys => Solvable sys (Term sys) where
   astAlreadyChecked t ty = Expr2 $ TermAlreadyChecked t ty
-  unMeta (Expr2 (TermMeta neut meta (Compose depcies) maybeAlg)) = Just (neut, meta, depcies)
+  unMeta (Expr2 (TermMeta neut meta depcies maybeAlg)) = Just (neut, meta, depcies)
   unMeta _ = Nothing

@@ -44,15 +44,17 @@ quickEq t t' extraT extraT' =
   in case result of
        Right (All b) -> b
        Left anErr -> case (anErr, analyzableToken @sys @t, t) of
-         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) -> case t' of
-           TermMeta neutrality' meta' (Compose depcies') alg' ->
+         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> case t' of
+           TermMeta neutrality' meta' depcies' alg' ->
              (neutrality == neutrality')
              && meta == meta'
-             && length depcies == length depcies'
-             && and (zip depcies depcies' <&> \ (d :*: depcy, d' :*: depcy') ->
+             && length depcyList == length depcyList'
+             && and (zip depcyList depcyList' <&> \ (d :*: depcy, d' :*: depcy') ->
                         --quickEq @sys d d' U1 U1 && (follows from the other clause...)
                         quickEq @sys depcy depcy' U1 U1
                     )
+             where Dependencies (Coy (Compose depcyList )) = depcies
+                   Dependencies (Coy (Compose depcyList')) = depcies'
            _ -> False
          (AnErrorTermMeta, _, _) -> unreachable
          (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable

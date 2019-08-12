@@ -52,7 +52,7 @@ instance MonadFail SimpleScoper where
 instance MonadScoper Trivial SimpleScoper where
   newMetaID gamma reason = do
     i <- fresh
-    return (i, listAll <&> \ (v :: v) ->
+    return (i, Dependencies $ coy $ Compose $ forallVarsRev $ \ (v :: v) ->
         let d :: TrivMode v
             d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
         in  d :*: Var2 v

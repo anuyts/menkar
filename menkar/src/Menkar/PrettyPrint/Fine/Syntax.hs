@@ -324,7 +324,7 @@ instance (SysFinePretty sys,
          Fine2Pretty sys (Algorithm sys) where
   fine2pretty gamma (AlgGoal str (Compose depcies)) opts =
     ribbon ("?" ++ str)
-      \\\ ((|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> depcies)
+      \\\ ((|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma <$> reverse depcies)
   fine2pretty gamma (AlgSmartElim eliminee (Compose eliminators)) opts =
     "(" ++| fine2pretty gamma eliminee opts |++ ")"
       |+| treeGroup ((" " ++|) . ($ opts) . fine2pretty gamma . snd1 <$> eliminators)
@@ -356,7 +356,7 @@ meta2pretty :: (DeBruijnLevel v,
   ScCtx sys v ->
   MetaNeutrality ->
   MetaID ->
-  [(Mode sys :*: Term sys) v] ->
+  Dependencies sys v ->
   Maybe (Algorithm sys v) ->
   Fine2PrettyOptions sys ->
   PrettyTree String
@@ -368,9 +368,10 @@ meta2pretty gamma neutrality meta depcies maybeAlg opts =
           Nothing -> metaNoSolution
           Just (ForSomeDeBruijnLevel t) ->
             ["\x27ea" ++|
-              fine2pretty gamma (substitute (snd1 . (depcies !!) . fromIntegral . getDeBruijnLevel) t) opts
+              fine2pretty gamma (substitute (depcies2subst depcies) t) opts
             |++ "\x27eb"]
-  where uglySubMeta = (|++ "}") . (" .{" ++|) . ($ opts) . fine2pretty gamma . snd1 <$> depcies
+  where uglySubMeta = (reverse . getCompose . uncoy . getDependencies $ depcies) <&> \ (d :*: depcy) ->
+          " .{" ++| fine2pretty gamma depcy opts |++ "}"
         metaNoSolution = case maybeAlg of
           Nothing -> uglySubMeta
           Just alg -> if _fine2pretty'humanReadableMetas opts
@@ -386,7 +387,7 @@ instance (SysFinePretty sys,
   fine2pretty gamma (TermCons consTerm) opts = fine2pretty gamma consTerm opts
   fine2pretty gamma (TermElim mod eliminee tyEliminee eliminator) opts =
     elimination2pretty gamma (Just mod) (Just eliminee) (Just tyEliminee) eliminator opts
-  fine2pretty gamma tMeta@(TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)) opts =
+  fine2pretty gamma tMeta@(TermMeta neutrality meta depcies (Compose maybeAlg)) opts =
     meta2pretty gamma neutrality meta depcies maybeAlg opts
   fine2pretty gamma TermWildcard opts = ribbon "_"
   fine2pretty gamma (TermQName qname lookupresult) opts = Raw.unparse' qname

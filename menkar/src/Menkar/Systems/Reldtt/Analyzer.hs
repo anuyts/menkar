@@ -56,7 +56,7 @@ instance Analyzable Reldtt ReldttMode where
       (\ gamma' (Classification (ReldttMode t') U1 maybeU1') ->
          Just $ Identity !<$> Classification t' U1 (ClassifMustBe $ BareSysType $ SysTypeMode))
       extCtxId
-      (\ d _ -> hoistcoy modedEqDeg $ Identity !<$> d)
+      (\ d _ -> hoistCoy modedEqDeg $ Identity !<$> d)
       (AddressInfo ["underlying term of modality"] FocusWrapped EntirelyBoring)
     return $ case token of
       TokenTrav -> AnalysisTrav $ ReldttMode $ getAnalysisTrav $ rt
@@ -113,7 +113,7 @@ instance Analyzable Reldtt ChainModty where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d rel -> hoistcoy modedEqDeg $ Identity !<$> d)
+        (\ d rel -> hoistCoy modedEqDeg $ Identity !<$> d)
         (AddressInfo ["first neutral component"] FocusEliminee omit)
       rchainRho <- fmapCoe runIdentity <$> h Identity
         (conditional $ ChainModtyLink (getAnalysisTrav rkmu) (getAnalysisTrav rtermNu) unreachable)
@@ -162,7 +162,7 @@ instance Analyzable Reldtt ChainModty where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d rel -> hoistcoy modedEqDeg $ Identity !<$> d)
+        (\ d rel -> hoistCoy modedEqDeg $ Identity !<$> d)
         (AddressInfo ["modality represented by a term: that underlying term"] FocusEliminee omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $
@@ -357,7 +357,7 @@ instance Analyzable Reldtt ReldttDegree where
             otherwise -> Nothing
         )
         extCtxId
-        (\_ -> cutcoy $ \(Const modrel) -> Const modrel)
+        (\_ -> cutCoy $ \(Const modrel) -> Const modrel)
         (AddressInfo ["argument degree"] NoFocus omit)
       {-rdom <- fmapCoe runIdentity <$> h Identity
         (conditional $ DegGet (getAnalysisTrav rdegArg) unreachable unreachable unreachable)
@@ -485,7 +485,7 @@ instance Analyzable Reldtt ModeTerm where
             otherwise -> Nothing
         )
         extCtxId
-        (\ d _ -> Identity !<$> hoistcoy modedEqDeg d)
+        (\ d _ -> Identity !<$> hoistCoy modedEqDeg d)
         (AddressInfo ["predecessor mode"] FocusWrapped omit)
       return $ case token of
         TokenTrav -> AnalysisTrav $ ModeTermSuc $ getAnalysisTrav rt
@@ -708,12 +708,14 @@ instance SysAnalyzer Reldtt where
       in  snout1 == snout2
     (AnErrorModtySnout, _) -> unreachable
     (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality) -> case (t1, t2) of
-      (ChainModtyMeta dom1 cod1 meta1 (Compose depcies1), ChainModtyMeta dom2 cod2 meta2 (Compose depcies2)) ->
+      (ChainModtyMeta dom1 cod1 meta1 depcies1, ChainModtyMeta dom2 cod2 meta2 depcies2) ->
         meta1 == meta2
-        && length depcies1 == length depcies2
-        && and (zip depcies1 depcies2 <&> \ (d1 :*: depcy1, d2 :*: depcy2) ->
+        && length depcyList1 == length depcyList2
+        && and (zip depcyList1 depcyList2 <&> \ (d1 :*: depcy1, d2 :*: depcy2) ->
                    quickEq @Reldtt depcy1 depcy2 U1 U1
                )
+        where Dependencies (Coy (Compose depcyList1)) = depcies1
+              Dependencies (Coy (Compose depcyList2)) = depcies2
       (ChainModtyMeta _ _ _ _, _) -> False
       (_, ChainModtyMeta _ _ _ _) -> False
       otherwise -> unreachable
@@ -733,5 +735,5 @@ instance SysAnalyzer Reldtt where
 
 instance Solvable Reldtt ChainModty where
   astAlreadyChecked chmu (dom :*: cod) = ChainModtyAlreadyChecked dom cod chmu
-  unMeta (ChainModtyMeta dom cod meta (Compose depcies)) = Just (MetaBlocked, meta, depcies)
+  unMeta (ChainModtyMeta dom cod meta depcies) = Just (MetaBlocked, meta, depcies)
   unMeta _ = Nothing

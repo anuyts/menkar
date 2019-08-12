@@ -41,7 +41,7 @@ class (
     (sys :: KSys)
     (sc :: * -> *)
     | sc -> sys where
-  newMetaID :: (DeBruijnLevel v) => Ctx Type sys v -> String -> sc (Int, [(Mode sys :*: Term sys) v])
+  newMetaID :: (DeBruijnLevel v) => Ctx Type sys v -> String -> sc (Int, Dependencies sys v)
   scopeFail :: String -> sc a
 
   {-| After scoping, before type-checking, metas are put to sleep.
@@ -59,7 +59,7 @@ newMetaTermNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
     sc (Term sys v)
 newMetaTermNoCheck gamma neutrality maybeAlg reason = do
   (meta, depcies) <- newMetaID gamma reason
-  return $ Expr2 $ TermMeta neutrality meta (Compose depcies) (Compose maybeAlg)
+  return $ Expr2 $ TermMeta neutrality meta depcies (Compose maybeAlg)
   
 newMetaTypeNoCheck :: (DeBruijnLevel v, MonadScoper sys sc) =>
     -- -> Degree sys v {-^ Degree up to which it should be solved -}
@@ -86,7 +86,7 @@ class (
          are also saved.) The first time a meta is solved that contributed to this blockade, its continuation will be
          run with the soluiton.
       It is an error to await the same meta twice. -}
-  awaitMeta :: forall t v . Solvable sys t => String -> Int -> [(Mode sys :*: Term sys) v] -> whn (Maybe (t v))
+  awaitMeta :: forall t v . Solvable sys t => String -> Int -> Dependencies sys v -> whn (Maybe (t v))
 
 instance (MonadWHN sys whn, MonadTrans mT, MonadFail (mT whn)) => MonadWHN sys (mT whn) where
   awaitMeta reason meta depcies = lift $ awaitMeta reason meta depcies
@@ -145,7 +145,7 @@ class (
 
 await :: (MonadWHN sys whn, SysAnalyzer sys) =>
   String -> Term sys v -> whn (Maybe (Term sys v))
-await reason (Expr2 (TermMeta flagEta meta (Compose depcies) alg)) = runMaybeT $ do
+await reason (Expr2 (TermMeta flagEta meta depcies alg)) = runMaybeT $ do
   term <- MaybeT $ awaitMeta reason meta depcies
   MaybeT $ await reason term
 await reason t = return $ Just t

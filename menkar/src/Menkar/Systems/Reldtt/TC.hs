@@ -70,7 +70,7 @@ instance SysTC Reldtt where
       when (any (== KnownDegProblem) krevdegs) $ tcFail "Problematic degree encountered."
       return U1
     (AnErrorModtySnout, _, _) -> unreachable
-    (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, chmu@(ChainModtyMeta dom cod meta (Compose depcies))) -> do
+    (AnErrorChainModtyMeta, AnTokenMultimode AnTokenModality, chmu@(ChainModtyMeta dom cod meta depcies)) -> do
       addNewConstraint
         (Jud analyzableToken gamma dom U1 (ClassifWillBe U1))
         "Modality metavariable: checking domain annotation."
@@ -132,11 +132,11 @@ instance SysTC Reldtt where
           case getConst $ uncoy relT of
             ModLeq -> return False
             ModEq -> case (metasT1, metasT2, t1, t2) of
-              (_:_, [] , ChainModtyMeta _ _ meta1 (Compose depcies1), _) ->
+              (_:_, [] , ChainModtyMeta _ _ meta1 depcies1, _) ->
                 isNothing <$> tryToSolveImmediately          gamma  MetaBlocked meta1 depcies1 Nothing t2
                    (dom1 :*: cod1)
                    (dom2 :*: cod2)
-              ([] , _:_, _, ChainModtyMeta _ _ meta2 (Compose depcies2)) ->
+              ([] , _:_, _, ChainModtyMeta _ _ meta2 depcies2) ->
                 isNothing <$> tryToSolveImmediately (flipCtx gamma) MetaBlocked meta2 depcies2 Nothing t1
                    (dom2 :*: cod2)
                    (dom1 :*: cod1)

@@ -221,7 +221,7 @@ whnormalizeNV gamma t@(TermCons _) ty metas reason = return $ Expr2 $ t   -- Min
 whnormalizeNV gamma (TermElim dmu t tyEliminee e) ty metas reason =
   whnormalizeElim gamma dmu t tyEliminee e ty metas reason
 -- Meta: return if unsolved, otherwise whnormalize solution.
-whnormalizeNV gamma t@(TermMeta neutrality meta (Compose depcies) alg) ty metas reason = do
+whnormalizeNV gamma t@(TermMeta neutrality meta depcies alg) ty metas reason = do
   --solution <- fromMaybe (Expr2 t) <$> awaitMeta ty reason meta depcies
   maybeSolution <- awaitMeta reason meta depcies
   case maybeSolution of

@@ -81,7 +81,7 @@ newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 mayb
   case attempt of
     Right (AnalysisTrav t1orig) -> return t1orig
     Left anErr -> case (anErr, analyzableToken :: AnalyzableToken sys t, t2) of
-         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta (Compose depcies) alg) ->
+         (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) ->
            unreachable -- terms are neutral at this point
          (AnErrorTermMeta, _, _) -> unreachable
          (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
@@ -159,13 +159,14 @@ newRelatedMetaTerm eta deg gammaOrig gamma subst partialInv t2 maybeTys neutrali
 
 getSubstAndPartialInv :: forall sys v vOrig .
   (SysTC sys, DeBruijnLevel v, DeBruijnLevel vOrig) =>
-  [(Mode sys :*: Term sys) v] ->
+  Dependencies sys v ->
   Either String (vOrig -> v, v -> Maybe vOrig)
 getSubstAndPartialInv depcies = do
   let getVar2 :: Term sys v -> Maybe v
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
-  case sequenceA $ getVar2 . snd1 <$> depcies of
+  --case sequenceA $ uncoy $ getVar2 . snd1 <$> (_ $ getDependencies $ depcies) of
+  case sequenceA . uncoy . fmap (getVar2 . snd1) . getCompose . copopCoy' . getDependencies $ depcies of
     -- Some dependency is not a variable
     Nothing -> Left "Cannot solve meta-variable: it has non-variable dependencies."
     -- All dependencies are variables
@@ -176,14 +177,14 @@ getSubstAndPartialInv depcies = do
         _:_ -> Left "Cannot solve meta-variable: it has undergone contraction of dependencies."
         -- All variables are unique
         [] -> do
-          let subst = (depcyVars !!) . fromIntegral . getDeBruijnLevel
-          let partialInv = join . fmap (forDeBruijnLevel . fromIntegral) . flip elemIndex depcyVars
+          let subst = flip atVarRev depcyVars
+          let partialInv = join . fmap (forDeBruijnIndex . fromIntegral) . flip elemIndex depcyVars
           return (subst, partialInv)
 
 tryToSolveBy :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
   Ctx (Twice2 Type) sys v ->
-  MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
+  MetaNeutrality -> Int -> Dependencies sys v -> Maybe (Algorithm sys v) ->
   t v ->
   Classif t v ->
   Classif t v ->
@@ -195,9 +196,10 @@ tryToSolveBy :: forall sys tc t v .
   ) ->
   tc (Maybe String)
 tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
-  depcies1 <- sequenceA $ depcies1 <&> \ (d :*: depcy) ->
+  depcies1 <- depcies1 & (_Wrapped' . cutCoyLens . _Wrapped' . traverse $ \ (d :*: depcy) ->
     fmap ((d :*:) . fst) $ runWriterT $ whnormalize (CtxOpaque $ d) depcy (Type $ Expr2 $ TermWildcard)
       "Trying to weak-head-normalize meta dependency to a variable"
+    )
   let maybeProblem = case neut1 of
         MetaBlocked -> Nothing
         MetaNeutral -> case t2 of
@@ -215,7 +217,7 @@ tryToSolveAgainstWHN :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
   Coyoneda (Relation t) v ->
   Ctx (Twice2 Type) sys v ->
-  MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
+  MetaNeutrality -> Int -> Dependencies sys v -> Maybe (Algorithm sys v) ->
   t v ->
   Classif t v ->
   Classif t v ->
@@ -246,7 +248,7 @@ tryToSolveAgainstWHN rel gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 =
 tryToSolveImmediately :: forall sys tc t v .
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>
   Ctx (Twice2 Type) sys v ->
-  MetaNeutrality -> Int -> [(Mode sys :*: Term sys) v] -> Maybe (Algorithm sys v) ->
+  MetaNeutrality -> Int -> Dependencies sys v -> Maybe (Algorithm sys v) ->
   t v ->
   Classif t v ->
   Classif t v ->

@@ -169,7 +169,7 @@ data ChainModty v =
     (Mode Reldtt v) {-^ domain -}
     (Mode Reldtt v) {-^ codomain -}
     MetaID {-^ Meta's index -}
-    (Compose [] (Mode Reldtt :*: Term Reldtt) v) {-^ dependencies -} |
+    (Dependencies Reldtt v) {-^ dependencies -} |
   ChainModtyAlreadyChecked
     (Mode Reldtt v) {-^ domain -}
     (Mode Reldtt v) {-^ codomain -}
