@@ -10,6 +10,7 @@ import Menkar.Basic.Context
 import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Functor.Functor1
+import Data.Omissible
 
 import GHC.Generics
 import Data.Functor.Compose
@@ -536,6 +537,14 @@ getDeclNameModule (DeclNameModule str) = str
 getDeclNameSegment :: DeclName DeclSortSegment -> Maybe Raw.Name
 getDeclNameSegment (DeclNameSegment maybeRawName) = maybeRawName
 
+data DeclOptions = DeclOptions {
+  _declOpts'flush :: Bool
+  }
+segOpts :: DeclOptions
+segOpts = DeclOptions False
+entryOpts :: DeclOptions
+entryOpts = DeclOptions True
+
 {-
 data DeclType
      (declSort :: DeclSort)
@@ -558,6 +567,7 @@ data Declaration
     --_decl'mode :: Mode sys v,
     _decl'modty :: ModalityTo sys v,
     _decl'plicity :: Plicity sys v,
+    _decl'opts :: DeclOptions,
     _decl'content :: content sys v
   }
 deriving instance (SysTrav sys, Functor (content sys)) => Functor (Declaration declSort content sys)
@@ -582,6 +592,7 @@ data TelescopedPartialDeclaration
     _pdecl'mode :: Compose Maybe (Mode sys) v,
     _pdecl'modty :: Compose Maybe (Modality sys) v,
     _pdecl'plicity :: Compose Maybe (Plicity sys) v,
+    _pdecl'opts :: DeclOptions,
     _pdecl'content :: Telescoped ty (Maybe2 content) sys v
     }
 deriving instance (SysTrav sys, Functor (ty sys), Functor (content sys))
@@ -599,12 +610,13 @@ deriving instance (
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (TelescopedPartialDeclaration declSort ty content sys)
   
-newPartialDeclaration :: TelescopedPartialDeclaration declSort ty content sys v
-newPartialDeclaration = TelescopedPartialDeclaration {
+newPartialDeclaration :: DeclOptions -> TelescopedPartialDeclaration declSort ty content sys v
+newPartialDeclaration opts = TelescopedPartialDeclaration {
   _pdecl'names = Nothing,
   _pdecl'mode = Compose Nothing,
   _pdecl'modty = Compose Nothing,
   _pdecl'plicity = Compose Nothing,
+  _pdecl'opts = opts,
   _pdecl'content = Telescoped $ Maybe2 $ Compose $ Nothing
   }
 
@@ -766,6 +778,7 @@ type LHS declSort ty = Declaration declSort (Telescope ty)
 
 
 makeLenses ''Declaration
+makeLenses ''DeclOptions
 makeLenses ''TelescopedPartialDeclaration
 makeLenses ''LeftDivided
 makeLenses ''NamedBinding

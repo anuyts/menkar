@@ -40,9 +40,15 @@ data PriorityConstraint =
   -}
   PriorityFlush
   deriving (Eq, Ord)
+
 getJudgementPriority :: Judgement sys -> PriorityConstraint
 getJudgementPriority (JudEta token gamma t extraT ct) = PriorityEta
+getJudgementPriority (Jud (AnTokenDeclaration _) gamma decl extraDecl cDecl) =
+  if _declOpts'flush $ _decl'opts $ decl
+  then PriorityFlush
+  else PriorityDefault
 getJudgementPriority _ = PriorityDefault
+
 getConstraintPriority :: Constraint sys -> PriorityConstraint
 getConstraintPriority = getJudgementPriority . _constraint'judgement
 

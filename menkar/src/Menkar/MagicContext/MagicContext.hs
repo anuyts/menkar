@@ -21,6 +21,7 @@ magicModuleCorrect =
       (DeclNameModule "magic")
       (idModalityTo dataMode)
       Explicit
+      entryOpts
       (Telescoped $ magicModule)
     )
     U1

@@ -28,6 +28,7 @@ val op str rhs = EntryVal $ Declaration
   (DeclNameVal $ Name op str)
   TrivModalityTo
   Explicit
+  entryOpts
   rhs
 
 pi :: Segment Type Trivial v -> Type Trivial (VarExt v) -> UniHSConstructor Trivial v
@@ -45,6 +46,7 @@ seg plic op str content = Declaration
   (DeclNameSegment $ Just $ Name op str)
   TrivModalityTo
   plic
+  segOpts
   content
 segIm = seg Implicit
 segEx = seg Explicit

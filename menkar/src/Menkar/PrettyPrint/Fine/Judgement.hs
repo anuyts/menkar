@@ -146,12 +146,13 @@ classif2pretty token gamma extraT ct extraCT opts =
     (AnTokenConstructorTerm, U1, ty, U1) -> fine2pretty gamma ty opts
     (AnTokenType, U1, U1, U1) -> ribbon "<n/a>"
     (AnTokenDependentEliminator, dmuElim :*: eliminee :*: tyEliminee :*: Comp1 motive, U1, U1) ->
-      fine2pretty gamma (Binding (Declaration (DeclNameSegment Nothing) dmuElim Explicit (hs2type tyEliminee)) motive) opts
+      fine2pretty gamma
+        (Binding (Declaration (DeclNameSegment Nothing) dmuElim Explicit segOpts (hs2type tyEliminee)) motive) opts
     (AnTokenEliminator, dmuElim :*: eliminee :*: tyEliminee, tyResult, U1) ->
       ribbon "<eliminate> " \\\
         [fine2pretty gamma eliminee opts] ///
       ribbon " <of-type> " \\\
-        [fine2pretty gamma (Declaration (DeclNameSegment Nothing) dmuElim Explicit (hs2type tyEliminee)) opts] ///
+        [fine2pretty gamma (Declaration (DeclNameSegment Nothing) dmuElim Explicit segOpts (hs2type tyEliminee)) opts] ///
       ribbon " <to> " \\\
         [fine2pretty gamma tyEliminee opts]
     (AnTokenTermNV, U1, ty, U1) -> fine2pretty gamma ty opts

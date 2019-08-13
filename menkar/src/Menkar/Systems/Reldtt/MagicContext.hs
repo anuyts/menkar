@@ -33,6 +33,7 @@ val op str mu rhs = EntryVal $ Declaration
   (DeclNameVal $ Name op str)
   (withDom mu)
   Explicit
+  entryOpts
   rhs
 
 pi :: Segment Type Reldtt v -> Type Reldtt (VarExt v) -> UniHSConstructor Reldtt v
@@ -50,6 +51,7 @@ seg plic op str mu content = Declaration
   (DeclNameSegment $ Just $ Name op str)
   (withDom mu)
   plic
+  segOpts
   content
 segIm = seg Implicit
 segEx = seg Explicit

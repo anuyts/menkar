@@ -208,6 +208,7 @@ instance (SysAnalyzer sys,
            (DeclNameSegment name1)
            (_decl'modty seg1)
            (_decl'plicity seg1)
+           segOpts
            (toTypeMaybeTwice token'
              (_decl'content seg1)
              (_decl'content . fst1 . _classification'extra <$> condInput2)
@@ -683,11 +684,13 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                        (DeclNameSegment Nothing)
                        (compModalityTo dmuElim' (_segment'modty $ binding'segment $ binding'))
                        Explicit
+                       segOpts
                        (_segment'content $ binding'segment $ binding')
                      segSnd' = Declaration
                        (DeclNameSegment Nothing)
                        (VarWkn <$> dmuElim')
                        Explicit
+                       segOpts
                        (binding'body binding')
                      subst VarLast = Expr2 $ TermCons $ Pair
                        (VarWkn . VarWkn <$> binding')
@@ -724,6 +727,7 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                        (DeclNameSegment Nothing)
                        (compModalityTo dmuElim' (_segment'modty $ seg'))
                        Explicit
+                       segOpts
                        (_segment'content seg')
                      subst VarLast = Expr2 $ TermCons $ ConsBox (VarWkn <$> seg') (Var2 VarLast)
                      subst (VarWkn v) = Var2 $ VarWkn v
@@ -778,11 +782,13 @@ instance SysAnalyzer sys => Analyzable sys (DependentEliminator sys) where
                        (DeclNameSegment $ Nothing)
                        dmuElim'
                        Explicit
+                       segOpts
                        (hs2type $ NatType)
                      segHyp' = Declaration
                        (DeclNameSegment $ Nothing)
                        (idModalityTo $ uncoy $ VarWkn <$> ctx'mode gamma')
                        Explicit
+                       segOpts
                        motive'
                      substS :: VarExt u -> Term sys (VarExt (VarExt u))
                      substS VarLast = Expr2 $ TermCons $ ConsSuc $ Var2 $ VarWkn VarLast
@@ -893,6 +899,7 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
              case (tyEliminee', eliminator') of
                (_, ElimDep boundMotive' clauses') ->
                  let seg' = Declaration (DeclNameSegment Nothing) dmuElim' Explicit
+                       segOpts
                        (hs2type tyEliminee')
                  in  Just $ Identity !<$> Classification boundMotive'
                        (seg' :*: Comp1 U1)
@@ -926,11 +933,12 @@ instance SysAnalyzer sys => Analyzable sys (Eliminator sys) where
           (\ gamma' (Classification eliminator' (dmuElim' :*: eliminee' :*: tyEliminee') _) ->
              case (tyEliminee', eliminator') of
                (EqType tyAmbient' tL' tR', ElimEq boundBoundMotive' clauseRefl') ->
-                 let segR' = Declaration (DeclNameSegment Nothing) dmuElim' Explicit tyAmbient'
+                 let segR' = Declaration (DeclNameSegment Nothing) dmuElim' Explicit segOpts tyAmbient'
                      segEq' = Declaration
                        (DeclNameSegment Nothing)
                        (VarWkn <$> dmuElim')
                        Explicit
+                       segOpts
                        (hs2type $ EqType (VarWkn <$> tyAmbient') (VarWkn <$> tL') (Var2 VarLast))
                  in  Just $ Identity !<$> Classification boundBoundMotive'
                        (segR' :*: Comp1 (segEq' :*: Comp1 U1))
@@ -1126,10 +1134,11 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
   type ClassifExtraInput (Declaration declSort rhs sys) = ClassifExtraInput (rhs sys)
   analyzableToken = AnTokenDeclaration analyzableToken
   witClassif token = haveClassif @sys @(rhs sys) Witness
-  analyze token gamma (Classification decl@(Declaration name dmu plic content) extraContent maybeTyContent) h = Right $ do
+  analyze token gamma
+    (Classification decl@(Declaration name dmu plic opts content) extraContent maybeTyContent) h = Right $ do
     rdmu <- fmapCoe runIdentity <$> h Identity
-      (conditional $ Declaration name unreachable unreachable unreachable)
-      (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
+      (conditional $ Declaration name unreachable unreachable opts unreachable)
+      (\ gamma' (Classification decl'@(Declaration name' dmu' plic' opts' content') extraContent' maybeTyContent') ->
          Just $ Identity !<$>
          Classification dmu' U1 (ClassifMustBe $ uncoy $ ctx'mode gamma'))
       crispExtCtxId
@@ -1141,17 +1150,17 @@ instance (SysAnalyzer sys, Analyzable sys (rhs sys)) => Analyzable sys (Declarat
           Implicit -> Implicit :: Plicity sys v'
           Resolves t -> todo :: Plicity sys v'
     rcontent <- fmapCoe runIdentity <$> h Identity
-      (conditional $ Declaration name (getAnalysisTrav rdmu) plicOut unreachable)
-      (\ gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') ->
+      (conditional $ Declaration name (getAnalysisTrav rdmu) plicOut opts unreachable)
+      (\ gamma' (Classification decl'@(Declaration name' dmu' plic' opts' content') extraContent' maybeTyContent') ->
          Just $ Identity !<$>
          Classification content' extraContent' (classifMust2will maybeTyContent'))
-      (\ token' gamma' (Classification decl'@(Declaration name' dmu' plic' content') extraContent' maybeTyContent') _ ->
+      (\ token' gamma' (Classification decl'@(Declaration name' dmu' plic' opts' content') extraContent' maybeTyContent') _ ->
          Just $ CtxId $ dmu' :\\ gamma'
       )
       extRelId
       (AddressInfo ["content/type"] FocusWrapped omit)
     return $ case token of
-      TokenTrav -> AnalysisTrav $ Declaration name (getAnalysisTrav rdmu) (plicOut) (getAnalysisTrav rcontent)
+      TokenTrav -> AnalysisTrav $ Declaration name (getAnalysisTrav rdmu) (plicOut) opts (getAnalysisTrav rcontent)
       TokenTC -> AnalysisTC $ getAnalysisTC rcontent
       TokenRel -> AnalysisRel
   {-

@@ -147,6 +147,7 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
           _decl'name = DeclNameSegment maybeName,
           _decl'modty = withDom dmu,
           _decl'plicity = Explicit,
+          _decl'opts = segOpts,
           _decl'content = fineTy
         }
     fineBody <- expr (gamma :.. (fineSeg)) rawBody
@@ -167,7 +168,7 @@ buildPi gamma (Right (fineSeg, fineCod)) = do
   --fineMode <- mode4newImplicit gamma
   return $ hs2term $ Pi $ Binding fineSeg (Type fineCod)
 buildPi gamma (Left (dmu, fineCod)) = do
-  return $ hs2term $ BoxType $ Declaration (DeclNameSegment Nothing) dmu Explicit (Type fineCod)
+  return $ hs2term $ BoxType $ Declaration (DeclNameSegment Nothing) dmu Explicit segOpts (Type fineCod)
 
 {-| @'buildSigma' gamma fineSeg fineCod@ scopes the Menkar expression @<fineSeg> >< <fineCod>@ to a term. -}
 buildSigma ::
@@ -193,7 +194,7 @@ buildLambda gamma (Right (fineSeg, fineBody)) = do
   return $ Expr2 $ TermCons $ Lam $ Binding fineSeg $ ValRHS fineBody fineCod
 buildLambda gamma (Left (dmu, fineContent)) = do
   tyContent <- newMetaTypeNoCheck (dmu :\\ gamma) "Infer box content type."
-  let boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit tyContent
+  let boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit segOpts tyContent
   return $ Expr2 $ TermCons $ ConsBox boxSeg fineContent
 
 {-| @'binder2' build gamma fineSegs rawArgs rawBody@ scopes the Menkar expression
@@ -395,6 +396,7 @@ buildDeclaration gamma generateContent partDecl = do
           _decl'name = name,
           _decl'modty = ModalityTo d mu, --ModedModality d dgamma mu,
           _decl'plicity = plic,
+          _decl'opts = segOpts,
           _decl'content = telescopedContent
           }
 
@@ -435,13 +437,15 @@ buildSegment gamma partSeg = do
     (seg' :|- seg) -> unreachable
     (mu :** seg) -> unreachable
     
-{-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ to a partial telescoped declaration. -}
+{-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ (possibly a segment)
+    to a partial telescoped declaration. -}
 partialTelescopedDeclaration :: forall sys sc v rawDeclSort .
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v ->
   Raw.Declaration sys rawDeclSort ->
+  DeclOptions ->
   sc (TelescopedPartialDeclaration rawDeclSort Type Type sys v)
-partialTelescopedDeclaration gamma rawDecl = (flip execStateT newPartialDeclaration) $ do
+partialTelescopedDeclaration gamma rawDecl fineOpts = (flip execStateT $ newPartialDeclaration fineOpts) $ do
   --telescope
   fineDelta <- telescope gamma $ Raw.decl'telescope rawDecl
   --names
@@ -487,7 +491,7 @@ partialSegment :: forall sys sc v .
   sc (PartialSegment Type sys v)
 partialSegment gamma rawSeg = do
   telescopedPartSeg :: PartialSegment Type sys v
-    <- partialTelescopedDeclaration gamma rawSeg
+    <- partialTelescopedDeclaration gamma rawSeg segOpts
   case _pdecl'content telescopedPartSeg of
     Telescoped (Maybe2 ty) -> return telescopedPartSeg
       --old code, but it does nothing:
@@ -593,7 +597,7 @@ val :: forall sys sc v .
   sc (Val sys v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
   partialLHS :: TelescopedPartialDeclaration Raw.DeclSortVal Type Type sys v
-    <- partialTelescopedDeclaration gamma rawLHS
+    <- partialTelescopedDeclaration gamma rawLHS entryOpts
   [fineLHS] :: [Declaration DeclSortVal (Telescoped Type Type) sys v]
             <- let gen gamma = Type <$> newMetaTermNoCheck {-eqDeg-} gamma MetaBlocked Nothing "Infer type."
                in  buildDeclaration gamma gen partialLHS
@@ -649,7 +653,7 @@ modul :: forall sys sc v .
   sc (Module sys v)
 modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
   partialLHS :: TelescopedPartialDeclaration (Raw.DeclSortModule False) Type Type sys v
-    <- partialTelescopedDeclaration gamma rawLHS
+    <- partialTelescopedDeclaration gamma rawLHS entryOpts
   partialLHSUntyped :: TelescopedPartialDeclaration (Raw.DeclSortModule False) Type Unit2 sys v
     <- flip pdecl'content partialLHS $ mapTelescopedDB (
       \wkn gammadelta (Maybe2 maybeFineTy) -> case maybeFineTy of

@@ -7,6 +7,7 @@ import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Functor.Coerce
 import Control.Exception.AssertFalse
+import Data.Omissible
 
 import Data.Bifunctor
 import Data.Maybe
@@ -57,7 +58,7 @@ telescoped2quantified (seg :|- telescopedValRHS) =
         (hs2type $ Pi $ Binding seg $ _val'type quantifiedValRHS)
 telescoped2quantified (dmu :** telescopedValRHS) = 
   let quantifiedValRHS = telescoped2quantified telescopedValRHS
-      boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit (_val'type quantifiedValRHS)
+      boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit segOpts (_val'type quantifiedValRHS)
   in  ValRHS
         (Expr2 $ TermCons $ ConsBox boxSeg $ _val'term quantifiedValRHS)
         (hs2type $ BoxType boxSeg)
