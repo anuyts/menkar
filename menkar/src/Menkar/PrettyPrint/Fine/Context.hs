@@ -32,10 +32,10 @@ ctx2pretty :: forall v sys ty .
   Ctx ty sys v -> Fine2PrettyOptions sys -> PrettyTree String
 ctx2pretty (CtxEmpty d) opts =
   "{context-mode : " ++| fine2pretty (ScCtxEmpty) d opts |++ "}"
-ctx2pretty (gamma :.. seg) opts = haveDB gamma $
+ctx2pretty ((gamma :: Ctx ty sys w) :.. seg) opts = haveDB gamma $
   ctx2pretty gamma opts
     \+\ [
-      seg2pretty (ctx2scCtx gamma) seg (size @v) opts
+      seg2pretty (ctx2scCtx gamma) seg (size @w) opts
     ]
 ctx2pretty (gamma :<...> modul) opts = haveDB gamma $
   case _fine2pretty'printModuleInContext opts of
