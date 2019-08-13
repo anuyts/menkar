@@ -241,14 +241,16 @@ instance SysTC Reldtt where
       case (cod, metasCod) of
         (_, _:_) -> tcBlock $ "Need to know if codomain is zero."
         (ReldttMode (BareMode (ModeTermZero)), _) -> do
-          addNewConstraint
-            (JudRel analyzableToken (Eta False) (coy $ Const ModEq)
-              (duplicateCtx gamma)
-              (Twice1 t (ChainModtyKnown $ forgetKnownModty $ dom))
-              (Twice1 U1 U1)
-              (ClassifWillBe $ Twice1 (dom :*: cod) (dom :*: cod))
-            )
-            "Eta-expand modality."
+          let (ChainModtyMeta dom cod meta depcies) = t
+          tryToSolveImmediately
+            (duplicateCtx gamma)
+            MetaBlocked
+            meta
+            depcies
+            Nothing -- no algorithm
+            (ChainModtyKnown $ forgetKnownModty $ dom) -- eta-expansion
+            ct
+            ct
           return True
         otherwise -> return False
     otherwise -> unreachable -- There are no other solvable AST types.
@@ -258,7 +260,7 @@ instance SysTC Reldtt where
     SysTypeModty dom cod -> do
       let mu = t
       chmu <- case useHoles of
-        UseHoles -> newMetaChainModtyNoCheck gamma dom cod "Infer underlying modality represented by this term."
+        UseHoles -> newMetaChainModty gamma dom cod "Infer underlying modality represented by this term."
         UseEliminees -> return $ ChainModtyTerm dom cod mu
       return $ Just $ Just $ BareModty $ ModtyTermChain $ chmu
 

@@ -4,7 +4,7 @@
 //val *[ : 0 -> 0] d0' : Mode = _
 //val *[ : 0 -> 0] dsuc {d : Mode} = _
 
-val *[ : 0 -> 0] m0 : Modality d0 d0 = [ : 0 -> 0]
+val *[ : 0 -> 0] m0 : Modality d0 d0 = _ //[ : 0 -> 0]
 val *m0 crisp {cod : Mode} : Modality d0 cod = [ : 0 -> 0 | disc cod]
 val *m0 forget {dom : Mode} : Modality dom d0 = [ : 0 -> 0 | forget dom]
 val *m0 crispforget {dom cod : Mode} : Modality dom cod = [ : 0 -> 0 | forget dom | disc cod]
