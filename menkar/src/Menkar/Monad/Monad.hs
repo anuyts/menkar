@@ -27,7 +27,19 @@ data Constraint sys = Constraint {
     _constraint'id :: Int
   }
 
-data PriorityConstraint = PriorityDefault | PriorityFork | PriorityEta deriving (Eq, Ord)
+data PriorityConstraint =
+  {-| Priority of most judgements -}
+  PriorityDefault |
+  {-| Priority of judgements that require a guess and therefore induce a fork of computation. -}
+  PriorityFork |
+  {-| Priority of eta-expansion judgements. -}
+  PriorityEta |
+  {-| Priority of declarations (unless annotated otherwise by the user).
+      Judgements of this priority are only checked if there are no open worries, and only after
+      emptying the constraint map and the worry-map.
+  -}
+  PriorityFlush
+  deriving (Eq, Ord)
 getJudgementPriority :: Judgement sys -> PriorityConstraint
 getJudgementPriority (JudEta token gamma t extraT ct) = PriorityEta
 getJudgementPriority _ = PriorityDefault
