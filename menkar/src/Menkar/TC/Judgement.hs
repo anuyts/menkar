@@ -54,8 +54,7 @@ checkConstraint parent = withParent parent $ case _constraint'judgement parent o
 
   Jud token gamma t extraT classifT -> do
     case token of
-      AnTokenDeclaration tokenRHS ->
-        when (_declOpts'flush $ _decl'opts t) tcFlush
+      AnTokenEntry -> when (_declOpts'flush . _entry'opts $ t) tcFlush
       otherwise -> return ()
     void $ checkAST gamma t extraT classifT
 

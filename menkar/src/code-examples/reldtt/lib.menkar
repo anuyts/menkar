@@ -1,7 +1,7 @@
 //val *[ : 0 -> 0] Mode : UniHS _ ... = _
 //val *[ : 0 -> 0] Modality {dom cod : Mode} : UniHS _ ... = _
 
-//val *[ : 0 -> 0] d0 : Mode = _
+//val *[ : 0 -> 0] d0' : Mode = _
 //val *[ : 0 -> 0] dsuc {d : Mode} = _
 
 val *[ : 0 -> 0] m0 : Modality d0 d0 = [ : 0 -> 0]

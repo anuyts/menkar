@@ -396,7 +396,7 @@ buildDeclaration gamma generateContent partDecl = do
           _decl'name = name,
           _decl'modty = ModalityTo d mu, --ModedModality d dgamma mu,
           _decl'plicity = plic,
-          _decl'opts = segOpts,
+          _decl'opts = _pdecl'opts partDecl,
           _decl'content = telescopedContent
           }
 

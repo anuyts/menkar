@@ -759,6 +759,14 @@ deriving instance (SysTrav sys) => Traversable (Entry sys)
 deriving instance (SysTrav sys) => Generic1 (Entry sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Entry sys)
+withEntryDecl :: forall sys v a .
+  Entry sys v ->
+  (forall declSort rhs . Declaration declSort (Telescoped Type rhs) sys v -> a) ->
+  a 
+withEntryDecl (EntryVal val) f = f val
+withEntryDecl (EntryModule modul) f = f modul
+_entry'opts :: Entry sys v -> DeclOptions
+_entry'opts entry = withEntryDecl entry $ _decl'opts
 
 makeLenses ''ModuleRHS
 

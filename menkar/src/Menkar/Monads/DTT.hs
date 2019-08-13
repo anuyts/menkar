@@ -474,7 +474,7 @@ deleteConstraintsUntilParent = do
   counter <- use tcState'constraintCounter
   parentID <- use $ tcState'maybeParent . _JustUnsafe . constraint'id
   when (parentID >= counter) unreachable
-  deletionCounter <- tcState'constraintDeletionCounter <<.= parentID
+  deletionCounter <- tcState'constraintDeletionCounter <<%= max parentID
   tcState'constraintMap %= (appEndo $ fold $ [deletionCounter .. parentID - 1] <&>
       (\ i -> Endo $ \ constraintMap -> delete i constraintMap)
     )

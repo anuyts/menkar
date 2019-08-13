@@ -48,7 +48,7 @@ ctx2pretty (gamma :<...> modul) opts = haveDB gamma $
       ]
 ctx2pretty (dmu :\\ gamma) opts = haveDB gamma $
   ctx2pretty gamma opts \+\ [
-      " {" ++| fine2pretty (ctx2scCtx gamma) (dmu) opts |++ "}"
+      " {\128274 " ++| fine2pretty (ctx2scCtx gamma) (dmu) opts |++ "}"
     ]
 --  "[" ++| fine2pretty delta (unVarBeforeCtxUnsafe <$> dmu) opts |++ "] \\ ("
 --                             \\\ [ctx2pretty Nothing delta gamma opts]
