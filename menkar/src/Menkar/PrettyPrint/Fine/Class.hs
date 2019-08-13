@@ -53,7 +53,7 @@ instance Omissible (Fine2PrettyOptions sys) where
     _fine2pretty'explicitLeftDivision = True,
     _fine2pretty'printTypeAnnotations = False,
     _fine2pretty'printModule = (PrintModuleVerbosity (Just PrintEntryEntirely)),
-    _fine2pretty'printModuleInContext = (Just $ PrintModuleVerbosity $ Just $ PrintEntryName),
+    _fine2pretty'printModuleInContext = (Just $ PrintModuleVerbosity $ Nothing),
     _fine2pretty'printEntry = PrintEntryEntirely}
 
 ---------------------------

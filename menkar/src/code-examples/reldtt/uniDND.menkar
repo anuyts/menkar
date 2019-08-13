@@ -1,0 +1,44 @@
+//requires lib.menkar
+
+// Discrete universe of non-discrete types
+val *m0 UniDND {*m0 d : Mode} {*(forget (dsuc d))} : UniHS (dsuc d) ... = {*(disc0 ...)} -> UniHS d ...
+// Parametric decoding operation
+val *m0 ElDND {~ *m0 d : Mode} {*(forget d)} {*(par ...) dndA : UniDND d ...} : UniHS d ... = dndA .{}
+// Discrete encoding operation
+val *m0 dnd {~ *m0 d : Mode} {*(forget (dsuc d))} {*(disc0 ...) A : UniHS d ...} : UniDND d ... = {} > A
+
+// Code of UniDND
+val *m0 dndUniDND {*m0 d : Mode} {*(forget (dsuc (dsuc d)))} : UniDND (dsuc d) ... = {} > UniDND d ...
+
+// Code of Nat (other constant types are analogous)
+val *m0 dndNat {*m0 d : Mode} {*(forget (dsuc d))} : UniDND d ... = {} > Nat ...
+
+/* Code of Pi
+   Note that we postcompose mu with disc0 here, which effectively adds an `=` in front.
+   This is different from what we see in the paper, where we add a `0` in front.
+   This difference is not fundamental, but an artefact of compromises we had to make to achieve decidable type-checking with open modalities.
+   We did not find a way to allow the insertion of a 0 in front of an arbitrary modality.
+   However, for concrete modalities, we can have the same modality as in the paper, simply by using box induction on the domain type.
+*/
+// Probably wrong.
+val *m0 dndPi
+	{~ *m0 dom cod : Mode} 
+	{*m0 mu : Modality dom cod} 
+	{*(forget (dsuc cod))}
+	{*(disc0 ... @m mu @m par ...) dndA : UniDND dom ...}
+	{*(con ...) dndB : {*(?parmu) a : ElDND dndA} -> UniDND cod ...}
+	: UniDND cod ...
+	= dnd ({*mu a : ElDND dndA} -> indBox
+		({*(par ...) _ : UniDND cod ...} > UniHS cod ...)
+		({*(con ...) B : UniHS  cod ...} > B)
+		(dndB a)
+	)
+
+
+//indBox ({*(con ...) _} > UniDND cod ...)
+//		(B > dnd ({*mu a : ElDND dndA} -> ElDND (dndB a)))
+
+
+
+//dnd ({*mu a : ElDND dndA} -> ElDND (dndB a))
+//dnd $ {*mu a : ElDND dndA} -> ElDND $ dndB a

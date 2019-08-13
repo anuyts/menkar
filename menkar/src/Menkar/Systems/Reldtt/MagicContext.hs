@@ -113,6 +113,19 @@ valDSuc = val NonOp "dsuc" (idMod dataMode) $
       tyMode
   )
 
+valMComp :: Entry Reldtt Void
+valMComp = val Op "@m" (idMod dataMode) $
+  segIm NonOp "dom" {- var 0 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "mid" {- var 1 -} (idMod dataMode) tyMode :|-
+  segIm NonOp "cod" {- var 2 -} (idMod dataMode) tyMode :|-
+  segEx NonOp "nu" {- var 3 -} (idMod dataMode) (tyModty (dvar 1) (dvar 2)) :|-
+  segEx NonOp "mu" {- var 4 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
+  Telescoped (
+    ValRHS
+      (BareModty $ ModtyTermComp (mvar 3 (dvar 1) (dvar 2)) (mvar 4 (dvar 0) (dvar 1)))
+      (tyModty (dvar 0) (dvar 2))
+  )
+
 -- | @val *id Nat {~ *id d : Mode} {*(forget d)} : UniHS d = Nat@
 valNat :: Entry Reldtt Void
 valNat = val NonOp "Nat" (idMod dataMode) $
@@ -271,7 +284,7 @@ valIndBox = val NonOp "indBox" (idMod dataMode) $
   segIm NonOp "mu" {- var 3 -} (idMod dataMode) (tyModty (dvar 0) (dvar 1)) :|-
   segIm NonOp "nu" {- var 4 -} (idMod dataMode) (tyModty (dvar 1) (dvar 2)) :|-
   (withDom $ forget $ dvar 2) :**
-  segEx NonOp "X"  {- var 5 -} (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (hs2type $ UniHS $ dvar 0) :|-
+  segIm NonOp "X"  {- var 5 -} (comp (mvar 4 (dvar 1) (dvar 2)) (mvar 3 (dvar 0) (dvar 1))) (hs2type $ UniHS $ dvar 0) :|-
   segEx NonOp "C"  {- var 6 -} (idMod $ dvar 2) (hs2type tyMotive) :|-
   segEx NonOp "cbox" {- var 7 -} (idMod $ dvar 2) (hs2type $ tyCBox) :|-
   segEx NonOp "b*" {- var 8 -} (mvar 4 (dvar 1) (dvar 2)) (hs2type $ BoxType $ boxSeg) :|-
@@ -562,6 +575,7 @@ magicEntries =
   valModality :
   valD0 :
   valDSuc :
+  valMComp :
   valNat :
   valSuc :
   valIndNat :

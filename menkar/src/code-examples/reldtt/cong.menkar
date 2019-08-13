@@ -1,0 +1,11 @@
+//requires lib.menkar
+
+val *m0 cong 
+	{~ dom cod : Mode}
+	{~ mu : Modality dom cod}
+	{*(forget cod)}
+	{~ *mu A : UniHS dom ...}
+	{~ *(con ...) B : UniHS cod ...}
+	{*(con ...) f : {*mu _ : A} -> B} {~ *mu a1 a2 : A} {*mu e : a1 == a2}
+        : f a1 == f a2
+        = ind== .{nu = mu} (x2 > _ > f a1 == f x2) (refl ...) e
