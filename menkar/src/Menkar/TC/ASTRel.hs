@@ -248,19 +248,23 @@ checkEtaForNormalType gamma t ty = do
     Nothing -> tcBlock $ "Need to know if this type has eta."
     Just Nothing -> return False
     Just (Just tExpanded) -> do
-      addNewConstraint
-        (JudTermRel
-          (Eta False)
-          (hoistCoy modedEqDeg $ ctx'mode gamma)
-          (duplicateCtx gamma)
-          (Twice2 t tExpanded)
-          (Twice2 ty' ty')
-        )
-        "Eta-expand."
+      let Expr2 (TermMeta MetaBlocked meta depcies (Compose maybeAlg)) = t
+      -- We don't care if this succeeds; if not, then eta-expanding is pointless anyway.
+      void $ tryToSolveImmediately
+        (duplicateCtx gamma)
+        MetaBlocked
+        meta
+        depcies
+        maybeAlg
+        tExpanded
+        ty'
+        ty'
       return True
 
 {- | Equate a term to its eta-expansion if it exists.
      Returns whether an eta-expansion exists, or blocks if this is unclear.
+
+     PRECONDITION: t is a blocked meta!
 -}
 checkEtaTerm :: 
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v) =>
@@ -292,6 +296,8 @@ checkEtaTerm gamma t ty = do
 
 {- | Equate an AST to its eta-expansion if it exists.
      Returns whether an eta-expansion exists, or blocks if this is unclear.
+
+     PRECONDITION: t is a blocked meta!
 -}
 checkEta ::
   (SysTC sys, MonadTC sys tc, DeBruijnLevel v, Solvable sys t) =>

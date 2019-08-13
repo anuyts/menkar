@@ -1,3 +1,5 @@
+// Test: things of mono-inhabited type are properly solved.
+val test0 : {n : Nat} -> {_ : Unit} >< Unit = _
 // Test: x n = y n : Unit >< Unit
 // Test: _ = x n : Unit >< Unit
 val test1 {x y : {n : Nat} -> {_ : Unit} >< Unit} : _ == y = refl .{_} .{x}
