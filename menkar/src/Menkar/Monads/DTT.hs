@@ -31,7 +31,7 @@ import Data.Maybe
 import Data.Either
 import Data.Functor.Identity
 import Data.Functor.Compose
-import Data.IntMap.Strict
+import Data.IntMap.Strict hiding (filter, toList)
 import Data.Foldable
 import Data.Monoid
 import Control.Monad.Cont
@@ -46,7 +46,7 @@ import Control.Lens
 --import Data.Coerce
 import Unsafe.Coerce
 import Data.Kind hiding (Constraint, Type)
-import Data.List hiding (insert)
+import Data.List hiding (insert, delete)
 import Data.List.Utils (mergeBy)
 import Data.Ord
 
@@ -87,7 +87,7 @@ data BlockInfo (sys :: KSys) (m :: * -> *) (v :: *) = BlockInfo {
 -}
 
 data MetaInfo (sys :: KSys) m v = MetaInfo {
-  _metaInfo'maybeParent :: Maybe (Constraint sys),
+  _metaInfo'maybeParentID :: Maybe Int,
   _metaInfo'context :: Ctx Type sys v,
   --_metaInfo'deg :: U1 v,
   _metaInfo'reason :: String,
@@ -121,19 +121,31 @@ data TCOptions = TCOptions {
 data TCState sys m = TCState {
   _tcState'metaCounter :: Int,
   _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo sys m)),
+  {-| Current number of constraints. -}
   _tcState'constraintCounter :: Int,
+  {-| First non-deleted constraint, ignoring constraint 0 which is always retained.
+      Equal to constraintCounter if all are deleted. -}
+  _tcState'constraintDeletionCounter :: Int,
   _tcState'constraintMap :: IntMap (Constraint sys),
+  {-| Current number of worries. -}
   _tcState'worryCounter :: Int,
+  {-| First non-deleted worry. Equal to worryCounter if all are deleted. -}
+  _tcState'worryDeletionCounter :: Int,
   _tcState'worryMap :: IntMap (Worry sys m),
   _tcState'reports :: [(TCReport sys)],
-  _tcState'newTasks :: [(PriorityConstraint, TCT sys m ())],
+  _tcState'newTasks :: [(ConstraintPriority, TCT sys m ())],
     -- ^ always empty unless during constraint check; to be run from back to front
-  _tcState'tasks :: [(PriorityConstraint, TCT sys m ())],
+  _tcState'tasks :: [(ConstraintPriority, TCT sys m ())],
     -- ^ to be run from front to back
   _tcState'maybeParent :: Maybe (Constraint sys)
   }
 initTCState :: TCState sys m
-initTCState = TCState 0 empty 0 empty 0 empty [] [] [] Nothing
+initTCState = TCState 0 empty 0 1 empty 0 0 empty [] [] [] Nothing
+
+_tcState'nUnsolvedMetas :: TCState sys m -> Int
+_tcState'nUnsolvedMetas = length . filter (not . forThisDeBruijnLevel isSolved) . toList . _tcState'metaMap
+_tcState'nBlockedWorries :: TCState sys m -> Int
+_tcState'nBlockedWorries = length . filter (isNothing . _worry'unblockedBy) . toList . _tcState'worryMap
 
 -- | delimited continuation monad class
 class Monad m => MonadDC r m | m -> r where
@@ -193,7 +205,7 @@ makeLenses ''TCState
 makeLenses ''TCReport
 ----------------------------------------------------------------------------
 
-addTask :: Monad m => PriorityConstraint -> TCT sys m () -> TCT sys m ()
+addTask :: Monad m => ConstraintPriority -> TCT sys m () -> TCT sys m ()
 addTask priority task = do
   tcState'newTasks %= ((priority, task) :)
 
@@ -215,7 +227,7 @@ typeCheck = do
   --unreachable
   case tasks of
     [] -> return ()
-    ((_, task) : moreTasks) -> do
+    ((priority, task) : moreTasks) -> do
       tcState'tasks .= moreTasks
       task
       typeCheck
@@ -225,7 +237,8 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
   newMetaID gamma reason = do
     maybeParent <- useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
-    tcState'metaMap %= (insert meta $ ForSomeDeBruijnLevel $ MetaInfo maybeParent gamma reason (Left []))
+    tcState'metaMap %=
+      (insert meta $ ForSomeDeBruijnLevel $ MetaInfo (_constraint'id <$> maybeParent) gamma reason (Left []))
     let depcies = Dependencies $ coy $ Compose $ forallVarsRev $ \ v ->
           let d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
           in  d :*: Var2 v
@@ -447,6 +460,40 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
   tcFail reason = do
     parent <- fromMaybe unreachable <$> useMaybeParent
     throwError $ TCErrorTCFail (TCReport parent reason)
+
+  tcFlush = do
+    nBlockedWorries <- get <&> _tcState'nBlockedWorries
+    when (nBlockedWorries /= 0) $ tcFail $
+      "I want to flush but there are open worries. Either fix that or use the `@noFlush` annotation on this declaration."
+    deleteConstraintsUntilParent
+    deleteAllWorries
+    return ()
+
+deleteConstraintsUntilParent :: (Monad m) => TCT sys m ()
+deleteConstraintsUntilParent = do
+  counter <- use tcState'constraintCounter
+  parentID <- use $ tcState'maybeParent . _JustUnsafe . constraint'id
+  when (parentID >= counter) unreachable
+  deletionCounter <- tcState'constraintDeletionCounter <<.= parentID
+  tcState'constraintMap %= (appEndo $ fold $ [deletionCounter .. parentID - 1] <&>
+      (\ i -> Endo $ \ constraintMap -> delete i constraintMap)
+    )
+
+deleteAllConstraints :: (Monad m) => TCT sys m ()
+deleteAllConstraints = do
+  counter <- use tcState'constraintCounter
+  deletionCounter <- tcState'constraintDeletionCounter <<.= counter
+  tcState'constraintMap %= (appEndo $ fold $ [deletionCounter .. counter - 1] <&>
+      (\ i -> Endo $ \ constraintMap -> delete i constraintMap)
+    )
+
+deleteAllWorries :: (Monad m) => TCT sys m ()
+deleteAllWorries = do
+  counter <- use tcState'worryCounter
+  deletionCounter <- tcState'worryDeletionCounter <<.= counter
+  tcState'worryMap %= (appEndo $ fold $ [deletionCounter .. counter - 1] <&>
+      (\ i -> Endo $ \ worryMap -> delete i worryMap)
+    )
 
   --leqMod U1 U1 = return True
 

@@ -19,6 +19,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Fail
 import Data.Kind hiding (Type, Constraint)
 import GHC.Generics
+import Control.Lens
 
 data Constraint sys = Constraint {
     _constraint'judgement :: Judgement sys,
@@ -27,7 +28,9 @@ data Constraint sys = Constraint {
     _constraint'id :: Int
   }
 
-data PriorityConstraint =
+makeLenses ''Constraint
+
+data ConstraintPriority =
   {-| Priority of most judgements -}
   PriorityDefault |
   {-| Priority of judgements that require a guess and therefore induce a fork of computation. -}
@@ -41,7 +44,7 @@ data PriorityConstraint =
   PriorityFlush
   deriving (Eq, Ord)
 
-getJudgementPriority :: Judgement sys -> PriorityConstraint
+getJudgementPriority :: Judgement sys -> ConstraintPriority
 getJudgementPriority (JudEta token gamma t extraT ct) = PriorityEta
 getJudgementPriority (Jud (AnTokenDeclaration _) gamma decl extraDecl cDecl) =
   if _declOpts'flush $ _decl'opts $ decl
@@ -49,7 +52,7 @@ getJudgementPriority (Jud (AnTokenDeclaration _) gamma decl extraDecl cDecl) =
   else PriorityDefault
 getJudgementPriority _ = PriorityDefault
 
-getConstraintPriority :: Constraint sys -> PriorityConstraint
+getConstraintPriority :: Constraint sys -> ConstraintPriority
 getConstraintPriority = getJudgementPriority . _constraint'judgement
 
 class (
@@ -160,6 +163,8 @@ class (
   --leqMod :: Modality sys v -> Modality sys v -> tc Bool
   -- | DO NOT USE @'awaitMeta'@ WITHIN!
   --selfcontained :: Constraint sys -> tc () -> tc ()
+
+  tcFlush :: tc ()
 
 await :: (MonadWHN sys whn, SysAnalyzer sys) =>
   String -> Term sys v -> whn (Maybe (Term sys v))

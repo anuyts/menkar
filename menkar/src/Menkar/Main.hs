@@ -42,6 +42,8 @@ import System.Exit
 import qualified System.Console.Terminal.Size as System
 import Text.Read
 
+import Prelude hiding (lookup)
+
 quickRead :: forall a . Read a => String -> Maybe a
 quickRead str = case (readsPrec 0 str :: [(a, String)]) of
   [(a, "")] -> Just a
@@ -136,9 +138,11 @@ printMetaInfo ref s meta info = do
   putStrLn $ "Creation"
   putStrLn $ "--------"
   putStrLn $ "Reason: " ++ _metaInfo'reason info
-  case _metaInfo'maybeParent info of
+  case _metaInfo'maybeParentID info of
     Nothing -> putStrLn "(Created at scope-checking time.)"
-    Just parent -> printConstraint ref parent
+    Just parentID -> case lookup parentID $ _tcState'constraintMap s of
+      Nothing -> putStrLn "(Parent judgement not retained.)"
+      Just parent -> printConstraint ref parent
 printBlockingMeta :: (Sys sys, DeBruijnLevel v) => IORef (MainState sys) -> TCState sys m -> BlockingMeta sys m v -> IO ()
 printBlockingMeta ref s (BlockingMeta meta cont reasonAwait) =
   putStrLn $ "?" ++ show meta ++ " : " ++ reasonAwait
@@ -165,10 +169,13 @@ printWorry ref s iD worry = do
 
 printConstraintByIndex :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> IO ()
 printConstraintByIndex ref s i =
-  if (i < 0 || i >= _tcState'constraintCounter s)
-  then putStrLn $ "Constraint index out of bounds."
-  else printTrace ref $ fromMaybe unreachable $ view (tcState'constraintMap . at i) s
-
+  case view (tcState'constraintMap . at i) s of
+    Nothing -> putStrLn $
+      "Sorry, I only retained constraints 0 and "
+      ++ show (_tcState'constraintDeletionCounter s)
+      ++ ".."
+      ++ show (_tcState'constraintCounter s - 1)
+    Just c -> printTrace ref c
 printMeta :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> IO ()
 printMeta ref s meta =
   if (meta < 0 || meta >= _tcState'metaCounter s)
@@ -178,11 +185,13 @@ printMeta ref s meta =
     forThisDeBruijnLevel (printMetaInfo ref s meta) metaInfo
 printWorryByID :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> WorryID -> IO ()
 printWorryByID ref s iD@(WorryID i) =
-  if (i < 0 || i > _tcState'worryCounter s)
-  then putStrLn $ "Worry index out of bounds."
-  else do
-    let worry = view (tcState'worryMap . at i . _JustUnsafe) s
-    printWorry ref s iD worry
+  case view (tcState'worryMap . at i) s of
+    Nothing -> putStrLn $
+      "Sorry, I only retained worries "
+      ++ show (_tcState'worryDeletionCounter s)
+      ++ ".."
+      ++ show (_tcState'worryCounter s - 1)
+    Just worry -> printWorry ref s iD worry
 
 summarizeMetaIfUnsolved :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> Int -> MetaInfo sys m v -> IO ()
 summarizeMetaIfUnsolved ref s meta metaInfo = case _metaInfo'maybeSolution metaInfo of
@@ -215,10 +224,10 @@ printReport ref s report = do
 
 printOverview :: (Sys sys) => IORef (MainState sys) -> TCState sys m -> IO ()
 printOverview ref s = do
-  let nUnsolved = length $ filter (not . forThisDeBruijnLevel isSolved) $ toList $ _tcState'metaMap s
+  let nUnsolved = _tcState'nUnsolvedMetas s
   putStrLn $ (show $ _tcState'metaCounter s) ++ " metavariables (meta i), of which "
     ++ show nUnsolved ++ " unsolved (metas),"
-  let nBothering = length $ filter (isNothing . _worry'unblockedBy) $ toList $ _tcState'worryMap s
+  let nBothering = _tcState'nBlockedWorries s
   putStrLn $ (show $ _tcState'worryCounter s) ++ " worries (worry i), of which "
     ++ show nBothering ++ " still bothering me (worries),"
   putStrLn $ (show $ _tcState'constraintCounter s) ++ " constraints (constraint i),"

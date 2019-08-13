@@ -52,7 +52,12 @@ checkConstraint parent = withParent parent $ case _constraint'judgement parent o
     _ -> _checkJudCtx
   -} -- contexts start empty and grow only in well-typed ways.
 
-  Jud token gamma t extraT classifT -> void $ checkAST gamma t extraT classifT
+  Jud token gamma t extraT classifT -> do
+    case token of
+      AnTokenDeclaration tokenRHS ->
+        when (_declOpts'flush $ _decl'opts t) tcFlush
+      otherwise -> return ()
+    void $ checkAST gamma t extraT classifT
 
   JudRel token eta rel gamma ts extraTs maybeCTs -> checkASTRel eta rel gamma ts extraTs maybeCTs
 
