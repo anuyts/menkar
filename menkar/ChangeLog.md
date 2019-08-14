@@ -6,7 +6,7 @@ When releasing, change the changelog and `package.yaml`.
 
 *  Modifications aimed at performance gains:
 
-   *  Declaration-checking judgements now get lowest priority and are refuted when there are still open worries, unless marked as @noFlush (which is not parsed/scoped yet). The performance gains are underwhelming.
+   *  Entry-checking judgements now get lowest priority and are refuted when there are still open worries, unless marked as @noFlush. The performance gains are underwhelming.
    *  Guard meta dependencies with the `Coyoneda` type, causing a **massive** speedup.
    *  Guard heavily substituted data with the `Coyoneda` type, causing a significant speedup.
    *  Make substitution (CanSwallow typeclass) more efficient.

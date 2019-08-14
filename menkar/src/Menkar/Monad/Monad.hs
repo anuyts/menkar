@@ -41,15 +41,12 @@ data ConstraintPriority =
       Judgements of this priority are only checked if there are no open worries, and only after
       emptying the constraint map and the worry-map.
   -}
-  PriorityFlush
+  PriorityEntry
   deriving (Eq, Ord)
 
 getJudgementPriority :: Judgement sys -> ConstraintPriority
 getJudgementPriority (JudEta token gamma t extraT ct) = PriorityEta
-getJudgementPriority (Jud AnTokenEntry gamma e extraE ce) =
-  if _declOpts'flush $ _entry'opts $ e
-  then PriorityFlush
-  else PriorityDefault
+getJudgementPriority (Jud AnTokenEntry gamma e extraE ce) = PriorityEntry
 getJudgementPriority _ = PriorityDefault
 
 getConstraintPriority :: Constraint sys -> ConstraintPriority

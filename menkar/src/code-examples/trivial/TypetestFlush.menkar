@@ -1,0 +1,5 @@
+// Should give an error message for `val c`
+
+val a : Nat = _
+val @noFlush b : Nat = _
+val c : Nat = _
