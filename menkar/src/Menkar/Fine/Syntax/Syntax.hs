@@ -495,7 +495,9 @@ isBlockedOrMeta _ [] = False
 data Annotation (sys :: KSys) v =
   AnnotMode (Mode sys v) |
   AnnotModality (Modality sys v) |
-  AnnotImplicit
+  AnnotImplicit |
+  AnnotFlush Bool |
+  AnnotLock
   --AnnotResolves (Term )
 deriving instance (SysTrav sys) => Functor (Annotation sys)
 deriving instance (SysTrav sys) => Foldable (Annotation sys)

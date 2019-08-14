@@ -7,6 +7,7 @@ import Prelude hiding (pi)
 import Menkar.Monad.Monad
 import qualified Menkar.Raw as Raw
 import qualified Menkar.PrettyPrint.Raw as Raw
+import Menkar.Basic.Syntax
 import Menkar.Fine.Syntax
 --import Menkar.Fine.Judgement
 import Menkar.Basic.Context
@@ -342,6 +343,12 @@ annotation :: forall sys sc v .
   Raw.Annotation sys ->
   sc (Annotation sys v)
 annotation gamma (Raw.Annotation "~" Nothing) = return AnnotImplicit
+annotation gamma (Raw.Annotation "~" (Just _)) = scopeFail $ "The annotation `~` presently does not take arguments."
+annotation gamma (Raw.Annotation "@" Nothing) = scopeFail $ "The annotation `@` requires arguments."
+annotation gamma (Raw.Annotation "@" (Just e)) = case e of
+  Raw.ExprQName (Raw.Qualified [] (Name NonOp "noFlush")) -> return $ AnnotFlush False
+  Raw.ExprQName (Raw.Qualified [] (Name NonOp "lock")) -> return $ AnnotLock
+  otherwise -> scopeFail $ "Illegal use of the annotation `@`."
 annotation gamma (Raw.Annotation annotName maybeRawArg) = do
   scopeAnnotation gamma annotName maybeRawArg
 
@@ -480,6 +487,9 @@ partialTelescopedDeclaration gamma rawDecl fineOpts = (flip execStateT $ newPart
                   case maybeOldFinePlicity of
                     Just oldFinePlicity -> scopeFail $ "Encountered multiple visibility annotations: " ++ Raw.unparse rawDecl
                     Nothing -> pdecl'plicity._Wrapped' .= Just Implicit
+                AnnotFlush flushFlag -> do
+                  pdecl'opts . declOpts'flush .= flushFlag
+                AnnotLock -> scopeFail $ "Illegal `@lock` annotation on segment or declaration."
   return ()
 
 {-| @'partialSegment' gamma rawSeg@ scopes @rawSeg@ to a partial segment. -}
@@ -532,7 +542,7 @@ modalLock gamma (Raw.ModalLock rawAnnots) = do
   let dgamma' = ctx'mode gamma
       dgamma = dgamma'
   fineAnnots <- sequenceA $ annotation gamma <$> rawAnnots
-  (maybeDom, maybeMu) <- flip execStateT (Nothing, Nothing) $ forM_ fineAnnots $ \ case
+  (maybeDom, maybeMu, lockEncountered) <- flip execStateT (Nothing, Nothing, False) $ forM_ fineAnnots $ \ case
     AnnotMode fineMode -> use _1 >>= \ case
       Just _ -> scopeFail $ "Encountered multiple mode annotations."
       Nothing -> _1 .= Just fineMode
@@ -540,9 +550,13 @@ modalLock gamma (Raw.ModalLock rawAnnots) = do
       Just _ -> scopeFail $ "Encountered multiple modality annotations."
       Nothing -> _2 .= Just fineModty
     AnnotImplicit -> scopeFail $ "Encountered plicity annotation in a modal lock."
+    AnnotFlush _ -> scopeFail $ "Encountered flush annotation in a modal lock."
+    AnnotLock -> _3 .= True
   {-dom <- case maybeDom of
     Nothing -> newMetaModeNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring domain of modality."
     Just dom -> return dom-}
+  -- We don't want to complain about `@lock` in lambdas, so the easiest way is not to complain at all.
+  -- unless lockEncountered $ scopeFail "Missing `@lock` annotation in a modal lock."
   mu <- case maybeMu of
     Nothing -> newMetaModtyNoCheck (crispCtx gamma) "Inferring modality."
     Just mu -> return mu

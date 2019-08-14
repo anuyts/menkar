@@ -131,7 +131,8 @@ instance (SysFinePretty sys,
   fine2pretty gamma (EmptyType) opts = ribbon "Empty"
   fine2pretty gamma (UnitType) opts = ribbon "Unit"
   fine2pretty gamma (BoxType tySeg) opts = --"Box" ++| fine2pretty gamma tySeg opts
-    "{" ++| fine2pretty gamma (_segment'modty tySeg) opts |++ "} -> " |+| fine2pretty gamma (_segment'content tySeg) opts
+    "{\128274 " ++| fine2pretty gamma (_segment'modty tySeg) opts |++ "} -> "
+    |+| fine2pretty gamma (_segment'content tySeg) opts
   fine2pretty gamma (NatType) opts = ribbon "Nat"
   fine2pretty gamma (EqType tyAmbient tyL tyR) opts =
     ribbonEmpty
@@ -160,7 +161,7 @@ instance (SysFinePretty sys,
       " (" ++| fine2pretty gamma tmFst opts |++ " , " |+| fine2pretty gamma tmSnd opts |++ ")"
       ]
   fine2pretty gamma ConsUnit opts = ribbon "unit"
-  fine2pretty gamma (ConsBox tySeg tmUnbox) opts = "{} > " ++| fine2pretty gamma tmUnbox opts
+  fine2pretty gamma (ConsBox tySeg tmUnbox) opts = "{\128274} > " ++| fine2pretty gamma tmUnbox opts
     {-ribbon "ofType" \\\ [
       " (" ++| fine2pretty gamma (BoxType tySeg) opts |++ ")",
       " (box .{" ++| fine2pretty gamma tmUnbox opts |++ "})"
@@ -185,7 +186,7 @@ instance (SysFinePretty sys,
   fine2pretty gamma (SmartElimArg (Raw.ArgSpecNamed name) dmu term) opts =
     ".{*(" ++| fine2pretty gamma dmu opts |++ ") " |++ Raw.unparse name ++ " = " |+| fine2pretty gamma term opts |++ "}"
   fine2pretty gamma (SmartElimProj projSpec) opts = Raw.unparse' projSpec
-  fine2pretty gamma (SmartElimUnbox) opts = ribbon ".{}"
+  fine2pretty gamma (SmartElimUnbox) opts = ribbon ".{\128275}"
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (SmartEliminator sys Void) where
@@ -261,7 +262,7 @@ elimination2pretty gamma maybeDmu maybeEliminee maybeTyEliminee eliminator opts 
             ]
         (Fst) -> "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") .1 "
         (Snd) -> "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") ..2 "
-        (Unbox) -> "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") .{}"
+        (Unbox) -> "(" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") .{\128275}"
         (Funext) -> "funext (" ++| typed2pretty gamma eliminee (tyEliminee) opts |++ ") "
         (ElimDep motive (ElimSigma clausePair)) ->
           ribbon "indSigma " \\\ [
@@ -442,6 +443,9 @@ instance (SysFinePretty sys,
   fine2pretty gamma (AnnotMode d) opts = "&(" ++| fine2pretty gamma d opts |++ ")"
   fine2pretty gamma (AnnotModality mu) opts = "*(" ++| fine2pretty gamma mu opts |++ ")"
   fine2pretty gamma (AnnotImplicit) opts = ribbon "~"
+  fine2pretty gamma (AnnotFlush True) opts = ribbon "@flush"
+  fine2pretty gamma (AnnotFlush False) opts = ribbon "@noFlush"
+  fine2pretty gamma (AnnotLock) opts = ribbon "\128274"
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (Annotation sys Void) where
