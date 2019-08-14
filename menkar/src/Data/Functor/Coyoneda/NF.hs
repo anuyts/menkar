@@ -67,6 +67,7 @@ pattern Coyoneda ::
   Coyoneda f y
 pattern Coyoneda q fx <- (readCoyoneda -> S.Coyoneda q fx)
   where Coyoneda q fx = newCoyoneda $ S.Coyoneda q fx
+{-# COMPLETE Coyoneda #-}
 
-hoistCoyoneda :: (forall a. f a -> g a) -> (Coyoneda f b -> Coyoneda g b)
+hoistCoyoneda :: (Functor f, Functor g) => (forall a. f a -> g a) -> (Coyoneda f b -> Coyoneda g b)
 hoistCoyoneda f (Coyoneda g x) = Coyoneda g (f x)
