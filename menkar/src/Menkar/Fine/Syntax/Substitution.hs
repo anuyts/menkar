@@ -69,35 +69,68 @@ instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
 
 -------------------------------------------
 
-{-| @'Expr' e v@ is the type of expressions with variables from 'v' and non-variables from 'e v'.
-    The constraints @('Functor' e, 'Swallows' e ('Expr' e))@ should hold.
-    The idea is that any other syntactic class can be defined as @Compose g (Expr e)@, for some functor g.
-    Then automatically, @Compose g (Expr e)@ is a swallowing functor.
--}
-data Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) =
-  Var2 v
-  | Expr2 (e a v)
+data Expr2' (e :: ka -> * -> *) (a :: ka) (v :: *) =
+  Var2' v
+  | Expr2' (e a v)
   deriving (Functor, Foldable, Traversable)
-deriving instance (Eq v, Eq (e a v)) => Eq (Expr2 e a v)
+deriving instance (Eq v, Eq (e a v)) => Eq (Expr2' e a v)
+
+instance CanSwallow (Expr2' e a) (e a) => CanSwallow (Expr2' e a) (Expr2' e a) where
+  substitute h (Var2' w) = h w
+  substitute h (Expr2' ew) = Expr2' $ substitute h ew
+  swallow (Var2' ev) = ev
+  swallow (Expr2' eev) = Expr2' (swallow eev)
+
+instance (Functor (e a), CanSwallow (Expr2' e a) (e a)) => Applicative (Expr2' e a) where
+  pure = Var2'
+  (tf :: Expr2' e a (u -> v)) <*> (tu :: Expr2' e a u) = substitute (<$> tu) tf
+  --tf <*> tv = swallow $ fmap (<$> tv) tf
+
+instance (Functor (e a), CanSwallow (Expr2' e a) (e a)) => Monad (Expr2' e a) where
+  (>>=) = flip substitute
+  --tv >>= f = swallow $ f <$> tv
+
+-------------------------------------------
+
+newtype Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) = Expr2Direct {getExpr2Direct :: Coyoneda (Expr2' e a) v}
+  deriving (Functor, Foldable, Traversable)
+--deriving instance (Eq v, Eq (e a v), Functor (e a)) => Eq (Expr2 e a v)
+pattern Var2 v = Expr2Direct (Coy (Var2' v))
+pattern Expr2 e = Expr2Direct (Coy (Expr2' e))
+{-# COMPLETE Var2, Expr2 #-}
+
+instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr2' e a) where
+  substitute (h :: w -> Expr2 e a v) (Var2' (w :: w)) = uncoy $ getExpr2Direct $ h w
+  substitute (h :: w -> Expr2 e a v) (Expr2' (ew :: e a w)) = Expr2' $ substitute h ew
 
 instance CanSwallow (Expr2 e a) (e a) => CanSwallow (Expr2 e a) (Expr2 e a) where
-  substitute h (Var2 w) = h w
-  substitute h (Expr2 ew) = Expr2 $ substitute h ew
-  swallow (Var2 ev) = ev
-  swallow (Expr2 eev) = Expr2 (swallow eev)
+  substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Var2' (u :: u)))) =
+    h . q $ u
+  substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Expr2' (eu :: e a u)))) =
+    Expr2Direct $ coy $ Expr2' $ substitute (h . q) eu -- This is the substitute of @CanSwallow (Expr2 e a) (Expr2' e a)@
 
 instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Applicative (Expr2 e a) where
   pure = Var2
-  tf <*> tv = swallow $ fmap (<$> tv) tf
+  (tf :: Expr2 e a (u -> v)) <*> (tu :: Expr2 e a u) = substitute (<$> tu) tf
+  --tf <*> tv = swallow $ fmap (<$> tv) tf
 
 instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Monad (Expr2 e a) where
-  tv >>= f = swallow $ f <$> tv
+  (>>=) = flip substitute
 
-substLast2 :: (Functor f, CanSwallow (Expr2 e a) f) => Expr2 e a v -> f (VarExt v) -> f v
-substLast2 ev fextv = substitute substLast' $ fextv
-  where substLast' :: VarExt _ -> Expr2 _ _ _
+-------------------------------------------
+
+substLast :: forall f e v . (Functor f, CanSwallow e f, Applicative e) => e v -> f (VarExt v) -> f v
+substLast ev fextv = substitute substLast' $ fextv
+  where substLast' :: VarExt v -> e v
         substLast' VarLast = ev
-        substLast' (VarWkn v) = Var2 v
+        substLast' (VarWkn v) = pure v
+
+substLast2' :: (Functor f, CanSwallow (Expr2' e a) f, Functor (e a), CanSwallow (Expr2' e a) (e a)) =>
+  Expr2' e a v -> f (VarExt v) -> f v
+substLast2' = substLast
+substLast2 :: (Functor f, CanSwallow (Expr2 e a) f, Functor (e a), CanSwallow (Expr2 e a) (e a)) =>
+  Expr2 e a v -> f (VarExt v) -> f v
+substLast2 = substLast
 
 -------------------------------------------
 
