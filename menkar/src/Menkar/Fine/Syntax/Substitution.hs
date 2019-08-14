@@ -92,25 +92,22 @@ instance (Functor (e a), CanSwallow (Expr2' e a) (e a)) => Monad (Expr2' e a) wh
 
 -------------------------------------------
 
-newtype Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) = Expr2Direct {getExpr2Direct :: Coyoneda (Expr (Coyoneda (e a))) v}
+newtype Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) = Expr2Direct {getExpr2Direct :: Coyoneda (Expr2' e a) v}
   deriving (Functor, Foldable, Traversable)
 --deriving instance (Eq v, Eq (e a v), Functor (e a)) => Eq (Expr2 e a v)
-pattern Var2 v = Expr2Direct (Coy (Var v))
-pattern Expr2 e = Expr2Direct (Coy (Expr (Coy e)))
+pattern Var2 v = Expr2Direct (Coy (Var2' v))
+pattern Expr2 e = Expr2Direct (Coy (Expr2' e))
 {-# COMPLETE Var2, Expr2 #-}
 
-instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr (e a)) where
-  substitute (h :: w -> Expr2 e a v) (Var (w :: w)) = case uncoy $ getExpr2Direct $ h w of
-    Var v -> Var v
-    Expr (Coy ev) -> Expr ev
-  substitute (h :: w -> Expr2 e a v) (Expr (ew :: e a w)) = Expr $ substitute h ew
+instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr2' e a) where
+  substitute (h :: w -> Expr2 e a v) (Var2' (w :: w)) = uncoy $ getExpr2Direct $ h w
+  substitute (h :: w -> Expr2 e a v) (Expr2' (ew :: e a w)) = Expr2' $ substitute h ew
 
-instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr2 e a) where
-  substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Var (u :: u)))) =
+instance CanSwallow (Expr2 e a) (e a) => CanSwallow (Expr2 e a) (Expr2 e a) where
+  substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Var2' (u :: u)))) =
     h . q $ u
-  substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Expr (Coyoneda (p :: o -> u) (eo :: e a o))))) =
-    Expr2 $ substitute (h . q . p) eo
-    --Expr2Direct $ coy $ Expr2' $ substitute (h . q) eu -- This is the substitute of @CanSwallow (Expr2 e a) (Expr2' e a)@
+  substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Expr2' (eu :: e a u)))) =
+    Expr2Direct $ coy $ Expr2' $ substitute (h . q) eu -- This is the substitute of @CanSwallow (Expr2 e a) (Expr2' e a)@
 
 instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Applicative (Expr2 e a) where
   pure = Var2
@@ -232,7 +229,6 @@ coy = liftCoyoneda
 uncoy :: (Functor f) => Coyoneda f x -> f x
 uncoy = lowerCoyoneda
 
-hoistCoy :: (forall x . f x -> g x) -> Coyoneda f a -> Coyoneda g a
 hoistCoy = hoistCoyoneda
 hoistCoyLens :: forall m f g a . (Functor m) => (forall x . f x -> m (g x)) -> Coyoneda f a -> m (Coyoneda g a)
 hoistCoyLens h (Coyoneda (q :: b -> a) fb) = Coyoneda q <$> mgb
