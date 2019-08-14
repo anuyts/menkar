@@ -22,6 +22,12 @@ class CanSwallow (f :: * -> *) (g :: * -> *) where
   swallow :: g (f v) -> g v
   swallow = substitute id
 
+substLast :: forall f g v . (Functor g, Applicative f, CanSwallow f g) => f v -> g (VarExt v) -> g v
+substLast fv gextv = substitute aux gextv
+  where aux :: VarExt v -> f v
+        aux (VarWkn v) = pure v
+        aux (VarLast) = fv
+
 {-
 newtype Precompose g f x = Precompose {getPrecompose :: (g (f x))}
 
@@ -62,10 +68,10 @@ instance CanSwallow (Expr e) e => CanSwallow (Expr e) (Expr e) where
 
 instance (Functor e, CanSwallow (Expr e) e) => Applicative (Expr e) where
   pure = Var
-  tf <*> tv = swallow $ fmap (<$> tv) tf
+  tf <*> tv = substitute (<$> tv) tf
 
 instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
-  tv >>= f = substitute f tv
+  (>>=) = flip substitute
 
 -------------------------------------------
 
@@ -88,10 +94,10 @@ instance CanSwallow (Expr2 e a) (e a) => CanSwallow (Expr2 e a) (Expr2 e a) wher
 
 instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Applicative (Expr2 e a) where
   pure = Var2
-  tf <*> tv = swallow $ fmap (<$> tv) tf
+  tf <*> tv = substitute (<$> tv) tf
 
 instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Monad (Expr2 e a) where
-  tv >>= f = swallow $ f <$> tv
+  (>>=) = flip substitute
 
 substLast2 :: (Functor f, CanSwallow (Expr2 e a) f) => Expr2 e a v -> f (VarExt v) -> f v
 substLast2 ev fextv = substitute substLast' $ fextv
