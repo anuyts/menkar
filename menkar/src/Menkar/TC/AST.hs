@@ -19,11 +19,11 @@ import Menkar.WHN
 --import Menkar.TC.Solve
 
 import Data.Functor.Functor1
+import Data.Functor.Coyoneda.NF
 
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Control.Monad
 import Control.Monad.Writer.Strict
 import GHC.Generics

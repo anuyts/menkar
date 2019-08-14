@@ -11,10 +11,11 @@ import qualified Menkar.Raw.Syntax as Raw
 import Menkar.Analyzer
 --import Menkar.Scoper.Monad
 
+import Data.Functor.Coyoneda.NF
+
 import Data.Void
 import Control.Monad.Trans.Class
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Control.Monad.Trans.Maybe
 import Control.Monad.Fail
 import Data.Kind hiding (Type, Constraint)

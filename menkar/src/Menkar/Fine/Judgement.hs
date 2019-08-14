@@ -8,13 +8,14 @@ import Menkar.Analyzer.Class
 import Menkar.Analyzer.Syntax
 import Menkar.ID
 
+import Data.Functor.Coyoneda.NF
+
 import Data.Void
 import Control.Exception.AssertFalse
 import Data.Bifunctor
 import Data.Maybe
 import GHC.Generics
 import Data.Functor.Identity
-import Data.Functor.Coyoneda
 import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 

@@ -20,12 +20,13 @@ import Menkar.System.Scoper
 import Menkar.PrettyPrint.Raw.Syntax
 import Menkar.PrettyPrint.Aux.Context
 
+import Data.Functor.Coyoneda.NF
+
 import Control.Monad.State.Strict
 import Control.Monad.List
 import Data.Functor.Compose
 import Data.Void
 import Data.Functor.Identity
-import Data.Functor.Coyoneda
 import Data.Coerce
 import Control.Lens
 import Data.List

@@ -15,6 +15,7 @@ import Control.Exception.AssertFalse
 import Data.Constraint.Witness
 import Data.Constraint.Conditional
 import Data.Functor.Coerce
+import Data.Functor.Coyoneda.NF
 
 import GHC.Generics
 import Util
@@ -22,8 +23,6 @@ import Data.Functor.Compose
 import Data.Functor.Const
 import Control.Lens
 import Data.Kind hiding (Type)
-import Data.Functor.Compose
-import Data.Functor.Coyoneda
 
 type instance SysAnalyzerError Reldtt = ReldttAnalyzerError
 type instance SysAnalyzableToken Reldtt = ReldttAnalyzableToken

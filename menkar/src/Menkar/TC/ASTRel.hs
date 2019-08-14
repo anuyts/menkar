@@ -12,11 +12,11 @@ import Menkar.TC.ASTSolve
 
 import Control.Exception.AssertFalse
 import Data.Constraint.Conditional
+import Data.Functor.Coyoneda.NF
 
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Control.Monad
 import Control.Monad.Writer.Strict
 import GHC.Generics

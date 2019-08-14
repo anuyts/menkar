@@ -9,12 +9,12 @@ import Menkar.Monad.Monad
 import Menkar.Analyzer
 
 import Control.Exception.AssertFalse
+import Data.Functor.Coyoneda.NF
 
 import Data.Void
 import Data.Maybe
 import Control.Monad.Writer
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Data.Monoid
 import Control.Monad.Writer.Class
 import GHC.Generics

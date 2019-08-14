@@ -7,12 +7,12 @@ import Menkar.Analyzer
 import Menkar.WHN
 
 import Control.Exception.AssertFalse
+import Data.Functor.Coyoneda.NF
 
 import Data.Functor.Identity
 import Data.Functor.Compose
 import Data.Monoid
 import Data.Functor.Const
-import Data.Functor.Coyoneda
 import Control.Lens
 import GHC.Generics
 import Control.Monad.Trans.Writer.Strict

@@ -7,10 +7,11 @@ import Menkar.Analyzer
 import Menkar.Fine
 import Menkar.Monad.Monad
 
+import Data.Functor.Coyoneda.NF
+
 import Data.Void
 import Data.Constraint.Witness
 import Data.Functor.Const
-import Data.Functor.Coyoneda
 import GHC.Generics
 
 class SysWHN sys => SysTC sys where

@@ -14,12 +14,12 @@ import Control.Exception.AssertFalse
 import Data.Constraint.Witness
 import Data.Constraint.Conditional
 import Data.Functor.Coerce
+import Data.Functor.Coyoneda.NF
 
 import GHC.Generics
 import Data.Functor.Const
 import Control.Lens
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Control.Monad
 import Data.Void
 import Data.Maybe

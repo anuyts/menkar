@@ -5,9 +5,9 @@ module Menkar.Fine.Syntax.Substitution where
 import Menkar.Basic.Context.Variable
 import Control.Exception.AssertFalse
 import Data.Functor.Functor1
+import Data.Functor.Coyoneda.NF
 
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Control.Applicative
 import GHC.Generics
 import Data.Kind
@@ -192,7 +192,7 @@ deriving instance Generic1 Syn
 --------------------------------------------
 
 {-| Coyoneda fuses fmaps, making stuff more efficient. -}
-instance (CanSwallow e h) => CanSwallow e (Coyoneda h) where
+instance (Functor h, CanSwallow e h) => CanSwallow e (Coyoneda h) where
   swallow (Coyoneda q hx) = Coyoneda id $ substitute q hx
   substitute h (Coyoneda q hx) = Coyoneda id $ substitute (h . q) hx
 
@@ -202,8 +202,12 @@ coy = liftCoyoneda
 uncoy :: (Functor f) => Coyoneda f x -> f x
 uncoy = lowerCoyoneda
 
+hoistCoy :: (Functor f, Functor g) => (forall x . f x -> g x) -> (Coyoneda f a -> Coyoneda g a)
 hoistCoy = hoistCoyoneda
-hoistCoyLens :: forall m f g a . (Functor m) => (forall x . f x -> m (g x)) -> Coyoneda f a -> m (Coyoneda g a)
+hoistCoyLens :: forall m f g a . (Functor m, Functor f, Functor g) =>
+  (forall x . f x -> m (g x)) ->
+  Coyoneda f a ->
+  m (Coyoneda g a)
 hoistCoyLens h (Coyoneda (q :: b -> a) fb) = Coyoneda q <$> mgb
   where mgb = h fb
 
@@ -213,16 +217,16 @@ cutCoyLens :: forall m f g a . (Functor m, Functor f) => (f a -> m (g a)) -> Coy
 cutCoyLens h = fmap coy . h . uncoy
 
 -- | To understand this, consider what happens for @Compose [] Maybe@.
-popCoy :: forall g f x . (Functor g) => Coyoneda (Compose g f) x -> Compose g (Coyoneda f) x
+popCoy :: forall g f x . (Functor f, Functor g) => Coyoneda (Compose g f) x -> Compose g (Coyoneda f) x
 popCoy (Coyoneda (q :: y -> x) (Compose (gfy :: g (f y)))) =
   Compose $ Coyoneda (q :: y -> x) <$> gfy
 
 -- | To understand this, consider what happens for @[] :.: Maybe@.
-copopCoy :: forall g f x . (Functor f) => Coyoneda (g :.: f) x -> ((Coyoneda g) :.: f) x
+copopCoy :: forall g f x . (Functor f, Functor g) => Coyoneda (g :.: f) x -> ((Coyoneda g) :.: f) x
 copopCoy (Coyoneda (q :: y -> x) (Comp1 (gfy :: g (f y)))) =
   Comp1 $ Coyoneda (fmap q :: f y -> f x) gfy
 -- | It is atypical to need this function.
-copopCoy' :: forall g f x . (Functor f) => Coyoneda (Compose g f) x -> Compose (Coyoneda g) f x
+copopCoy' :: forall g f x . (Functor f, Functor g) => Coyoneda (Compose g f) x -> Compose (Coyoneda g) f x
 copopCoy' (Coyoneda q (Compose gfy)) =
   Compose $ Coyoneda (fmap q) gfy
 

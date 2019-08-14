@@ -13,13 +13,13 @@ import Data.Omissible
 import Data.Constraint.Witness
 import Data.Constraint.Conditional
 import Control.Exception.AssertFalse
+import Data.Functor.Coyoneda.NF
 
 import Control.Lens
 import Data.Kind hiding (Type)
 import Data.Void
 import Data.Functor.Identity
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import GHC.Generics
 import Data.Maybe
 import Control.Monad

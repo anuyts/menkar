@@ -8,13 +8,13 @@ import qualified Menkar.Raw.Syntax as Raw
 import Data.Functor.Coerce
 import Control.Exception.AssertFalse
 import Data.Omissible
+import Data.Functor.Coyoneda.NF
 
 import Data.Bifunctor
 import Data.Maybe
 import Control.Lens
 import Data.Functor.Identity
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Data.Void
 import Data.Kind hiding (Type)
 

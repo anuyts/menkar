@@ -20,13 +20,13 @@ import Menkar.Analyzer.Class
 import Text.PrettyPrint.Tree
 import Data.Omissible
 import Data.Functor.Functor1
+import Data.Functor.Coyoneda.NF
 
 import Data.Void
 import Data.Maybe
 import Control.Exception.AssertFalse
 import Data.Functor.Compose
 import Data.Functor.Const
-import Data.Functor.Coyoneda
 import Control.Lens
 import GHC.Generics
 

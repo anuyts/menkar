@@ -19,6 +19,7 @@ import Menkar.Systems.Reldtt.WHN
 import Control.Monad.DoUntilFail
 import Control.Exception.AssertFalse
 import Data.Functor.Coerce
+import Data.Functor.Coyoneda.NF
 
 import Control.Monad.Trans.Class
 import Control.Monad.Writer.Class
@@ -31,7 +32,6 @@ import Data.Void
 import GHC.Generics
 import Data.Functor.Compose
 import Data.Functor.Constant
-import Data.Functor.Coyoneda
 import Data.Maybe
 import Data.List.Ordered
 

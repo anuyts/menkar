@@ -8,6 +8,7 @@ import Control.Exception.AssertFalse
 import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Functor.Coerce
+import Data.Functor.Coyoneda.NF
 
 import Data.Void
 import Data.Bifunctor
@@ -15,7 +16,6 @@ import Data.Maybe
 import GHC.Generics
 import Data.Functor.Identity
 import Data.Functor.Compose
-import Data.Functor.Coyoneda
 import Control.Lens
 import Data.Proxy
 import Data.Kind

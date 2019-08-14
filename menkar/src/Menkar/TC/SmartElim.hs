@@ -14,13 +14,13 @@ import Control.Exception.AssertFalse
 import Menkar.WHN
 
 import Data.Functor.Functor1
+import Data.Functor.Coyoneda.NF
 
 import GHC.Generics
 import Data.Void
 import Control.Lens
 import Data.Functor.Compose
 import Data.Functor.Constant
-import Data.Functor.Coyoneda
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Control.Monad.Trans.Maybe

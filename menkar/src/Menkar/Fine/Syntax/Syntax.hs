@@ -11,11 +11,11 @@ import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Functor.Functor1
 import Data.Omissible
+import Data.Functor.Coyoneda.NF
 
 import GHC.Generics
 import Data.Functor.Compose
 import Data.Functor.Identity
-import Data.Functor.Coyoneda
 import Data.Maybe
 import Control.Exception.AssertFalse
 import Control.Lens
