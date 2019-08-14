@@ -217,6 +217,7 @@ typed2pretty :: (DeBruijnLevel v,
 typed2pretty gamma t ty opts = typed2pretty' (fine2pretty gamma t opts) (fine2pretty gamma ty opts) opts
 
 data TypedTerm sys v = TypedTerm (Term sys v) (Type sys v)
+  deriving Functor
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (TypedTerm sys) where
