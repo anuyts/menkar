@@ -3,6 +3,7 @@
 module Menkar.Fine.Syntax.Substitution where
 
 import Menkar.Basic.Context.Variable
+
 import Control.Exception.AssertFalse
 import Data.Functor.Functor1
 import Data.Functor.Coyoneda.NF

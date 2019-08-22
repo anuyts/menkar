@@ -1,10 +1,12 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances #-}
 
 module Menkar.Basic.Context.DeBruijnLevel where
 
 import Prelude hiding (take, length)
 
 import Menkar.Basic.Context.Variable
+
+import Control.DeepSeq.Picky
 
 import Data.Bifunctor
 import Control.Exception.AssertFalse
@@ -18,7 +20,7 @@ import Unsafe.Coerce
 
 -------------------------------------------------
 
-class Eq v => DeBruijnLevel v where
+class (Eq v, NFData v) => DeBruijnLevel v where
   size :: Int
   
   getDeBruijnLevel :: v -> Int
@@ -54,6 +56,11 @@ class Eq v => DeBruijnLevel v where
       (getDeBruijnIndex | getDeBruijnLevel),
       (forDeBruijnIndex | forDeBruijnLevel),
       (forallVars | forallVarsRev) #-}
+
+--instance (NFData1 DeBruijnLevel f, DeBruijnLevel v) => NFData (f v) where
+--  rnf = rnf1 @DeBruijnLevel
+
+--------------------------------------
 
 instance DeBruijnLevel Void where
   size = 0

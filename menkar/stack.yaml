@@ -44,6 +44,7 @@ extra-deps:
 - lens-4.17@sha256:534febcd710980b3c30efe12813e865b09fc6086a4ed6b7a6a8885f27caee3a6
 - megaparsec-7.0.4@sha256:a7397151601cbe6b8f831f8bdad1a10118dcd6d9a7ee50d6bbdcfbd1181b4ba2
 - nat-0.3@sha256:1cae8ee8eaf875351b68909b2d9433af0d0b98efc0d49e46079076d34ca190b8
+- trivial-constraint-0.6.0.0@sha256:117b4aed290097f48fa87fd18e8e365c1b58b917cf0397d3bc36fd89fc53e0d5
 # - hs-functors-0.1.3.0@sha256:036e72232f7eb056da5df537b2d5ae7bf6881afd21f5a39891ff321b10a2aac8
 
 # Override default flag values for local packages and extra-deps
