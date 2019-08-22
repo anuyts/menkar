@@ -45,7 +45,6 @@ instance Functor (Coyoneda f) where
     q <- unsafeReadCoyonedaIO c
     newCoyonedaIO $ fmap f q
 
-type instance GoodArg (Coyoneda f) = GoodArg f
 instance (Functor f, NFData1 f) => NFData1 (Coyoneda f) where
   {-# NOINLINE rnf1 #-}
   rnf1 (UnsafeCoyonedaFromRef ref) = unsafePerformIO $ do
