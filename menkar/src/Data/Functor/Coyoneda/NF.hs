@@ -14,7 +14,7 @@ module Data.Functor.Coyoneda.NF where
 
 import qualified Data.Functor.Coyoneda as S
 import Data.IORef
-import Control.DeepSeq
+import Control.DeepSeq.Picky
 import System.IO.Unsafe
 import Control.Exception
 
@@ -45,14 +45,15 @@ instance Functor (Coyoneda f) where
     q <- unsafeReadCoyonedaIO c
     newCoyonedaIO $ fmap f q
 
-instance (Functor f, NFData (f a)) => NFData (Coyoneda f a) where
-  {-# NOINLINE rnf #-}
-  rnf (UnsafeCoyonedaFromRef ref) = unsafePerformIO $ do
+type instance GoodArg (Coyoneda f) = GoodArg f
+instance (Functor f, NFData1 f) => NFData1 (Coyoneda f) where
+  {-# NOINLINE rnf1 #-}
+  rnf1 (UnsafeCoyonedaFromRef ref) = unsafePerformIO $ do
     co <- readIORef ref
     let !fx = S.lowerCoyoneda co
     -- We use evaluate because we want to be really sure the reduction to NF
     -- succeeds and we don't install bottom in the IORef.
-    evaluate (rnf fx)
+    evaluate (rnf1 fx)
     writeIORef ref (S.liftCoyoneda fx)
 
 {-# INLINE liftCoyoneda #-}

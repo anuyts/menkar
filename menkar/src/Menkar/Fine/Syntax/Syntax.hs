@@ -12,6 +12,9 @@ import qualified Menkar.Raw.Syntax as Raw
 import Data.Functor.Functor1
 import Data.Omissible
 import Data.Functor.Coyoneda.NF
+import Control.DeepSeq.Picky
+import Data.Constraint.Preimage
+import Data.Constraint.Trivial
 
 import GHC.Generics
 import Data.Functor.Compose
@@ -25,48 +28,58 @@ import Data.Kind hiding (Type)
 -------------------
 
 data Twice2 t (a :: ka) (b :: kb) = Twice2 {fstTwice2 :: t a b, sndTwice2 :: t a b}
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
+type instance GoodArg (Twice2 t a) = GoodArg (t a)
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Twice2 t sys)
+
 data Twice1 t (a :: ka) = Twice1 {fstTwice1 :: t a, sndTwice1 :: t a}
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
+type instance GoodArg (Twice1 t) = GoodArg t
 deriving instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Twice1 t)
+
 twice1to2 :: Twice1 (t sys) v -> Twice2 t sys v
 twice1to2 (Twice1 a b) = Twice2 a b
 mapTwice1 :: (a v -> b v) -> Twice1 a v -> Twice1 b v
 mapTwice1 f (Twice1 a1 a2) = Twice1 (f a1) (f a2)
 flipTwice1 :: Twice1 t v -> Twice1 t v
 flipTwice1 (Twice1 t1 t2) = Twice1 t2 t1
+
+-------------------
   
 newtype Box2 t (a :: ka) (b :: kb) = Box2 {unbox2 :: t a b}
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
+type instance GoodArg (Box2 t a) = GoodArg (t a)
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Box2 t sys)
+
 newtype Box1 t (a :: ka) = Box1 {unbox1 :: t a}
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
+type instance GoodArg (Box1 t) = GoodArg t
 deriving instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Box1 t)
 
 data Unit2 (a :: ka) (b :: kb) = Unit2
-  deriving (Functor, Foldable, Traversable, Generic1, Show)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1, Show)
+type instance GoodArg (Unit2 a) = Unconstrained
 deriving instance CanSwallow (Term sys) (Unit2 sys)
 
 data Void2 (a :: ka) (b :: kb) = Void2 Void
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 deriving instance CanSwallow (Term sys) (Void2 sys)
 absurd2 :: Void2 a b -> d
 absurd2 (Void2 v) = absurd v
 
 newtype Maybe2 t (a :: ka) (b :: kb) = Maybe2 (Compose Maybe (t a) b)
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 deriving instance (
     CanSwallow (Term sys) (t sys)
   ) =>
   CanSwallow (Term sys) (Maybe2 t sys)
 
 data Pair2 s t (a :: ka) (b :: kb) = Pair2 {fst2 :: s a b, snd2 :: t a b}
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 deriving instance (CanSwallow (Term sys) (s sys), CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Pair2 s t sys)
 
 newtype Const1 t sys v = Const1 {getConst1 :: t v}
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 deriving instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Const1 t sys)
 
 {-
@@ -138,10 +151,11 @@ data ModalityTo sys v = ModalityTo {
   _modalityTo'dom :: Mode sys v,
   _modalityTo'mod :: Modality sys v
   }
+  deriving (Generic1)
+deriving instance (SysNF sys) => NFData1 (ModalityTo sys)
 deriving instance (SysTrav sys) => Functor (ModalityTo sys)
 deriving instance (SysTrav sys) => Foldable (ModalityTo sys)
 deriving instance (SysTrav sys) => Traversable (ModalityTo sys)
-deriving instance (SysTrav sys) => Generic1 (ModalityTo sys)
 deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModalityTo sys)
 
 {-
@@ -177,7 +191,8 @@ data LeftDivided content (sys :: KSys) v = LeftDivided {
 deriving instance (SysTrav sys, Functor (content sys)) => Functor (LeftDivided content sys)
 deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (LeftDivided content sys)
 deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (LeftDivided content sys)
-deriving instance (SysTrav sys) => Generic1 (LeftDivided content sys)
+deriving instance Generic1 (LeftDivided content sys)
+deriving instance (SysNF sys, NFData1 (content sys)) => NFData1 (LeftDivided content sys)
 deriving instance (
     SysSyntax (Term sys) sys,
     Functor (content sys),
@@ -190,7 +205,8 @@ data ModApplied content (sys :: KSys) v = ModApplied {
 deriving instance (SysTrav sys, Functor (content sys)) => Functor (ModApplied content sys)
 deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (ModApplied content sys)
 deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (ModApplied content sys)
-deriving instance (SysTrav sys) => Generic1 (ModApplied content sys)
+deriving instance Generic1 (ModApplied content sys)
+deriving instance (SysNF sys, NFData1 (content sys)) => NFData1 (ModApplied content sys)
 deriving instance (
     SysSyntax (Term sys) sys,
     Functor (content sys),
@@ -204,7 +220,8 @@ data LookupResult (sys :: KSys) v =
 deriving instance (SysTrav sys) => Functor (LookupResult sys)
 deriving instance (SysTrav sys) => Foldable (LookupResult sys)
 deriving instance (SysTrav sys) => Traversable (LookupResult sys)
-deriving instance (SysTrav sys) => Generic1 (LookupResult sys)
+deriving instance Generic1 (LookupResult sys)
+deriving instance (SysNF sys) => NFData1 (LookupResult sys)
 
 {-
 modedLeftAdjoint :: ModedModality sys v -> ModedContramodality sys v
@@ -226,7 +243,12 @@ data Binding
 deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs sys)) => Functor (Binding lhs rhs sys)
 deriving instance (SysTrav sys, Foldable (lhs sys), Foldable (rhs sys)) => Foldable (Binding lhs rhs sys)
 deriving instance (SysTrav sys, Traversable (lhs sys), Traversable (rhs sys)) => Traversable (Binding lhs rhs sys)
-deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs sys)) => Generic1 (Binding lhs rhs sys)
+deriving instance (SysTrav sys, Functor (rhs sys)) => Generic1 (Binding lhs rhs sys)
+instance (SysNF sys,
+          NFData1 (lhs sys),
+          NFData1 (rhs sys)
+         ) => NFData1 (Binding lhs rhs sys) where
+  rnf1 (Binding seg body) = rnf1 seg `seq` rnf body
 deriving instance (
     SysSyntax (Term sys) sys,
     Functor (lhs sys),
@@ -269,6 +291,10 @@ deriving instance (SysTrav sys, Functor (rhs sys)) => Functor (NamedBinding rhs 
 deriving instance (SysTrav sys, Foldable (rhs sys)) => Foldable (NamedBinding rhs sys)
 deriving instance (SysTrav sys, Traversable (rhs sys)) => Traversable (NamedBinding rhs sys)
 deriving instance (SysTrav sys, Functor (rhs sys)) => Generic1 (NamedBinding rhs sys)
+instance (SysNF sys,
+          NFData1 (rhs sys)
+         ) => NFData1 (NamedBinding rhs sys) where
+  rnf1 (NamedBinding maybeName body) = rnf1 maybeName `seq` rnf body
 deriving instance (
     SysSyntax (Term sys) sys,
     Functor (rhs sys),
@@ -298,9 +324,10 @@ newtype Dependencies (sys :: KSys) (v :: *) =
 deriving instance (SysTrav sys) => Functor (Dependencies sys)
 deriving instance (SysTrav sys) => Foldable (Dependencies sys)
 deriving instance (SysTrav sys) => Traversable (Dependencies sys)
-deriving instance (SysTrav sys) => Generic1 (Dependencies sys)
-deriving instance (SysTrav sys) => Generic (Dependencies sys v)
+deriving instance Generic1 (Dependencies sys)
+deriving instance Generic (Dependencies sys v)
 deriving instance (SysTrav sys) => Wrapped (Dependencies sys v)
+deriving instance (SysTrav sys) => NFData1 (Dependencies sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Dependencies sys)
 
@@ -326,7 +353,8 @@ data UniHSConstructor (sys :: KSys) (v :: *) =
 deriving instance (SysTrav sys) => Functor (UniHSConstructor sys)
 deriving instance (SysTrav sys) => Foldable (UniHSConstructor sys)
 deriving instance (SysTrav sys) => Traversable (UniHSConstructor sys)
-deriving instance (SysTrav sys) => Generic1 (UniHSConstructor sys)
+deriving instance Generic1 (UniHSConstructor sys)
+deriving instance (SysTrav sys) => NFData1 (UniHSConstructor sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (UniHSConstructor sys)
 
@@ -357,7 +385,8 @@ data ConstructorTerm (sys :: KSys) (v :: *) =
 deriving instance (SysTrav sys) => Functor (ConstructorTerm sys)
 deriving instance (SysTrav sys) => Foldable (ConstructorTerm sys)
 deriving instance (SysTrav sys) => Traversable (ConstructorTerm sys)
-deriving instance (SysTrav sys) => Generic1 (ConstructorTerm sys)
+deriving instance Generic1 (ConstructorTerm sys)
+deriving instance (SysTrav sys) => NFData1 (ConstructorTerm sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ConstructorTerm sys)
 
@@ -370,7 +399,8 @@ data SmartEliminator (sys :: KSys) (v :: *) =
 deriving instance (SysTrav sys) => Functor (SmartEliminator sys)
 deriving instance (SysTrav sys) => Foldable (SmartEliminator sys)
 deriving instance (SysTrav sys) => Traversable (SmartEliminator sys)
-deriving instance (SysTrav sys) => Generic1 (SmartEliminator sys)
+deriving instance Generic1 (SmartEliminator sys)
+deriving instance (SysTrav sys) => NFData1 (SmartEliminator sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (SmartEliminator sys)
 
@@ -382,7 +412,8 @@ data DependentEliminator (sys :: KSys) (v :: *) =
 deriving instance (SysTrav sys) => Functor (DependentEliminator sys)
 deriving instance (SysTrav sys) => Foldable (DependentEliminator sys)
 deriving instance (SysTrav sys) => Traversable (DependentEliminator sys)
-deriving instance (SysTrav sys) => Generic1 (DependentEliminator sys)
+deriving instance Generic1 (DependentEliminator sys)
+deriving instance (SysTrav sys) => NFData1 (DependentEliminator sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (DependentEliminator sys)
 
@@ -419,7 +450,8 @@ data Algorithm sys v =
 deriving instance (SysTrav sys) => Functor (Algorithm sys)
 deriving instance (SysTrav sys) => Foldable (Algorithm sys)
 deriving instance (SysTrav sys) => Traversable (Algorithm sys)
-deriving instance (SysTrav sys) => Generic1 (Algorithm sys)
+deriving instance Generic1 (Algorithm sys)
+deriving instance (SysTrav sys) => NFData1 (Algorithm sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Algorithm sys)
 
@@ -432,14 +464,15 @@ newtype Type (sys :: KSys) (v :: *) = Type {unType :: Term sys v}
 deriving instance (SysTrav sys) => Functor (Type sys)
 deriving instance (SysTrav sys) => Foldable (Type sys)
 deriving instance (SysTrav sys) => Traversable (Type sys)
-deriving instance (SysTrav sys) => Generic1 (Type sys)
+deriving instance Generic1 (Type sys)
+deriving instance (SysTrav sys) => NFData1 (Type sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Type sys)
 
 ------------------------------------
 
 data MetaNeutrality = MetaNeutral | MetaBlocked
-  deriving Eq
+  deriving (Eq, Generic, NFData)
 
 data TermNV (sys :: KSys) (v :: *) =
   TermCons (ConstructorTerm sys v) |
@@ -476,7 +509,8 @@ data TermNV (sys :: KSys) (v :: *) =
 deriving instance (SysTrav sys) => Functor (TermNV sys)
 deriving instance (SysTrav sys) => Foldable (TermNV sys)
 deriving instance (SysTrav sys) => Traversable (TermNV sys)
-deriving instance (SysTrav sys) => Generic1 (TermNV sys)
+deriving instance Generic1 (TermNV sys)
+deriving instance (SysTrav sys) => NFData1 (TermNV sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (TermNV sys)
 

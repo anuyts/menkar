@@ -7,6 +7,7 @@ import Menkar.Basic.Context.Variable
 import Control.Exception.AssertFalse
 import Data.Functor.Functor1
 import Data.Functor.Coyoneda.NF
+import Control.DeepSeq.Picky
 
 import Data.Functor.Compose
 import Control.Applicative
@@ -84,8 +85,10 @@ instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
 data Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) =
   Var2 v
   | Expr2 (e a v)
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Eq v, Eq (e a v)) => Eq (Expr2 e a v)
+type instance GoodArg (Expr2 e a) = NFData
+deriving instance (NFData1 (e a), GoodArg (e a) ~ NFData) => NFData1 (Expr2 e a)
 
 instance CanSwallow (Expr2 e a) (e a) => CanSwallow (Expr2 e a) (Expr2 e a) where
   substitute h (Var2 w) = h w

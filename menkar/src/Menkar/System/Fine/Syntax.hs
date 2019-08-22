@@ -1,8 +1,10 @@
 module Menkar.System.Fine.Syntax where
 
 import Menkar.System.Basic
-
 import Menkar.Fine.Syntax.Substitution
+
+import Control.DeepSeq.Picky
+
 import Data.Kind
 
 --type family Mode :: KSys -> * -> *
@@ -33,7 +35,15 @@ type family SysAnalyzerError (sys :: KSys) = (sysAnalyzer :: *) | sysAnalyzer ->
 
 type family SysAnalyzableToken (sys :: KSys) = (sysToken :: (* -> *) -> *) | sysToken -> sys
 
-class (Traversable (Mode sys),
+class (NFData1 (Mode sys),
+       NFData1 (Modality sys),
+       NFData1 (Degree sys),
+       NFData1 (SysTerm sys),
+       NFData1 (SysUniHSConstructor sys))
+      => SysNF sys where
+
+class (SysNF sys,
+       Traversable (Mode sys),
        Traversable (Modality sys),
        Traversable (Degree sys),
        Traversable (SysTerm sys),

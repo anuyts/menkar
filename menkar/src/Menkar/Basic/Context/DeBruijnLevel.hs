@@ -16,6 +16,7 @@ import Data.List
 import Data.Functor.Compose
 import Data.Functor.Identity
 import Data.Functor.Coerce
+import Data.Functor.Classes
 import Unsafe.Coerce
 
 -------------------------------------------------
@@ -107,7 +108,7 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   atVarRev (VarInModule v) = atVarRev v
 
 deriving instance Eq (f (g v)) => Eq (Compose f g v)
-instance DeBruijnLevel (f (g v)) => DeBruijnLevel (Compose f g v) where
+instance (DeBruijnLevel (f (g v)), NFData1 f, NFData1 g) => DeBruijnLevel (Compose f g v) where
   size = size @(f (g v))
   getDeBruijnLevel (Compose v) = getDeBruijnLevel v
   getDeBruijnIndex (Compose v) = getDeBruijnIndex v

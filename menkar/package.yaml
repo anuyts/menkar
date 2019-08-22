@@ -68,6 +68,7 @@ tests:
 ghc-options:
 - -fwarn-incomplete-patterns
 - -Wno-partial-type-signatures
+- -fconstraint-solver-iterations=10
 
 default-extensions:
 - DeriveTraversable
