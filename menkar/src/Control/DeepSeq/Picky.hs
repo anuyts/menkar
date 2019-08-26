@@ -62,10 +62,8 @@ instance (NFData1 f, NFData1 g) => NFData1 (f :+: g) where
 instance (NFData1 f, NFData1 g) => NFData1 (f :*: g) where
   rnf1 (fx :*: gx) = rnf1 fx `seq` rnf1 gx
 
-{- from1 uses @Functor f@, I don't trust it!
-instance (NFData1 g) => NFData1 (g :.: f) where
-type instance GoodArg (g :.: f) = After f (GoodArg g)
-  rnf1 (Comp1 gfx) = rnf1 gfx -}
+instance (NFData1 g, NFData1 f) => NFData1 (g :.: f) where
+  rnf1 (Comp1 gfx) = rnf1 gfx
 
 instance (NFData1 g, NFData1 f) => NFData1 (Compose g f) where
   rnf1 (Compose gfx) = rnf1 gfx
@@ -74,6 +72,8 @@ instance (NFData1 g, NFData1 f) => NFData1 (Compose g f) where
 
 instance NFData Char where rnf = rwhnf
 instance NFData () where rnf = rwhnf
+instance NFData Int where rnf = rwhnf
+instance NFData Bool where rnf = rwhnf
 
 deriving instance NFData Void
 

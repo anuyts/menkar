@@ -10,12 +10,11 @@ data Opness = NonOp | Op deriving (Show, Eq, Generic, Hashable, NFData)
 data Name = Name {opnessName :: Opness, stringName :: String} deriving (Eq, Generic, Hashable, NFData) --deriving Show
 
 data Qualified a = Qualified [String] a deriving (Functor, Foldable, Traversable, Eq, Generic1, NFData1)
-type instance GoodArg Qualified = NFData
 --deriving instance Show a => Show (Qualified a)
 
 type QName = Qualified Name
 
-data ArgSpec = ArgSpecNext | ArgSpecExplicit | ArgSpecNamed Name --deriving Show
+data ArgSpec = ArgSpecNext | ArgSpecExplicit | ArgSpecNamed Name deriving (Generic, NFData)
 
-data ProjSpec = ProjSpecNamed Name | ProjSpecNumbered Int | ProjSpecTail Int --deriving Show
+data ProjSpec = ProjSpecNamed Name | ProjSpecNumbered Int | ProjSpecTail Int deriving (Generic, NFData)
 

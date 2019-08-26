@@ -87,8 +87,7 @@ data Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) =
   | Expr2 (e a v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Eq v, Eq (e a v)) => Eq (Expr2 e a v)
-type instance GoodArg (Expr2 e a) = NFData
-deriving instance (NFData1 (e a), GoodArg (e a) ~ NFData) => NFData1 (Expr2 e a)
+deriving instance (NFData1 (e a)) => NFData1 (Expr2 e a)
 
 instance CanSwallow (Expr2 e a) (e a) => CanSwallow (Expr2 e a) (Expr2 e a) where
   substitute h (Var2 w) = h w

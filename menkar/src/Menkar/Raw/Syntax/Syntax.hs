@@ -6,6 +6,8 @@ import Menkar.System.Basic
 import Menkar.System.Raw
 import Menkar.Basic.Syntax
 
+import Control.DeepSeq.Picky
+
 import Data.String.Utils (replace)
 import Data.Hashable
 import Data.Kind
@@ -84,6 +86,11 @@ data DeclNames declSort where
   DeclNamesModule :: String -> DeclNames (DeclSortModule False)
   DeclNamesVal :: Name -> DeclNames DeclSortVal
   --deriving (Show)
+instance NFData (DeclNames declSort) where
+  rnf (DeclNamesSegment maybeNames) = rnf maybeNames
+  rnf (DeclNamesToplevelModule qstr) = rnf qstr
+  rnf (DeclNamesModule str) = rnf str
+  rnf (DeclNamesVal name) = rnf name
 
 class CanBeTyped (declSort :: DeclSort) where
 
