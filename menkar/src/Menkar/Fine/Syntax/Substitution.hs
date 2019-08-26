@@ -7,7 +7,7 @@ import Menkar.Basic.Context.Variable
 import Control.Exception.AssertFalse
 import Data.Functor.Functor1
 import Data.Functor.Coyoneda.NF
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import Data.Functor.Compose
 import Control.Applicative
@@ -52,9 +52,10 @@ instance (CanSwallow f g, Functor h) => CanSwallow f (Compose h g) where
 data Expr (e :: * -> *) (v :: *) =
   Var v
   | Expr (e v)
-  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Show v, Show (e v)) => Show (Expr e v)
 deriving instance (Eq v, Eq (e v)) => Eq (Expr e v)
+deriving instance (NFData_ e) => NFData_ (Expr e)
 
 instance CanSwallow (Expr e) e => CanSwallow (Expr e) (Expr e) where
   substitute h (Var w) = h w
@@ -74,7 +75,7 @@ instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
 data Expr2' (e :: ka -> * -> *) (a :: ka) (v :: *) =
   Var2' v
   | Expr2' (e a v)
-  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData_)
 deriving instance (Eq v, Eq (e a v)) => Eq (Expr2' e a v)
 
 instance CanSwallow (Expr2' e a) (e a) => CanSwallow (Expr2' e a) (Expr2' e a) where
@@ -95,7 +96,8 @@ instance (Functor (e a), CanSwallow (Expr2' e a) (e a)) => Monad (Expr2' e a) wh
 -------------------------------------------
 
 newtype Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) = Expr2Direct {getExpr2Direct :: Coyoneda (Expr (Coyoneda (e a))) v}
-  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1)
+deriving instance (NFData_ (e a)) => NFData_ (Expr2 e a)
 --deriving instance (Eq v, Eq (e a v), Functor (e a)) => Eq (Expr2 e a v)
 pattern Var2 v = Expr2Direct (Coy (Var v))
 pattern Expr2 e = Expr2Direct (Coy (Expr (Coy e)))

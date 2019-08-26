@@ -1,6 +1,6 @@
 module Menkar.Basic.Syntax where
 
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import GHC.Generics
 import Data.Hashable

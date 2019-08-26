@@ -3,7 +3,7 @@ module Menkar.System.Fine.Syntax where
 import Menkar.System.Basic
 import Menkar.Fine.Syntax.Substitution
 
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import Data.Kind
 
@@ -35,11 +35,11 @@ type family SysAnalyzerError (sys :: KSys) = (sysAnalyzer :: *) | sysAnalyzer ->
 
 type family SysAnalyzableToken (sys :: KSys) = (sysToken :: (* -> *) -> *) | sysToken -> sys
 
-class (NFData1 (Mode sys),
-       NFData1 (Modality sys),
-       NFData1 (Degree sys),
-       NFData1 (SysTerm sys),
-       NFData1 (SysUniHSConstructor sys),
+class (NFData_ (Mode sys),
+       NFData_ (Modality sys),
+       NFData_ (Degree sys),
+       NFData_ (SysTerm sys),
+       NFData_ (SysUniHSConstructor sys),
        NFData (SysJudgement sys))
       => SysNF sys where
 

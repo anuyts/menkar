@@ -2,7 +2,7 @@ module Menkar.Systems.Reldtt.Basic where
 
 import Menkar.System.Basic
 
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import GHC.Generics
 

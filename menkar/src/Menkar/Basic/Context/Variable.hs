@@ -1,7 +1,7 @@
 module Menkar.Basic.Context.Variable where
 
 import Control.Exception.AssertFalse
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import Data.Bifunctor
 import Data.Void

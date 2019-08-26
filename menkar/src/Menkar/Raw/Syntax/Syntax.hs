@@ -6,7 +6,7 @@ import Menkar.System.Basic
 import Menkar.System.Raw
 import Menkar.Basic.Syntax
 
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import Data.String.Utils (replace)
 import Data.Hashable

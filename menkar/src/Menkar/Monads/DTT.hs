@@ -24,7 +24,7 @@ import Control.Exception.AssertFalse
 import Data.Omissible
 import Data.Functor.Functor1
 import Control.Monad.LoopReturn
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import GHC.Generics
 import Data.Void
@@ -376,7 +376,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
           -- If the caller fails to provide a solution, abort and pass back @a@.
           Nothing -> return a
           -- The caller provides @solution :: Term sys v@.
-          Just solution -> solution `deepseq` do
+          Just solution -> solution `deepseq_` do
             -- Save the solution
             tcState'metaMap . at meta . _JustUnsafe .= ForSomeDeBruijnLevel (
               metaInfo & metaInfo'maybeSolution .~ (Right $ SolutionInfo parent $ ForSomeSolvableAST solution)

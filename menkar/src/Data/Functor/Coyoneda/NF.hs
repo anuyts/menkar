@@ -10,11 +10,16 @@
     https://stackoverflow.com/a/57494755/2610474
 -}
 
-module Data.Functor.Coyoneda.NF where
+module Data.Functor.Coyoneda.NF (
+  module Data.Functor.Coyoneda
+  ) where
 
+import Data.Functor.Coyoneda
+
+{-
 import qualified Data.Functor.Coyoneda as S
 import Data.IORef
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 import System.IO.Unsafe
 import Control.Exception
 import Control.Monad
@@ -48,14 +53,14 @@ instance Functor (Coyoneda f) where
     newCoyonedaIO $ (fmap f q, False)
 
 instance (Functor f, NFData1 f) => NFData1 (Coyoneda f) where
-  {-# NOINLINE rnf1 #-}
-  rnf1 (UnsafeCoyonedaFromRef ref) = unsafePerformIO $ do
+  {-# NOINLINE liftRnf #-}
+  liftRnf f (UnsafeCoyonedaFromRef ref) = unsafePerformIO $ do
     (co, isInNF) <- readIORef ref
     unless isInNF $ do
       let fx = S.lowerCoyoneda co
       -- We use evaluate because we want to be really sure the reduction to NF
       -- succeeds and we don't install bottom in the IORef.
-      evaluate (rnf1 fx)
+      evaluate (liftRnf f fx)
       writeIORef ref (S.liftCoyoneda fx, True)
 
 {-# INLINE liftCoyoneda #-}
@@ -88,3 +93,4 @@ instance (Functor f, Foldable f) => Foldable (Coyoneda f) where
 instance Traversable f => Traversable (Coyoneda f) where
   traverse f (Coyoneda k a) = liftCoyoneda <$> traverse (f . k) a
   {-# INLINE traverse #-}
+-}

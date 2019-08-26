@@ -6,7 +6,7 @@ import Prelude hiding (take, length)
 
 import Menkar.Basic.Context.Variable
 
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import Data.Bifunctor
 import Control.Exception.AssertFalse

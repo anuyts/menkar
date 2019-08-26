@@ -14,7 +14,7 @@ import Data.Omissible
 import Data.Constraint.Witness
 import Control.Exception.AssertFalse
 import Data.Functor.Functor1
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import GHC.Generics
 import Data.Void
@@ -51,15 +51,15 @@ instance SysSyntax (Term Trivial) Trivial where
 ---------------------------------
 
 data TrivMode v = TrivMode
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
 data TrivModality v = TrivModality
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
 data TrivDegree v = TrivDegree
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
 data TrivTerm v where
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
 data TrivUniHSConstructor v where
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData1)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
 data TrivJud where
   deriving (Generic, NFData)
 data TrivAnalyzerError where

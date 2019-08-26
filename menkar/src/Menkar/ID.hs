@@ -1,6 +1,6 @@
 module Menkar.ID where
 
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import GHC.Generics
 

@@ -9,7 +9,7 @@ import qualified Menkar.Raw.Syntax as Raw
 
 import Data.Functor.Coerce
 import Data.Functor.Coyoneda.NF
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import Data.Void
 import Data.Bifunctor
@@ -68,14 +68,14 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) where
   -}
   CtxOpaque :: DeBruijnLevel v => Mode sys v -> Ctx t sys v
 --type role Ctx representational nominal nominal representational
-instance (SysTrav sys, NFData1 (t sys)) => NFData (Ctx t sys v) where
-  rnf (CtxEmpty d) = rnf d
-  rnf (gamma :.. seg) = haveDB gamma $ rnf gamma `seq` rnf seg
-  rnf (gamma :<...> modul) = haveDB gamma $ rnf gamma `seq` rnf modul
-  rnf (mu :\\ gamma) = haveDB gamma $ rnf gamma `seq` rnf mu
+instance (SysTrav sys, NFData_ (t sys)) => NFData (Ctx t sys v) where
+  rnf (CtxEmpty d) = rnf_ d
+  rnf (gamma :.. seg) = haveDB gamma $ rnf gamma `seq` rnf_ seg
+  rnf (gamma :<...> modul) = haveDB gamma $ rnf gamma `seq` rnf_ modul
+  rnf (mu :\\ gamma) = haveDB gamma $ rnf gamma `seq` rnf_ mu
   rnf (CtxId gamma) = haveDB gamma $ rnf gamma
   rnf (CtxComp gamma) = haveDB gamma $ rnf gamma
-  rnf (CtxOpaque d) = rnf d
+  rnf (CtxOpaque d) = rnf_ d
 infixr 3 :\\
 infixl 3 :.., :<...>
 

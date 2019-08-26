@@ -9,7 +9,7 @@ import Menkar.Analyzer.Syntax
 import Menkar.ID
 
 import Data.Functor.Coyoneda.NF
-import Control.DeepSeq.Picky
+import Control.DeepSeq.Redone
 
 import Data.Void
 import Control.Exception.AssertFalse
@@ -179,15 +179,15 @@ data Judgement (sys :: KSys) where
 
 instance SysTrav sys => NFData (Judgement sys) where
   rnf (Jud token gamma t extraT ct) =
-    rnf gamma `seq` rnf t `seq` rnf extraT `seq` rnf ct
+    rnf gamma `seq` rnf_ t `seq` rnf_ extraT `seq` rnf_ ct
   rnf (JudRel token eta rel gamma ts extraTs cts) =
-    rnf eta `seq` rnf rel `seq` rnf gamma `seq` rnf ts `seq` rnf extraTs `seq` rnf cts
+    rnf eta `seq` rnf_ rel `seq` rnf gamma `seq` rnf_ ts `seq` rnf_ extraTs `seq` rnf_ cts
   rnf (JudEta token gamma t extraT ct) =
-    rnf gamma `seq` rnf t `seq` rnf extraT `seq` rnf ct
+    rnf gamma `seq` rnf_ t `seq` rnf_ extraT `seq` rnf_ ct
   rnf (JudSmartElim gamma tEliminee tyEliminee eliminators tResult tyResult) =
-    rnf gamma `seq` rnf tEliminee `seq` rnf tyEliminee `seq` rnf eliminators `seq` rnf tResult `seq` rnf tyResult
+    rnf gamma `seq` rnf_ tEliminee `seq` rnf_ tyEliminee `seq` liftRnf rnf_ eliminators `seq` rnf_ tResult `seq` rnf_ tyResult
   rnf (JudGoal gamma str t ty) =
-    rnf gamma `seq` rnf str `seq` rnf t `seq` rnf ty
+    rnf gamma `seq` rnf str `seq` rnf_ t `seq` rnf_ ty
   rnf (JudResolve gamma t ty) = todo
   rnf (JudSys sysJud) = rnf sysJud
   rnf (JudBlock iD) = rnf iD
