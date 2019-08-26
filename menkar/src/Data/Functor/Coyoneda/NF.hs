@@ -17,43 +17,46 @@ import Data.IORef
 import Control.DeepSeq.Picky
 import System.IO.Unsafe
 import Control.Exception
+import Control.Monad
 
-newtype Coyoneda f a = UnsafeCoyonedaFromRef {unsafeCoyonedaToRef :: IORef (S.Coyoneda f a)}
+newtype Coyoneda f a = UnsafeCoyonedaFromRef {unsafeCoyonedaToRef :: IORef (S.Coyoneda f a, Bool)}
 
-newCoyonedaIO :: S.Coyoneda f a -> IO (Coyoneda f a)
+-- | The boolean tells whether in normal form.
+newCoyonedaIO :: (S.Coyoneda f a, Bool) -> IO (Coyoneda f a)
 newCoyonedaIO c = UnsafeCoyonedaFromRef <$> newIORef c
 
 {-# NOINLINE newCoyoneda #-}
 newCoyoneda :: S.Coyoneda f a -> Coyoneda f a
-newCoyoneda = unsafePerformIO . newCoyonedaIO
+newCoyoneda = unsafePerformIO . newCoyonedaIO . (, False)
 
-unsafeReadCoyonedaIO :: Coyoneda f a -> IO (S.Coyoneda f a)
+unsafeReadCoyonedaIO :: Coyoneda f a -> IO (S.Coyoneda f a, Bool)
 unsafeReadCoyonedaIO (UnsafeCoyonedaFromRef ref) = readIORef ref
 
 {-# NOINLINE unsafeReadCoyoneda #-}
-unsafeReadCoyoneda :: Coyoneda f a -> S.Coyoneda f a
+unsafeReadCoyoneda :: Coyoneda f a -> (S.Coyoneda f a, Bool) 
 unsafeReadCoyoneda = unsafePerformIO . unsafeReadCoyonedaIO
 
 {-| This is relatively safe for lawful functors. -}
 readCoyoneda :: Functor f => Coyoneda f a -> S.Coyoneda f a
-readCoyoneda = unsafeReadCoyoneda
+readCoyoneda = fst . unsafeReadCoyoneda
 
 {-| `fmap` happens under the reference, but does NOT traverse `f`. -}
 instance Functor (Coyoneda f) where
   {-# NOINLINE fmap #-}
   fmap f c = unsafePerformIO $ do
-    q <- unsafeReadCoyonedaIO c
-    newCoyonedaIO $ fmap f q
+    (q, isInNF) <- unsafeReadCoyonedaIO c
+    newCoyonedaIO $ (fmap f q, False)
 
 instance (Functor f, NFData1 f) => NFData1 (Coyoneda f) where
   {-# NOINLINE rnf1 #-}
   rnf1 (UnsafeCoyonedaFromRef ref) = unsafePerformIO $ do
-    co <- readIORef ref
-    let !fx = S.lowerCoyoneda co
-    -- We use evaluate because we want to be really sure the reduction to NF
-    -- succeeds and we don't install bottom in the IORef.
-    evaluate (rnf1 fx)
-    writeIORef ref (S.liftCoyoneda fx)
+    (co, isInNF) <- readIORef ref
+    unless isInNF $ do
+      let !fx = S.lowerCoyoneda co
+      -- We use evaluate because we want to be really sure the reduction to NF
+      -- succeeds and we don't install bottom in the IORef.
+      evaluate (rnf1 fx)
+      writeIORef ref (S.liftCoyoneda fx, True)
 
 {-# INLINE liftCoyoneda #-}
 liftCoyoneda :: f a -> Coyoneda f a
@@ -61,7 +64,7 @@ liftCoyoneda = newCoyoneda . S.liftCoyoneda
 
 {-# INLINE lowerCoyoneda #-}
 lowerCoyoneda :: Functor f => Coyoneda f a -> f a
-lowerCoyoneda = S.lowerCoyoneda . unsafeReadCoyoneda
+lowerCoyoneda = S.lowerCoyoneda . readCoyoneda
 
 {-| This is relatively safe for lawful functors. -}
 pattern Coyoneda ::
