@@ -107,8 +107,10 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   forallVarsRev f = forallVarsRev $ f . VarInModule
   atVarRev (VarInModule v) = atVarRev v
 
-deriving instance Eq (f (g v)) => Eq (Compose f g v)
-instance (DeBruijnLevel (f (g v)), NFData1 f, NFData1 g, NFData v) => DeBruijnLevel (Compose f g v) where
+--deriving instance Eq (f (g v)) => Eq (Compose f g v)
+instance (DeBruijnLevel (f (g v)),
+          NFData1 f, NFData1 g, NFData v,
+          Eq1 f, Eq1 g, Eq v) => DeBruijnLevel (Compose f g v) where
   size = size @(f (g v))
   getDeBruijnLevel (Compose v) = getDeBruijnLevel v
   getDeBruijnIndex (Compose v) = getDeBruijnIndex v
