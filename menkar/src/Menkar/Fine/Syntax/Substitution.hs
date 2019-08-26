@@ -52,7 +52,7 @@ instance (CanSwallow f g, Functor h) => CanSwallow f (Compose h g) where
 data Expr (e :: * -> *) (v :: *) =
   Var v
   | Expr (e v)
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 deriving instance (Show v, Show (e v)) => Show (Expr e v)
 deriving instance (Eq v, Eq (e v)) => Eq (Expr e v)
 
