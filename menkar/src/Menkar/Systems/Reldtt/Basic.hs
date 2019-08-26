@@ -2,6 +2,10 @@ module Menkar.Systems.Reldtt.Basic where
 
 import Menkar.System.Basic
 
+import Control.DeepSeq.Picky
+
+import GHC.Generics
+
 data Reldtt :: KSys where
 
 data KnownDeg =
@@ -10,7 +14,7 @@ data KnownDeg =
   KnownDegOmega {-^ Only allowed in infinite modes. -} |
   KnownDegTop |
   KnownDegProblem
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic, NFData)
 
 -- | It is an error to create a @'ModtySnout'@ whose length differs from its codomain.
 data ModtySnout = ModtySnout
@@ -18,7 +22,7 @@ data ModtySnout = ModtySnout
    _modtySnout'cod :: Int,
    {-| Degrees in REVERSE ORDER. -}
    _modtySnout'degreesReversed :: [KnownDeg]
-  } deriving Eq
+  } deriving (Eq, Generic, NFData)
 instance Ord ModtySnout where
   ModtySnout idom1 icod1 krevdegs1 <= ModtySnout idom2 icod2 krevdegs2 =
     idom1 == idom2 && icod1 == icod2 && all (\ (i1, i2) -> i1 <= i2) (zip krevdegs1 krevdegs2)

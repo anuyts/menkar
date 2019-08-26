@@ -142,7 +142,7 @@ class (
     (Solvable sys t) =>
     Int ->
     (forall v .
-      (Eq v, DeBruijnLevel v) =>
+      (DeBruijnLevel v) =>
       Ctx Type sys v ->
       tc (Maybe (t v), a)
     ) -> tc a
