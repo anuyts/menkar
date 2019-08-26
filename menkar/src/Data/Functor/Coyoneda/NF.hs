@@ -52,7 +52,7 @@ instance (Functor f, NFData1 f) => NFData1 (Coyoneda f) where
   rnf1 (UnsafeCoyonedaFromRef ref) = unsafePerformIO $ do
     (co, isInNF) <- readIORef ref
     unless isInNF $ do
-      let !fx = S.lowerCoyoneda co
+      let fx = S.lowerCoyoneda co
       -- We use evaluate because we want to be really sure the reduction to NF
       -- succeeds and we don't install bottom in the IORef.
       evaluate (rnf1 fx)
