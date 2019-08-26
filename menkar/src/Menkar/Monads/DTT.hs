@@ -24,6 +24,7 @@ import Control.Exception.AssertFalse
 import Data.Omissible
 import Data.Functor.Functor1
 import Control.Monad.LoopReturn
+import Control.DeepSeq.Picky
 
 import GHC.Generics
 import Data.Void
@@ -238,7 +239,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     maybeParent <- useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %=
-      (insert meta $ ForSomeDeBruijnLevel $ MetaInfo (_constraint'id <$> maybeParent) gamma reason (Left []))
+      (insert meta $ ForSomeDeBruijnLevel $ MetaInfo (force $ _constraint'id <$> maybeParent) (force gamma) reason (Left []))
     let depcies = Dependencies $ coy $ Compose $ forallVarsRev $ \ v ->
           let d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
           in  d :*: Var2 v

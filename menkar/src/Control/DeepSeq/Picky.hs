@@ -34,6 +34,10 @@ instance {-# INCOHERENT #-} (NFData1 f, NFData x) => NFData (f x) where
 
 rwhnf :: a -> ()
 rwhnf = DS.rwhnf
+deepseq :: NFData a => a -> b -> b
+deepseq a b = rnf a `seq` b
+force :: NFData a => a -> a
+force a = a `deepseq` a
 
 -----------------
 
