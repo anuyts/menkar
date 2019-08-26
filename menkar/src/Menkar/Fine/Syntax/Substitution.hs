@@ -74,7 +74,7 @@ instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
 data Expr2' (e :: ka -> * -> *) (a :: ka) (v :: *) =
   Var2' v
   | Expr2' (e a v)
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 deriving instance (Eq v, Eq (e a v)) => Eq (Expr2' e a v)
 
 instance CanSwallow (Expr2' e a) (e a) => CanSwallow (Expr2' e a) (Expr2' e a) where
@@ -94,7 +94,7 @@ instance (Functor (e a), CanSwallow (Expr2' e a) (e a)) => Monad (Expr2' e a) wh
 -------------------------------------------
 
 newtype Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) = Expr2Direct {getExpr2Direct :: Coyoneda (Expr2' e a) v}
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 --deriving instance (Eq v, Eq (e a v), Functor (e a)) => Eq (Expr2 e a v)
 pattern Var2 v = Expr2Direct (Coy (Var2' v))
 pattern Expr2 e = Expr2Direct (Coy (Expr2' e))
@@ -104,7 +104,7 @@ instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a)
   substitute (h :: w -> Expr2 e a v) (Var2' (w :: w)) = uncoy $ getExpr2Direct $ h w
   substitute (h :: w -> Expr2 e a v) (Expr2' (ew :: e a w)) = Expr2' $ substitute h ew
 
-instance CanSwallow (Expr2 e a) (e a) => CanSwallow (Expr2 e a) (Expr2 e a) where
+instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr2 e a) where
   substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Var2' (u :: u)))) =
     h . q $ u
   substitute (h :: w -> Expr2 e a v) (Expr2Direct (Coyoneda (q :: u -> w) (Expr2' (eu :: e a u)))) =
@@ -220,7 +220,7 @@ deriving instance Generic1 Syn
 --------------------------------------------
 
 {-| Coyoneda fuses fmaps, making stuff more efficient. -}
-instance (CanSwallow e h) => CanSwallow e (Coyoneda h) where
+instance (Functor h, CanSwallow e h) => CanSwallow e (Coyoneda h) where
   swallow (Coyoneda q hx) = Coyoneda id $ substitute q hx
   substitute h (Coyoneda q hx) = Coyoneda id $ substitute (h . q) hx
 
@@ -232,7 +232,11 @@ uncoy = lowerCoyoneda
 
 hoistCoy :: (Functor f, Functor g) => (forall x . f x -> g x) -> (Coyoneda f a -> Coyoneda g a)
 hoistCoy = hoistCoyoneda
-hoistCoyLens :: forall m f g a . (Functor m) => (forall x . f x -> m (g x)) -> Coyoneda f a -> m (Coyoneda g a)
+hoistCoyLens :: forall m f g a .
+  (Functor f, Functor g, Functor m) =>
+  (forall x . f x -> m (g x)) ->
+  Coyoneda f a ->
+  m (Coyoneda g a)
 hoistCoyLens h (Coyoneda (q :: b -> a) fb) = Coyoneda q <$> mgb
   where mgb = h fb
 
@@ -242,16 +246,16 @@ cutCoyLens :: forall m f g a . (Functor m, Functor f) => (f a -> m (g a)) -> Coy
 cutCoyLens h = fmap coy . h . uncoy
 
 -- | To understand this, consider what happens for @Compose [] Maybe@.
-popCoy :: forall g f x . (Functor g) => Coyoneda (Compose g f) x -> Compose g (Coyoneda f) x
+popCoy :: forall g f x . (Functor f, Functor g) => Coyoneda (Compose g f) x -> Compose g (Coyoneda f) x
 popCoy (Coyoneda (q :: y -> x) (Compose (gfy :: g (f y)))) =
   Compose $ Coyoneda (q :: y -> x) <$> gfy
 
 -- | To understand this, consider what happens for @[] :.: Maybe@.
-copopCoy :: forall g f x . (Functor f) => Coyoneda (g :.: f) x -> ((Coyoneda g) :.: f) x
+copopCoy :: forall g f x . (Functor f, Functor g) => Coyoneda (g :.: f) x -> ((Coyoneda g) :.: f) x
 copopCoy (Coyoneda (q :: y -> x) (Comp1 (gfy :: g (f y)))) =
   Comp1 $ Coyoneda (fmap q :: f y -> f x) gfy
 -- | It is atypical to need this function.
-copopCoy' :: forall g f x . (Functor f) => Coyoneda (Compose g f) x -> Compose (Coyoneda g) f x
+copopCoy' :: forall g f x . (Functor f, Functor g) => Coyoneda (Compose g f) x -> Compose (Coyoneda g) f x
 copopCoy' (Coyoneda q (Compose gfy)) =
   Compose $ Coyoneda (fmap q) gfy
 
