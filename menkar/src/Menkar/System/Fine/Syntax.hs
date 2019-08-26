@@ -39,7 +39,8 @@ class (NFData1 (Mode sys),
        NFData1 (Modality sys),
        NFData1 (Degree sys),
        NFData1 (SysTerm sys),
-       NFData1 (SysUniHSConstructor sys))
+       NFData1 (SysUniHSConstructor sys),
+       NFData (SysJudgement sys))
       => SysNF sys where
 
 class (SysNF sys,

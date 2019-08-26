@@ -1,6 +1,10 @@
 module Menkar.ID where
 
-newtype WorryID = WorryID {getWorryID :: Int}
+import Control.DeepSeq.Picky
+
+import GHC.Generics
+
+newtype WorryID = WorryID {getWorryID :: Int} deriving (Generic, NFData)
 instance Show WorryID where
   show (WorryID i) = show i
 

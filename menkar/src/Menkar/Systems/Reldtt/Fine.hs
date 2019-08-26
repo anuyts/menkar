@@ -345,6 +345,7 @@ data ReldttUniHSConstructor v =
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData1)
 
 data ReldttSysJudgement where
+  deriving (Generic, NFData)
 
 ------------------------------
 

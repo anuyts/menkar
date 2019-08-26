@@ -15,6 +15,7 @@ import Data.Functor.Compose
 import Data.Kind
 import Data.Void
 import Data.Functor.Identity
+import Data.Functor.Const
 
 import qualified Control.DeepSeq as DS
 
@@ -93,3 +94,6 @@ deriving instance NFData1 Maybe
 instance NFData1 [] where
   rnf1 [] = ()
   rnf1 (x : xs) = rnf x `seq` rnf1 xs
+
+instance NFData a => NFData1 (Const a) where
+  rnf1 (Const a) = rnf a

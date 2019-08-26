@@ -9,6 +9,7 @@ import Menkar.Analyzer.Syntax
 import Menkar.ID
 
 import Data.Functor.Coyoneda.NF
+import Control.DeepSeq.Picky
 
 import Data.Void
 import Control.Exception.AssertFalse
@@ -19,7 +20,7 @@ import Data.Functor.Identity
 import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 
-data Eta = Eta {unEta :: Bool}
+newtype Eta = Eta {unEta :: Bool} deriving (Generic, NFData)
 
 data Judgement (sys :: KSys) where
 
@@ -175,6 +176,22 @@ data Judgement (sys :: KSys) where
 
   JudBlock :: WorryID -> Judgement sys
   JudUnblock :: WorryID -> Judgement sys
+
+instance SysTrav sys => NFData (Judgement sys) where
+  rnf (Jud token gamma t extraT ct) =
+    rnf gamma `seq` rnf t `seq` rnf extraT `seq` rnf ct
+  rnf (JudRel token eta rel gamma ts extraTs cts) =
+    rnf eta `seq` rnf rel `seq` rnf gamma `seq` rnf ts `seq` rnf extraTs `seq` rnf cts
+  rnf (JudEta token gamma t extraT ct) =
+    rnf gamma `seq` rnf t `seq` rnf extraT `seq` rnf ct
+  rnf (JudSmartElim gamma tEliminee tyEliminee eliminators tResult tyResult) =
+    rnf gamma `seq` rnf tEliminee `seq` rnf tyEliminee `seq` rnf eliminators `seq` rnf tResult `seq` rnf tyResult
+  rnf (JudGoal gamma str t ty) =
+    rnf gamma `seq` rnf str `seq` rnf t `seq` rnf ty
+  rnf (JudResolve gamma t ty) = todo
+  rnf (JudSys sysJud) = rnf sysJud
+  rnf (JudBlock iD) = rnf iD
+  rnf (JudUnblock iD) = rnf iD
 
 -- | @'JudType' gamma tyT@ means @gamma |- tyT type@
 -- | Premises: @'JudCtx'@

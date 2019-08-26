@@ -14,6 +14,7 @@ import Data.Constraint.Witness
 import Data.Constraint.Conditional
 import Control.Exception.AssertFalse
 import Data.Functor.Coyoneda.NF
+import Control.DeepSeq.Picky
 
 import Control.Lens
 import Data.Kind hiding (Type)
@@ -96,7 +97,7 @@ type instance AnalyzerAssumption OptionRel vOut v = ()
 --newtype BoxClassif t v = BoxClassif {unboxClassif :: Classif t v}
 
 data ClassifInfo a = ClassifMustBe a | ClassifWillBe a | {-| Not allowed for terms. -} ClassifUnknown
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 instance Applicative ClassifInfo where
   pure a = ClassifWillBe a
   ClassifMustBe f <*> ClassifMustBe a = ClassifMustBe $ f a
@@ -275,7 +276,11 @@ toIfDoubled TokenRel a  = IfDoubled a
 class (Functor t,
        Functor (ClassifExtraInput t),
        Functor (Classif t),
-       Functor (Relation t)) => Analyzable sys t where
+       Functor (Relation t),
+       NFData1 t,
+       NFData1 (ClassifExtraInput t),
+       NFData1 (Classif t),
+       NFData1 (Relation t)) => Analyzable sys t where
   type ClassifExtraInput t :: * -> *
   type Classif t :: * -> *
   type Relation t :: * -> *

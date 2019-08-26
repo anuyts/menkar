@@ -61,6 +61,7 @@ data TrivTerm v where
 data TrivUniHSConstructor v where
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData1)
 data TrivJud where
+  deriving (Generic, NFData)
 data TrivAnalyzerError where
 data TrivAnalyzableToken (t :: * -> *) where
   --AnTokenMode :: TrivAnalyzableToken TrivMode

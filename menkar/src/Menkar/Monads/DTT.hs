@@ -339,7 +339,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
   defConstraint jud reason = do
     maybeParent <- useMaybeParent
     i <- tcState'constraintCounter <<%= (+1)
-    let constraint = Constraint jud maybeParent reason i
+    let constraint = Constraint (force jud) maybeParent reason i
     tcState'constraintMap %= insert i constraint
     loop <- _tcOptions'loop <$> ask
     when (i >= loop) $ withParent constraint $ tcFail "I may be stuck in a loop."
@@ -376,7 +376,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
           -- If the caller fails to provide a solution, abort and pass back @a@.
           Nothing -> return a
           -- The caller provides @solution :: Term sys v@.
-          Just solution -> do
+          Just solution -> solution `deepseq` do
             -- Save the solution
             tcState'metaMap . at meta . _JustUnsafe .= ForSomeDeBruijnLevel (
               metaInfo & metaInfo'maybeSolution .~ (Right $ SolutionInfo parent $ ForSomeSolvableAST solution)

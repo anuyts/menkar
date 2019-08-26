@@ -125,6 +125,7 @@ LookupResult sys (VarOpenCtx v w)deriving instance (Functor mode, Functor modty,
 -}
 
 data ModRel = ModEq | ModLeq
+  deriving (Generic, NFData)
 
 type ModedModality sys = Modality sys
 _modality'mod :: ModedModality sys v -> Modality sys v
@@ -298,7 +299,7 @@ deriving instance (
 
 newtype ModalBox (content :: KSys -> * -> *) (sys :: KSys) (v :: *) =
   ModalBox {_modalBox'content :: content sys v}
-  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving (Functor, Foldable, Traversable, Generic1, NFData1)
 deriving instance (CanSwallow (Term sys) (content sys)) => CanSwallow (Term sys) (ModalBox content sys)
 {-deriving instance (SysTrav sys, Functor (content sys)) => Functor (ModalBox content sys)
 deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (ModalBox content sys)
