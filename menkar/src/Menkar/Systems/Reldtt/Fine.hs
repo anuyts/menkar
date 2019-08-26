@@ -347,6 +347,8 @@ data ReldttSysJudgement where
 
 ------------------------------
 
+instance SysNF Reldtt where
+
 instance SysTrav Reldtt where
   
 instance SysSyntax (Term Reldtt) Reldtt

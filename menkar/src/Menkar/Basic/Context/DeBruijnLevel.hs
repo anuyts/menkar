@@ -21,7 +21,9 @@ import Unsafe.Coerce
 
 -------------------------------------------------
 
-class (Eq v, NFData v) => DeBruijnLevel v where
+class (NFData v) => DeBruijnLevel v where
+  eqVar :: v -> v -> Bool
+  
   size :: Int
   
   getDeBruijnLevel :: v -> Int
@@ -53,7 +55,7 @@ class (Eq v, NFData v) => DeBruijnLevel v where
   atVarRev :: forall a . v -> [a] -> a
   atVarRev v as = as !! getDeBruijnLevel v
   
-  {-# MINIMAL size,
+  {-# MINIMAL eqVar, size,
       (getDeBruijnIndex | getDeBruijnLevel),
       (forDeBruijnIndex | forDeBruijnLevel),
       (forallVars | forallVarsRev) #-}
@@ -61,9 +63,14 @@ class (Eq v, NFData v) => DeBruijnLevel v where
 --instance (NFData1 DeBruijnLevel f, DeBruijnLevel v) => NFData (f v) where
 --  rnf = rnf1 @DeBruijnLevel
 
+newtype EqVar v = EqVar {getEqVar :: v}
+instance DeBruijnLevel v => Eq (EqVar v) where
+  EqVar v1 == EqVar v2 = eqVar v1 v2
+
 --------------------------------------
 
 instance DeBruijnLevel Void where
+  eqVar = absurd
   size = 0
   getDeBruijnLevel = absurd
   forDeBruijnLevel n = Nothing
@@ -74,6 +81,7 @@ instance DeBruijnLevel Void where
   atVarRev = absurd
 
 instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
+  eqVar = liftEq eqVar
   size = size @v + 1
   getDeBruijnLevel (VarWkn v) = getDeBruijnLevel v
   getDeBruijnLevel VarLast = size @v
@@ -98,6 +106,7 @@ instance DeBruijnLevel v => DeBruijnLevel (VarLeftExt v) where
 -}
 
 instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
+  eqVar = liftEq eqVar
   size = size @v
   getDeBruijnLevel (VarInModule v) = getDeBruijnLevel v
   getDeBruijnIndex (VarInModule v) = getDeBruijnIndex v
@@ -109,8 +118,8 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
 
 --deriving instance Eq (f (g v)) => Eq (Compose f g v)
 instance (DeBruijnLevel (f (g v)),
-          NFData1 f, NFData1 g, NFData v,
-          Eq1 f, Eq1 g, Eq v) => DeBruijnLevel (Compose f g v) where
+          NFData (f (g v))) => DeBruijnLevel (Compose f g v) where
+  eqVar (Compose fgv1) (Compose fgv2) = eqVar fgv1 fgv2
   size = size @(f (g v))
   getDeBruijnLevel (Compose v) = getDeBruijnLevel v
   getDeBruijnIndex (Compose v) = getDeBruijnIndex v
@@ -121,6 +130,7 @@ instance (DeBruijnLevel (f (g v)),
   atVarRev (Compose v) = atVarRev v
 
 instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
+  eqVar (Identity v1) (Identity v2) = eqVar v1 v2
   size = size @v
   getDeBruijnLevel (Identity v) = getDeBruijnLevel v
   getDeBruijnIndex (Identity v) = getDeBruijnIndex v

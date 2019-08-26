@@ -16,6 +16,7 @@ import Data.Constraint.Conditional
 import Data.Functor.Functor1
 import Data.Constraint.Witness
 import Data.Functor.Coyoneda.NF
+import Data.Functor.Coerce
 
 import Data.Void
 import Control.Lens
@@ -135,7 +136,7 @@ newRelatedAST eta relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 m
     _ -> newRelatedAST' relT gammaOrig gamma subst partialInv t2 extraT1orig extraT2 maybeCTs
 
 newRelatedMetaTerm :: forall sys tc v vOrig .
-  (SysTC sys, MonadTC sys tc, Eq v, DeBruijnLevel v, DeBruijnLevel vOrig) =>
+  (SysTC sys, MonadTC sys tc, DeBruijnLevel v, DeBruijnLevel vOrig) =>
   Eta ->
   Coyoneda (ModedDegree sys) v ->
   Ctx Type sys vOrig ->
@@ -171,14 +172,14 @@ getSubstAndPartialInv depcies = do
     Nothing -> Left "Cannot solve meta-variable: it has non-variable dependencies."
     -- All dependencies are variables
     Just depcyVars -> do
-      let (_, repeatedVars, _) = complex depcyVars
+      let (_, repeatedVars, _) = complex $ EqVar !<$> depcyVars
       case repeatedVars of
         -- Some variables occur twice
         _:_ -> Left "Cannot solve meta-variable: it has undergone contraction of dependencies."
         -- All variables are unique
         [] -> do
           let subst = flip atVarRev depcyVars
-          let partialInv = join . fmap (forDeBruijnIndex . fromIntegral) . flip elemIndex depcyVars
+          let partialInv = join . fmap (forDeBruijnIndex . fromIntegral) . flip elemIndex (EqVar !<$> depcyVars) . EqVar
           return (subst, partialInv)
 
 tryToSolveBy :: forall sys tc t v .

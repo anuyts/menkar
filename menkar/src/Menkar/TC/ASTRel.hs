@@ -95,7 +95,7 @@ checkASTRel' eta relT gamma (Twice1 t1 t2) (Twice1 extraT1 extraT2) maybeCTs = d
          (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> tcFail "False"
          (AnErrorTermProblem, _, _) -> unreachable
          (AnErrorVar, AnTokenTerm, Var2 v1) -> case t2 of
-           (Var2 v2) -> if v1 == v2
+           (Var2 v2) -> if eqVar v1 v2
              then return ()
              else tcFail "Cannot relate different variables."
            _ -> tcFail "False"

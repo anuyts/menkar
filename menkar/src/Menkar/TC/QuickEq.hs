@@ -79,7 +79,7 @@ quickEq t t' extraT extraT' =
          (AnErrorTermProblem, AnTokenTermNV, TermProblem tProblem) -> False
          (AnErrorTermProblem, _, _) -> unreachable
          (AnErrorVar, AnTokenTerm, Var2 v) -> case t' of
-           (Var2 v') -> v == v'
+           (Var2 v') -> v `eqVar` v'
            _ -> False
          (AnErrorVar, _, _) -> unreachable
          (AnErrorSys sysError, token, _) -> quickEqSysUnanalyzable sysError token t t' extraT extraT'

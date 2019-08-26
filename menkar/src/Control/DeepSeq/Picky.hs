@@ -29,7 +29,7 @@ class NFData (a :: *) where
   default rnf :: (Generic a, NFData1 (Rep a)) => a -> ()
   rnf = rnf1 @_ @() . from
 
-instance (NFData1 f, NFData x) => NFData (f x) where
+instance {-# INCOHERENT #-} (NFData1 f, NFData x) => NFData (f x) where
   rnf = rnf1
 
 rwhnf :: a -> ()
@@ -76,6 +76,8 @@ instance NFData Int where rnf = rwhnf
 instance NFData Bool where rnf = rwhnf
 
 deriving instance NFData Void
+
+deriving instance (NFData (g (f v))) => NFData ((Compose g f) v)
 
 ---------------------------------
 

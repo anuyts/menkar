@@ -37,6 +37,10 @@ instance SysParser Trivial where
 
 ---------------------------------
 
+instance SysNF Trivial where
+
+---------------------------------
+
 instance SysTrav Trivial where
 
 ---------------------------------
