@@ -17,6 +17,7 @@ import Data.Functor.Functor1
 import Data.Constraint.Witness
 import Data.Functor.Coyoneda.NF
 import Data.Functor.Coerce
+import Control.DeepSeq.Redone
 
 import Data.Void
 import Control.Lens
@@ -177,7 +178,7 @@ getSubstAndPartialInv depcies = do
         -- Some variables occur twice
         _:_ -> Left "Cannot solve meta-variable: it has undergone contraction of dependencies."
         -- All variables are unique
-        [] -> do
+        [] -> rnf depcyVars `seq` do
           let subst = flip atVarRev depcyVars
           let partialInv = join . fmap (forDeBruijnIndex . fromIntegral) . flip elemIndex (EqVar !<$> depcyVars) . EqVar
           return (subst, partialInv)
