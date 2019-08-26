@@ -24,7 +24,7 @@ import Control.Exception.AssertFalse
 import Data.Omissible
 import Data.Functor.Functor1
 import Control.Monad.LoopReturn
-import Control.DeepSeq.Redone
+--import Control.DeepSeq.Redone --(disabled, search for force and deepseq)
 
 import GHC.Generics
 import Data.Void
@@ -239,7 +239,8 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     maybeParent <- useMaybeParent
     meta <- tcState'metaCounter <<%= (+1)
     tcState'metaMap %=
-      (insert meta $ ForSomeDeBruijnLevel $ MetaInfo (force $ _constraint'id <$> maybeParent) (force gamma) reason (Left []))
+      (insert meta $ ForSomeDeBruijnLevel $
+        MetaInfo ({-force $-} _constraint'id <$> maybeParent) ({-force-} gamma) reason (Left []))
     let depcies = Dependencies $ coy $ Compose $ forallVarsRev $ \ v ->
           let d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
           in  d :*: Var2 v
@@ -339,7 +340,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
   defConstraint jud reason = do
     maybeParent <- useMaybeParent
     i <- tcState'constraintCounter <<%= (+1)
-    let constraint = Constraint (force jud) maybeParent reason i
+    let constraint = Constraint ({-force-} jud) maybeParent reason i
     tcState'constraintMap %= insert i constraint
     loop <- _tcOptions'loop <$> ask
     when (i >= loop) $ withParent constraint $ tcFail "I may be stuck in a loop."
@@ -376,7 +377,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
           -- If the caller fails to provide a solution, abort and pass back @a@.
           Nothing -> return a
           -- The caller provides @solution :: Term sys v@.
-          Just solution -> solution `deepseq_` do
+          Just solution -> {-solution `deepseq_`-} do
             -- Save the solution
             tcState'metaMap . at meta . _JustUnsafe .= ForSomeDeBruijnLevel (
               metaInfo & metaInfo'maybeSolution .~ (Right $ SolutionInfo parent $ ForSomeSolvableAST solution)
