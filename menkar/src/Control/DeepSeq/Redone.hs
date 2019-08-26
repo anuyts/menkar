@@ -27,6 +27,8 @@ class NFData1 (f :: * -> *) where
 
 rnf1 :: forall f x . (NFData1 f, NFData x) => f x -> ()
 rnf1 = liftRnf rnf
+rnf_ :: forall f x . (NFData1 f) => f x -> ()
+rnf_ = liftRnf (const ())
 
 class NFData (a :: *) where
   rnf :: a -> ()
