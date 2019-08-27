@@ -56,7 +56,7 @@ instance (CanSwallow f g, Functor h) => CanSwallow f (Compose h g) where
     Then automatically, @Compose g (Expr e)@ is a swallowing functor.
 -}
 data Expr (e :: * -> *) (v :: *) =
-  Var v
+  Var !v
   | Expr (e v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (Show v, Show (e v)) => Show (Expr e v)
@@ -84,7 +84,7 @@ instance (Functor e, CanSwallow (Expr e) e) => Monad (Expr e) where
     Then automatically, @Compose g (Expr e)@ is a swallowing functor.
 -}
 data Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) =
-  Var2 v
+  Var2 !v
   | Expr2 (e a v)
   deriving (Functor, Foldable, Traversable, Generic1)
 deriving instance (NFData_ (e a)) => NFData_ (Expr2 e a)
