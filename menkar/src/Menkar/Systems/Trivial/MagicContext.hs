@@ -21,7 +21,7 @@ import GHC.Stack
 
 -- | These are de Bruijn LEVELS, not INDICES!!!
 var :: (HasCallStack, DeBruijnLevel v) => Int -> Term Trivial v
-var n = Var2 $ fromMaybe unreachable $ forDeBruijnLevel n
+var n = Var2 $ forDeBruijnLevel n
 
 val :: Opness -> String -> Telescoped Type ValRHS Trivial v -> Entry Trivial v
 val op str rhs = EntryVal $ Declaration

@@ -180,7 +180,7 @@ getSubstAndPartialInv depcies = do
         -- All variables are unique
         [] -> rnf depcyVars `seq` do
           let subst = flip atVarRev depcyVars
-          let partialInv = join . fmap (forDeBruijnIndex . fromIntegral) . flip elemIndex (EqVar !<$> depcyVars) . EqVar
+          let partialInv = fmap (forDeBruijnIndex . fromIntegral) . flip elemIndex (EqVar !<$> depcyVars) . EqVar
           return (subst, partialInv)
 
 tryToSolveBy :: forall sys tc t v .

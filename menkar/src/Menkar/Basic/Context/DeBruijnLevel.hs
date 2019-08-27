@@ -19,6 +19,7 @@ import Data.Functor.Coerce
 import Data.Functor.Classes
 import Unsafe.Coerce
 import Data.Coerce
+--import Data.Functor.Coyoneda
 
 -------------------------------------------------
 
@@ -31,14 +32,18 @@ class (NFData v) => DeBruijnLevel v where
   getDeBruijnLevel v = size @v - 1 - getDeBruijnIndex v
   --getDeBruijnLevel v = fromIntegral $ fromMaybe unreachable $ elemIndex v $ listAll @v
   
-  forDeBruijnLevel :: Int -> Maybe v
+  forDeBruijnLevel :: Int -> v
   forDeBruijnLevel n = forDeBruijnIndex @v (size @v - 1 - n)
   --forDeBruijnLevel n = ((Just <$> listAll @v) ++ repeat Nothing) `genericIndex` n
   
   getDeBruijnIndex :: v -> Int
   getDeBruijnIndex v = size @v - 1 - getDeBruijnLevel v
   
-  forDeBruijnIndex :: Int -> Maybe v
+  {-forDeBruijnIndex :: Int -> Maybe v
+  forDeBruijnIndex = lowerCoyoneda . forDeBruijnIndexCoyoneda
+  forDeBruijnIndexCoyoneda :: Int -> Coyoneda Maybe v
+  forDeBruijnIndexCoyoneda n = liftCoyoneda $! forDeBruijnLevel @v (size @v - 1 - n)-}
+  forDeBruijnIndex :: Int -> v
   forDeBruijnIndex n = forDeBruijnLevel @v (size @v - 1 - n)
 
   forallVars :: forall a . (v -> a) -> [a]
@@ -74,9 +79,9 @@ instance DeBruijnLevel Void where
   eqVar = absurd
   size = 0
   getDeBruijnLevel = absurd
-  forDeBruijnLevel n = Nothing
+  forDeBruijnLevel n = unreachable
   getDeBruijnIndex = absurd
-  forDeBruijnIndex n = Nothing
+  forDeBruijnIndex n = unreachable
   forallVars f = []
   forallVarsRev f = []
   atVarRev = absurd
@@ -87,8 +92,8 @@ instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
   getDeBruijnLevel (VarWkn v) = getDeBruijnLevel v
   getDeBruijnLevel VarLast = size @v
   forDeBruijnIndex n
-    | n == 0 = Just VarLast
-    | otherwise = VarWkn <$> forDeBruijnIndex (n - 1)
+    | n == 0 = VarLast
+    | otherwise = VarWkn $! forDeBruijnIndex (n - 1)
   forallVarsRev f = f VarLast : (forallVarsRev $ f . VarWkn)
   atVarRev v [] = unreachable
   atVarRev VarLast (a : as) = a
@@ -111,8 +116,8 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   size = size @v
   getDeBruijnLevel (VarInModule v) = getDeBruijnLevel v
   getDeBruijnIndex (VarInModule v) = getDeBruijnIndex v
-  forDeBruijnLevel n = VarInModule !<$> forDeBruijnLevel n
-  forDeBruijnIndex n = VarInModule !<$> forDeBruijnIndex n
+  forDeBruijnLevel n = VarInModule $ forDeBruijnLevel n
+  forDeBruijnIndex n = VarInModule $ forDeBruijnIndex n
   forallVars f = forallVars $ f . VarInModule
   forallVarsRev f = forallVarsRev $ f . VarInModule
   atVarRev (VarInModule v) = atVarRev v
@@ -124,8 +129,8 @@ instance (DeBruijnLevel (f (g v)),
   size = size @(f (g v))
   getDeBruijnLevel (Compose v) = getDeBruijnLevel v
   getDeBruijnIndex (Compose v) = getDeBruijnIndex v
-  forDeBruijnLevel n = Compose !<$> forDeBruijnLevel n
-  forDeBruijnIndex n = Compose !<$> forDeBruijnIndex n
+  forDeBruijnLevel n = Compose $ forDeBruijnLevel n
+  forDeBruijnIndex n = Compose $ forDeBruijnIndex n
   forallVars f = forallVars $ f . Compose
   forallVarsRev f = forallVarsRev $ f . Compose
   atVarRev (Compose v) = atVarRev v
@@ -135,8 +140,8 @@ instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
   size = size @v
   getDeBruijnLevel (Identity v) = getDeBruijnLevel v
   getDeBruijnIndex (Identity v) = getDeBruijnIndex v
-  forDeBruijnLevel n = Identity !<$> forDeBruijnLevel n
-  forDeBruijnIndex n = Identity !<$> forDeBruijnIndex n
+  forDeBruijnLevel n = Identity $ forDeBruijnLevel n
+  forDeBruijnIndex n = Identity $ forDeBruijnIndex n
   forallVars f = forallVars $ f . Identity
   forallVarsRev f = forallVarsRev $ f . Identity
   atVarRev (Identity v) = atVarRev v
