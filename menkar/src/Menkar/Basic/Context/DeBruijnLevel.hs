@@ -18,6 +18,7 @@ import Data.Functor.Identity
 import Data.Functor.Coerce
 import Data.Functor.Classes
 import Unsafe.Coerce
+import Data.Coerce
 
 -------------------------------------------------
 
