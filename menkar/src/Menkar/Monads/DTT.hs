@@ -24,6 +24,7 @@ import Control.Exception.AssertFalse
 import Data.Omissible
 import Data.Functor.Functor1
 import Control.Monad.LoopReturn
+import Data.Functor.Coerce
 --import Control.DeepSeq.Redone --(disabled, search for force and deepseq)
 
 import GHC.Generics
@@ -54,28 +55,28 @@ import Data.Ord
 type TCResult (sys :: KSys) = () --TCSuccess | TCWaiting
 
 data SolutionInfo (sys :: KSys) (m :: * -> *) (v :: *) = SolutionInfo {
-  _solutionInfo'parent :: Constraint sys,
-  _solutionInfo'solution :: ForSomeSolvableAST sys v
+  _solutionInfo'parent :: !(Constraint sys),
+  _solutionInfo'solution :: !(ForSomeSolvableAST sys v)
   }
 
 data BlockingMeta (sys :: KSys) (m :: * -> *) (v :: *) = BlockingMeta {
-  _blockingMeta'meta :: Int,
-  _blockingMeta'cont :: (ForSomeSolvableAST sys v -> TCT sys m (TCResult sys)),
-  _blockingMeta'reasonAwait :: String
+  _blockingMeta'meta :: !Int,
+  _blockingMeta'cont :: !(ForSomeSolvableAST sys v -> TCT sys m (TCResult sys)),
+  _blockingMeta'reasonAwait :: !String
   }
 
 data Worry (sys :: KSys) (m :: * -> *) = Worry {
-  _worry'constraint :: Constraint sys,
+  _worry'constraint :: !(Constraint sys),
   {-| From outermost to innermost. -}
-  _worry'metas :: [ForSomeDeBruijnLevel (BlockingMeta sys m)],
+  _worry'metas :: ![ForSomeDeBruijnLevel (BlockingMeta sys m)],
   {-| Whether a judgement has been scheduled (but may not yet have been created) to unblock this worry. -}
-  _worry'unblockScheduled :: Bool,
+  _worry'unblockScheduled :: !Bool,
   {-| Nothing if still blocked, otherwise the meta that unblocked it. -}
-  _worry'unblockedBy :: Maybe MetaID,
+  _worry'unblockedBy :: !(Maybe MetaID),
   {-| A @JudUnblock@, if already scheduled. Note that the existence of this judgement does not imply that it has
       already been processed. (Actually it does in the current implementation, but let's not count on that.) -}
-  _worry'constraintUnblock :: Maybe (Constraint sys),
-  _worry'reason :: String
+  _worry'constraintUnblock :: !(Maybe (Constraint sys)),
+  _worry'reason :: !String
   }
 
 {-
@@ -88,16 +89,16 @@ data BlockInfo (sys :: KSys) (m :: * -> *) (v :: *) = BlockInfo {
 -}
 
 data MetaInfo (sys :: KSys) m v = MetaInfo {
-  _metaInfo'maybeParentID :: Maybe Int,
-  _metaInfo'context :: Ctx Type sys v,
+  _metaInfo'maybeParentID :: !(Maybe Int),
+  _metaInfo'context :: !(Ctx Type sys v),
   --_metaInfo'deg :: U1 v,
-  _metaInfo'reason :: String,
+  _metaInfo'reason :: !String,
   {-| If solved, info about the solution.
       If unsolved, a list of blocked problems, from new to old, from outermost to innermost.
   -}
-  _metaInfo'maybeSolution :: Either
+  _metaInfo'maybeSolution :: !(Either
     [WorryID] {- All blocks blocked on the current, unsolved meta. -}
-    (SolutionInfo sys m v)
+    (SolutionInfo sys m v))
   }
 isDormant :: MetaInfo sys m v -> Bool
 isDormant metaInfo = case _metaInfo'maybeSolution metaInfo of
@@ -111,34 +112,34 @@ isBlockingStuff metaInfo = case _metaInfo'maybeSolution metaInfo of
 isSolved (MetaInfo maybeParent gamma reason maybeSolution) = isRight maybeSolution
 
 data TCReport sys = TCReport {
-  _tcReport'parent :: Constraint sys,
-  _tcReport'reason :: String
+  _tcReport'parent :: !(Constraint sys),
+  _tcReport'reason :: !String
   }
 
 data TCOptions = TCOptions {
-  _tcOptions'loop :: Int
+  _tcOptions'loop :: !Int
   }
 
 data TCState sys m = TCState {
-  _tcState'metaCounter :: Int,
-  _tcState'metaMap :: IntMap (ForSomeDeBruijnLevel (MetaInfo sys m)),
+  _tcState'metaCounter :: !Int,
+  _tcState'metaMap :: !(IntMap (ForSomeDeBruijnLevel (MetaInfo sys m))),
   {-| Current number of constraints. -}
-  _tcState'constraintCounter :: Int,
+  _tcState'constraintCounter :: !Int,
   {-| First non-deleted constraint, ignoring constraint 0 which is always retained.
       Equal to constraintCounter if all are deleted. -}
-  _tcState'constraintDeletionCounter :: Int,
-  _tcState'constraintMap :: IntMap (Constraint sys),
+  _tcState'constraintDeletionCounter :: !Int,
+  _tcState'constraintMap :: !(IntMap (Constraint sys)),
   {-| Current number of worries. -}
-  _tcState'worryCounter :: Int,
+  _tcState'worryCounter :: !Int,
   {-| First non-deleted worry. Equal to worryCounter if all are deleted. -}
-  _tcState'worryDeletionCounter :: Int,
-  _tcState'worryMap :: IntMap (Worry sys m),
-  _tcState'reports :: [(TCReport sys)],
-  _tcState'newTasks :: [(ConstraintPriority, TCT sys m ())],
+  _tcState'worryDeletionCounter :: !Int,
+  _tcState'worryMap :: !(IntMap (Worry sys m)),
+  _tcState'reports :: ![(TCReport sys)],
+  _tcState'newTasks :: ![(ConstraintPriority, TCT sys m ())],
     -- ^ always empty unless during constraint check; to be run from back to front
-  _tcState'tasks :: [(ConstraintPriority, TCT sys m ())],
+  _tcState'tasks :: ![(ConstraintPriority, TCT sys m ())],
     -- ^ to be run from front to back
-  _tcState'maybeParent :: Maybe (Constraint sys)
+  _tcState'maybeParent :: !(Maybe (Constraint sys))
   }
 initTCState :: TCState sys m
 initTCState = TCState 0 empty 0 1 empty 0 0 empty [] [] [] Nothing
@@ -164,10 +165,10 @@ instance (MonadError e m) => MonadError e (ContT r m) where
 data TCError sys m =
   TCErrorConstraintBound |
   {-| The outermost blocked @awaitMeta@ is first in the list. -}
-  TCErrorBlocked (Constraint sys) String [ForSomeDeBruijnLevel (BlockingMeta sys m)] |
-  TCErrorTCFail (TCReport sys) |
-  TCErrorScopeFail String |
-  TCErrorInternal (Maybe (Constraint sys)) String
+  TCErrorBlocked !(Constraint sys) !String ![ForSomeDeBruijnLevel (BlockingMeta sys m)] |
+  TCErrorTCFail !(TCReport sys) |
+  TCErrorScopeFail !String |
+  TCErrorInternal !(Maybe (Constraint sys)) !String
 
 newtype TCT (sys :: KSys) (m :: * -> *)  (a :: *) =
   TCT {unTCT :: ContT (TCResult sys) (ExceptT (TCError sys m) (StateT (TCState sys m) (ReaderT TCOptions ({-ListT-}  m)))) a}
@@ -288,7 +289,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadWHN sys (
         case maybeSolution of
           Right (SolutionInfo _ solution) -> do
             -- Substitute the dependencies into the solution and return.
-            return $ Just $ substitute (depcies2subst @sys @vOrig depcies) . unsafeForceSolvableAST $ solution
+            return $! Just $! substitute (depcies2subst @sys @vOrig depcies) . unsafeForceSolvableAST $! solution
           Left worryIDs -> shiftDC $ \ kCurrent -> do
             -- Prepend the continuation with substituting the dependencies into the solution.
             let kCurrentAdjusted = kCurrent
@@ -332,7 +333,7 @@ withMaybeParent maybeParent action = do
   
 instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (TCT sys m) where
 
-  withParent parent action = withMaybeParent (Just parent) action
+  withParent parent action = withMaybeParent (Just $! parent) action
 
   useMaybeParent = use tcState'maybeParent
   
@@ -367,7 +368,7 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
     case _metaInfo'maybeSolution metaInfo of
       -- If it's solved, throw an error.
       Right _ -> do
-        throwError $ TCErrorInternal (Just parent) $ "Meta already solved: " ++ show meta
+        throwError $ TCErrorInternal (Just $! parent) $ "Meta already solved: " ++ show meta
       -- worryIDs contains the worries blocked on (among others) the current meta.
       Left worryIDs -> do
         -- Call the closure provided by the caller to obtain the solution for the meta.
@@ -446,11 +447,11 @@ instance {-# OVERLAPPING #-} (SysTC sys, Degrees sys, Monad m) => MonadTC sys (T
             Right solution -> do
               let t = _solutionInfo'solution solution
               tcState'worryMap . at (getWorryID worryID) . _JustUnsafe %=
-                (worry'unblockedBy .~ (Just $ _blockingMeta'meta blockingMeta))
+                (worry'unblockedBy .~ (Just $! _blockingMeta'meta blockingMeta))
                 .
-                (worry'constraintUnblock .~ Just constraintJudUnblock)
-              catchBlocks $ _blockingMeta'cont blockingMeta $ unsafeCoerce <$> t
-              return $ Right ()
+                (worry'constraintUnblock .~ (Just $! constraintJudUnblock))
+              catchBlocks $ _blockingMeta'cont blockingMeta $ fmapUnsafeCoerce $ t
+              return $! Right ()
         case maybeUnit of
           Just () -> return ()
           Nothing -> tcFail $ "This is a bug: I'm asked to unblock a worry but all blocking metas are still unsolved."

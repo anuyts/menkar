@@ -19,3 +19,6 @@ fmapCoe :: forall f a b . (Functor f, Coercible a b) => (a -> b) -> f a -> f b
 fmapCoe = (!<$>)
 --fmapCoe :: forall f a b . (Functor f, Coercible a b, forall x y . Coercible x y => Coercible (f x) (f y)) =>
 --  (a -> b) -> f a -> f b
+
+fmapUnsafeCoerce :: forall f a b . (Functor f) => f a -> f b
+fmapUnsafeCoerce = unsafeCoerce
