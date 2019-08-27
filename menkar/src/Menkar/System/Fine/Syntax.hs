@@ -2,6 +2,7 @@ module Menkar.System.Fine.Syntax where
 
 import Menkar.System.Basic
 import Menkar.Fine.Syntax.Substitution
+import Menkar.Basic.Context
 
 import Control.DeepSeq.Redone
 
@@ -44,11 +45,16 @@ class (NFData_ (Mode sys),
       => SysNF sys where
 
 class (SysNF sys,
-       Traversable (Mode sys),
-       Traversable (Modality sys),
-       Traversable (Degree sys),
-       Traversable (SysTerm sys),
-       Traversable (SysUniHSConstructor sys))
+       Foldable (Mode sys),
+       Foldable (Modality sys),
+       Foldable (Degree sys),
+       Foldable (SysTerm sys),
+       Foldable (SysUniHSConstructor sys),
+       DBFunctor (Mode sys),
+       DBFunctor (Modality sys),
+       DBFunctor (Degree sys),
+       DBFunctor (SysTerm sys),
+       DBFunctor (SysUniHSConstructor sys))
       => SysTrav sys where
 
 -- Terms have not been defined at this point.

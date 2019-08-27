@@ -15,6 +15,7 @@ import Data.Functor.Coyoneda.NF
 import Control.DeepSeq.Redone
 import Data.Constraint.Preimage
 import Data.Constraint.Trivial
+import Data.Constraint.AlgebraicFunctor
 
 import GHC.Generics
 import Data.Functor.Compose
@@ -136,7 +137,7 @@ data ModedModality (sys :: KSys) (v :: *) =
     modality'dom :: Mode sys v,
     modality'cod :: Mode sys v,
     modality'mod :: Modality sys v}
-deriving instance (SysTrav sys) => Functor (ModedModality sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (ModedModality sys)
 deriving instance (SysTrav sys) => Foldable (ModedModality sys)
 deriving instance (SysTrav sys) => Traversable (ModedModality sys)
 deriving instance (SysTrav sys) => Generic1 (ModedModality sys)
@@ -149,15 +150,14 @@ data ModalityTo sys v = ModalityTo {
   }
   deriving (Generic1)
 deriving instance (SysNF sys) => NFData_ (ModalityTo sys)
-deriving instance (SysTrav sys) => Functor (ModalityTo sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (ModalityTo sys)
 deriving instance (SysTrav sys) => Foldable (ModalityTo sys)
-deriving instance (SysTrav sys) => Traversable (ModalityTo sys)
 deriving instance (SysSyntax (Term sys) sys) => CanSwallow (Term sys) (ModalityTo sys)
 
 {-
 data ModedContramodality (sys :: KSys) (v :: *) =
   ModedContramodality {contramodality'dom :: Mode sys v, contramodality'rightAdjoint :: Modality sys v}
-deriving instance (SysTrav sys) => Functor (ModedContramodality sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (ModedContramodality sys)
 deriving instance (SysTrav sys) => Foldable (ModedContramodality sys)
 deriving instance (SysTrav sys) => Traversable (ModedContramodality sys)
 deriving instance (SysTrav sys) => Generic1 (ModedContramodality sys)
@@ -171,7 +171,7 @@ _degree'deg deg = deg
 {-
 data ModedDegree (sys :: KSys) (v :: *) =
   ModedDegree {_degree'mode :: Mode sys v, _degree'deg :: Degree sys v}
-deriving instance (SysTrav sys) => Functor (ModedDegree sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (ModedDegree sys)
 deriving instance (SysTrav sys) => Foldable (ModedDegree sys)
 deriving instance (SysTrav sys) => Traversable (ModedDegree sys)
 deriving instance (SysTrav sys) => Generic1 (ModedDegree sys)
@@ -184,28 +184,26 @@ data LeftDivided content (sys :: KSys) v = LeftDivided {
     _leftDivided'originalMode :: (Mode sys) v,
     _leftDivided'modality :: ModedModality sys v,
     _leftDivided'content :: content sys v}
-deriving instance (SysTrav sys, Functor (content sys)) => Functor (LeftDivided content sys)
+deriving instance (SysTrav sys, AlgebraicFunctor DeBruijnLevel (content sys)) => AlgebraicFunctor DeBruijnLevel (LeftDivided content sys)
 deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (LeftDivided content sys)
-deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (LeftDivided content sys)
 deriving instance Generic1 (LeftDivided content sys)
 deriving instance (SysNF sys, NFData_ (content sys)) => NFData_ (LeftDivided content sys)
 deriving instance (
     SysSyntax (Term sys) sys,
-    Functor (content sys),
+    AlgebraicFunctor DeBruijnLevel (content sys),
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (LeftDivided content sys)
 
 data ModApplied content (sys :: KSys) v = ModApplied {
     _modApplied'modality :: ModedModality sys v,
     _modApplied'content :: content sys v}
-deriving instance (SysTrav sys, Functor (content sys)) => Functor (ModApplied content sys)
+deriving instance (SysTrav sys, AlgebraicFunctor DeBruijnLevel (content sys)) => AlgebraicFunctor DeBruijnLevel (ModApplied content sys)
 deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (ModApplied content sys)
-deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (ModApplied content sys)
 deriving instance Generic1 (ModApplied content sys)
 deriving instance (SysNF sys, NFData_ (content sys)) => NFData_ (ModApplied content sys)
 deriving instance (
     SysSyntax (Term sys) sys,
-    Functor (content sys),
+    AlgebraicFunctor DeBruijnLevel (content sys),
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (ModApplied content sys)
 
@@ -213,9 +211,8 @@ data LookupResult (sys :: KSys) v =
   LookupResultVar v |
   LookupResultVal (LeftDivided (Telescoped Type ValRHS) sys v) |
   LookupResultNothing
-deriving instance (SysTrav sys) => Functor (LookupResult sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (LookupResult sys)
 deriving instance (SysTrav sys) => Foldable (LookupResult sys)
-deriving instance (SysTrav sys) => Traversable (LookupResult sys)
 deriving instance Generic1 (LookupResult sys)
 deriving instance (SysTrav sys) => NFData_ (LookupResult sys)
 
@@ -236,15 +233,14 @@ data Binding
     binding'segment :: Segment lhs sys v,
     binding'body :: rhs sys (VarExt v)
   }
-deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs sys)) => Functor (Binding lhs rhs sys)
+deriving instance (SysTrav sys, AlgebraicFunctor DeBruijnLevel (lhs sys), AlgebraicFunctor DeBruijnLevel (rhs sys)) => AlgebraicFunctor DeBruijnLevel (Binding lhs rhs sys)
 deriving instance (SysTrav sys, Foldable (lhs sys), Foldable (rhs sys)) => Foldable (Binding lhs rhs sys)
-deriving instance (SysTrav sys, Traversable (lhs sys), Traversable (rhs sys)) => Traversable (Binding lhs rhs sys)
 deriving instance (SysTrav sys, Functor (rhs sys)) => Generic1 (Binding lhs rhs sys)
 deriving instance (SysTrav sys, NFData_ (lhs sys), NFData_ (rhs sys), Functor (rhs sys)) => NFData_ (Binding lhs rhs sys)
 deriving instance (
     SysSyntax (Term sys) sys,
-    Functor (lhs sys),
-    Functor (rhs sys),
+    AlgebraicFunctor DeBruijnLevel (lhs sys),
+    AlgebraicFunctor DeBruijnLevel (rhs sys),
     CanSwallow (Term sys) (lhs sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (Binding lhs rhs sys)
@@ -259,7 +255,7 @@ data ClassifBinding
     _classifBinding'segment :: Segment lhs sys v,
     _classifBinding'body :: rhs (VarExt v)
   }
-deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs)) => Functor (ClassifBinding lhs rhs sys)
+deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs)) => AlgebraicFunctor DeBruijnLevel (ClassifBinding lhs rhs sys)
 deriving instance (SysTrav sys, Foldable (lhs sys), Foldable (rhs)) => Foldable (ClassifBinding lhs rhs sys)
 deriving instance (SysTrav sys, Traversable (lhs sys), Traversable (rhs)) => Traversable (ClassifBinding lhs rhs sys)
 deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs)) => Generic1 (ClassifBinding lhs rhs sys)
@@ -279,14 +275,13 @@ data NamedBinding
     _namedBinding'name :: Maybe Raw.Name,
     _namedBinding'body :: rhs sys (VarExt v)
   }
-deriving instance (SysTrav sys, Functor (rhs sys)) => Functor (NamedBinding rhs sys)
+deriving instance (SysTrav sys, AlgebraicFunctor DeBruijnLevel (rhs sys)) => AlgebraicFunctor DeBruijnLevel (NamedBinding rhs sys)
 deriving instance (SysTrav sys, Foldable (rhs sys)) => Foldable (NamedBinding rhs sys)
-deriving instance (SysTrav sys, Traversable (rhs sys)) => Traversable (NamedBinding rhs sys)
 deriving instance (SysTrav sys, Functor (rhs sys)) => Generic1 (NamedBinding rhs sys)
 deriving instance (SysTrav sys, Functor (rhs sys), NFData_ (rhs sys)) => NFData_ (NamedBinding rhs sys)
 deriving instance (
     SysSyntax (Term sys) sys,
-    Functor (rhs sys),
+    AlgebraicFunctor DeBruijnLevel (rhs sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (NamedBinding rhs sys)
 
@@ -294,7 +289,7 @@ newtype ModalBox (content :: KSys -> * -> *) (sys :: KSys) (v :: *) =
   ModalBox {_modalBox'content :: content sys v}
   deriving (Functor, Foldable, Traversable, Generic1, NFData_)
 deriving instance (CanSwallow (Term sys) (content sys)) => CanSwallow (Term sys) (ModalBox content sys)
-{-deriving instance (SysTrav sys, Functor (content sys)) => Functor (ModalBox content sys)
+{-deriving instance (SysTrav sys, Functor (content sys)) => AlgebraicFunctor DeBruijnLevel (ModalBox content sys)
 deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (ModalBox content sys)
 deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (ModalBox content sys)
 deriving instance (SysTrav sys, Functor (content sys)) => Generic1 (ModalBox content sys)
@@ -310,9 +305,8 @@ deriving instance (
 {-| Variables are stored in REVERSE order, i.e. in order of De Bruijn index. -}
 newtype Dependencies (sys :: KSys) (v :: *) =
   Dependencies {getDependencies :: Coyoneda (Compose [] (Mode sys :*: Term sys)) v}
-deriving instance (SysTrav sys) => Functor (Dependencies sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (Dependencies sys)
 deriving instance (SysTrav sys) => Foldable (Dependencies sys)
-deriving instance (SysTrav sys) => Traversable (Dependencies sys)
 deriving instance Generic1 (Dependencies sys)
 deriving instance Generic (Dependencies sys v)
 deriving instance (SysTrav sys) => Wrapped (Dependencies sys v)
@@ -339,9 +333,8 @@ data UniHSConstructor (sys :: KSys) (v :: *) =
   NatType |
   EqType (Type sys v) (Term sys v) (Term sys v) |
   SysType (SysUniHSConstructor sys v)
-deriving instance (SysTrav sys) => Functor (UniHSConstructor sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (UniHSConstructor sys)
 deriving instance (SysTrav sys) => Foldable (UniHSConstructor sys)
-deriving instance (SysTrav sys) => Traversable (UniHSConstructor sys)
 deriving instance Generic1 (UniHSConstructor sys)
 deriving instance (SysTrav sys) => NFData_ (UniHSConstructor sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -371,9 +364,8 @@ data ConstructorTerm (sys :: KSys) (v :: *) =
   ConsZero |
   ConsSuc (Term sys v) |
   ConsRefl (Type sys v) (Term sys v)
-deriving instance (SysTrav sys) => Functor (ConstructorTerm sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (ConstructorTerm sys)
 deriving instance (SysTrav sys) => Foldable (ConstructorTerm sys)
-deriving instance (SysTrav sys) => Traversable (ConstructorTerm sys)
 deriving instance Generic1 (ConstructorTerm sys)
 deriving instance (SysTrav sys) => NFData_ (ConstructorTerm sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -385,9 +377,8 @@ data SmartEliminator (sys :: KSys) (v :: *) =
   SmartElimArg Raw.ArgSpec (ModedModality sys v) (Term sys v) |
   SmartElimProj Raw.ProjSpec |
   SmartElimUnbox
-deriving instance (SysTrav sys) => Functor (SmartEliminator sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (SmartEliminator sys)
 deriving instance (SysTrav sys) => Foldable (SmartEliminator sys)
-deriving instance (SysTrav sys) => Traversable (SmartEliminator sys)
 deriving instance Generic1 (SmartEliminator sys)
 deriving instance (SysTrav sys) => NFData_ (SmartEliminator sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -398,9 +389,8 @@ data DependentEliminator (sys :: KSys) (v :: *) =
   ElimBox (NamedBinding Term sys v) |
   ElimEmpty |
   ElimNat (Term sys v) (NamedBinding (NamedBinding Term) sys v)
-deriving instance (SysTrav sys) => Functor (DependentEliminator sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (DependentEliminator sys)
 deriving instance (SysTrav sys) => Foldable (DependentEliminator sys)
-deriving instance (SysTrav sys) => Traversable (DependentEliminator sys)
 deriving instance Generic1 (DependentEliminator sys)
 deriving instance (SysTrav sys) => NFData_ (DependentEliminator sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -420,9 +410,8 @@ data Eliminator (sys :: KSys) (v :: *) =
     _eliminator'motive :: (NamedBinding Type sys v),
     _eliminator'clauses :: DependentEliminator sys v} |
   ElimEq (NamedBinding (NamedBinding Type) sys v) (Term sys v)
-deriving instance (SysTrav sys) => Functor (Eliminator sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (Eliminator sys)
 deriving instance (SysTrav sys) => Foldable (Eliminator sys)
-deriving instance (SysTrav sys) => Traversable (Eliminator sys)
 deriving instance Generic1 (Eliminator sys)
 deriving instance (SysTrav sys) => NFData_ (Eliminator sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -437,9 +426,8 @@ data Algorithm sys v =
     (Compose [] (ModedModality sys :*: SmartEliminator sys) v)
       {-^ Eliminators. The moded modality inserted in front of a smart eliminator,
           is the composite of the modalities of that eliminator and the IMPLICIT eliminators immediately before it. -}
-deriving instance (SysTrav sys) => Functor (Algorithm sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (Algorithm sys)
 deriving instance (SysTrav sys) => Foldable (Algorithm sys)
-deriving instance (SysTrav sys) => Traversable (Algorithm sys)
 deriving instance Generic1 (Algorithm sys)
 deriving instance (SysTrav sys) => NFData_ (Algorithm sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -451,9 +439,8 @@ newtype Type (sys :: KSys) (v :: *) = Type {unType :: Term sys v}
     (UniHSConstructor sys v) {-^ Type -} |
   ElTerm {-^ Eliminator'ish -}
     (Term sys v) {-^ Type -}-}
-deriving instance (SysTrav sys) => Functor (Type sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (Type sys)
 deriving instance (SysTrav sys) => Foldable (Type sys)
-deriving instance (SysTrav sys) => Traversable (Type sys)
 deriving instance Generic1 (Type sys)
 deriving instance (SysTrav sys) => NFData_ (Type sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -496,9 +483,8 @@ data TermNV (sys :: KSys) (v :: *) =
   TermSys (SysTerm sys v) |
   TermProblem {-^ Wrapper of terms that make no sense. -}
     (Term sys v)
-deriving instance (SysTrav sys) => Functor (TermNV sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (TermNV sys)
 deriving instance (SysTrav sys) => Foldable (TermNV sys)
-deriving instance (SysTrav sys) => Traversable (TermNV sys)
 deriving instance Generic1 (TermNV sys)
 deriving instance (SysTrav sys) => NFData_ (TermNV sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -523,9 +509,8 @@ data Annotation (sys :: KSys) v =
   AnnotFlush Bool |
   AnnotLock
   --AnnotResolves (Term )
-deriving instance (SysTrav sys) => Functor (Annotation sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (Annotation sys)
 deriving instance (SysTrav sys) => Foldable (Annotation sys)
-deriving instance (SysTrav sys) => Traversable (Annotation sys)
 deriving instance Generic1 (Annotation sys)
 deriving instance (SysTrav sys) => NFData_ (Annotation sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -535,9 +520,8 @@ data Plicity (sys :: KSys) v =
   Explicit |
   Implicit |
   Resolves (Term sys v) -- this may change
-deriving instance (SysTrav sys) => Functor (Plicity sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (Plicity sys)
 deriving instance (SysTrav sys) => Foldable (Plicity sys)
-deriving instance (SysTrav sys) => Traversable (Plicity sys)
 deriving instance Generic1 (Plicity sys)
 deriving instance (SysTrav sys) => NFData_ (Plicity sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -602,14 +586,13 @@ data Declaration
     _decl'opts :: DeclOptions,
     _decl'content :: content sys v
   }
-deriving instance (SysTrav sys, Functor (content sys)) => Functor (Declaration declSort content sys)
+deriving instance (SysTrav sys, AlgebraicFunctor DeBruijnLevel (content sys)) => AlgebraicFunctor DeBruijnLevel (Declaration declSort content sys)
 deriving instance (SysTrav sys, Foldable (content sys)) => Foldable (Declaration declSort content sys)
-deriving instance (SysTrav sys, Traversable (content sys)) => Traversable (Declaration declSort content sys)
 deriving instance Generic1 (Declaration declSort content sys)
 deriving instance (SysTrav sys, NFData_ (content sys)) => NFData_ (Declaration declSort content sys)
 deriving instance (
     SysSyntax (Term sys) sys,
-    Functor (content sys),
+    AlgebraicFunctor DeBruijnLevel (content sys),
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (Declaration declSort content sys)
 
@@ -628,19 +611,17 @@ data TelescopedPartialDeclaration
     _pdecl'opts :: DeclOptions,
     _pdecl'content :: Telescoped ty (Maybe2 content) sys v
     }
-deriving instance (SysTrav sys, Functor (ty sys), Functor (content sys))
-  => Functor (TelescopedPartialDeclaration declSort ty content sys)
+deriving instance (SysTrav sys, AlgebraicFunctor DeBruijnLevel (ty sys), AlgebraicFunctor DeBruijnLevel (content sys))
+  => AlgebraicFunctor DeBruijnLevel (TelescopedPartialDeclaration declSort ty content sys)
 deriving instance (SysTrav sys, Foldable (ty sys), Foldable (content sys))
   => Foldable (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (SysTrav sys, Traversable (ty sys), Traversable (content sys))
-  => Traversable (TelescopedPartialDeclaration declSort ty content sys)
 deriving instance Generic1 (TelescopedPartialDeclaration declSort ty content sys)
 deriving instance (SysTrav sys, NFData_ (ty sys), Functor (ty sys), NFData_ (content sys), Functor (content sys))
   => NFData_ (TelescopedPartialDeclaration declSort ty content sys)
 deriving instance (
     SysSyntax (Term sys) sys,
-    Functor (ty sys),
-    Functor (content sys),
+    AlgebraicFunctor DeBruijnLevel (ty sys),
+    AlgebraicFunctor DeBruijnLevel (content sys),
     CanSwallow (Term sys) (ty sys),
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (TelescopedPartialDeclaration declSort ty content sys)
@@ -687,16 +668,15 @@ data Telescoped
   Telescoped (rhs sys v) |
   Segment ty sys v :|- Telescoped ty rhs sys (VarExt v) |
   ModalityTo sys v :** Telescoped ty rhs sys v
-deriving instance (SysTrav sys, Functor (ty sys), Functor (rhs sys)) => Functor (Telescoped ty rhs sys)
+deriving instance (SysTrav sys, AlgebraicFunctor DeBruijnLevel (ty sys), AlgebraicFunctor DeBruijnLevel (rhs sys)) => AlgebraicFunctor DeBruijnLevel (Telescoped ty rhs sys)
 deriving instance (SysTrav sys, Foldable (ty sys), Foldable (rhs sys)) => Foldable (Telescoped ty rhs sys)
-deriving instance (SysTrav sys, Traversable (ty sys), Traversable (rhs sys)) => Traversable (Telescoped ty rhs sys)
 deriving instance (SysTrav sys, Functor (ty sys), Functor (rhs sys)) => Generic1 (Telescoped ty rhs sys)
 deriving instance (SysTrav sys, NFData_ (ty sys), Functor (ty sys), NFData_ (rhs sys), Functor (rhs sys))
   => NFData_ (Telescoped ty rhs sys)
 deriving instance (
     SysSyntax (Term sys) sys,
-    Functor (ty sys),
-    Functor (rhs sys),
+    AlgebraicFunctor DeBruijnLevel (ty sys),
+    AlgebraicFunctor DeBruijnLevel (rhs sys),
     CanSwallow (Term sys) (ty sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (Telescoped ty rhs sys)
@@ -708,14 +688,14 @@ joinTelescoped (seg :|- ttr) = seg :|- joinTelescoped ttr
 joinTelescoped (mu :** ttr) = mu :** joinTelescoped ttr
 
 {-| @'mapTelescopedSimple' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
-mapTelescopedSimple :: (Functor h, SysTrav sys, Functor (ty sys)) =>
+mapTelescopedSimple :: (AlgebraicFunctor DeBruijnLevel h, SysTrav sys, AlgebraicFunctor DeBruijnLevel (ty sys)) =>
   (forall w . (v -> w) -> rhs1 sys w -> h (rhs2 sys w)) ->
   (Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedSimple f (Telescoped rhs) = Telescoped <$> f id rhs
 mapTelescopedSimple f (seg :|- stuff) = (seg :|-) <$> mapTelescopedSimple (f . (. VarWkn)) stuff
 mapTelescopedSimple f (mu :** stuff) = (mu :**) <$> mapTelescopedSimple f stuff
 {-| @'mapTelescopedSimpleDB' f <theta |- rhs>@ yields @<theta |- f rhs>@ -}
-mapTelescopedSimpleDB :: (Functor h, SysTrav sys, Functor (ty sys), DeBruijnLevel v) =>
+mapTelescopedSimpleDB :: (AlgebraicFunctor DeBruijnLevel h, SysTrav sys, AlgebraicFunctor DeBruijnLevel (ty sys), DeBruijnLevel v) =>
   (forall w . DeBruijnLevel w => (v -> w) -> rhs1 sys w -> h (rhs2 sys w)) ->
   (Telescoped ty rhs1 sys v -> h (Telescoped ty rhs2 sys v))
 mapTelescopedSimpleDB f (Telescoped rhs) = Telescoped <$> f id rhs
@@ -731,9 +711,8 @@ _telescoped'content (dmu :** telescopedRHS) = _telescoped'content telescopedRHS
 
 data ValRHS sys (v :: *) =
   ValRHS {_val'term :: Term sys v, _val'type :: Type sys v}
-deriving instance (SysTrav sys) => Functor (ValRHS sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (ValRHS sys)
 deriving instance (SysTrav sys) => Foldable (ValRHS sys)
-deriving instance (SysTrav sys) => Traversable (ValRHS sys)
 deriving instance Generic1 (ValRHS sys)
 deriving instance (SysTrav sys) => NFData_ (ValRHS sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -767,9 +746,8 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term sys) mode, CanS
 {-| The entries are stored in REVERSE ORDER. -}
 newtype ModuleRHS sys (v :: *) =
   ModuleRHS {_moduleRHS'content :: (Compose [] (Entry sys) (VarInModule v))}
-deriving instance (SysTrav sys) => Functor (ModuleRHS sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (ModuleRHS sys)
 deriving instance (SysTrav sys) => Foldable (ModuleRHS sys)
-deriving instance (SysTrav sys) => Traversable (ModuleRHS sys)
 deriving instance (SysTrav sys) => Generic1 (ModuleRHS sys)
 deriving instance (SysTrav sys) => NFData_ (ModuleRHS sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -792,9 +770,8 @@ _module'name modul = case _decl'name modul of
   DeclNameModule name -> name
 
 data Entry sys (v :: *) = EntryVal (Val sys v) | EntryModule (Module sys v)
-deriving instance (SysTrav sys) => Functor (Entry sys)
+deriving instance (SysTrav sys) => AlgebraicFunctor DeBruijnLevel (Entry sys)
 deriving instance (SysTrav sys) => Foldable (Entry sys)
-deriving instance (SysTrav sys) => Traversable (Entry sys)
 deriving instance Generic1 (Entry sys)
 deriving instance (SysTrav sys) => NFData_ (Entry sys)
 deriving instance (SysSyntax (Term sys) sys) =>
@@ -817,7 +794,7 @@ moduleRHS'entries = moduleRHS'content . _Wrapped'
   
 type Telescope ty = Telescoped ty Unit2
 
-telescoped'telescope :: (SysTrav sys, Functor (ty sys)) =>
+telescoped'telescope :: (SysTrav sys, AlgebraicFunctor DeBruijnLevel (ty sys)) =>
   Telescoped ty rhs sys v -> Telescope ty sys v
 telescoped'telescope = runIdentity . mapTelescopedSimple (\ _ _ -> Identity Unit2)
 
