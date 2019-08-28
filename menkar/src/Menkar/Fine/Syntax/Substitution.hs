@@ -245,6 +245,7 @@ pattern Coy x <- (lowerCoyoneda -> x)
 data FreeSwallow t f v where
   Unsubstituted :: f v -> FreeSwallow t f v
   Substitute :: (v -> t w) -> FreeSwallow t f v -> FreeSwallow t f w
+  Rename :: (v -> w) -> FreeSwallow t f v -> FreeSwallow t f w
 
 liftFS = Unsubstituted
 lowerFS :: (CanSwallow t f, Monad t) => FreeSwallow t f v -> f v
@@ -254,15 +255,17 @@ liftSubstituteFS = Substitute
 lowerSubstituteFS :: (CanSwallow t f, Monad t) => (v -> t w) -> FreeSwallow t f v -> f w
 lowerSubstituteFS !h (Unsubstituted fv) = substitute h fv
 lowerSubstituteFS !h (Substitute g sfv) = lowerSubstituteFS (g >=> h) sfv
+lowerSubstituteFS !h (Rename g sfv) = lowerSubstituteFS (h . g) sfv
 
-instance (Applicative t) => Functor (FreeSwallow t f) where
-  fmap h = Substitute (pure . h)
+instance Functor (FreeSwallow t f) where
+  fmap = Rename
 
-liftFMapFS :: (Applicative t) => (x -> y) -> f x -> FreeSwallow t f y
+liftFMapFS :: (x -> y) -> f x -> FreeSwallow t f y
 liftFMapFS h = fmap h . liftFS
 lowerFMapFS :: (Functor f, CanSwallow t f, Monad t) => (x -> y) -> FreeSwallow t f x -> f y
 lowerFMapFS h (Unsubstituted fx) = h <$> fx
-lowerFMapFS h (Substitute g fx) = lowerSubstituteFS (fmap h . g) fx
+lowerFMapFS h (Substitute g sfx) = lowerSubstituteFS (fmap h . g) sfx
+lowerFMapFS h (Rename g sfx) = lowerFMapFS (h . g) sfx
 
 instance CanSwallow t (FreeSwallow t f) where
   substitute = Substitute
@@ -274,11 +277,14 @@ instance (Foldable t, Foldable f) => Foldable (FreeSwallow t f) where
   foldMap h (Unsubstituted fv) = foldMap h fv
   foldMap (h :: w -> a) (Substitute (g :: v -> t w) (sfv :: FreeSwallow t f v)) =
     foldMap (foldMap h . g) sfv
+  foldMap (h :: w -> a) (Rename (g :: v -> w) (sfv :: FreeSwallow t f v)) =
+    foldMap (h . g) sfv
 
-instance (Traversable t, Applicative t, Traversable f) => Traversable (FreeSwallow t f) where
+instance (Traversable t, Traversable f) => Traversable (FreeSwallow t f) where
   traverse (h :: v -> m u) (Unsubstituted fv) = Unsubstituted <$> traverse h fv
   traverse (h :: w -> m u) (Substitute (g :: v -> t w) sfv) = Substitute id <$>
     (traverse (traverse h . g :: v -> m (t u)) :: FreeSwallow t f v -> m (FreeSwallow t f (t u))) sfv
+  traverse (h :: w -> m u) (Rename (g :: v -> w) sfv) = traverse (h . g) sfv
     
 liftTraverseFS :: (Applicative m, Traversable f, Traversable t) =>
   (v -> m u) -> f v -> m (FreeSwallow t f u)
@@ -290,6 +296,7 @@ lowerTraverseFS h sfv = lowerFS <$> traverse h sfv
 hoistFS :: (Functor f, Functor g) => (forall x . f x -> g x) -> (FreeSwallow t f a -> FreeSwallow t g a)
 hoistFS h (Unsubstituted fa) = Unsubstituted $ h fa
 hoistFS h (Substitute g sfa) = Substitute g $ hoistFS h sfa
+hoistFS h (Rename g sfa) = Rename g $ hoistFS h sfa
 
 hoistFSLens :: forall m t f g a . (Functor m, Functor f, Functor g) =>
   (forall x . f x -> m (g x)) ->
@@ -299,6 +306,7 @@ hoistFSLens h = uncoy . aux
   where aux :: forall x . FreeSwallow t f x -> Coyoneda m (FreeSwallow t g x)
         aux (Unsubstituted fa) = Coyoneda Unsubstituted $ h fa
         aux (Substitute g sfa) = Substitute g <$> aux sfa
+        aux (Rename g sfa) = Rename g <$> aux sfa
 
 cutFS :: (CanSwallow t f, Monad t) => (forall x . f x -> g x) -> (FreeSwallow t f a -> FreeSwallow t g a)
 cutFS h = liftFS . h . lowerFS
@@ -308,19 +316,24 @@ cutFSLens :: (Functor m, CanSwallow t f, Monad t) =>
 cutFSLens h = fmap liftFS . h . lowerFS
 
 popFS :: forall t g f x . (Functor f, Functor g) => FreeSwallow t (Compose g f) x -> Compose g (FreeSwallow t f) x
-popFS (Unsubstituted (Compose gfx)) = Compose $ Unsubstituted <$> gfx
-popFS (Substitute h scgfx) = Compose $ Substitute h <$> getCompose (popFS scgfx)
+popFS = Compose . uncoy . aux
+  where aux :: forall y . FreeSwallow t (Compose g f) y -> Coyoneda g ((FreeSwallow t f) y)
+        aux (Unsubstituted (Compose gfx)) = coy $ Unsubstituted <$> gfx
+        aux (Substitute h scgfx) = Substitute h <$> aux scgfx
+        aux (Rename h scgfx) = Rename h <$> aux scgfx
 
 copopFS :: forall t g f x . (Applicative t, Traversable f, Functor g) =>
-  FreeSwallow t (g :.: f) x -> ((FreeSwallow t g) :.: f) x
+  FreeSwallow t (g :.: f) x -> ((FreeSwallow t g) :.: f) x  
 copopFS (Unsubstituted (Comp1 gfx)) = Comp1 $ Unsubstituted $ gfx
 copopFS (Substitute h scgfx) = Comp1 $ Substitute (traverse h) $ unComp1 $ copopFS scgfx
+copopFS (Rename h scgfx) = Comp1 $ Rename (fmap h) $ unComp1 $ copopFS scgfx
 
 -- | It is atypical to need this function.
 copopFS' :: forall t g f x . (Applicative t, Traversable f, Functor g) =>
   FreeSwallow t (Compose g f) x -> (Compose (FreeSwallow t g) f) x
 copopFS' (Unsubstituted (Compose gfx)) = Compose $ Unsubstituted $ gfx
 copopFS' (Substitute h scgfx) = Compose $ Substitute (traverse h) $ getCompose $ copopFS' scgfx
+copopFS' (Rename h scgfx) = Compose $ Rename (fmap h) $ getCompose $ copopFS' scgfx
 
 pattern FS :: forall t f x . (CanSwallow t f, Monad t) => () => f x -> FreeSwallow t f x
 pattern FS x <- (lowerFS -> x)
