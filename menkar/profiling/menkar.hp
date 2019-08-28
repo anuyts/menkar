@@ -1,0 +1,6 @@
+JOB "menkar reldtt src/code-examples/reldtt/lib.menkar +RTS -N -p -hr"
+DATE "Wed Aug 28 12:09 2019"
+SAMPLE_UNIT "seconds"
+VALUE_UNIT "bytes"
+BEGIN_SAMPLE 0.000000
+END_SAMPLE 0.000000

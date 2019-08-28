@@ -4,5 +4,3 @@
 Main
 dist
 *.prof
-*.hp
-*.svg

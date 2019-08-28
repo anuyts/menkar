@@ -1,0 +1,47 @@
+Using FreeSwallow (e85bf64)
+===========================
+lib.menkar	<1s, <100MB
+lib & cong	5s, 500MB
+lib & uniDND	>30s, richting swap
+
+More efficient forDeBruijnIndex (2b1cfe2)
+===============================
+lib.menkar	<1s, <100MB
+lib & cong	6s, 900MB
+lib & uniDND	>27s, richting swap
+
+Strict Justs and lenses in Monads.DTT (da087b3)
+=====================================
+lib.menkar	<1s, 100MB
+lib & cong	6s, 1GB
+lib & uniDND	>27s, richting swap
+
+Strict state types in Monads.DTT
+================================
+lib.menkar	<1s, 100MB
+lib & cong	6s, 1.1GB
+lib & uniDND	>27s, richting swap
+
+Strict Var2 (e46f336)
+==========================
+lib.menkar	<1s, <100MB
+lib & cong	7s, 1GB
+lib & uniDND	>50s, richting swap
+
+Strict variables (eb12734)
+==========================
+lib.menkar	<1s, <100MB
+lib & cong	6s, 1GB
+lib & uniDND	>30s, richting swap
+
+Zonder force (d226d49)
+======================
+lib.menkar	<1s, <100MB
+lib & cong	8s, 1GB
+lib & uniDND	>30s, richting swap
+
+Met force (0333149)
+===================
+lib.menkar	12s, 100MB
+lib & cong	40s, 1.1GB
+lib & uniDND	>3 min, richting swap
