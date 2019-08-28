@@ -89,10 +89,10 @@ unsafeForceDeBruijnLevel (ForSomeDeBruijnLevel a) = unsafeCoerce <$> a
 
 ----------------------------------
 
-type DBFunctor = AlgebraicFunctor DeBruijnLevel
+class (AlgebraicFunctor DeBruijnLevel f) => DBFunctor f where
+  rename :: (DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
+  rename = algmap @DeBruijnLevel
 
-rename :: (DBFunctor f, DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
-rename = algmap @DeBruijnLevel
 (<#>) :: (DBFunctor f, DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
 (<#>) = rename
 
@@ -100,6 +100,8 @@ renameCoe :: (DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
 renameCoe f = unsafeCoerce
 (!<#>) :: (DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
 (!<#>) = renameCoe
+  
+instance (AlgebraicFunctor DeBruijnLevel f) => DBFunctor f where
   
 ----------------------------------
   
