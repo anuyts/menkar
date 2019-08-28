@@ -4,8 +4,9 @@ module Menkar.Basic.Context.DeBruijnLevel where
 
 import Prelude hiding (take, length)
 
+import Menkar.Basic.Context.Variable
+
 import Control.DeepSeq.Redone
-import Data.Constraint.AlgebraicFunctor
 
 import Data.Bifunctor
 import Control.Exception.AssertFalse
@@ -22,9 +23,8 @@ import Data.Coerce
 
 -------------------------------------------------
 
-class (NFData v, Coercible Int v) => DeBruijnLevel v where
+class (NFData v) => DeBruijnLevel v where
   eqVar :: v -> v -> Bool
-  eqVar = coerce ((==) :: Int -> Int -> Bool)
   
   size :: Int
   
@@ -37,35 +37,34 @@ class (NFData v, Coercible Int v) => DeBruijnLevel v where
   --forDeBruijnLevel n = ((Just <$> listAll @v) ++ repeat Nothing) `genericIndex` n
   
   getDeBruijnIndex :: v -> Int
-  getDeBruijnIndex = coerce
+  getDeBruijnIndex v = size @v - 1 - getDeBruijnLevel v
   
   {-forDeBruijnIndex :: Int -> Maybe v
   forDeBruijnIndex = lowerCoyoneda . forDeBruijnIndexCoyoneda
   forDeBruijnIndexCoyoneda :: Int -> Coyoneda Maybe v
   forDeBruijnIndexCoyoneda n = liftCoyoneda $! forDeBruijnLevel @v (size @v - 1 - n)-}
   forDeBruijnIndex :: Int -> v
-  forDeBruijnIndex = coerce
+  forDeBruijnIndex n = forDeBruijnLevel @v (size @v - 1 - n)
 
   forallVars :: forall a . (v -> a) -> [a]
-  forallVars f = f <$> listAll
+  forallVars f = reverse $ forallVarsRev f
 
   forallVarsRev :: forall a . (v -> a) -> [a]
-  forallVarsRev f = f <$> listAllRev
-
-  -- | list in order of appearing, i.e. by DB LEVEL.
+  forallVarsRev f = reverse $ forallVars f
+  
   listAll :: [v]
-  listAll = forDeBruijnIndex !<$> (take sz $ [sz - 1, sz - 2..])
-    where sz = size @v
+  listAll = forallVars id
   
   listAllRev :: [v]
-  listAllRev = forDeBruijnIndex !<$> (take (size @v) $ [0..])
+  listAllRev = forallVarsRev id
 
   atVarRev :: forall a . v -> [a] -> a
   atVarRev v as = as !! getDeBruijnLevel v
   
-  {-# MINIMAL size #-}
-
-----------------------------------
+  {-# MINIMAL eqVar, size,
+      (getDeBruijnIndex | getDeBruijnLevel),
+      (forDeBruijnIndex | forDeBruijnLevel),
+      (forallVars | forallVarsRev) #-}
 
 --instance (NFData1 DeBruijnLevel f, DeBruijnLevel v) => NFData (f v) where
 --  rnf = rnf1 @DeBruijnLevel
@@ -73,6 +72,79 @@ class (NFData v, Coercible Int v) => DeBruijnLevel v where
 newtype EqVar v = EqVar {getEqVar :: v}
 instance DeBruijnLevel v => Eq (EqVar v) where
   EqVar v1 == EqVar v2 = eqVar v1 v2
+
+--------------------------------------
+
+instance DeBruijnLevel Void where
+  eqVar = absurd
+  size = 0
+  getDeBruijnLevel = absurd
+  forDeBruijnLevel n = unreachable
+  getDeBruijnIndex = absurd
+  forDeBruijnIndex n = unreachable
+  forallVars f = []
+  forallVarsRev f = []
+  atVarRev = absurd
+
+instance DeBruijnLevel v => DeBruijnLevel (VarExt v) where
+  eqVar = liftEq eqVar
+  size = size @v + 1
+  getDeBruijnLevel (VarWkn v) = getDeBruijnLevel v
+  getDeBruijnLevel VarLast = size @v
+  forDeBruijnIndex n
+    | n == 0 = VarLast
+    | otherwise = VarWkn $! forDeBruijnIndex (n - 1)
+  forallVarsRev f = f VarLast : (forallVarsRev $ f . VarWkn)
+  atVarRev v [] = unreachable
+  atVarRev VarLast (a : as) = a
+  atVarRev (VarWkn v) (a : as) = atVarRev v as
+
+{-
+proxyUnVarLeftWkn :: Proxy (VarLeftExt v) -> Proxy v
+proxyUnVarLeftWkn Proxy = Proxy
+instance DeBruijnLevel v => DeBruijnLevel (VarLeftExt v) where
+  size p = size (proxyUnVarLeftWkn p) + 1
+  getDeBruijnLevel p (VarLeftWkn v) = getDeBruijnLevel Proxy v
+  getDeBruijnLevel p VarFirst = size p - 1
+  forDeBruijnLevel p n
+    | n == size p - 1 = Just VarFirst
+    | otherwise = VarLeftWkn <$> forDeBruijnLevel Proxy n
+-}
+
+instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
+  eqVar = liftEq eqVar
+  size = size @v
+  getDeBruijnLevel (VarInModule v) = getDeBruijnLevel v
+  getDeBruijnIndex (VarInModule v) = getDeBruijnIndex v
+  forDeBruijnLevel n = VarInModule $ forDeBruijnLevel n
+  forDeBruijnIndex n = VarInModule $ forDeBruijnIndex n
+  forallVars f = forallVars $ f . VarInModule
+  forallVarsRev f = forallVarsRev $ f . VarInModule
+  atVarRev (VarInModule v) = atVarRev v
+
+--deriving instance Eq (f (g v)) => Eq (Compose f g v)
+instance (DeBruijnLevel (f (g v)),
+          NFData (f (g v))) => DeBruijnLevel (Compose f g v) where
+  eqVar (Compose fgv1) (Compose fgv2) = eqVar fgv1 fgv2
+  size = size @(f (g v))
+  getDeBruijnLevel (Compose v) = getDeBruijnLevel v
+  getDeBruijnIndex (Compose v) = getDeBruijnIndex v
+  forDeBruijnLevel n = Compose $ forDeBruijnLevel n
+  forDeBruijnIndex n = Compose $ forDeBruijnIndex n
+  forallVars f = forallVars $ f . Compose
+  forallVarsRev f = forallVarsRev $ f . Compose
+  atVarRev (Compose v) = atVarRev v
+
+instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
+  eqVar (Identity v1) (Identity v2) = eqVar v1 v2
+  size = size @v
+  getDeBruijnLevel (Identity v) = getDeBruijnLevel v
+  getDeBruijnIndex (Identity v) = getDeBruijnIndex v
+  forDeBruijnLevel n = Identity $ forDeBruijnLevel n
+  forDeBruijnIndex n = Identity $ forDeBruijnIndex n
+  forallVars f = forallVars $ f . Identity
+  forallVarsRev f = forallVarsRev $ f . Identity
+  atVarRev (Identity v) = atVarRev v
 
 ----------------------------------
 
@@ -86,47 +158,3 @@ atThisDeBruijnLevel :: forall f a b . (Functor f) =>
 atThisDeBruijnLevel g (ForSomeDeBruijnLevel a) = ForSomeDeBruijnLevel <$> g a
 unsafeForceDeBruijnLevel :: forall v a . (Functor a, DeBruijnLevel v) => ForSomeDeBruijnLevel a -> a v
 unsafeForceDeBruijnLevel (ForSomeDeBruijnLevel a) = unsafeCoerce <$> a
-
-----------------------------------
-
-class (AlgebraicFunctor DeBruijnLevel f) => DBFunctor f where
-  rename :: (DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
-  rename = algmap @DeBruijnLevel
-
-(<#>) :: (DBFunctor f, DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
-(<#>) = rename
-
-renameCoe :: (DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
-renameCoe f = unsafeCoerce
-(!<#>) :: (DeBruijnLevel v, DeBruijnLevel w) => (v -> w) -> f v -> f w
-(!<#>) = renameCoe
-  
-instance (AlgebraicFunctor DeBruijnLevel f) => DBFunctor f where
-  
-----------------------------------
-  
-class DBPointed f where
-  dbpure :: (DeBruijnLevel v) => v -> f v
-
-class (forall x . DeBruijnLevel x => DeBruijnLevel (t x)) => DBMonoTraversable t where
-  dbmonoTraverse :: forall f v w .
-    (DeBruijnLevel v, DeBruijnLevel w, DBPointed f, DBFunctor f) =>
-    (v -> f w) -> t v -> f (t w)
-  
-----------------------------------
-
-data DBCoyoneda f x = forall y . (DeBruijnLevel x, DeBruijnLevel y) => DBCoyoneda (y -> x) (f y)
-
-instance (DBFunctor f) => AlgebraicFunctor DeBruijnLevel (DBCoyoneda f) where
-  algmap f (DBCoyoneda q fx) = DBCoyoneda (f . q) fx
-
-liftDBCoyoneda :: (DeBruijnLevel v) => f v -> DBCoyoneda f v
-liftDBCoyoneda = DBCoyoneda id
-
-lowerDBCoyoneda :: (DeBruijnLevel v, DBFunctor f) => DBCoyoneda f v -> f v
-lowerDBCoyoneda (DBCoyoneda q fv) = q <#> fv
-
-hoistDBCoyoneda ::
-  (forall x . DeBruijnLevel x => f x -> g x) ->
-  (DeBruijnLevel a => DBCoyoneda f a -> DBCoyoneda g a)
-hoistDBCoyoneda f (DBCoyoneda q fv) = DBCoyoneda q (f fv)
