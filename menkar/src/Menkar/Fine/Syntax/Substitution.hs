@@ -297,6 +297,10 @@ hoistFS :: (Functor f, Functor g) => (forall x . f x -> g x) -> (FreeSwallow t f
 hoistFS h (Unsubstituted fa) = Unsubstituted $ h fa
 hoistFS h (Substitute g sfa) = Substitute g $ hoistFS h sfa
 hoistFS h (Rename g sfa) = Rename g $ hoistFS h sfa
+liftHoistFS :: (forall x . f x -> g x) -> (forall x . f x -> FreeSwallow t g x)
+liftHoistFS h = liftFS . h
+lowerHoistFS :: (CanSwallow t f, Monad t) => (forall x . f x -> g x) -> (forall x . FreeSwallow t f x -> g x)
+lowerHoistFS h = h . lowerFS
 
 hoistFSLens :: forall m t f g a . (Functor m, Functor f, Functor g) =>
   (forall x . f x -> m (g x)) ->
@@ -311,7 +315,7 @@ hoistFSLens h = uncoy . aux
 cutFS :: (CanSwallow t f, Monad t) => (forall x . f x -> g x) -> (FreeSwallow t f a -> FreeSwallow t g a)
 cutFS h = liftFS . h . lowerFS
 cutFSLens :: (Functor m, CanSwallow t f, Monad t) =>
-  (forall x . f x -> m (g x)) ->
+  (f a -> m (g a)) ->
   (FreeSwallow t f a -> m (FreeSwallow t g a))
 cutFSLens h = fmap liftFS . h . lowerFS
 

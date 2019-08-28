@@ -242,7 +242,7 @@ instance {-# OVERLAPPING #-} (Monad m, SysTC sys, Degrees sys) => MonadScoper sy
     tcState'metaMap %=
       (insert meta $ ForSomeDeBruijnLevel $
         MetaInfo ({-force $-} _constraint'id <$> maybeParent) ({-force-} gamma) reason (Left []))
-    let depcies = Dependencies $ coy $ Compose $ forallVarsRev $ \ v ->
+    let depcies = Dependencies $ liftFS $ Compose $ forallVarsRev $ \ v ->
           let d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
           in  d :*: Var2 v
     return (meta, depcies)

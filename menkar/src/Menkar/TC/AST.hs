@@ -121,8 +121,8 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
     (AnErrorTermMeta, _, _) -> unreachable
     (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
     (AnErrorTermWildcard, _, _) -> unreachable
-    (AnErrorTermQName, AnTokenTermNV, TermQName qname coyLDivVal) -> do
-      let ldivVal = uncoy $ coyLDivVal
+    (AnErrorTermQName, AnTokenTermNV, TermQName qname fsLDivVal) -> do
+      let ldivVal = lowerFS $ fsLDivVal
       let (LeftDivided d2 d1mu telescope) = ldivVal
       let ldivModAppliedValRHS = (leftDivided'content .~ telescoped2modalQuantified d2 telescope) ldivVal
       let commonCod = _leftDivided'originalMode $ ldivVal

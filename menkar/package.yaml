@@ -103,3 +103,4 @@ default-extensions:
 - ConstraintKinds
 - EmptyDataDecls
 - QuantifiedConstraints
+- BangPatterns

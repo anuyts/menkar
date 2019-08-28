@@ -53,18 +53,18 @@ quickEq t t' extraT extraT' =
                         --quickEq @sys d d' U1 U1 && (follows from the other clause...)
                         quickEq @sys depcy depcy' U1 U1
                     )
-             where Dependencies (Coy (Compose depcyList )) = depcies
-                   Dependencies (Coy (Compose depcyList')) = depcies'
+             where Dependencies (FS (Compose depcyList )) = depcies
+                   Dependencies (FS (Compose depcyList')) = depcies'
            _ -> False
          (AnErrorTermMeta, _, _) -> unreachable
          (AnErrorTermWildcard, AnTokenTermNV, TermWildcard) -> unreachable
          (AnErrorTermWildcard, _, _) -> unreachable
-         (AnErrorTermQName, AnTokenTermNV, TermQName qname (Coyoneda f ldivVal)) -> case t' of
-           TermQName qname' (Coyoneda f' ldivVal') ->
+         (AnErrorTermQName, AnTokenTermNV, TermQName qname (FS ldivVal)) -> case t' of
+           TermQName qname' (FS ldivVal') ->
              qname == qname'
              && quickEq @sys
-               (_leftDivided'content $ f  <$> ldivVal)
-               (_leftDivided'content $ f' <$> ldivVal')
+               (_leftDivided'content $ ldivVal)
+               (_leftDivided'content $ ldivVal')
                U1 U1
            _ -> False
          (AnErrorTermQName, _, _) -> unreachable

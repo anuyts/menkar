@@ -69,7 +69,7 @@ qname gamma rawQName = case lookupQName gamma rawQName of
     case maybeLdivTelescopedVal of
       LookupResultNothing -> scopeFail $ "Not in scope: " ++ Raw.unparse rawQName
       LookupResultVar v -> return $ Var2 $ f v
-      LookupResultVal ldivTelescopedVal -> return $ Expr2 $ TermQName rawQName $ Coyoneda f ldivTelescopedVal
+      LookupResultVal ldivTelescopedVal -> return $ Expr2 $ TermQName rawQName $ liftFMapFS f ldivTelescopedVal
   
 {-| @'exprC' gamma rawExpr@ scopes @rawExpr@ to a term. -}
 exprC :: forall sys sc v .

@@ -713,8 +713,8 @@ instance SysAnalyzer Reldtt where
         && and (zip depcyList1 depcyList2 <&> \ (d1 :*: depcy1, d2 :*: depcy2) ->
                    quickEq @Reldtt depcy1 depcy2 U1 U1
                )
-        where Dependencies (Coy (Compose depcyList1)) = depcies1
-              Dependencies (Coy (Compose depcyList2)) = depcies2
+        where Dependencies (FS (Compose depcyList1)) = depcies1
+              Dependencies (FS (Compose depcyList2)) = depcies2
       (ChainModtyMeta _ _ _ _, _) -> False
       (_, ChainModtyMeta _ _ _ _) -> False
       otherwise -> unreachable

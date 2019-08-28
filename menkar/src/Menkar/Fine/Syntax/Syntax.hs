@@ -89,7 +89,7 @@ data Box2 t (a :: ka) (b :: kb) (c :: kc) = Box2 {unbox3 :: t a b c}
 deriving instance (CanSwallow (Term sys) (t sys)) => CanSwallow (Term sys) (Box2 t sys)
 
 data Unit2 (a :: ka) (b :: kb) (c :: kc) = Unit2
-  deriving (Functor, Foldable, Traversable, Generic1, Show)
+  deriving (Functor, Foldable, Traversagble, Generic1, Show)
 deriving instance CanSwallow (Term sys) (Unit2 sys)
 
 data Void2 (a :: ka) (b :: kb) (c :: kc) = Void2 Void
