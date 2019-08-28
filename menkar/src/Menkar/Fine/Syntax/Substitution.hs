@@ -339,3 +339,8 @@ pattern FS :: forall t f x . (CanSwallow t f, Monad t) => () => f x -> FreeSwall
 pattern FS x <- (lowerFS -> x)
   where FS x = liftFS x
 {-# COMPLETE FS #-}
+
+instance NFData_ f => NFData_ (FreeSwallow t f) where
+  rnf_ (Unsubstituted fa) = rnf_ fa
+  rnf_ (Substitute h sfa) = rwhnf h `seq` rnf_ sfa
+  rnf_ (Rename h sfa) = rwhnf h `seq` rnf_ sfa

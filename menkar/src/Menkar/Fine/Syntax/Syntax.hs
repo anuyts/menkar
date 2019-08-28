@@ -25,6 +25,8 @@ import Control.Lens
 import Data.Void
 import Data.Kind hiding (Type)
 
+type SysAST sys = SysSyntax (Term sys) sys
+
 -------------------
 
 data Twice2 t (a :: ka) (b :: kb) = Twice2 {fstTwice2 :: t a b, sndTwice2 :: t a b}
@@ -309,7 +311,7 @@ deriving instance (
 
 {-| Variables are stored in REVERSE order, i.e. in order of De Bruijn index. -}
 newtype Dependencies (sys :: KSys) (v :: *) =
-  Dependencies {getDependencies :: Coyoneda (Compose [] (Mode sys :*: Term sys)) v}
+  Dependencies {getDependencies :: FreeSwallow (Term sys) (Compose [] (Mode sys :*: Term sys)) v}
 deriving instance (SysTrav sys) => Functor (Dependencies sys)
 deriving instance (SysTrav sys) => Foldable (Dependencies sys)
 deriving instance (SysTrav sys) => Traversable (Dependencies sys)
@@ -320,8 +322,10 @@ deriving instance (SysTrav sys) => NFData_ (Dependencies sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Dependencies sys)
 
-depcies2subst :: forall sys vOrig v . (SysTrav sys, DeBruijnLevel vOrig) => Dependencies sys v -> vOrig -> Term sys v
-depcies2subst (Dependencies (Coyoneda q (Compose dts))) vOrig = q <$> snd1 (atVarRev vOrig dts)
+depcies2subst :: forall sys vOrig v . (SysAST sys, DeBruijnLevel vOrig) => Dependencies sys v -> vOrig -> Term sys v
+depcies2subst (Dependencies depcies) vOrig = lowerFS $ hoistFS
+  (\(Compose dts) -> snd1 (atVarRev vOrig dts))
+  depcies
 
 {-| HS-Types should carry no level information whatsoever:
     you couldn't type-check it, as they are definitionally irrelevant in the level.
@@ -480,7 +484,7 @@ data TermNV (sys :: KSys) (v :: *) =
     (Dependencies sys v) {-^ Dependencies -}
     (Compose Maybe (Algorithm sys) v) {-^ Human readable representation -} |
   TermWildcard {-^ A meta that need not be solved. -} |
-  TermQName Raw.QName (Coyoneda (LeftDivided (Telescoped Type ValRHS) sys) v) |
+  TermQName Raw.QName (FreeSwallow (Term sys) (LeftDivided (Telescoped Type ValRHS) sys) v) |
   TermAlreadyChecked (Term sys v) (Type sys v) {-^ Term that has already been checked and need not be checked again. -} |
   TermAlgorithm
     (Algorithm sys v)
