@@ -1,5 +1,9 @@
-Using FreeSwallow (e85bf64)
-===========================
+Using FreeSwallow on ALL terms (256845c)
+========================================
+lib.menkar	SNEL RICHTING SWAP!
+
+Using FreeSwallow on dependencies and qnames (e85bf64)
+======================================================
 lib.menkar	<1s, <100MB
 lib & cong	5s, 500MB
 lib & uniDND	>30s, richting swap
