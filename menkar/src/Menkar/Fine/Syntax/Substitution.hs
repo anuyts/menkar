@@ -180,8 +180,8 @@ instance (CanSwallow e f, CanSwallow e g) => CanSwallow e (f :*: g) where
   swallow (fex :*: gex) = swallow fex :*: swallow gex
 
 instance (CanSwallow e h, Functor h, Traversable g, Applicative e) => CanSwallow e (h :.: g) where
-  substitute h (Comp1 hgx) = Comp1 $ substitute (traverse h) hgx
-  swallow (Comp1 hgex) = Comp1 $ substitute sequenceA hgex
+  substitute h (Comp1 hgx) = Comp1 $ substitute (uncoy . traverse (coy . h)) hgx
+  swallow (Comp1 hgex) = Comp1 $ substitute (uncoy . traverse coy) hgex
 
 --------------------------------------------
 
