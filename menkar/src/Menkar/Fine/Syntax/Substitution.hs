@@ -105,6 +105,7 @@ instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Applicative (Expr2 e a
 instance (Functor (e a), CanSwallow (Expr2 e a) (e a)) => Monad (Expr2 e a) where
   (>>=) = flip substitute
 
+-- Does not just refer to substLast, because here we avoid requiring applicativity by using Var2 instead of pure.
 substLast2 :: (Functor f, CanSwallow (Expr2 e a) f) => Expr2 e a v -> f (VarExt v) -> f v
 substLast2 ev fextv = substitute substLast' $ fextv
   where substLast' :: VarExt _ -> Expr2 _ _ _
