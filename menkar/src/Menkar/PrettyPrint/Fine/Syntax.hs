@@ -426,13 +426,13 @@ toSubscript :: String -> String
 toSubscript = map (\ char -> toEnum $ fromEnum char - 48 + 8320)
 
 instance (SysFinePretty sys,
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (termNV sys)) =>
-         Fine2Pretty sys (Expr2 termNV sys) where
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (TermNV sys)) =>
+         Fine2Pretty sys (Expr2 TermNV sys) where
   fine2pretty gamma (Var2 v) opts = var2pretty gamma v opts
   fine2pretty gamma (Expr2 t) opts = fine2pretty gamma t opts
 instance (SysFinePretty sys,
-         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (termNV sys)) =>
-         Show (Expr2 termNV sys Void) where
+         Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (TermNV sys)) =>
+         Show (Expr2 TermNV sys Void) where
   show e = "[Expr2|\n" ++ fine2string @sys ScCtxEmpty e omit ++ "\n|]"
 
 ----------------------
