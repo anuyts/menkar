@@ -282,10 +282,12 @@ instance (Foldable t, Foldable f) => Foldable (FreeSwallow t f) where
     foldMap (h . g) sfv
 
 instance (Traversable t, Traversable f) => Traversable (FreeSwallow t f) where
-  traverse (h :: v -> m u) (Unsubstituted fv) = Unsubstituted <$> traverse h fv
-  traverse (h :: w -> m u) (Substitute (g :: v -> t w) sfv) = Substitute id <$>
-    (traverse (traverse h . g :: v -> m (t u)) :: FreeSwallow t f v -> m (FreeSwallow t f (t u))) sfv
-  traverse (h :: w -> m u) (Rename (g :: v -> w) sfv) = traverse (h . g) sfv
+  traverse (h :: _ -> m _) sfv = uncoy $ aux h sfv
+    where aux :: forall u w . (w -> m u) -> FreeSwallow t f w -> Coyoneda m (FreeSwallow t f u)
+          aux h (Unsubstituted fw) = Unsubstituted <$> coy (traverse h fw)
+          aux h (Substitute (g :: v -> t w) sfv) = Substitute id <$>
+            (aux (traverse h . g :: v -> m (t u)) :: FreeSwallow t f v -> Coyoneda m (FreeSwallow t f (t u))) sfv
+          aux (h :: w -> m u) (Rename (g :: v -> w) sfv) = aux (h . g) sfv
     
 liftTraverseFS :: (Applicative m, Traversable f, Traversable t) =>
   (v -> m u) -> f v -> m (FreeSwallow t f u)
