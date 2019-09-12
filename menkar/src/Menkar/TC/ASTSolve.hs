@@ -18,6 +18,7 @@ import Data.Constraint.Witness
 import Data.Functor.Coyoneda.NF
 import Data.Functor.Coerce
 import Control.DeepSeq.Redone
+import Data.Traversable.Maybe
 
 import Data.Void
 import Control.Lens
@@ -263,7 +264,7 @@ tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 = have (wi
       -- It is assumed that a classifier's classifier needs no metas.
     (whnct2, _) <- runWriterT $ whnormalizeAST (sndCtx gamma) ct2 extraCT2 cct2 "Weak-head-normalize type of solution."
     --solve
-    case sequenceA $ partialInv <$> astAlreadyChecked @sys t2 ct2 of
+    case sequenceMaybe $ partialInv <$> astAlreadyChecked @sys t2 ct2 of
       Nothing ->
         return (Nothing, Just "Cannot solve meta-variable immediately: candidate solution may have more dependencies.")
       Just t2orig -> return (Just t2orig, Nothing)
