@@ -104,3 +104,6 @@ default-extensions:
 - EmptyDataDecls
 - QuantifiedConstraints
 - BangPatterns
+- DerivingVia
+- GeneralizedNewtypeDeriving
+- DerivingStrategies

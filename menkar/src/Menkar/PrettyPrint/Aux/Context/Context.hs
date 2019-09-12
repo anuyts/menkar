@@ -35,7 +35,7 @@ deriving instance (Functor mode, Functor modty, CanSwallow (Term sys) mode, CanS
 
 newtype ScSegment (sys :: KSys) (v :: *) = ScSegment {scSegment'name :: Maybe Raw.Name}
   deriving (Functor, Traversable, Foldable, Generic1)
-deriving instance (SysSyntax (Term sys) sys) =>
+deriving anyclass instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (ScSegment sys)
 segment2scSegment :: Segment ty sys v -> ScSegment sys v
 segment2scSegment fineSeg = ScSegment $ _segment'name fineSeg

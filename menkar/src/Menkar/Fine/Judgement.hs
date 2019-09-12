@@ -20,7 +20,7 @@ import Data.Functor.Identity
 import Data.Kind hiding (Type)
 --import Data.Functor.Compose
 
-newtype Eta = Eta {unEta :: Bool} deriving (Generic, NFData)
+newtype Eta = Eta {unEta :: Bool} deriving newtype NFData
 
 data Judgement (sys :: KSys) where
 

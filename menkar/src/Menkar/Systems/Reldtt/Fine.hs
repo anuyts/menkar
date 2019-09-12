@@ -60,9 +60,10 @@ data ModeTerm v = ModeTermZero | ModeTermSuc (Term Reldtt v) | ModeTermOmega
   deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
 
 newtype ReldttMode v = ReldttMode {getReldttMode :: Term Reldtt v}
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1)
+  deriving newtype (CanSwallow (Term Reldtt), NFData_)
 deriving instance Generic (ReldttMode v)
-deriving instance Wrapped (ReldttMode v)
+deriving anyclass instance Wrapped (ReldttMode v)
 --instance Wrapped (ReldttMode v) where
 --  Unwrapped (ReldttMode v) = Term Reldtt v
 --  _Wrapped f = dimap _ _

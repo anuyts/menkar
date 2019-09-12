@@ -26,6 +26,7 @@ instance Eq1 VarLeftExt where
 --newtype VarDiv v = VarDiv {runVarDiv :: v} deriving (Show, Functor, Foldable, Traversable)
 
 newtype VarInModule v = VarInModule {runVarInModule :: v}
-  deriving (Show, Functor, Foldable, Traversable, Eq, Generic1, NFData1)
+  deriving (Show, Functor, Foldable, Traversable, Eq, Generic1)
+  deriving anyclass NFData1
 instance Eq1 VarInModule where
   liftEq eq (VarInModule v1) (VarInModule v2) = eq v1 v2

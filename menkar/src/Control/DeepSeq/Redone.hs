@@ -122,7 +122,7 @@ instance NFData Bool where rnf = rwhnf
 
 deriving instance NFData Void
 
-deriving instance (NFData (g (f v))) => NFData ((Compose g f) v)
+deriving anyclass instance (NFData (g (f v))) => NFData ((Compose g f) v)
 
 ---------------------------------
 

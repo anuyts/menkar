@@ -4,7 +4,8 @@ import Control.DeepSeq.Redone
 
 import GHC.Generics
 
-newtype WorryID = WorryID {getWorryID :: Int} deriving (Generic, NFData)
+newtype WorryID = WorryID {getWorryID :: Int}
+  deriving newtype NFData
 instance Show WorryID where
   show (WorryID i) = show i
 
