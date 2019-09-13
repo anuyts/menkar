@@ -1,3 +1,9 @@
+Basic.Context: Use newtype deriving and coerce (a6b7159)
+========================================================
+lib.menkar	<1s, <100MB
+lib & cong	2s, <100MB
+lib & uniDND	8s, <100MB
+
 Fold instead of traverse (17a767f)
 ==================================
 lib.menkar	<1s, <100MB
