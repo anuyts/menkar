@@ -31,7 +31,7 @@ ctx2pretty :: forall v sys ty .
    SysFinePretty sys, Fine2Pretty sys (ty sys)) =>
   Ctx ty sys v -> Fine2PrettyOptions sys -> PrettyTree String
 ctx2pretty (CtxEmpty d) opts =
-  "{context-mode : " ++| fine2pretty (ScCtxEmpty) d opts |++ "}"
+  "{\127749 &(" ++| fine2pretty (ScCtxEmpty) d opts |++ ")}"
 ctx2pretty ((gamma :: Ctx ty sys w) :.. seg) opts = haveDB gamma $
   ctx2pretty gamma opts
     \+\ [

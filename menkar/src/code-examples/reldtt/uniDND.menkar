@@ -1,17 +1,17 @@
 //requires lib.menkar
 
 // Discrete universe of non-discrete types
-val *m0 UniDND {*m0 d : Mode} {*(forget (dsuc d))} : UniHS (dsuc d) ... = {*(disc0 ...)} -> UniHS d ...
+val *m0 UniDND {*m0 d : Mode} {*(forget (dsuc d))} : UniHS (dsuc d) ... = {@lock *(disc0 ...)} -> UniHS d ...
 // Parametric decoding operation
 val *m0 ElDND {~ *m0 d : Mode} {*(forget d)} {*(par ...) dndA : UniDND d ...} : UniHS d ... = dndA .{}
 // Discrete encoding operation
-val *m0 dnd {~ *m0 d : Mode} {*(forget (dsuc d))} {*(disc0 ...) A : UniHS d ...} : UniDND d ... = {} > A
+val *m0 dnd {~ *m0 d : Mode} {*(forget (dsuc d))} {*(disc0 ...) A : UniHS d ...} : UniDND d ... = {@lock} > A
 
 // Code of UniDND
-val *m0 dndUniDND {*m0 d : Mode} {*(forget (dsuc (dsuc d)))} : UniDND (dsuc d) ... = {} > UniDND d ...
+val *m0 dndUniDND {*m0 d : Mode} {*(forget (dsuc (dsuc d)))} : UniDND (dsuc d) ... = {@lock} > UniDND d ...
 
 // Code of Nat (other constant types are analogous)
-val *m0 dndNat {*m0 d : Mode} {*(forget (dsuc d))} : UniDND d ... = {} > Nat ...
+val *m0 dndNat {*m0 d : Mode} {*(forget (dsuc d))} : UniDND d ... = {@lock} > Nat ...
 
 /* Code of Pi
    Note that we postcompose mu with disc0 here, which effectively adds an `=` in front.
