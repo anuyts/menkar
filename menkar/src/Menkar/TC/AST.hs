@@ -128,7 +128,7 @@ checkSpecialAST gamma anErr t extraT maybeCT = do
       let commonCod = _leftDivided'originalMode $ ldivVal
       addNewConstraint
         (JudRel analyzableToken (Eta True) (coy $ Const ModLeq)
-          (duplicateCtx gamma)
+          (crispCtx $ duplicateCtx gamma)
           (Twice1
             (withDom $ _modApplied'modality . _leftDivided'content $ ldivModAppliedValRHS)
             (withDom $ _leftDivided'modality $ ldivModAppliedValRHS)

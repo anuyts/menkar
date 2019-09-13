@@ -1,0 +1,19 @@
+//This file is self-contained.
+
+val *[ : 0 -> 0] m0 : Modality d0 d0 = [ : 0 -> 0]
+val *m0 d2 : Mode = dsuc (dsuc d0)
+val *m0 forget : Modality d2 d0 = [ : 2 -> 0]
+val *m0 M2 : UniHS d0 ... = Modality d2 d2
+
+val flt : M2 = [= 1 : 2 -> 2]
+val flt@hoc : M2 = [= 0 : 2 -> 2]
+
+val hoc : M2 = [0 0 : 2 -> 2]
+val con : M2 = [0 1 : 2 -> 2]
+val shi : M2 = [0 T : 2 -> 2]
+val par : M2 = [1 1 : 2 -> 2]
+val shi&par : M2 = [1 T : 2 -> 2]
+val irr : M2 = [T T : 2 -> 2]
+
+val *forget UniDND : UniHS d2 ... = {@lock *flt@hoc} -> UniHS d2 ...
+val *forget ElDND {*par dndA : UniDND} : UniHS d2 ... = dndA .{}
