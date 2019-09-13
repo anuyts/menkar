@@ -112,6 +112,16 @@ instance DeBruijnLevel v => DeBruijnLevel (VarLeftExt v) where
 -}
 
 instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
+  eqVar = coerce (eqVar @v)
+  size = size @v
+  getDeBruijnLevel = coerce (getDeBruijnLevel @v)
+  getDeBruijnIndex = coerce (getDeBruijnIndex @v)
+  forDeBruijnLevel = coerce (forDeBruijnLevel @v)
+  forDeBruijnIndex = coerce (forDeBruijnIndex @v)
+  forallVars = (forallVars @v) . coerce
+  forallVarsRev = (forallVarsRev @v) . coerce
+  atVarRev = (atVarRev @v) . coerce
+{-
   eqVar = liftEq eqVar
   size = size @v
   getDeBruijnLevel (VarInModule v) = getDeBruijnLevel v
@@ -121,10 +131,21 @@ instance DeBruijnLevel v => DeBruijnLevel (VarInModule v) where
   forallVars f = forallVars $ f . VarInModule
   forallVarsRev f = forallVarsRev $ f . VarInModule
   atVarRev (VarInModule v) = atVarRev v
+-}
 
 --deriving instance Eq (f (g v)) => Eq (Compose f g v)
 instance (DeBruijnLevel (f (g v)),
           NFData (f (g v))) => DeBruijnLevel (Compose f g v) where
+  eqVar = coerce (eqVar @(f (g v)))
+  size = size @(f (g v))
+  getDeBruijnLevel = coerce (getDeBruijnLevel @(f (g v)))
+  getDeBruijnIndex = coerce (getDeBruijnIndex @(f (g v)))
+  forDeBruijnLevel = coerce (forDeBruijnLevel @(f (g v)))
+  forDeBruijnIndex = coerce (forDeBruijnIndex @(f (g v)))
+  forallVars = (forallVars @(f (g v))) . coerce
+  forallVarsRev = (forallVarsRev @(f (g v))) . coerce
+  atVarRev = (atVarRev @(f (g v))) . coerce
+{-
   eqVar (Compose fgv1) (Compose fgv2) = eqVar fgv1 fgv2
   size = size @(f (g v))
   getDeBruijnLevel (Compose v) = getDeBruijnLevel v
@@ -134,8 +155,19 @@ instance (DeBruijnLevel (f (g v)),
   forallVars f = forallVars $ f . Compose
   forallVarsRev f = forallVarsRev $ f . Compose
   atVarRev (Compose v) = atVarRev v
+-}
 
 instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
+  eqVar = coerce (eqVar @v)
+  size = size @v
+  getDeBruijnLevel = coerce (getDeBruijnLevel @v)
+  getDeBruijnIndex = coerce (getDeBruijnIndex @v)
+  forDeBruijnLevel = coerce (forDeBruijnLevel @v)
+  forDeBruijnIndex = coerce (forDeBruijnIndex @v)
+  forallVars = (forallVars @v) . coerce
+  forallVarsRev = (forallVarsRev @v) . coerce
+  atVarRev = (atVarRev @v) . coerce
+{-
   eqVar (Identity v1) (Identity v2) = eqVar v1 v2
   size = size @v
   getDeBruijnLevel (Identity v) = getDeBruijnLevel v
@@ -145,6 +177,7 @@ instance DeBruijnLevel v => DeBruijnLevel (Identity v) where
   forallVars f = forallVars $ f . Identity
   forallVarsRev f = forallVarsRev $ f . Identity
   atVarRev (Identity v) = atVarRev v
+-}
 
 ----------------------------------
 
