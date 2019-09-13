@@ -44,7 +44,7 @@ ctx2pretty (gamma :<...> modul) opts = haveDB gamma $
       \+\ [
         let printModule = moduleContents2pretty (ctx2scCtx gamma) (modul)
                             $ opts & fine2pretty'printModule .~ p
-        in ribbon "{" \\\ printModule /// ribbon "}"
+        in ribbon " {\128194 " \\\ printModule /// ribbon "}"
       ]
 ctx2pretty (dmu :\\ gamma) opts = haveDB gamma $
   ctx2pretty gamma opts \+\ [
