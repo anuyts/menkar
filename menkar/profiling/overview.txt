@@ -1,3 +1,15 @@
+Several changes (17a767f)
+=========================
+- fold instead of traverse
+- newtype deriving wherever possible
+- inline coy & liftFS etc
+- more efficient substitution under bindings
+- more efficient traverse for FreeSwallow
+- don't use FreeSwallow on ALL terms
+lib.menkar	<1s, <100MB
+lib & cong	2s, <100MB
+lib & uniDND	7s, <100MB
+
 Using FreeSwallow on ALL terms (256845c)
 ========================================
 lib.menkar	SNEL RICHTING SWAP!
