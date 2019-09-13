@@ -16,29 +16,29 @@ val *m0 dndNat {*m0 d : Mode} {*(forget (dsuc d))} : UniDND d ... = {@lock} > Na
 /* Code of Pi
    Note that we postcompose mu with disc0 here, which effectively adds an `=` in front.
    This is different from what we see in the paper, where we add a `0` in front.
-   This difference is not fundamental, but an artefact of compromises we had to make to achieve decidable type-checking with open modalities.
+
+   For `dndA` difference is not fundamental, but an artefact of compromises we had to make to achieve decidable type-checking with open modalities.
    We did not find a way to allow the insertion of a 0 in front of an arbitrary modality.
    However, for concrete modalities, we can have the same modality as in the paper, simply by using box induction on the domain type.
+
+   For `dndB`, the difference may be more fundamental. The problem is that the box-rule does not seem to be internally invertible.
+
+   If we have both the transpension type and modalities in the same system (long term goal),
+   then we should be able to prove the proper action on degrees of relatedness propositionally.
 */
-// Probably wrong.
 val *m0 dndPi
 	{~ *m0 dom cod : Mode} 
 	{*m0 mu : Modality dom cod} 
-	{*(forget (dsuc cod))}
+	{@lock *(forget (dsuc cod))}
 	{*(disc0 ... @m mu @m par ...) dndA : UniDND dom ...}
-	{*(con ...) dndB : {*(?parmu) a : ElDND dndA} -> UniDND cod ...}
+	{*[= : 1 -> 1 | cont cod] dndB : {*(disc0 ... @m mu) a : ElDND dndA} -> UniDND cod ...}
 	: UniDND cod ...
-	= dnd ({*mu a : ElDND dndA} -> indBox
-		({*(par ...) _ : UniDND cod ...} > UniHS cod ...)
-		({*(con ...) B : UniHS  cod ...} > B)
-		(dndB a)
-	)
+	= dnd ({*mu a : ElDND dndA} -> ElDND (dndB a))
 
-
-//indBox ({*(con ...) _} > UniDND cod ...)
-//		(B > dnd ({*mu a : ElDND dndA} -> ElDND (dndB a)))
-
-
-
-//dnd ({*mu a : ElDND dndA} -> ElDND (dndB a))
-//dnd $ {*mu a : ElDND dndA} -> ElDND $ dndB a
+val *m0 (==dnd)
+	{~ *m0 d : Mode}
+	{@lock *(forget (dsuc d))}
+	{~ *[= : 1 -> 1 | cont d] dndA : UniDND d ...}
+	{*(disc0 ...) a1 a2 : ElDND dndA}
+	: UniDND d ...
+	= dnd (a1 == .{A = ElDND dndA} a2)
