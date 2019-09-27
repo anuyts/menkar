@@ -601,29 +601,32 @@ declaration' :: forall sys sc v rawDeclSort fineDeclSort content .
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
   Ctx Type sys v ->
   Raw.Declaration sys rawDeclSort ->
+  (forall w . DeBruijnLevel w => Ctx Type sys w -> Raw.DeclContent sys rawDeclSort -> sc (content sys w)) ->
   sc [Declaration fineDeclSort (Telescoped Type content) sys v]
-declaration' gamma rawDecl = do
+declaration' gamma rawDecl scopeContent = do
   --annotations
   fineAnnots <- annotations gamma (Raw.decl'annotations rawDecl)
   when (_annotations'lock fineAnnots) $ scopeFail "You used an `@lock` annotation on something that is not a modal lock."
   let dmu = _annotations'dmu fineAnnots
   let gamma' = dmu :\\ gamma
   --names
-  fineNames :: [DeclName fineDeclSort] <- case Raw.decl'names rawDecl of
-    Raw.DeclNamesSegment maybeNames -> return $ DeclNameSegment <$> maybeNames
+  (fineNames :: [DeclName fineDeclSort], applicableOpts) <- case Raw.decl'names rawDecl of
+    Raw.DeclNamesSegment maybeNames -> return $ (DeclNameSegment <$> maybeNames, segOpts)
     Raw.DeclNamesToplevelModule qstr -> unreachable
-    Raw.DeclNamesModule str -> return $ [DeclNameModule str]
-    Raw.DeclNamesVal name -> return $ [DeclNameVal name]
+    Raw.DeclNamesModule str -> return $ ([DeclNameModule str], entryOpts)
+    Raw.DeclNamesVal name -> return $ ([DeclNameVal name], entryOpts)
   --telescope
   fineDelta <- telescope gamma' $ Raw.decl'telescope rawDecl
   --content
-  fineContent <- _
+  fineContent <- mapTelescopedDB (
+       \ wkn gamma'delta Unit2 -> scopeContent gamma'delta (Raw.decl'content rawDecl)
+    ) gamma' fineDelta
   --return result
   return $ fineNames <&> \fineName -> Declaration
     fineName
     dmu
     (fromMaybe Explicit $ getCompose $ _annotations'plicity fineAnnots)
-    (_applicableOpts & declOpts'flush %~ (fromMaybe id $ const <$> _annotations'flush fineAnnots))
+    (applicableOpts & declOpts'flush %~ (fromMaybe id $ const <$> _annotations'flush fineAnnots))
     fineContent
 
 segment' :: 
@@ -632,7 +635,9 @@ segment' ::
   Raw.Segment sys ->
   sc (Telescoped Type Unit2 sys v)
 segment' gamma (Raw.Segment rawDecl) = do
-  fineTelescopedSegs <- declaration' gamma rawDecl
+  fineTelescopedSegs <- declaration' gamma rawDecl $ \ gammadelta rawContent -> case rawContent of
+    Raw.DeclContent rawExpr -> Type <$> expr gammadelta rawExpr
+    Raw.DeclContentEmpty -> newMetaTypeNoCheck gammadelta "Infer type."
   fineSegs <- fineTelescopedSegs & (traverse . decl'content $ \ case
       Telescoped ty -> return ty
       otherwise -> scopeFail $ "Encountered a telescope in a segment."
