@@ -539,6 +539,15 @@ deriving instance (SysTrav sys) => NFData_ (Annotation sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (Annotation sys)
 
+data Annotations (sys :: KSys) v = Annotations {
+  _annotations'dmu :: ModalityTo sys v,
+  _annotations'plicity :: Compose Maybe (Plicity sys) v,
+  _annotations'flush :: Maybe Bool,
+  _annotations'lock :: Bool
+  } deriving (Functor, Foldable, Traversable, Generic1, NFData_)
+deriving instance (SysSyntax (Term sys) sys) =>
+  CanSwallow (Term sys) (Annotations sys)
+
 data Plicity (sys :: KSys) v =
   Explicit |
   Implicit |

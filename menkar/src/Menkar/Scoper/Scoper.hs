@@ -31,6 +31,7 @@ import Data.Coerce
 import Control.Lens
 import Data.List
 import GHC.Generics
+import Data.Maybe
 
 ---------------------------
 
@@ -353,6 +354,41 @@ annotation gamma (Raw.Annotation "@" (Just e)) = case e of
 annotation gamma (Raw.Annotation annotName maybeRawArg) = do
   scopeAnnotation gamma annotName maybeRawArg
 
+annotations :: forall sys sc v .
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v ->
+  [Raw.Annotation sys] ->
+  sc (Annotations sys v)
+annotations gamma rawAnnots = do
+  fineAnnots <- sequenceA $ annotation gamma <$> rawAnnots
+  (maybeDom, maybeMu, maybePlicity, maybeFlush, lockEncountered)
+    <- flip execStateT (Nothing, Nothing, Nothing, Nothing, False) $ forM_ fineAnnots $ \ case
+    AnnotMode fineMode -> use _1 >>= \ case
+      Just _ -> scopeFail $ "Encountered multiple mode annotations."
+      Nothing -> _1 .= Just fineMode
+    AnnotModality fineModty -> use _2 >>= \ case
+      Just _ -> scopeFail $ "Encountered multiple modality annotations."
+      Nothing -> _2 .= Just fineModty
+    AnnotImplicit -> _3 .= Just Implicit
+    AnnotFlush flush -> _4 .= Just flush
+    AnnotLock -> _5 .= True
+  {-dom <- case maybeDom of
+    Nothing -> newMetaModeNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring domain of modality."
+    Just dom -> return dom-}
+  -- We don't want to complain about `@lock` in lambdas, so the easiest way is not to complain at all.
+  -- unless lockEncountered $ scopeFail "Missing `@lock` annotation in a modal lock."
+  mu <- case maybeMu of
+    Nothing -> newMetaModtyNoCheck (crispCtx gamma) "Inferring modality."
+    Just mu -> return mu
+  let dom = case maybeDom of
+        Nothing -> _modality'dom mu
+        Just dom -> dom
+  return $ Annotations
+    (ModalityTo dom mu)
+    (Compose maybePlicity)
+    maybeFlush
+    lockEncountered
+
 type family ScopeDeclSort (rawDeclSort :: Raw.DeclSort) :: DeclSort
 type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
 type instance ScopeDeclSort (Raw.DeclSortModule False) = DeclSortModule
@@ -542,29 +578,15 @@ modalLock ::
 modalLock gamma (Raw.ModalLock rawAnnots) = do
   let dgamma' = ctx'mode gamma
       dgamma = dgamma'
-  fineAnnots <- sequenceA $ annotation gamma <$> rawAnnots
-  (maybeDom, maybeMu, lockEncountered) <- flip execStateT (Nothing, Nothing, False) $ forM_ fineAnnots $ \ case
-    AnnotMode fineMode -> use _1 >>= \ case
-      Just _ -> scopeFail $ "Encountered multiple mode annotations."
-      Nothing -> _1 .= Just fineMode
-    AnnotModality fineModty -> use _2 >>= \ case
-      Just _ -> scopeFail $ "Encountered multiple modality annotations."
-      Nothing -> _2 .= Just fineModty
-    AnnotImplicit -> scopeFail $ "Encountered plicity annotation in a modal lock."
-    AnnotFlush _ -> scopeFail $ "Encountered flush annotation in a modal lock."
-    AnnotLock -> _3 .= True
-  {-dom <- case maybeDom of
-    Nothing -> newMetaModeNoCheck (crispModalityTo dgamma' :\\ gamma) "Inferring domain of modality."
-    Just dom -> return dom-}
-  -- We don't want to complain about `@lock` in lambdas, so the easiest way is not to complain at all.
-  -- unless lockEncountered $ scopeFail "Missing `@lock` annotation in a modal lock."
-  mu <- case maybeMu of
-    Nothing -> newMetaModtyNoCheck (crispCtx gamma) "Inferring modality."
-    Just mu -> return mu
-  let dom = case maybeDom of
-        Nothing -> _modality'dom mu
-        Just dom -> dom
-  return $ ModalityTo dom mu
+  fineAnnots <- annotations gamma rawAnnots
+  when (isJust $ getCompose $ _annotations'plicity fineAnnots) $
+    scopeFail $ "Encountered plicity annotation in a modal lock."
+  when (isJust $ _annotations'flush fineAnnots) $
+    scopeFail $ "Encountered flush annotation in a modal lock."
+  -- The lock annotation should not be obligatory in lambdas (box constructors), so not at all for simplicity.
+  --unless (_annotations'lock fineAnnots) $
+  --  scopeFail $ "Missing `@lock` annotation in a modal lock."
+  return $ _annotations'dmu fineAnnots
 
 segment ::
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
@@ -574,6 +596,48 @@ segment ::
 segment gamma (Raw.Segment rawDecl) = do
   partialSeg <- partialSegment gamma rawDecl
   segments2telescoped gamma =<< buildSegment gamma partialSeg
+
+declaration' :: forall sys sc v rawDeclSort fineDeclSort content .
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
+  Ctx Type sys v ->
+  Raw.Declaration sys rawDeclSort ->
+  sc [Declaration fineDeclSort (Telescoped Type content) sys v]
+declaration' gamma rawDecl = do
+  --annotations
+  fineAnnots <- annotations gamma (Raw.decl'annotations rawDecl)
+  when (_annotations'lock fineAnnots) $ scopeFail "You used an `@lock` annotation on something that is not a modal lock."
+  let dmu = _annotations'dmu fineAnnots
+  let gamma' = dmu :\\ gamma
+  --names
+  fineNames :: [DeclName fineDeclSort] <- case Raw.decl'names rawDecl of
+    Raw.DeclNamesSegment maybeNames -> return $ DeclNameSegment <$> maybeNames
+    Raw.DeclNamesToplevelModule qstr -> unreachable
+    Raw.DeclNamesModule str -> return $ [DeclNameModule str]
+    Raw.DeclNamesVal name -> return $ [DeclNameVal name]
+  --telescope
+  fineDelta <- telescope gamma' $ Raw.decl'telescope rawDecl
+  --content
+  fineContent <- _
+  --return result
+  return $ fineNames <&> \fineName -> Declaration
+    fineName
+    dmu
+    (fromMaybe Explicit $ getCompose $ _annotations'plicity fineAnnots)
+    (_applicableOpts & declOpts'flush %~ (fromMaybe id $ const <$> _annotations'flush fineAnnots))
+    fineContent
+
+segment' :: 
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v ->
+  Raw.Segment sys ->
+  sc (Telescoped Type Unit2 sys v)
+segment' gamma (Raw.Segment rawDecl) = do
+  fineTelescopedSegs <- declaration' gamma rawDecl
+  fineSegs <- fineTelescopedSegs & (traverse . decl'content $ \ case
+      Telescoped ty -> return ty
+      otherwise -> scopeFail $ "Encountered a telescope in a segment."
+    )
+  segments2telescoped gamma fineSegs
 
 {-| scope a partly fine, partly raw telescope to a fine telescope. -}
 telescope2 :: forall sys sc v .
