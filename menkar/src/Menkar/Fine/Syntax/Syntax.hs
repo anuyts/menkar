@@ -630,54 +630,8 @@ deriving instance (
     CanSwallow (Term sys) (content sys)
   ) => CanSwallow (Term sys) (Declaration declSort content sys)
 
-data TelescopedPartialDeclaration
-     {-| Type of the thing that lives in the context. Typically @'Type'@ or @'Pair3' 'Type'@ or some RHS-}
-     (declSort :: Raw.DeclSort)
-     (ty :: KSys -> * -> *)
-     (content :: KSys -> * -> *)
-     (sys :: KSys)
-     (v :: *) =
-  TelescopedPartialDeclaration {
-    _pdecl'names :: Maybe (Raw.DeclNames declSort),
-    _pdecl'mode :: Compose Maybe (Mode sys) v,
-    _pdecl'modty :: Compose Maybe (Modality sys) v,
-    _pdecl'plicity :: Compose Maybe (Plicity sys) v,
-    _pdecl'opts :: DeclOptions,
-    _pdecl'content :: Telescoped ty (Maybe2 content) sys v
-    }
-deriving instance (SysTrav sys, Functor (ty sys), Functor (content sys))
-  => Functor (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (SysTrav sys, Foldable (ty sys), Foldable (content sys))
-  => Foldable (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (SysTrav sys, Traversable (ty sys), Traversable (content sys))
-  => Traversable (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance Generic1 (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (SysTrav sys, NFData_ (ty sys), Functor (ty sys), NFData_ (content sys), Functor (content sys))
-  => NFData_ (TelescopedPartialDeclaration declSort ty content sys)
-deriving instance (
-    SysSyntax (Term sys) sys,
-    Functor (ty sys),
-    Functor (content sys),
-    CanSwallow (Term sys) (ty sys),
-    CanSwallow (Term sys) (content sys)
-  ) => CanSwallow (Term sys) (TelescopedPartialDeclaration declSort ty content sys)
-  
-newPartialDeclaration :: DeclOptions -> TelescopedPartialDeclaration declSort ty content sys v
-newPartialDeclaration opts = TelescopedPartialDeclaration {
-  _pdecl'names = Nothing,
-  _pdecl'mode = Compose Nothing,
-  _pdecl'modty = Compose Nothing,
-  _pdecl'plicity = Compose Nothing,
-  _pdecl'opts = opts,
-  _pdecl'content = Telescoped $ Maybe2 $ Compose $ Nothing
-  }
-
 --type TelescopedDeclaration declSort ty content = Telescoped ty (Declaration declSort content)
 type Segment ty = Declaration DeclSortSegment ty
-
---type TelescopedPartialDeclaration declSort ty content = Telescoped ty (PartialDeclaration declSort content)
--- | Partial segments should have an untelescoped type.
-type PartialSegment ty = TelescopedPartialDeclaration Raw.DeclSortSegment Type ty
 
 {-
 _tdecl'name :: TelescopedDeclaration declSort ty content sys v -> DeclName declSort
@@ -844,7 +798,6 @@ type LHS declSort ty = Declaration declSort (Telescope ty)
 
 makeLenses ''Declaration
 makeLenses ''DeclOptions
-makeLenses ''TelescopedPartialDeclaration
 makeLenses ''LeftDivided
 makeLenses ''NamedBinding
 makeLenses ''ModalityTo
