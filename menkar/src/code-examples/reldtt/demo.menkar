@@ -1,0 +1,9 @@
+// con = [0 1 2 ... d-1 : d -> d]
+val con {d : Mode} : Modality d d = [: 0 -> 0 | cont d]
+
+// forget = [: d -> 0]
+val forget {d : Mode} : Modality d d0 = [: 0 -> 0 | forget d]
+
+val &d0 id {~ d : Mode} {@lock *(forget d)} {~ *(con d) A : UniHS d ...} {*(con d) a : A}
+	: A
+	= a
