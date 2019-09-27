@@ -1,19 +1,51 @@
 //This file is self-contained.
 
+//Here we reproduce the modality system of (the model of) ParamDTT as the mode 2 fragment of RelDTT.
+
+//The unique modality from 0 to 0
 val *[ : 0 -> 0] m0 : Modality d0 d0 = [ : 0 -> 0]
+//Mode 2
 val *m0 d2 : Mode = dsuc (dsuc d0)
+//Forgetful modality
 val *m0 forget : Modality d2 d0 = [ : 2 -> 0]
+//Type of endomodalities at mode 2
 val *m0 M2 : UniHS d0 ... = Modality d2 d2
 
+//b - the flat modality
 val flt : M2 = [= 1 : 2 -> 2]
+//b¶ - flat after hoc
 val flt@hoc : M2 = [= 0 : 2 -> 2]
 
+//¶ - ad hoc polymorphism
 val hoc : M2 = [0 0 : 2 -> 2]
+//id - continuity
 val con : M2 = [0 1 : 2 -> 2]
+//.. - shape-irrelevance
 val shi : M2 = [0 T : 2 -> 2]
+//# - parametricity
 val par : M2 = [1 1 : 2 -> 2]
+//least upper bound of shape-irrelevance and parametricity
 val shi&par : M2 = [1 T : 2 -> 2]
+//. - irrelevance
 val irr : M2 = [T T : 2 -> 2]
 
+//discrete universe of non-discrete types, b¶ UniHS
 val *forget UniDND : UniHS d2 ... = {@lock *flt@hoc} -> UniHS d2 ...
 val *forget ElDND {*par dndA : UniDND} : UniHS d2 ... = dndA .{}
+
+//Code of Nat (other constant types are analogous)
+val *forget dndNat : UniDND = {@lock} > Nat ...
+
+val *forget (==dnd)
+	{*con dndA : UniDND}
+	{*par a1 a2 : UniDND}
+	: UniDND
+	= ({@lock} > a1) == .{A = {@lock *par} -> ElDND dndA} ({@lock} > a2)
+
+/*
+//Code of Pi (general, not entirely as it should be...)
+val *m0 dndPi
+	{*m0 mu : M2}
+	{@lock *forget}
+	{}
+*/

@@ -42,3 +42,16 @@ val *m0 (==dnd)
 	{*(disc0 ...) a1 a2 : ElDND dndA}
 	: UniDND d ...
 	= dnd (a1 == .{A = ElDND dndA} a2)
+
+/*
+val *m0 (==dnd)
+	{~ *m0 d : Mode}
+	{@lock *(forget (dsuc d))}
+	{~ *(con ...) dndA : UniDND d ...}
+	{*(disc0 ...) a1 a2 : ElDND dndA}
+	: UniDND d ...
+	= indBox
+		({*(con ...) A : UniDND d ...} -> A -> A -> UniDND ...)
+		(A > (==) .{A})
+		dndA a1 a2
+*/
