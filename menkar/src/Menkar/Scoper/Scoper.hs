@@ -751,6 +751,18 @@ modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
     ) gamma
 --modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
 
+{-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
+modul' :: forall sys sc v .
+  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
+  Ctx Type sys v ->
+  Raw.Declaration sys (Raw.DeclSortModule False) ->
+  Raw.RHS sys (Raw.DeclSortModule False) ->
+  sc (Module sys v)
+modul' gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
+  [fineLHS] <- declaration' gamma rawLHS $
+    \ gammadelta _ -> entriesInModule gammadelta rawEntries newModule
+  return fineLHS
+
 entry :: forall sys sc v rawDeclSort .
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v ->
