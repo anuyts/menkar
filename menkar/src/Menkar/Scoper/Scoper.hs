@@ -32,6 +32,7 @@ import Control.Lens
 import Data.List
 import GHC.Generics
 import Data.Maybe
+import Data.Functor.Coerce
 
 ---------------------------
 
@@ -394,163 +395,6 @@ type instance ScopeDeclSort Raw.DeclSortVal = DeclSortVal
 type instance ScopeDeclSort (Raw.DeclSortModule False) = DeclSortModule
 type instance ScopeDeclSort Raw.DeclSortSegment = DeclSortSegment
 
-{- | @'buildDeclaration' gamma generateContent partDecl@ builds a list of telescoped declarations out of @partDecl@.
-
-     For now, arguments written between the same accolads, are required to have the same type.
-     The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
--}
-buildDeclaration :: forall sys sc v rawDeclSort fineDeclSort content .
-  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v,
-   ScopeDeclSort rawDeclSort ~ fineDeclSort, Functor (Type sys)) =>
-  Ctx Type sys v ->
-  {-| How to generate content if absent in the partial telescoped declaration. -}
-  (forall w . DeBruijnLevel w => Ctx Type sys w -> sc (content sys w)) ->
-  TelescopedPartialDeclaration rawDeclSort Type content sys v ->
-  sc [Declaration fineDeclSort (Telescoped Type content) sys v]
-buildDeclaration gamma generateContent partDecl = do
-        let dgamma' = ctx'mode gamma
-            dgamma = dgamma'
-        -- allocate all implicits BEFORE name fork
-        mu <- case _pdecl'modty partDecl of
-          Compose (Just mu') -> return mu'
-          Compose Nothing -> newMetaModtyNoCheck (crispCtx gamma) "Infer modality."
-        let d = case _pdecl'mode partDecl of
-              Compose (Just d') -> d'
-              Compose Nothing -> _modality'dom mu
-        let plic = case _pdecl'plicity partDecl of
-              Compose (Just plic') -> plic'
-              Compose Nothing -> Explicit
-        telescopedContent <- mapTelescopedDB (
-            \ wkn gammadelta (Maybe2 content) -> case content of
-              Compose (Just content') -> return content'
-              Compose (Nothing) -> generateContent gammadelta
-          ) gamma $ _pdecl'content partDecl
-          {-case _pdecl'content partDecl of
-          Compose (Just ty') -> return ty'
-          Compose Nothing -> lift $ generateContent-}
-            --type4newImplicit gammadelta {- TODO adapt this for general telescoped declarations. -}
-        names <- case _pdecl'names partDecl of
-          Nothing -> assertFalse $ "Nameless partial declaration!"
-          Just (Raw.DeclNamesSegment maybeNames) -> return $ DeclNameSegment <$> maybeNames
-          Just (Raw.DeclNamesToplevelModule qname) -> assertFalse $ "Didn't expect a toplevel module here."
-          Just (Raw.DeclNamesModule string) -> return $ [DeclNameModule string]
-          Just (Raw.DeclNamesVal name) -> return $ [DeclNameVal name]
-            --ListT . nameHandler $ _pdecl'names partDecl
-        return $ names <&> \ name -> Declaration {
-          _decl'name = name,
-          _decl'modty = ModalityTo d mu, --ModedModality d dgamma mu,
-          _decl'plicity = plic,
-          _decl'opts = _pdecl'opts partDecl,
-          _decl'content = telescopedContent
-          }
-
-{-
-{- | @'buildTelescopedDeclaration' gamma generateContent partTDecl@ builds a list of telescoped declarations out of @partTDecl@.
-
-     For now, arguments written between the same accolads, are required to have the same type.
-     The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
--}
-buildTelescopedDeclaration :: (MonadScoper sys sc, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
-  Ctx Type sys v Void ->
-  {-| How to generate content if absent in the partial telescoped declaration. -}
-  (forall w . Ctx Type sys w Void -> sc (content sys w)) ->
-  TelescopedPartialDeclaration rawDeclSort Type content sys v ->
-  sc [TelescopedDeclaration fineDeclSort Type content sys v]
-buildTelescopedDeclaration gamma generateContent partTDecl = runListT $ mapTelescopedDBSc (
-    \ wkn gammadelta partDecl -> ListT $ buildDeclaration gammadelta (generateContent gammadelta) partDecl
-  ) gamma partTDecl
--}
-
-{- | @'buildSegment' gamma partSeg@ builds a list of segments out of @partSeg@.
-
-     For now, arguments written between the same accolads, are required to have the same type.
-     The only alternative that yields sensible error messages, is to give them different, interdependent types (as in Agda).
--}
-buildSegment :: forall sys sc v .
-  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
-  Ctx Type sys v ->
-  PartialSegment Type sys v -> -- ~ TelescopedPartialDeclaration Raw.DeclSortSegment Type Type sys v
-  sc [Segment Type sys v]
-buildSegment gamma partSeg = do
-  teleSegs :: [Segment (Telescoped Type Type) sys v]
-              -- ~ [Declaration DeclSortSegment (Telescoped Type Type) sys v]
-           <- let gen gamma = Type <$> newMetaTermNoCheck {-eqDeg-} gamma MetaBlocked Nothing "Infer type."
-              in  buildDeclaration gamma gen partSeg
-  return $ teleSegs <&> decl'content %~ \ case
-    Telescoped seg -> seg
-    (seg' :|- seg) -> unreachable
-    (mu :** seg) -> unreachable
-    
-{-| @'partialTelescopedDeclaration' gamma rawDecl@ scopes @rawDecl@ (possibly a segment)
-    to a partial telescoped declaration. -}
-partialTelescopedDeclaration :: forall sys sc v rawDeclSort .
-  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
-  Ctx Type sys v ->
-  Raw.Declaration sys rawDeclSort ->
-  DeclOptions ->
-  sc (TelescopedPartialDeclaration rawDeclSort Type Type sys v)
-partialTelescopedDeclaration gamma rawDecl fineOpts = (flip execStateT $ newPartialDeclaration fineOpts) $ do
-  --telescope
-  fineDelta <- telescope gamma $ Raw.decl'telescope rawDecl
-  --names
-  pdecl'names .= (Just $ Raw.decl'names rawDecl)
-  --type
-  fineContent <- mapTelescopedDB (
-      \wkn gammadelta Unit2 -> case Raw.decl'content rawDecl of
-        Raw.DeclContentEmpty -> return $ Maybe2 $ Compose $ Nothing
-        Raw.DeclContent rawTy -> Maybe2 . Compose . Just <$> do
-          --fineLvl <- term4newImplicit gammadelta
-          Type <$> expr gammadelta rawTy
-    ) gamma fineDelta
-  pdecl'content .= fineContent
-  --annotations
-  fineAnnots <- sequenceA $ annotation gamma <$> Raw.decl'annotations rawDecl
-  forM_ fineAnnots $
-            \ fineAnnot ->
-              case fineAnnot of
-                AnnotMode fineMode -> do
-                  -- _Wrapped' is a lens for Compose
-                  maybeOldFineMode <- use $ pdecl'mode._Wrapped'
-                  case maybeOldFineMode of
-                    Just oldFineMode -> scopeFail $ "Encountered multiple mode annotations: " ++ Raw.unparse rawDecl
-                    Nothing -> pdecl'mode._Wrapped' .= Just fineMode
-                AnnotModality fineModty -> do
-                  maybeOldFineModty <- use $ pdecl'modty._Wrapped'
-                  case maybeOldFineModty of
-                    Just oldFineModty -> scopeFail $ "Encountered multiple modality annotations: " ++ Raw.unparse rawDecl
-                    Nothing -> pdecl'modty._Wrapped' .= Just fineModty
-                AnnotImplicit -> do
-                  maybeOldFinePlicity <- use $ pdecl'plicity._Wrapped'
-                  case maybeOldFinePlicity of
-                    Just oldFinePlicity -> scopeFail $ "Encountered multiple visibility annotations: " ++ Raw.unparse rawDecl
-                    Nothing -> pdecl'plicity._Wrapped' .= Just Implicit
-                AnnotFlush flushFlag -> do
-                  pdecl'opts . declOpts'flush .= flushFlag
-                AnnotLock -> scopeFail $ "Illegal `@lock` annotation on segment or declaration."
-  return ()
-
-{-| @'partialSegment' gamma rawSeg@ scopes @rawSeg@ to a partial segment. -}
-partialSegment :: forall sys sc v .
-  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
-  Ctx Type sys v ->
-  Raw.Declaration sys Raw.DeclSortSegment ->
-  --sc [Segment Type sys v]
-  sc (PartialSegment Type sys v)
-partialSegment gamma rawSeg = do
-  telescopedPartSeg :: PartialSegment Type sys v
-    <- partialTelescopedDeclaration gamma rawSeg segOpts
-  case _pdecl'content telescopedPartSeg of
-    Telescoped (Maybe2 ty) -> return telescopedPartSeg
-      --old code, but it does nothing:
-      --flip pdecl'content telescopedPartSeg $ \_ -> return $ Telescoped $ Maybe2 ty
-    _ -> unreachable -- nested segments encountered
-
-{-
-  case telescopedPartSeg of
-    Telescoped partSeg -> return partSeg
-    _ -> unreachable -- nested segments encountered
--}
-
 {-| Chain a list of fine segments to a fine telescope; while avoiding shadowing. -}
 segments2telescoped :: forall sys sc v .
   (SysScoper sys, MonadScoper sys sc, SysTrav sys) =>
@@ -588,22 +432,13 @@ modalLock gamma (Raw.ModalLock rawAnnots) = do
   --  scopeFail $ "Missing `@lock` annotation in a modal lock."
   return $ _annotations'dmu fineAnnots
 
-segment ::
-  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
-  Ctx Type sys v ->
-  Raw.Segment sys ->
-  sc (Telescoped Type Unit2 sys v)
-segment gamma (Raw.Segment rawDecl) = do
-  partialSeg <- partialSegment gamma rawDecl
-  segments2telescoped gamma =<< buildSegment gamma partialSeg
-
-declaration' :: forall sys sc v rawDeclSort fineDeclSort content .
+declaration :: forall sys sc v rawDeclSort fineDeclSort content .
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v, ScopeDeclSort rawDeclSort ~ fineDeclSort) =>
   Ctx Type sys v ->
   Raw.Declaration sys rawDeclSort ->
   (forall w . DeBruijnLevel w => Ctx Type sys w -> Raw.DeclContent sys rawDeclSort -> sc (content sys w)) ->
   sc [Declaration fineDeclSort (Telescoped Type content) sys v]
-declaration' gamma rawDecl scopeContent = do
+declaration gamma rawDecl scopeContent = do
   --annotations
   fineAnnots <- annotations gamma (Raw.decl'annotations rawDecl)
   when (_annotations'lock fineAnnots) $ scopeFail "You used an `@lock` annotation on something that is not a modal lock."
@@ -629,13 +464,13 @@ declaration' gamma rawDecl scopeContent = do
     (applicableOpts & declOpts'flush %~ (fromMaybe id $ const <$> _annotations'flush fineAnnots))
     fineContent
 
-segment' :: 
+segment :: 
   (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
   Ctx Type sys v ->
   Raw.Segment sys ->
   sc (Telescoped Type Unit2 sys v)
-segment' gamma (Raw.Segment rawDecl) = do
-  fineTelescopedSegs <- declaration' gamma rawDecl $ \ gammadelta rawContent -> case rawContent of
+segment gamma (Raw.Segment rawDecl) = do
+  fineTelescopedSegs <- declaration gamma rawDecl $ \ gammadelta rawContent -> case rawContent of
     Raw.DeclContent rawExpr -> Type <$> expr gammadelta rawExpr
     Raw.DeclContentEmpty -> newMetaTypeNoCheck gammadelta "Infer type."
   fineSegs <- fineTelescopedSegs & (traverse . decl'content $ \ case
@@ -680,20 +515,10 @@ val :: forall sys sc v .
   Raw.RHS sys Raw.DeclSortVal ->
   sc (Val sys v)
 val gamma rawLHS (Raw.RHSVal rawExpr) = do
-  partialLHS :: TelescopedPartialDeclaration Raw.DeclSortVal Type Type sys v
-    <- partialTelescopedDeclaration gamma rawLHS entryOpts
-  [fineLHS] :: [Declaration DeclSortVal (Telescoped Type Type) sys v]
-            <- let gen gamma = Type <$> newMetaTermNoCheck {-eqDeg-} gamma MetaBlocked Nothing "Infer type."
-               in  buildDeclaration gamma gen partialLHS
-  val :: Val sys v -- ~ Declaration DeclSortVal (Telescoped Type ValRHS) sys v
-    <- flip decl'content fineLHS $ mapTelescopedDB (
-      \wkn gammadelta fineTy -> do
-        fineTm <- expr gammadelta rawExpr
-        return $ ValRHS fineTm fineTy
-    ) gamma
-  case lookupQName gamma (Raw.Qualified [] $ _val'name val) of
-    Coyoneda _ LookupResultNothing -> return val
-    _ -> scopeFail $ "Shadowing is not allowed in value names; already in scope: " ++ Raw.unparse (_val'name val)
+  [fineLHS] <- declaration gamma rawLHS $ \ gammadelta rawContent -> case rawContent of
+    Raw.DeclContent rawTy -> ValRHS <$> expr gammadelta rawExpr <*> (Type !<$> expr gammadelta rawTy)
+    Raw.DeclContentEmpty -> ValRHS <$> expr gammadelta rawExpr <*> newMetaTypeNoCheck gammadelta "Infer type."
+  return fineLHS
 
 {-| @'entryInModule' gamma fineModule rawEntry@ scopes the entry @rawEntry@ as part of the module @fineModule@ -}
 entryInModule :: forall sys sc v .
@@ -736,30 +561,7 @@ modul :: forall sys sc v .
   Raw.RHS sys (Raw.DeclSortModule False) ->
   sc (Module sys v)
 modul gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
-  partialLHS :: TelescopedPartialDeclaration (Raw.DeclSortModule False) Type Type sys v
-    <- partialTelescopedDeclaration gamma rawLHS entryOpts
-  partialLHSUntyped :: TelescopedPartialDeclaration (Raw.DeclSortModule False) Type Unit2 sys v
-    <- flip pdecl'content partialLHS $ mapTelescopedDB (
-      \wkn gammadelta (Maybe2 maybeFineTy) -> case maybeFineTy of
-        Compose Nothing -> return $ Maybe2 $ Compose Nothing
-        Compose (Just fineTy) -> scopeFail $ "Modules do not have a type: " ++ Raw.unparse rawLHS
-    ) gamma
-  [fineLHS] :: [Declaration DeclSortModule (Telescoped Type Unit2) sys v]
-    <- buildDeclaration gamma (\gammadelta -> return Unit2) partialLHSUntyped
-  flip decl'content fineLHS $ mapTelescopedDB (
-      \wkn gammadelta Unit2 -> entriesInModule gammadelta rawEntries newModule
-    ) gamma
---modul gamma rawLHS rawRHS = scopeFail $ "Not a valid RHS for a 'val': " ++ Raw.unparse rawRHS
-
-{-| @'modul' gamma rawLHS rawRHS@ scopes the module @<rawLHS> <rawRHS>@ (not the top-level module). -}
-modul' :: forall sys sc v .
-  (SysScoper sys, MonadScoper sys sc, DeBruijnLevel v) =>
-  Ctx Type sys v ->
-  Raw.Declaration sys (Raw.DeclSortModule False) ->
-  Raw.RHS sys (Raw.DeclSortModule False) ->
-  sc (Module sys v)
-modul' gamma rawLHS rawRHS@(Raw.RHSModule rawEntries) = do
-  [fineLHS] <- declaration' gamma rawLHS $
+  [fineLHS] <- declaration gamma rawLHS $
     \ gammadelta _ -> entriesInModule gammadelta rawEntries newModule
   return fineLHS
 
