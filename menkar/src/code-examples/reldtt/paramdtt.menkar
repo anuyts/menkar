@@ -6,16 +6,21 @@
 val *[ : 0 -> 0] m0 : Modality d0 d0 = [ : 0 -> 0]
 //Mode 2
 val *m0 d2 : Mode = dsuc (dsuc d0)
+//Crisp modality
+val *m0 crisp : Modality d0 d2 = [= = : 0 -> 2]
 //Forgetful modality
 val *m0 forget : Modality d2 d0 = [ : 2 -> 0]
 //Type of endomodalities at mode 2
 val *m0 M2 : UniHS d0 ... = Modality d2 d2
 
-//b - the flat modality
-val flt : M2 = [= 1 : 2 -> 2]
+//#b - global sections
+val glb : M2 = [= = : 2 -> 2]
 //b¶ - flat after hoc
 val flt@hoc : M2 = [= 0 : 2 -> 2]
-
+//b - the flat modality
+val flt : M2 = [= 1 : 2 -> 2]
+//..b - shape irrelevance after flat
+val shi@flt : M2 = [= T : 2 -> 2]
 //¶ - ad hoc polymorphism
 val hoc : M2 = [0 0 : 2 -> 2]
 //id - continuity
@@ -32,15 +37,36 @@ val irr : M2 = [T T : 2 -> 2]
 //discrete universe of non-discrete types, b¶ UniHS
 val *forget UniDND : UniHS d2 ... = {@lock *flt@hoc} -> UniHS d2 ...
 val *forget ElDND {*par dndA : UniDND} : UniHS d2 ... = dndA .{}
+val *forget ElimDND
+	{*crisp mu : M2}
+	{F : {*(mu @m flt) dndA : UniDND} -> UniHS d2 ...}
+	: {*mu dndX : UniDND} -> UniHS d2 ...
+	= dndX > indBox
+		({*mu _ : UniDND} -> UniHS d2 ...) //motive
+		F //clause for box constructor
+		dndX // eliminee
+/*val *forget elimDND
+	{*crisp mu : M2}
+	{F : {*(mu @ flt) dndA : UniDND} -> UniHS d2 ...}
+	{f : {*(mu @ flt) dndA : UniDND} -> F dndA}*/
 
 //Code of Nat (other constant types are analogous)
 val *forget dndNat : UniDND = {@lock} > Nat ...
 
+//Code of equality type
+val *forget (==dnd)
+	{*flt dndA : UniDND}
+	{*flt@hoc a1 a2 : ElDND dndA}
+	: UniDND
+	= {@lock} > a1 == .{A = ElDND dndA} a2
+
+/*
 val *forget (==dnd)
 	{*con dndA : UniDND}
-	{*par a1 a2 : UniDND}
+	{*flt a1 a2 : ElDND dndA}
 	: UniDND
-	= ({@lock} > a1) == .{A = {@lock *par} -> ElDND dndA} ({@lock} > a2)
+	= {@lock *flt} > ({@lock} > a1) == .{A = {@lock *par} -> ElDND dndA} ({@lock} > a2)
+*/
 
 /*
 //Code of Pi (general, not entirely as it should be...)

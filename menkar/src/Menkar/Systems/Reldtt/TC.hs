@@ -173,11 +173,14 @@ instance SysTC Reldtt where
     Right AnTokenModtySnout -> unreachable
     Right AnTokenModtyTail -> unreachable
     Right AnTokenKnownModty -> do
-      case relKnownModty (getConst $ uncoy relT) t1 t2 of
+      related <- relKnownModty (getConst $ uncoy relT) gamma t1 t2 "Checking (in)equality of modalities."
+      case related of
         Nothing -> -- This may occur when something is ill-typed.
           tcFail "Modalities are presumed to have equal (co)domain."
-        Just True -> return ()
-        Just False -> tcFail "False."
+        Just Nothing ->
+          tcBlock $ "Cannot solve relation: something is blocked."
+        Just (Just True) -> return ()
+        Just (Just False) -> tcFail "False."
     where
       byAnalysis :: forall tc . (MonadTC Reldtt tc) => tc ()
       byAnalysis = checkASTRel' eta relT gamma ts extraTs maybeCTs

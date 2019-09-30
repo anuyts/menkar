@@ -29,18 +29,85 @@ import GHC.Generics
 import Data.Functor.Compose
 import Data.Maybe
 
+{-| Precondition: Tails start at the same point and have the same neutral (co)domain.
+    Precondition for correct result: The snouts are leq.
+    Output: @Right bool@ if absolutely sure, @Left bool@ if tails are assumed not-blocked. -} 
+relTail_ :: ModRel -> ModtySnout -> ModtySnout -> ModtyTail v -> ModtyTail v -> Either Bool Bool
+relTail_ rel _ _ TailProblem _ = Right False
+relTail_ rel _ _ _ TailProblem = Right False
+relTail_ rel _ _ TailEmpty TailEmpty = Right True -- both empty
+relTail_ rel _ _ TailEmpty _ = Right True -- both empty
+relTail_ rel _ _ _ TailEmpty = Right True -- both empty
+relTail_ rel _ _ (TailDisc dcod) (TailDisc dcod') = Right True -- both discrete
+relTail_ rel _ _ (TailDisc dcod) (TailForget ddom') = Right True -- both empty
+relTail_ rel _ _ (TailDisc dcod) (TailDiscForget ddom' dcod') = Right True -- both discrete
+relTail_ rel _ _ (TailDisc dcod) (TailCont d') = Right True -- both empty
+relTail_ rel _ _ (TailForget ddom) (TailDisc dcod') = Right True -- both empty
+relTail_ rel _ _ (TailForget ddom) (TailForget ddom') = Right True -- both forget
+relTail_ rel _ _ (TailForget ddom) (TailDiscForget ddom' dcod') = Right True -- both forget
+relTail_ rel _ _ (TailForget ddom) (TailCont d') = Right True -- both empty
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailDisc dcod') = Right True -- both discrete
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailForget ddom') = Right True -- both forget
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailDiscForget ddom' dcod') = Right True -- both forget
+relTail_ rel _ _ (TailDiscForget ddom dcod) (TailCont d') = case rel of
+  -- since snouts are leq and cont is well-typed, we know that on the left, we don't have Top.
+  ModLeq -> Right True -- non-Top-discreteness is less than continuity
+  ModEq -> Left False -- but not equal if tails are whn.
+  -- The only way that @ModLeq@ can be false, is when the left snout ends in Top, but then
+  -- if the snouts are leq, then so does the right one, so you can't have TailCont.
+relTail_ rel _ _ (TailCont d) (TailDisc dcod') = Right True -- both are empty
+relTail_ rel _ _ (TailCont d) (TailForget ddom') = Right True -- both are empty
+relTail_ rel _ snoutR (TailCont d) (TailDiscForget ddom' dcod') = case rel of
+  ModEq -> Left False -- not equal if tails are whn
+  ModLeq -> case _modtySnout'degreesReversed snoutR of
+    [] -> Right False -- discreteness lists '='
+    (KnownDegTop : _) -> Right True -- discreteness is actually codiscreteness
+    _ -> Right False -- discreteness is less than continuity
+relTail_ rel _ _ (TailCont d) (TailCont d') = Right True -- both continuity
+
+{-| Precondition: Tails start at the same point and have the same neutral (co)domain.
+    Precondition for correct result: The snouts are leq.
+    Return Nothing if presently unclear. -} 
+relTail :: forall whn v .
+  (MonadWHN Reldtt whn, DeBruijnLevel v) =>
+  ModRel ->
+  Ctx (Twice2 Type) Reldtt v ->
+  KnownModty v ->
+  KnownModty v ->
+  String ->
+  whn (Maybe Bool)
+relTail rel gamma (KnownModty snoutL tailL) (KnownModty snoutR tailR) reason = do
+  (whnTailL, metasL) <- runWriterT $ whnormalizeModtyTail (fstCtx gamma) tailL reason
+  (whnTailR, metasR) <- runWriterT $ whnormalizeModtyTail (sndCtx gamma) tailR reason
+  case relTail_ rel snoutL snoutR whnTailL whnTailR of
+    Right bool -> return $ Just bool
+    Left bool -> case (metasL, metasR) of
+      ([], []) -> return $ Just bool
+      otherwise -> return $ Nothing
+
 {-| Compare known modalities, assuming they have the same type.
-    Return a boolean if they compare, or @Nothing@ in case of problems
-    (not metavariable-related problems, but ACTUAL problems).
+    Return a boolean if they compare,
+    or @Nothing@ in case of problems (not metavariable-related problems, but ACTUAL problems),
+    or @Just Nothing@ if presently unclear.
 -}
-relKnownModty :: forall v . ModRel -> KnownModty v -> KnownModty v -> Maybe Bool
-relKnownModty rel kmu1@(KnownModty snout1 tail1) kmu2@(KnownModty snout2 tail2) = do
-          (kmu1, kmu2) <-
+relKnownModty :: forall whn v .
+  (MonadWHN Reldtt whn, DeBruijnLevel v) =>
+  ModRel ->
+  Ctx (Twice2 Type) Reldtt v ->
+  KnownModty v ->
+  KnownModty v ->
+  String ->
+  whn (Maybe (Maybe Bool))
+relKnownModty rel gamma kmu1@(KnownModty snout1 tail1) kmu2@(KnownModty snout2 tail2) reason = runMaybeT $ do
+          -- We're now in the monad MaybeT whn _ ~= whn (Maybe _)
+          -- If the forcing of domains and codomains causes problems, then we get `whn Nothing`, i.e. the do-block is aborted.
+          -- If relTail yields `Nothing`, then `lift` promotes this to `whn (Just Nothing)`
+          (kmu1, kmu2) <- MaybeT . return $
             case compare (_modtySnout'dom $ _knownModty'snout kmu1) (_modtySnout'dom $ _knownModty'snout kmu2) of
               LT -> (, kmu2) <$> forceDom snout1 tail1 (_modtySnout'dom snout2) (_modtyTail'dom tail2)
               EQ -> Just (kmu1, kmu2)
               GT -> (kmu1, ) <$> forceDom snout2 tail2 (_modtySnout'dom snout1) (_modtyTail'dom tail1)
-          (kmu1, kmu2) <-
+          (kmu1, kmu2) <- MaybeT . return $
             case compare (_modtySnout'cod $ _knownModty'snout kmu1) (_modtySnout'cod $ _knownModty'snout kmu2) of
               LT -> (, kmu2) <$> forceCod snout1 tail1 (_modtySnout'cod snout2) (_modtyTail'cod tail2)
               EQ -> Just (kmu1, kmu2)
@@ -48,10 +115,11 @@ relKnownModty rel kmu1@(KnownModty snout1 tail1) kmu2@(KnownModty snout2 tail2) 
           let opSnout = case rel of
                 ModEq -> (==)
                 ModLeq -> (<=)
-          let relSnout = and $ getZipList $
+          let snoutsRelated = and $ getZipList $
                 (opSnout) <$> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu1)
                           <*> ZipList (_modtySnout'degreesReversed $ _knownModty'snout kmu2)
-          return $ relSnout && relTail rel kmu1 kmu2
+          tailsRelated <- lift $ relTail rel gamma kmu1 kmu2 reason
+          return $ (snoutsRelated &&) <$> tailsRelated
 
 ----------------------------------
 
@@ -537,10 +605,16 @@ instance SysWHN Reldtt where
     case (metasMu1, metasMu2) of
       -- Both are normal
       ([], []) -> case (mu1, mu2) of
-        (ChainModtyKnown kmu1, ChainModtyKnown kmu2) -> return $ Just $ fromMaybe False $ relKnownModty ModLeq kmu1 kmu2
-        -- There are neutrals involved: don't bother.
+        (ChainModtyKnown kmu1, ChainModtyKnown kmu2) -> do
+          related <- relKnownModty ModLeq (duplicateCtx gamma) kmu1 kmu2 reason
+          case related of
+            -- Ill-typed.
+            Nothing -> return $ Just False
+            -- True, false or not yet clear
+            Just maybeBool -> return maybeBool
+        -- There are neutrals involved: don't bother. (Checking syntactic equality will yield weird behaviour.)
         (_, _) -> return $ Just False
-      -- Either is not normal
+      -- Either is not normal: come back later.  (Checking syntactic equality will yield weird behaviour.)
       (_ , _ ) -> return $ Nothing
 
   leqDeg gamma deg1 deg2 d reason = do
