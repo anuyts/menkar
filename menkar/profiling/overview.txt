@@ -1,3 +1,12 @@
+Correct scoping of declarations (757c691)
+=========================================
+lib & cong	2s, <100MB
+lib & uniDND	35s, 100MB
+
+A bit later (54de9fb)
+=====================
+lib & uniDND	8s, <100MB
+
 Basic.Context: Use newtype deriving and coerce (a6b7159)
 ========================================================
 lib.menkar	<1s, <100MB
