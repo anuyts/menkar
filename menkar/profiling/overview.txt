@@ -1,3 +1,7 @@
+Bindings with FreeSwallow (5163431)
+===================================
+lib & uniDND	35s, 100MB
+
 Correct scoping of declarations (757c691)
 =========================================
 lib & cong	2s, <100MB
