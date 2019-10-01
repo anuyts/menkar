@@ -48,7 +48,9 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
                     VarWkn (VarWkn w) -> Var2 w
                     VarWkn VarLast -> tmFst
                     VarLast -> tmSnd
-              whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body pairClause)) tyResult reason
+              whnormalize gamma
+                (lowerSubstituteFS subst $ unComp1 $ copopFS $ _namedBinding'bodyFS $ _namedBinding'bodyLowerFS pairClause)
+                tyResult reason
             _ -> returnElim
         _ -> unreachable
       ElimBox boxClause -> case tyEliminee of
@@ -61,7 +63,9 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
               let subst v = case v of
                     VarWkn w -> Var2 w
                     VarLast -> tmUnbox
-              whnormalize gamma (join $ subst <$> _namedBinding'body boxClause) tyResult reason
+              whnormalize gamma
+                (lowerSubstituteFS subst $ unComp1 $ copopFS $ _namedBinding'bodyFS boxClause)
+                tyResult reason
             _ -> returnElim
         _ -> unreachable
       ElimEmpty -> returnElim
@@ -131,18 +135,21 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
             let subst v = case v of
                   VarWkn w -> Var2 w
                   VarLast -> arg
-            in whnormalize gamma (join $ subst <$> (_val'term $ binding'body binding)) tyResult reason
+            in whnormalize gamma
+                 (lowerSubstituteFS subst $ hoistFS _val'term $ unComp1 $ copopFS $ binding'bodyFS binding)
+                 tyResult reason
           -- Function extensionality over a lambda: WHNormalize the body. (The analyzer doesn't do that!)
-          (Lam (Binding seg (ValRHS body cod)), Funext) -> do
+          (Lam (Binding seg (FS (Comp1 (ValRHS body cod)))), Funext) -> do
             whnBody <- whnormalize (gamma :.. seg) body cod reason
             case whnBody of
               -- Body is refl: Elimination reduces to refl.
               Expr2 (TermCons (ConsRefl tyAmbient t)) ->
                 return $ Expr2 $ TermCons $ ConsRefl
-                  (hs2type $ Pi $ Binding seg tyAmbient)
-                  (Expr2 $ TermCons $ Lam $ Binding seg $ ValRHS t tyAmbient)
+                  (hs2type $ Pi $ Binding seg $ FS $ Comp1 $ tyAmbient)
+                  (Expr2 $ TermCons $ Lam $ Binding seg $ FS $ Comp1 $ ValRHS t tyAmbient)
               -- Body is blocked or neutral: Return elimination with whnormalized body.
-              _ -> return $ Expr2 $ TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg $ ValRHS whnBody cod) tyEliminee Funext
+              _ -> return $ Expr2 $
+                     TermElim dmu (Expr2 $ TermCons $ Lam $ Binding seg $ FS $ Comp1 $ ValRHS whnBody cod) tyEliminee Funext
           -- Other eliminations of lambda: Bogus.
           (Lam _, _) -> return termProblem
           ---------------              
@@ -158,7 +165,9 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
                   VarWkn (VarWkn w) -> Var2 w
                   VarWkn VarLast -> tmFst
                   VarLast -> tmSnd
-            in whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause)) tyResult reason
+            in whnormalize gamma
+                 (lowerSubstituteFS subst $ unComp1 $ copopFS $ _namedBinding'bodyFS $ _namedBinding'bodyLowerFS clause)
+                 tyResult reason
           -- Other elimination of pair: Bogus.
           (Pair _ _ _, _) -> return termProblem
           ---------------              
@@ -180,7 +189,7 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
             let subst :: VarExt _ -> Term _ _
                 subst VarLast = tm
                 subst (VarWkn v) = Var2 v
-            in  whnormalize gamma (join $ subst <$> _namedBinding'body clause) tyResult reason
+            in  whnormalize gamma (lowerSubstituteFS subst $ unComp1 $ copopFS $ _namedBinding'bodyFS clause) tyResult reason
           -- Other dependent elimination of box: Bogus.
           (ConsBox _ _, _) -> return termProblem
           ---------------              
@@ -196,7 +205,9 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
                 subst VarLast = Expr2 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
                 subst (VarWkn VarLast) = t
                 subst (VarWkn (VarWkn v)) = Var2 v
-            in  whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) tyResult reason
+            in  whnormalize gamma
+                  (lowerSubstituteFS subst $ unComp1 $ copopFS $ _namedBinding'bodyFS $ _namedBinding'bodyLowerFS cs)
+                  tyResult reason
           -- Other elimination of zero: Bogus.
           (ConsSuc _, _) -> return termProblem
           ---------------              

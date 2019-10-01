@@ -302,7 +302,7 @@ projSnd gamma eliminee sigmaBinding dmuInfer eliminators result tyResult = do
     (JudSmartElim
       gamma
       tmSnd
-      (substLast2 tmFst $ binding'body sigmaBinding)
+      (lowerFS $ substLast2 tmFst $ unComp1 $ copopFS $ binding'bodyFS sigmaBinding)
       eliminators
       result
       tyResult
@@ -395,7 +395,7 @@ apply gamma eliminee piBinding maybeDmuArg arg dmuInfer eliminators result tyRes
         (Pi piBinding)
         (App argChecked)
       )
-      (substLast2 arg $ binding'body piBinding)
+      (lowerFS $ substLast2 arg $ unComp1 $ copopFS $ binding'bodyFS piBinding)
       eliminators
       result
       tyResult
