@@ -1,0 +1,22 @@
+//comment
+
+val Uncurry
+	{~ A : UniHS ...}
+	{~ B : A -> UniHS ...}
+	{F : {a : A} -> {b : B a} -> UniHS ...}
+	: {c : {a : A} >< B a} -> UniHS ...
+	= c > indPair
+		(_ > UniHS ...) //motive
+		(a > b > F a b) //clause for pair constructor
+		c //eliminee
+
+val uncurry
+	{~ A : UniHS ...}
+	{~ B : A -> UniHS ...}
+	{F : {a : A} -> {b : B a} -> UniHS ...}
+	{f : {a : A} -> {b : B a} -> F a b}
+	: {c : {a : A} >< B a} -> Uncurry F c
+	= c > indPair
+		(Uncurry F) //motive
+		(a > b > f a b) //clause for pair constructor
+		c //eliminee

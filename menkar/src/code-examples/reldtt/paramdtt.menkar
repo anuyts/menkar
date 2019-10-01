@@ -39,16 +39,21 @@ val *forget UniDND : UniHS d2 ... = {@lock *flt@hoc} -> UniHS d2 ...
 val *forget ElDND {*par dndA : UniDND} : UniHS d2 ... = dndA .{}
 val *forget ElimDND
 	{*crisp mu : M2}
-	{F : {*(mu @m flt) dndA : UniDND} -> UniHS d2 ...}
+	{*con F : {*(mu @m flt) dndA : UniDND} -> UniHS d2 ...}
 	: {*mu dndX : UniDND} -> UniHS d2 ...
 	= dndX > indBox
-		({*mu _ : UniDND} -> UniHS d2 ...) //motive
-		F //clause for box constructor
-		dndX // eliminee
-/*val *forget elimDND
+		({*mu _ : UniDND} > UniHS d2 ...) //motive
+		(X > F ({@lock} > X)) //clause for box constructor
+		dndX //eliminee
+val *forget elimDND
 	{*crisp mu : M2}
-	{F : {*(mu @ flt) dndA : UniDND} -> UniHS d2 ...}
-	{f : {*(mu @ flt) dndA : UniDND} -> F dndA}*/
+	{*con F : {*(mu @m flt) dndA : UniDND} -> UniHS d2 ...}
+	{*con f : {*(mu @m flt) dndA : UniDND} -> F dndA}
+	: {*mu dndX : UniDND} -> ElimDND mu F dndX
+	= dndX > indBox
+		(ElimDND mu F) //motive
+		(X > f ({@lock} > X)) //clause for box constructor
+		dndX //eliminee
 
 //Code of Nat (other constant types are analogous)
 val *forget dndNat : UniDND = {@lock} > Nat ...
