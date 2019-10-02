@@ -116,7 +116,8 @@ _knownModty'cod (KnownModty snout tail) = addIntToMode (_modtySnout'cod snout) (
 -}
 data ChainModty v =
   ChainModtyKnown (KnownModty v) |
-  {-| It is an error to use this constructor on a term that is not whnormal (whblocked is not allowed). -}
+  {-| It is an error to use this constructor on a term that is not whnormal (whblocked is not allowed).
+      TODO FIXME: This invariant is not preserved under substitution!!!!! -}
   ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
   {-| Reduces for ALL whnormal terms... (weird, I know) -}
   ChainModtyTerm
