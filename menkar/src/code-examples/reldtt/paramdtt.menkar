@@ -60,10 +60,15 @@ val *forget dndNat : UniDND = {@lock} > Nat ...
 
 //Code of equality type
 val *forget (==dnd)
-	{*flt dndA : UniDND}
+	{~ *flt dndA : UniDND}
 	{*flt@hoc a1 a2 : ElDND dndA}
 	: UniDND
 	= {@lock} > a1 == .{A = ElDND dndA} a2
+
+val *forget (==dnd-con)
+	{~ *con dndA : UniDND}
+	: ElimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) dndA
+	= elimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) (==dnd) dndA
 
 /*
 val *forget (==dnd)
