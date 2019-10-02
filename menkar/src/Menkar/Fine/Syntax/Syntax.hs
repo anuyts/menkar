@@ -356,10 +356,11 @@ deriving instance (SysTrav sys) => NFData_ (UniHSConstructor sys)
 deriving instance (SysSyntax (Term sys) sys) =>
   CanSwallow (Term sys) (UniHSConstructor sys)
 
-hs2term :: UniHSConstructor sys v -> Term sys v
+hs2term :: (SysTrav sys) => UniHSConstructor sys v -> Term sys v
 hs2term ty = Expr2 $ TermCons $ ConsUniHS $ ty
-hs2type :: UniHSConstructor sys v -> Type sys v
+hs2type :: (SysTrav sys) => UniHSConstructor sys v -> Type sys v
 hs2type ty = Type $ Expr2 $ TermCons $ ConsUniHS $ ty
+pattern TypeHS :: (SysTrav sys) => () => UniHSConstructor sys v -> Type sys v
 pattern TypeHS ty = Type (Expr2 (TermCons (ConsUniHS ty)))
 
 data ConstructorTerm (sys :: KSys) (v :: *) =
@@ -514,7 +515,7 @@ deriving instance (SysSyntax (Term sys) sys) =>
 
 type Term = Expr2 TermNV
 
-isBlockedOrMeta :: Term sys v -> [Int] -> Bool
+isBlockedOrMeta :: SysTrav sys => Term sys v -> [Int] -> Bool
 isBlockedOrMeta (Expr2 (TermMeta _ _ _ _)) _ = True
 isBlockedOrMeta _ (_:_) = True
 isBlockedOrMeta _ [] = False

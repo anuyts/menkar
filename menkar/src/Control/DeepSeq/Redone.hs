@@ -30,6 +30,7 @@ rnf1 :: forall f x . (NFData1 f, NFData x) => f x -> ()
 rnf1 = liftRnf rnf
 
 class NFData_ (f :: * -> *) where
+  {-| Reduce data structure to normal form while leaving its content untouched. -}
   rnf_ :: forall x . f x -> ()
   default rnf_ ::
     forall x . (Generic1 f, NFData_ (Rep1 f)) => f x -> ()
@@ -134,6 +135,7 @@ deriving instance NFData1 Maybe
 instance NFData1 [] where
   liftRnf f [] = ()
   liftRnf f (x : xs) = f x `seq` liftRnf f xs
+deriving instance NFData_ []
 
 instance NFData a => NFData1 (Const a) where
   liftRnf f (Const a) = rnf a
