@@ -176,14 +176,13 @@ etaExpand useHoles gamma t (Pi piBinding) = do
     UseHoles -> newMetaTerm
             --(eqDeg :: Degree sys _)
             (gamma :.. (binding'segment piBinding))
-            (binding'bodyLowerFS piBinding)
+            (binding'body piBinding)
             MetaBlocked
             "Infer function body."
     UseEliminees -> return $ Expr2 $ TermElim
             (idModalityTo $ uncoy $ VarWkn <$> dgamma)
             (VarWkn <$> t) (VarWkn <$> Pi piBinding) (App $ Var2 VarLast)
-  return $ Just $ Just $ Expr2 $ TermCons $ Lam $
-    Binding (binding'segment piBinding) $ FS $ Comp1 $ (ValRHS body $ binding'bodyLowerFS piBinding)
+  return $ Just $ Just $ Expr2 $ TermCons $ Lam $ Binding (binding'segment piBinding) (ValRHS body $ binding'body piBinding)
 etaExpand useHoles gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
@@ -203,7 +202,7 @@ etaExpand useHoles gamma t (Sigma sigmaBinding) = do
           UseHoles -> newMetaTerm
                    --(eqDeg :: Degree sys _)
                    gamma
-                   (lowerFS $ substLast2 tmFst $ unComp1 $ copopFS $ binding'bodyFS sigmaBinding)
+                   (substLast2 tmFst $ binding'body sigmaBinding)
                    MetaBlocked
                    "Infer second projection."
           UseEliminees -> return $ Expr2 $ TermElim (idModalityTo $ uncoy dgamma) t (Sigma sigmaBinding) Snd

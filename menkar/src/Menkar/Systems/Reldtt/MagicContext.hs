@@ -17,7 +17,7 @@ import Control.Exception.AssertFalse
 import Data.Void
 import Data.Functor.Compose
 import Data.Maybe
-import GHC.Generics
+import GHC.Generics (U1 (..))
 import GHC.Stack
 
 -- | These are de Bruijn LEVELS, not INDICES!!!
@@ -37,15 +37,14 @@ val op str mu rhs = EntryVal $ Declaration
   rhs
 
 pi :: Segment Type Reldtt v -> Type Reldtt (VarExt v) -> UniHSConstructor Reldtt v
-pi aSeg cod = Pi $ Binding aSeg $ FS $ Comp1 $ cod
+pi aSeg cod = Pi $ Binding aSeg cod
 sigma :: Segment Type Reldtt v -> Type Reldtt (VarExt v) -> UniHSConstructor Reldtt v
-sigma aSeg cod = Sigma $ Binding aSeg $ FS $ Comp1 $ cod
+sigma aSeg cod = Sigma $ Binding aSeg cod
 arrow :: Segment Type Reldtt v -> Type Reldtt v -> UniHSConstructor Reldtt v
 arrow aSeg cod = pi aSeg (VarWkn <$> cod)
 
-nbind :: (Functor (rhs Reldtt), CanSwallow (Term Reldtt) (rhs Reldtt)) =>
-  Opness -> String -> rhs Reldtt (VarExt v) -> NamedBinding rhs Reldtt v
-nbind op str body = NamedBinding (Just $ Name op str) $ FS $ Comp1 $ body
+nbind :: Opness -> String -> rhs Reldtt (VarExt v) -> NamedBinding rhs Reldtt v
+nbind op str body = NamedBinding (Just $ Name op str) body
 
 seg :: Plicity Reldtt v -> Opness -> String -> Modality Reldtt v -> content Reldtt v -> Segment content Reldtt v
 seg plic op str mu content = Declaration
@@ -337,7 +336,7 @@ valPair = val Op "," (idMod dataMode) $
   segEx NonOp "y" {- var 6 -} (idMod $ dvar 1) (appCod $ var 5) :|-
   Telescoped (
     ValRHS
-      (Expr2 $ TermCons $ Pair (Binding segA $ FS $ Comp1 $ appCod $ Var2 VarLast) (var 5) (var 6))
+      (Expr2 $ TermCons $ Pair (Binding segA $ appCod $ Var2 VarLast) (var 5) (var 6))
       (hs2type $ sigma segA {- var 7 -} (appCod $ var 7))
   )
   where
@@ -403,7 +402,7 @@ valIndPair = val NonOp "indPair" (idMod dataMode) $
     tyCPair' :: DeBruijnLevel v => Term Reldtt v -> UniHSConstructor Reldtt v
     tyCPair' x = pi
       (segEx NonOp "y" (mvar 4 (dvar 1) (dvar 2)) $ appCod $ x)
-      (appMotive $ Expr2 $ TermCons $ Pair (Binding segAMu $ FS $ Comp1 $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
+      (appMotive $ Expr2 $ TermCons $ Pair (Binding segAMu $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
     tyCPair :: DeBruijnLevel v => UniHSConstructor Reldtt v
     tyCPair = pi segAMuNu $ hs2type $ tyCPair' $ Var2 $ VarLast
 

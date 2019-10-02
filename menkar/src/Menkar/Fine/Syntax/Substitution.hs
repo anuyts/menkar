@@ -52,9 +52,6 @@ instance (CanSwallow f g, Functor h) => CanSwallow f (Compose h g) where
   substitute h (Compose hgx) = Compose (substitute h <$> hgx)
   {-# INLINE substitute #-}
 
-instance CanSwallow f (Const a) where
-  substitute h = Const . getConst
-
 -------------------------------------------
 
 {-| @'Expr' e v@ is the type of expressions with variables from 'v' and non-variables from 'e v'.

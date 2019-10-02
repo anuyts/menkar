@@ -156,7 +156,7 @@ simpleLambda gamma rawArg@(Raw.ExprElimination (Raw.Elimination boundArg [])) ra
         }
     fineBody <- expr (gamma :.. (fineSeg)) rawBody
     fineCod <- Type <$> newMetaTermNoCheck (gamma :.. fineSeg) MetaBlocked Nothing "Infer codomain."
-    return . Expr2 . TermCons . Lam $ Binding fineSeg $ FS $ Comp1 $ ValRHS fineBody fineCod
+    return . Expr2 . TermCons . Lam $ Binding fineSeg $ ValRHS fineBody fineCod
 simpleLambda gamma rawArg rawBody =
   scopeFail $
   "To the left of a '>', I expect a telescope, a single unqualified name, or an underscore: " ++ Raw.unparse rawArg
@@ -170,7 +170,7 @@ buildPi ::
 buildPi gamma (Right (fineSeg, fineCod)) = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
-  return $ hs2term $ Pi $ Binding fineSeg $ FS $ Comp1 $ Type fineCod
+  return $ hs2term $ Pi $ Binding fineSeg (Type fineCod)
 buildPi gamma (Left (dmu, fineCod)) = do
   return $ hs2term $ BoxType $ Declaration (DeclNameSegment Nothing) dmu Explicit segOpts (Type fineCod)
 
@@ -183,7 +183,7 @@ buildSigma ::
 buildSigma gamma (Right (fineSeg, fineCod)) = do
   --fineLvl <- term4newImplicit gamma
   --fineMode <- mode4newImplicit gamma
-  return $ Expr2 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg $ FS $ Comp1 $ Type fineCod
+  return $ Expr2 $ TermCons $ ConsUniHS $ Sigma $ Binding fineSeg (Type fineCod)
 buildSigma gamma (Left (dmu, fineCod)) =
   scopeFail $ "Modal locks are not allowed in telescopes for Sigma-types."
   
@@ -195,7 +195,7 @@ buildLambda ::
   sc (Term sys v)
 buildLambda gamma (Right (fineSeg, fineBody)) = do
   fineCod <- newMetaTypeNoCheck (gamma :.. fineSeg) "Infer codomain."
-  return $ Expr2 $ TermCons $ Lam $ Binding fineSeg $ FS $ Comp1 $ ValRHS fineBody fineCod
+  return $ Expr2 $ TermCons $ Lam $ Binding fineSeg $ ValRHS fineBody fineCod
 buildLambda gamma (Left (dmu, fineContent)) = do
   tyContent <- newMetaTypeNoCheck (dmu :\\ gamma) "Infer box content type."
   let boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit segOpts tyContent

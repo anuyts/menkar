@@ -102,21 +102,18 @@ instance (SysFinePretty sys,
 
 binding2pretty :: (DeBruijnLevel v,
                   SysFinePretty sys,
-                  Functor (rhs sys), CanSwallow (Term sys) (rhs sys),
                   Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
                   String -> ScCtx sys v -> Binding Type rhs sys v -> Fine2PrettyOptions sys -> PrettyTree String
 binding2pretty opstring gamma binding opts =
   fine2pretty gamma (binding'segment binding) opts
   \\\ [" " ++ opstring ++ " " ++|
-       fine2pretty (gamma ::.. (segment2scSegment (binding'segment binding))) (binding'bodyLowerFS binding) opts
+       fine2pretty (gamma ::.. (segment2scSegment (binding'segment binding))) (binding'body binding) opts
       ]
 instance (SysFinePretty sys,
-         Functor (rhs sys), CanSwallow (Term sys) (rhs sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Fine2Pretty sys (Binding Type rhs sys) where
   fine2pretty gamma binding opts = binding2pretty ">" gamma binding opts
 instance (SysFinePretty sys,
-         Functor (rhs sys), CanSwallow (Term sys) (rhs sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Show (Binding Type rhs sys Void) where
   show binding = "[Binding|\n" ++ fine2string @sys ScCtxEmpty binding omit ++ "\n|]"
@@ -156,8 +153,8 @@ instance (SysFinePretty sys,
       " " ++| fine2pretty gamma (Mode d),
       " (" ++| fine2pretty gamma typeterm |++ ")"
       ]-}
-  fine2pretty gamma (Lam (Binding seg (FS (Comp1 (ValRHS body cod))))) opts =
-    binding2pretty ">" gamma (Binding seg $ FS $ Comp1 $ TypedTerm body cod) opts
+  fine2pretty gamma (Lam (Binding seg (ValRHS body cod))) opts =
+    binding2pretty ">" gamma (Binding seg $ TypedTerm body cod) opts
   fine2pretty gamma (Pair binding tmFst tmSnd) opts =
     ribbon "ofType" \\\ [
       " (" ++| fine2pretty gamma (Sigma binding) opts |++ ")",
@@ -220,22 +217,18 @@ typed2pretty :: (DeBruijnLevel v,
 typed2pretty gamma t ty opts = typed2pretty' (fine2pretty gamma t opts) (fine2pretty gamma ty opts) opts
 
 data TypedTerm sys v = TypedTerm (Term sys v) (Type sys v)
-  deriving (Functor, Generic1)
-deriving instance SysSyntax (Term sys) sys => CanSwallow (Term sys) (TypedTerm sys)
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (TypedTerm sys) where
   fine2pretty gamma (TypedTerm t ty) opts = typed2pretty gamma t ty opts
 
 instance (SysFinePretty sys,
-         Functor (rhs sys), CanSwallow (Term sys) (rhs sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Fine2Pretty sys (NamedBinding rhs sys) where
-  fine2pretty gamma (NamedBinding maybeName (FS (Comp1 body))) opts =
+  fine2pretty gamma (NamedBinding maybeName body) opts =
     let gammaExt = gamma ::.. ScSegment maybeName
     in  var2pretty gammaExt VarLast opts |++ " > " |+| fine2pretty gammaExt body opts
 instance (SysFinePretty sys,
-         Functor (rhs sys), CanSwallow (Term sys) (rhs sys),
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys), Fine2Pretty sys (rhs sys)) =>
          Show (NamedBinding rhs sys Void) where
   show binding = "[NamedBinding|\n" ++ fine2string @sys ScCtxEmpty binding omit ++ "\n|]"
@@ -311,7 +304,7 @@ instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Fine2Pretty sys (DependentEliminator sys) where
   fine2pretty gamma clauses opts =
-    fine2pretty gamma (ElimDep (NamedBinding Nothing $ FS $ Comp1 $ Type $ Expr2 TermWildcard) clauses) opts
+    fine2pretty gamma (ElimDep (NamedBinding Nothing $ Type $ Expr2 TermWildcard) clauses) opts
 instance (SysFinePretty sys,
          Fine2Pretty sys (Mode sys), Fine2Pretty sys (Modality sys)) =>
          Show (DependentEliminator sys Void) where

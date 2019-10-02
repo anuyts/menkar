@@ -16,7 +16,7 @@ import Control.Exception.AssertFalse
 import Data.Void
 import Data.Functor.Compose
 import Data.Maybe
-import GHC.Generics
+import GHC.Generics (U1 (..))
 import GHC.Stack
 
 -- | These are de Bruijn LEVELS, not INDICES!!!
@@ -32,15 +32,14 @@ val op str rhs = EntryVal $ Declaration
   rhs
 
 pi :: Segment Type Trivial v -> Type Trivial (VarExt v) -> UniHSConstructor Trivial v
-pi aSeg cod = Pi $ Binding aSeg $ FS $ Comp1 $ cod
+pi aSeg cod = Pi $ Binding aSeg cod
 sigma :: Segment Type Trivial v -> Type Trivial (VarExt v) -> UniHSConstructor Trivial v
-sigma aSeg cod = Sigma $ Binding aSeg $ FS $ Comp1 $ cod
+sigma aSeg cod = Sigma $ Binding aSeg cod
 arrow :: Segment Type Trivial v -> Type Trivial v -> UniHSConstructor Trivial v
 arrow aSeg cod = pi aSeg (VarWkn <$> cod)
 
-nbind :: (Functor (rhs Trivial), CanSwallow (Term Trivial) (rhs Trivial)) =>
-  Opness -> String -> rhs Trivial (VarExt v) -> NamedBinding rhs Trivial v
-nbind op str body = NamedBinding (Just $ Name op str) $ FS $ Comp1 $ body
+nbind :: Opness -> String -> rhs Trivial (VarExt v) -> NamedBinding rhs Trivial v
+nbind op str body = NamedBinding (Just $ Name op str) body
 
 seg :: Plicity Trivial v -> Opness -> String -> content Trivial v -> Segment content Trivial v
 seg plic op str content = Declaration
@@ -216,7 +215,7 @@ valPair = val Op "," $
   segEx NonOp "y" {- var 3 -} (appCod $ var 2) :|-
   Telescoped (
     ValRHS
-      (Expr2 $ TermCons $ Pair (Binding segA $ FS $ Comp1 $ appCod $ Var2 VarLast) (var 2) (var 3))
+      (Expr2 $ TermCons $ Pair (Binding segA $ appCod $ Var2 VarLast) (var 2) (var 3))
       (hs2type $ sigma segA {- var 4 -} (appCod $ var 4))
   )
   where
@@ -270,7 +269,7 @@ valIndPair = val NonOp "indPair" $
     tyCPair' :: DeBruijnLevel v => Term Trivial v -> UniHSConstructor Trivial v
     tyCPair' x = pi
       (segEx NonOp "y" $ appCod $ x)
-      (appMotive $ Expr2 $ TermCons $ Pair (Binding segA $ FS $ Comp1 $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
+      (appMotive $ Expr2 $ TermCons $ Pair (Binding segA $ appCod $ Var2 VarLast) (VarWkn <$> x) (Var2 VarLast))
     tyCPair :: DeBruijnLevel v => UniHSConstructor Trivial v
     tyCPair = pi segA $ hs2type $ tyCPair' $ Var2 $ VarLast
 

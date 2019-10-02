@@ -133,19 +133,19 @@ classif2pretty token gamma extraT ct extraCT opts =
         |++ " -> " |+|
         classif2pretty token
           (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
-          U1 (getConst1 $ _namedBinding'bodyLowerFS boundCRHS) extraCRHS opts
+          U1 (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
     (AnTokenNamedBinding token, seg :*: Comp1 extraRHS, boundCRHS, seg' :*: Comp1 extraCRHS) ->
       (nameWithIndex (_namedBinding'name boundCRHS) (size @v))
         |++ " -> " |+|
         classif2pretty token
           (gamma ::.. ScSegment (_namedBinding'name boundCRHS))
-          extraRHS (getConst1 $ _namedBinding'bodyLowerFS boundCRHS) extraCRHS opts
+          extraRHS (getConst1 $ _namedBinding'body boundCRHS) extraCRHS opts
     (AnTokenModalBox token, dmu :*: extraContent, ModalBox (Const1 cContent), dmu' :*: extraCContent) ->
       fine2pretty gamma dmu opts |++ " @ " |+| classif2pretty token gamma extraContent cContent extraCContent opts
     (AnTokenUniHSConstructor, U1, ModalBox (Const1 d), dcrisp :*: U1) -> "UniHS " ++| fine2pretty gamma d opts
     (AnTokenConstructorTerm, U1, ty, U1) -> fine2pretty gamma ty opts
     (AnTokenType, U1, U1, U1) -> ribbon "<n/a>"
-    (AnTokenDependentEliminator, dmuElim :*: eliminee :*: tyEliminee :*: motive, U1, U1) ->
+    (AnTokenDependentEliminator, dmuElim :*: eliminee :*: tyEliminee :*: Comp1 motive, U1, U1) ->
       fine2pretty gamma
         (Binding (Declaration (DeclNameSegment Nothing) dmuElim Explicit segOpts (hs2type tyEliminee)) motive) opts
     (AnTokenEliminator, dmuElim :*: eliminee :*: tyEliminee, tyResult, U1) ->
