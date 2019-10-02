@@ -17,7 +17,6 @@ import Data.Functor.Identity
 import Data.Functor.Compose
 import Data.Void
 import Data.Kind hiding (Type)
-import GHC.Generics
 
 -- TODOMOD means todo for modalities
 
@@ -55,8 +54,8 @@ telescoped2quantified (Telescoped valRHS) = valRHS
 telescoped2quantified (seg :|- telescopedValRHS) =
   let quantifiedValRHS = telescoped2quantified telescopedValRHS
   in  ValRHS
-        (Expr2 $ TermCons $ Lam $ Binding seg $ liftFS $ Comp1 $ quantifiedValRHS)
-        (hs2type $ Pi $ Binding seg $ liftFS $ Comp1 $ _val'type quantifiedValRHS)
+        (Expr2 $ TermCons $ Lam $ Binding seg $ quantifiedValRHS)
+        (hs2type $ Pi $ Binding seg $ _val'type quantifiedValRHS)
 telescoped2quantified (dmu :** telescopedValRHS) = 
   let quantifiedValRHS = telescoped2quantified telescopedValRHS
       boxSeg = Declaration (DeclNameSegment Nothing) dmu Explicit segOpts (_val'type quantifiedValRHS)

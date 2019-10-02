@@ -81,7 +81,7 @@ deriving instance (CanSwallow (Term sys) (s sys), CanSwallow (Term sys) (t sys))
 newtype Const1 t sys v = Const1 {getConst1 :: t v}
   deriving (Functor, Foldable, Traversable, Generic1)
   deriving newtype NFData_
-deriving newtype instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Const1 t a)
+deriving newtype instance (CanSwallow (Term sys) t) => CanSwallow (Term sys) (Const1 t sys)
 
 {-
 data Pair3 t (a :: ka) (b :: kb) (c :: kc) = Pair3 {fst3 :: t a b c, snd3 :: t a b c}
@@ -240,7 +240,7 @@ data Binding
     (sys :: KSys) (v :: *) =
   Binding {
     binding'segment :: Segment lhs sys v,
-    binding'bodyFS :: FreeSwallow (Term sys) (rhs sys :.: VarExt) v
+    binding'body :: rhs sys (VarExt v)
   }
 deriving instance (SysTrav sys, Functor (lhs sys), Functor (rhs sys)) => Functor (Binding lhs rhs sys)
 deriving instance (SysTrav sys, Foldable (lhs sys), Foldable (rhs sys)) => Foldable (Binding lhs rhs sys)
@@ -254,9 +254,6 @@ deriving instance (
     CanSwallow (Term sys) (lhs sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (Binding lhs rhs sys)
-binding'bodyLowerFS :: (SysSyntax (Term sys) sys, Functor (rhs sys), CanSwallow (Term sys) (rhs sys)) =>
-  Binding lhs rhs sys v -> rhs sys (VarExt v)
-binding'bodyLowerFS = unComp1 . lowerFS . binding'bodyFS
 
 {-
 {-| Same as binding, but analyzer takes segment for granted and doesn't traverse it. -}
@@ -286,7 +283,7 @@ data NamedBinding
     (sys :: KSys) (v :: *) =
   NamedBinding {
     _namedBinding'name :: Maybe Raw.Name,
-    _namedBinding'bodyFS :: FreeSwallow (Term sys) (rhs sys :.: VarExt) v
+    _namedBinding'body :: rhs sys (VarExt v)
   }
 deriving instance (SysTrav sys, Functor (rhs sys)) => Functor (NamedBinding rhs sys)
 deriving instance (SysTrav sys, Foldable (rhs sys)) => Foldable (NamedBinding rhs sys)
@@ -298,9 +295,6 @@ deriving instance (
     Functor (rhs sys),
     CanSwallow (Term sys) (rhs sys)
   ) => CanSwallow (Term sys) (NamedBinding rhs sys)
-_namedBinding'bodyLowerFS :: (SysSyntax (Term sys) sys, Functor (rhs sys), CanSwallow (Term sys) (rhs sys)) =>
-  NamedBinding rhs sys v -> rhs sys (VarExt v)
-_namedBinding'bodyLowerFS = unComp1 . lowerFS . _namedBinding'bodyFS
 
 newtype ModalBox (content :: KSys -> * -> *) (sys :: KSys) (v :: *) =
   ModalBox {_modalBox'content :: content sys v}
