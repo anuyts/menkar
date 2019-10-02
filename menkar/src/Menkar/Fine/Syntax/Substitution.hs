@@ -8,6 +8,7 @@ import Control.Exception.AssertFalse
 import Data.Functor.Functor1
 import Data.Functor.Coyoneda.NF
 import Control.DeepSeq.Redone
+import Data.FoldCache
 
 import Data.Functor.Compose
 import Control.Applicative
@@ -97,7 +98,7 @@ data Expr2 (e :: ka -> * -> *) (a :: ka) (v :: *) =
   Var2 !v
   | Expr2Cache
       (e a v)
-      [v] {-^ Cache of @toList@ for the first argument. -}
+      (FoldCache v) {-^ Cache of @toFoldCache@ for the first argument. -}
   deriving (Functor)
 instance Foldable (Expr2 e a) where
   foldMap h (Var2 v) = h v
@@ -112,15 +113,15 @@ instance (NFData_ (e a)) => NFData_ (Expr2 e a) where
 
 pattern Expr2 :: (Foldable (e a)) => () => (e a v) -> Expr2 e a v
 pattern Expr2 e <- Expr2Cache e _
-  where Expr2 e = Expr2Cache e (toList e)
+  where Expr2 e = Expr2Cache e (toFoldCache e)
 {-# COMPLETE Var2, Expr2 #-}
 
 instance (Foldable (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr2 e a) where
   substitute h (Var2 w) = h w
-  substitute h (Expr2Cache ew ws) = Expr2Cache (substitute h ew) (toList . h =<< ws)
+  substitute h (Expr2Cache ew ws) = Expr2Cache (substitute h ew) (toFoldCache . h =<< ws)
   {-# INLINE substitute #-}
   swallow (Var2 ev) = ev
-  swallow (Expr2Cache eev evs) = Expr2Cache (swallow eev) (toList =<< evs)
+  swallow (Expr2Cache eev evs) = Expr2Cache (swallow eev) (toFoldCache =<< evs)
   {-# INLINE swallow #-}
 
 instance (Functor (e a), Foldable (e a), CanSwallow (Expr2 e a) (e a)) => Applicative (Expr2 e a) where
