@@ -11,19 +11,30 @@ data FoldCache x where
   FCEmpty :: FoldCache x
   FCPure :: x -> FoldCache x
   FCAppend :: FoldCache x -> FoldCache x -> FoldCache x
-  deriving (Functor, Foldable, Traversable, Generic, Generic1)
+  FCMap :: (y -> x) -> FoldCache y -> FoldCache x
+  FCBind :: (y -> FoldCache x) -> FoldCache y -> FoldCache x
+  --deriving (Functor, Foldable, Traversable, Generic, Generic1)
+
+instance Functor FoldCache where
+  fmap = FCMap
+
+instance Foldable FoldCache where
+  foldMap h FCEmpty = mempty
+  foldMap h (FCPure x) = h x
+  foldMap h (FCAppend fcx fcy) = foldMap h fcx <> foldMap h fcy
+  foldMap h (FCMap g fcx) = foldMap (h . g) fcx
+  foldMap h (FCBind g fcx) = foldMap (foldMap h . g) fcx
 
 instance Applicative FoldCache where
   pure = FCPure
-  FCEmpty <*> fcx = FCEmpty
-  FCPure f <*> fcx = f <$> fcx
-  FCAppend fcf fcg <*> fcx = FCAppend (fcf <*> fcx) (fcg <*> fcx)
+  fcf <*> fcx = fcf >>= \f -> f <$> fcx
+  --FCEmpty <*> fcx = FCEmpty
+  --FCPure f <*> fcx = f <$> fcx
+  --FCAppend fcf fcg <*> fcx = FCAppend (fcf <*> fcx) (fcg <*> fcx)
 
 instance Monad FoldCache where
   return = FCPure
-  FCEmpty >>= h = FCEmpty
-  FCPure x >>= h = h x
-  FCAppend fcx fcy >>= h = FCAppend (fcx >>= h) (fcy >>= h)
+  (>>=) = flip FCBind
 
 instance Semigroup (FoldCache x) where
   (<>) = FCAppend
@@ -34,4 +45,9 @@ instance Monoid (FoldCache x) where
 toFoldCache :: Foldable f => f v -> FoldCache v
 toFoldCache = foldMap FCPure
 
-deriving instance NFData_ FoldCache
+instance NFData_ FoldCache where
+  rnf_ FCEmpty = ()
+  rnf_ (FCPure x) = ()
+  rnf_ (FCAppend fcx fcy) = rnf_ fcx `seq` rnf_ fcy
+  rnf_ (FCMap g fcx) = rnf_ fcx
+  rnf_ (FCBind g fcx) = rnf_ fcx
