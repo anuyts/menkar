@@ -410,25 +410,15 @@ whnormalizeChainModty :: forall whn v .
 whnormalizeChainModty gamma mu@(ChainModtyKnown knownMu) reason = return mu
   -- KnownModty's are aligned before relating them.
   --ChainModtyKnown <$> whnormalizeKnownModty gamma knownMu reason
-whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = return mu
-  -- Since termNu is required to be neutral, this thing is already normal!
-  {-do
-  -- mu . nu . rho
-  knownMu <- whnormalizeKnownModty gamma knownMu reason
-  ------------------------------------------
-  -- vv -- kind of useless, but a good guard.
-  (termNu, metasTermNu) <- whnormalize gamma termNu
+whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason = do
+  termNu <- whnormalize gamma termNu
     (BareSysType $ SysTypeModty (_chainModty'cod chainRho) (_knownModty'dom knownMu)) reason
-  let () = case metasTermNu of
-    _:_ -> unreachable -- termNu must be normal in a ChainModtyLink!
-    [] -> ()
-  -- ^^ -- kind of useless, but a good guard
-  ------------------------------------------
   case termNu of
     BareChainModty chainNu -> do
       chainNu <- whnormalizeChainModty gamma chainNu reason
       case chainNu of
         ChainModtyKnown knownNu -> do
+          chainRho <- whnormalizeChainModty gamma chainRho reason
           let composite = case chainRho of
                 ChainModtyKnown knownRho ->
                   ChainModtyKnown (knownMu `compKnownModty` knownNu `compKnownModty` knownRho)
@@ -438,6 +428,8 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
                 ChainModtyTerm ddom dcod trho ->
                   ChainModtyLink (knownMu `compKnownModty` knownNu) (BareChainModty chainRho) $
                     ChainModtyKnown $ idKnownModty ddom
+                ChainModtyMeta _ _ _ _ -> unreachable
+                ChainModtyAlreadyChecked _ _ _ -> unreachable
           whnormalizeChainModty gamma composite reason
         ChainModtyLink knownNuA termNuB chainNuC -> do
           -- mu . nuA . nuB . nuC . rho
@@ -445,7 +437,9 @@ whnormalizeChainModty gamma mu@(ChainModtyLink knownMu termNu chainRho) reason =
                           compMod chainNuC chainRho
           whnormalizeChainModty gamma composite reason
         ChainModtyTerm ddom dcod tnu -> return $ ChainModtyLink knownMu termNu chainRho
-    _ -> return $ ChainModtyLink knownMu termNu chainRho-}
+        ChainModtyMeta _ _ _ _ -> unreachable
+        ChainModtyAlreadyChecked _ _ _ -> unreachable
+    otherwise -> return $ ChainModtyLink knownMu termNu chainRho
 whnormalizeChainModty gamma chmu@(ChainModtyTerm dom cod tmu) reason = do
   (tmu, metasTMu) <- listen $ whnormalize gamma tmu (BareSysType $ SysTypeModty dom cod) reason
   case (tmu, metasTMu) of

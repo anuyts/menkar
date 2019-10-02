@@ -115,9 +115,9 @@ _knownModty'cod (KnownModty snout tail) = addIntToMode (_modtySnout'cod snout) (
     block on an unknown codomain, which may turn out to be 0, in which case the modality becomes the forgetful one.
 -}
 data ChainModty v =
+  {-| Wrapper for known modalities. -}
   ChainModtyKnown (KnownModty v) |
-  {-| It is an error to use this constructor on a term that is not whnormal (whblocked is not allowed).
-      TODO FIXME: This invariant is not preserved under substitution!!!!! -}
+  {-| Whnormal if the term is whnormal. -}
   ChainModtyLink (KnownModty v) (Term Reldtt v) (ChainModty v) |
   {-| Reduces for ALL whnormal terms... (weird, I know) -}
   ChainModtyTerm

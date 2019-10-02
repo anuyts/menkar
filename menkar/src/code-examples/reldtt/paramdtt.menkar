@@ -67,8 +67,8 @@ val *forget (==dnd)
 
 val *forget (==dnd-con)
 	{~ *con dndA : UniDND}
-	: ElimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND)
-	= elimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) (==dnd)
+	: ElimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) dndA
+	= elimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) (==dnd) dndA
 
 /*
 val *forget (==dnd)
