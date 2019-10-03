@@ -3,6 +3,7 @@ module Menkar.System.Fine.Syntax where
 import Menkar.System.Basic
 import Menkar.Fine.Syntax.Substitution
 
+import Data.Foldable.Cache
 import Control.DeepSeq.Redone
 
 import Data.Kind
@@ -44,6 +45,11 @@ class (NFData_ (Mode sys),
       => SysNF sys where
 
 class (SysNF sys,
+       FoldableCache (Mode sys),
+       FoldableCache (Modality sys),
+       FoldableCache (Degree sys),
+       FoldableCache (SysTerm sys),
+       FoldableCache (SysUniHSConstructor sys),
        Traversable (Mode sys),
        Traversable (Modality sys),
        Traversable (Degree sys),

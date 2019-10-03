@@ -6,7 +6,7 @@ import Data.Functor.Functor1
 import Control.DeepSeq.Redone
 
 import Data.Functor
-
+import Data.Functor.Compose
 import GHC.Generics
 
 {-| Use this data structure if you want to cache the heavy computation for the methods of @Foldable@.
@@ -97,3 +97,13 @@ instance (FoldableCache f, FoldableCache g) => FoldableCache (f :*: g) where
 instance (FoldableCache f, FoldableCache g) => FoldableCache (f :.: g) where
   {-# INLINE toFoldCache #-}
   toFoldCache (Comp1 fgx) = toFoldCache fgx >>= toFoldCache
+
+instance (FoldableCache f, FoldableCache g) => FoldableCache (Compose f g) where
+  {-# INLINE toFoldCache #-}
+  toFoldCache (Compose fgx) = toFoldCache fgx >>= toFoldCache
+
+--------------------------------------
+
+instance FoldableCache Maybe where
+  toFoldCache = maybe FCEmpty FCPure
+deriving instance FoldableCache []

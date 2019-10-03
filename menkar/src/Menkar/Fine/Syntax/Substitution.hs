@@ -350,6 +350,12 @@ instance (Foldable t, Foldable f) => Foldable (FreeSwallow t f) where
   foldMap (h :: w -> a) (Rename (g :: v -> w) (sfv :: FreeSwallow t f v)) =
     foldMap (h . g) sfv
 
+instance (FoldableCache t, FoldableCache f) => FoldableCache (FreeSwallow t f) where
+  {-# INLINE toFoldCache #-}
+  toFoldCache (Unsubstituted fv) = toFoldCache fv
+  toFoldCache (Substitute g sfv) = toFoldCache . g =<< toFoldCache sfv
+  toFoldCache (Rename g sfv) = g <$> toFoldCache sfv
+
 instance (Traversable t, Traversable f) => Traversable (FreeSwallow t f) where
   {-# INLINE traverse #-}
   traverse (h :: _ -> m _) sfv = uncoy $ aux h sfv
