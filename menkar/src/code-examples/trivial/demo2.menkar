@@ -1,0 +1,9 @@
+//comment
+
+val id {~ A : UniHS} {a : A} : A = a
+
+val id' : {~ A : UniHS} {a : A} -> A
+	= A > a > a
+
+val lemma : id 0 == 0
+	= refl ...
