@@ -7,3 +7,6 @@ val forget {d : Mode} : Modality d d0 = [: 0 -> 0 | forget d]
 val &d0 id {~ d : Mode} {@lock *(forget d)} {~ *(con d) A : UniHS d ...} {*(con d) a : A}
 	: A
 	= a
+
+val &d0 lemma : id 0 == 0
+	= refl ...
