@@ -2,8 +2,10 @@
 
 module Data.Foldable.Cache where
 
-import Data.Functor
+import Data.Functor.Functor1
 import Control.DeepSeq.Redone
+
+import Data.Functor
 
 import GHC.Generics
 
@@ -53,8 +55,45 @@ instance NFData_ FoldCache where
 ---------------------------------------
 
 class (Foldable f) => FoldableCache f where
-  toFoldCache :: FoldableCache f => f v -> FoldCache v
+  toFoldCache :: f v -> FoldCache v
+  default toFoldCache :: (Generic1 f, FoldableCache (Rep1 f)) => f v -> FoldCache v
+  toFoldCache = toFoldCache . from1
 
 instance FoldableCache FoldCache where
   {-# INLINE toFoldCache #-}
   toFoldCache = id
+
+---------------------------------------
+
+instance FoldableCache V1 where
+  {-# INLINE toFoldCache #-}
+  toFoldCache = absurd1
+
+instance FoldableCache U1 where
+  {-# INLINE toFoldCache #-}
+  toFoldCache = const mempty
+
+instance FoldableCache Par1 where
+  {-# INLINE toFoldCache #-}
+  toFoldCache = FCPure . unPar1
+
+deriving newtype instance (FoldableCache f) => FoldableCache (Rec1 f)
+
+instance FoldableCache (K1 i c) where
+  {-# INLINE toFoldCache #-}
+  toFoldCache = const mempty
+
+deriving newtype instance (FoldableCache f) => FoldableCache (M1 i c f)
+
+instance (FoldableCache f, FoldableCache g) => FoldableCache (f :+: g) where
+  {-# INLINE toFoldCache #-}
+  toFoldCache (L1 fx) = toFoldCache fx
+  toFoldCache (R1 gx) = toFoldCache gx
+
+instance (FoldableCache f, FoldableCache g) => FoldableCache (f :*: g) where
+  {-# INLINE toFoldCache #-}
+  toFoldCache (fx :*: gx) = toFoldCache fx <> toFoldCache gx
+
+instance (FoldableCache f, FoldableCache g) => FoldableCache (f :.: g) where
+  {-# INLINE toFoldCache #-}
+  toFoldCache (Comp1 fgx) = toFoldCache fgx >>= toFoldCache
