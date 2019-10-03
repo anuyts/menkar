@@ -1,3 +1,9 @@
+FoldCache as free monoid functor (a0a5e2b)
+==========================================
+-> caching doesn't happen
+lib & uniDND	takes too long
+-> cancelled
+
 Postponed substitutions on FoldCache (19b1206)
 ==============================================
 lib & uniDND	starts swapping!
