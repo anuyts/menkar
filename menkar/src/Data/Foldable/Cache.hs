@@ -18,32 +18,40 @@ data FoldCache x where
   FCMap :: (x -> y) -> FoldCache x -> FoldCache y
 
 instance Functor FoldCache where
+  {-# INLINE fmap #-}
   fmap = FCMap
 
 instance Foldable FoldCache where
+  {-# INLINE foldMap #-}
   foldMap h FCEmpty = mempty
   foldMap h (FCPure x) = h x
   foldMap h (FCAppend fcx fcy) = foldMap h fcx <> foldMap h fcy
   foldMap h (FCMap g fcx) = foldMap (h . g) fcx
 
 instance Applicative FoldCache where
+  {-# INLINE pure #-}
   pure = FCPure
+  {-# INLINE (<*>) #-}
   FCEmpty <*> fcx = FCEmpty
   FCPure f <*> fcx = f <$> fcx
   FCAppend fcf fcg <*> fcx = FCAppend (fcf <*> fcx) (fcg <*> fcx)
   FCMap g fcy <*> fcx = g <$> fcy <*> fcx
 
 instance Monad FoldCache where
+  {-# INLINE return #-}
   return = FCPure
+  {-# INLINE (>>=) #-}
   FCEmpty >>= h = FCEmpty
   FCPure x >>= h = h x
   FCAppend fcx fcy >>= h = FCAppend (fcx >>= h) (fcy >>= h)
   FCMap g fcx >>= h = fcx >>= h . g
 
 instance Semigroup (FoldCache x) where
+  {-# INLINE (<>) #-}
   (<>) = FCAppend
 
 instance Monoid (FoldCache x) where
+  {-# INLINE mempty #-}
   mempty = FCEmpty
 
 instance NFData_ FoldCache where
@@ -57,6 +65,7 @@ instance NFData_ FoldCache where
 class (Foldable f) => FoldableCache f where
   toFoldCache :: f v -> FoldCache v
   default toFoldCache :: (Generic1 f, FoldableCache (Rep1 f)) => f v -> FoldCache v
+  {-# INLINE toFoldCache #-}
   toFoldCache = toFoldCache . from1
 
 instance FoldableCache FoldCache where
@@ -105,5 +114,6 @@ instance (FoldableCache f, FoldableCache g) => FoldableCache (Compose f g) where
 --------------------------------------
 
 instance FoldableCache Maybe where
+  {-# INLINE toFoldCache #-}
   toFoldCache = maybe FCEmpty FCPure
 deriving instance FoldableCache []
