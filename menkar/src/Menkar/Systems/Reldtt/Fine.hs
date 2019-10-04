@@ -7,6 +7,7 @@ import Menkar.Systems.Reldtt.Basic
 
 import Control.Exception.AssertFalse
 import Control.DeepSeq.Redone
+import Data.Foldable.Cache
 
 import GHC.Generics
 import Util
@@ -57,11 +58,11 @@ pattern BareSysType systy = TypeHS (SysType (systy :: ReldttUniHSConstructor v))
   --Type (Expr2 (TermSys (systy :: ReldttSysTerm v))) :: Type Reldtt v
 
 data ModeTerm v = ModeTermZero | ModeTermSuc (Term Reldtt v) | ModeTermOmega
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 newtype ReldttMode v = ReldttMode {getReldttMode :: Term Reldtt v}
   deriving (Functor, Foldable, Traversable, Generic1)
-  deriving newtype (CanSwallow (Term Reldtt), NFData_)
+  deriving newtype (CanSwallow (Term Reldtt), NFData_, FoldableCache)
 deriving instance Generic (ReldttMode v)
 deriving anyclass instance Wrapped (ReldttMode v)
 --instance Wrapped (ReldttMode v) where
@@ -81,7 +82,7 @@ data ModtyTail v =
   TailCont (Mode Reldtt v) {-^ Tail domain and codomain, can be omega -} |
 
   TailProblem
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 _snout'max :: ModtySnout -> KnownDeg
 _snout'max (ModtySnout idom icod krevdegs) = case krevdegs of
@@ -89,7 +90,7 @@ _snout'max (ModtySnout idom icod krevdegs) = case krevdegs of
   krevdegs -> head krevdegs
 
 data KnownModty v = KnownModty {_knownModty'snout :: ModtySnout, _knownModty'tail :: ModtyTail v}
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 idKnownModty :: Mode Reldtt v -> KnownModty v
 idKnownModty d = KnownModty (ModtySnout 0 0 []) (TailCont d)
@@ -133,7 +134,7 @@ data ChainModty v =
     (Mode Reldtt v) {-^ domain -}
     (Mode Reldtt v) {-^ codomain -}
     (ChainModty v) {-^ underlying chain modality -}
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 wrapInChainModty :: Mode Reldtt v -> Mode Reldtt v -> Term Reldtt v -> ChainModty v
 wrapInChainModty dom cod t = ChainModtyTerm dom cod t
@@ -254,7 +255,7 @@ data ModtyTerm v =
   
   {-| Only for prettyprinting. -} 
   ModtyTermUnavailable (Term Reldtt v) {-^ The domain, can be omega -} (Term Reldtt v) {-^ The codomain, can be omega -}
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 _modtyTerm'dom :: ModtyTerm v -> Mode Reldtt v
 _modtyTerm'dom (ModtyTermChain chmu) = _chainModty'dom chmu
@@ -279,7 +280,7 @@ data ReldttDegree v =
     (ChainModty v) {-^ Modality -}
     --(Mode Reldtt v) {-^ Modality's domain; mode of the resulting degree. -}
     --(Mode Reldtt v) {-^ Modality's codomain; mode of the argument degree. -}
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 _reldttDegree'mode :: ReldttDegree v -> Mode Reldtt v
 _reldttDegree'mode (DegKnown d kdeg) = d
@@ -291,7 +292,7 @@ data ReldttSysTerm v =
   -- -- | This is a hack so that we can have metas for @'ChainModty'@
   --SysTermChainModtyInDisguise (ChainModty v)
   --SysTermDeg (ReldttDegree v)
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 data ReldttUniHSConstructor v =
   {-| Type of modes. -}
@@ -300,7 +301,7 @@ data ReldttUniHSConstructor v =
   --SysTypeDeg (ReldttMode v) {-^ Mode, can be omega. -} |
   {-| Type of modalities. -}
   SysTypeModty (ReldttMode v) {-^ Domain, can be omega -} (ReldttMode v) {-^ Codomain, can be omega -}
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Reldtt), NFData_, FoldableCache)
 
 data ReldttSysJudgement where
   deriving (Generic, NFData)

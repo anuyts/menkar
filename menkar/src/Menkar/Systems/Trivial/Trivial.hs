@@ -15,6 +15,7 @@ import Data.Constraint.Witness
 import Control.Exception.AssertFalse
 import Data.Functor.Functor1
 import Control.DeepSeq.Redone
+import Data.Foldable.Cache
 
 import GHC.Generics
 import Data.Void
@@ -51,15 +52,15 @@ instance SysSyntax (Term Trivial) Trivial where
 ---------------------------------
 
 data TrivMode v = TrivMode
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_, FoldableCache)
 data TrivModality v = TrivModality
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_, FoldableCache)
 data TrivDegree v = TrivDegree
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_, FoldableCache)
 data TrivTerm v where
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_, FoldableCache)
 data TrivUniHSConstructor v where
-  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_)
+  deriving (Functor, Foldable, Traversable, Generic1, CanSwallow (Term Trivial), NFData_, FoldableCache)
 data TrivJud where
   deriving (Generic, NFData)
 data TrivAnalyzerError where
