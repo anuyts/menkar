@@ -13,7 +13,7 @@ Currently supported features include:
    * named arguments,
    * implicit unboxing,
    * named and numbered projections for nested Σ-types.
-* internal crisp **mode and modality polymorphism**,
+* internal crisp **mode and modality polymorphism** (with no semantics),
 * a single universe that (inconsistently) contains itself,
 * support for type systems in which type and term have a different modality, via a parametric function `El : {par | Uni} -> UniHS` from a well-behaved (e.g. fibrant) universe to a possibly ill-behaved (e.g. non-fibrant) Hofmann-Streicher-universe whose codes can be promoted to the type level continuously.
 
@@ -21,7 +21,7 @@ Partly implemented (but presently unusable) features include:
 
 * a [definitional relatedness][reldtt] checker (coined by A. Vezzosi), which may allow for the non-consideration of irrelevant subterms during conversion-checking.
 
-Planned features include:
+Intended features include:
 
 * a Hofmann-Streicher-universe of propositions, equipped with logic operators,
 * the coproduct type,
@@ -50,6 +50,10 @@ A **resolution** is essentially a user-defined open ad-hoc function which takes 
 * the resolution-features necessary to implement a relatedness-checker *within* Menkar,
 * perhaps, one day, definitional inequality and subtyping.
 
+## Antifeatures
+* There are enormous performance issues, especially in the RelDTT variant.
+* See the issues page, of course
+
 ## Type systems
 Multimode modal type systems currently supported are:
 
@@ -73,7 +77,7 @@ git clone <...> menkar
 cd menkar/menkar
 stack install
 ```
-Menkar is now installed as `menkar-exe`.
+Menkar is now installed as `menkar`.
 
 ### Running
 Type-check the concatenation of three files:

@@ -2,12 +2,17 @@
 Please add changes in chronological order: newest first.
 
 ## Unreleased changes
+
+## v0.300: Degrees of Relatedness
 When releasing, change the changelog and `package.yaml`.
 
+*  Scope declarations in the modally correct context.
 *  Modifications aimed at performance gains:
 
+   *  Implement `traverse` for `Maybe` using only `Foldable` (eliminate space leak).
+   *  Use `newtype` deriving strategy whenever possible.
    *  Entry-checking judgements now get lowest priority and are refuted when there are still open worries, unless marked as @noFlush. The performance gains are underwhelming.
-   *  Guard meta dependencies with the `Coyoneda` type, causing a **massive** speedup.
+   *  Guard metavariable dependencies with the `Coyoneda` type, causing a **massive** speedup.
    *  Guard heavily substituted data with the `Coyoneda` type, causing a significant speedup.
    *  Make substitution (CanSwallow typeclass) more efficient.
    *  Use strict monads to no avail.
@@ -33,7 +38,7 @@ When releasing, change the changelog and `package.yaml`.
    * `{~ *mu x : A}` instead of `{~ | m mu | x : A}`
 *  Removed extremely widespread but redundant mode annotations from syntax. (A lot of trivialized legacy code is present.)
 *  Added special function-like modal-lock syntax for Box types.
-*  Added support for [Degrees of Relatedness (RelDTT)](https://doi.org/10.1145/3209108.3209119).
+*  **Added support for [Degrees of Relatedness (RelDTT)](https://doi.org/10.1145/3209108.3209119).**
 *  Put mode classifier of 'UniHSConstructor' in a 'ModalBox' so that it lives in the right context.
 *  Annotated raw syntax with system parameter.
 
