@@ -9,6 +9,7 @@ When releasing, change the changelog and `package.yaml`.
 *  Scope declarations in the modally correct context.
 *  Modifications aimed at performance gains:
 
+   *  Cache `toList` for non-variable terms.
    *  Implement `traverse` for `Maybe` using only `Foldable` (eliminate space leak).
    *  Use `newtype` deriving strategy whenever possible.
    *  Entry-checking judgements now get lowest priority and are refuted when there are still open worries, unless marked as @noFlush. The performance gains are underwhelming.
