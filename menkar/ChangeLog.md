@@ -2,9 +2,11 @@
 Please add changes in chronological order: newest first.
 
 ## Unreleased changes
+When releasing, change the changelog and `package.yaml`.
+
+*  Fix bug with projection `..1`.
 
 ## v0.300: Degrees of Relatedness
-When releasing, change the changelog and `package.yaml`.
 
 *  Scope declarations in the modally correct context.
 *  Modifications aimed at performance gains:

@@ -1,0 +1,15 @@
+val IsProp {A : UniHS} : UniHS
+	= {a b : A} -> a == b
+val Prop : UniHS
+	= {A : UniHS} >< IsProp A
+val Proof {pA : Prop} : UniHS = pA .1
+val up {pA : Prop} : IsProp (Proof pA) = pA ..2
+
+val UnitIsProp : IsProp Unit = x > y > refl ...
+val pUnit : Prop = Unit , UnitIsProp
+
+val EmptyIsProp : IsProp Empty = indEmpty (x > {y : Empty} -> x == y)
+val pEmpty : Prop = Empty , EmptyIsProp
+
+val SigmaIsProp {pA : Prop} {pB : {_ : Proof pA} -> Prop} : IsProp ({a : Proof pA} >< Proof (pB a))
+	= ?goal

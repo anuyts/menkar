@@ -570,14 +570,18 @@ checkSmartElimForNormalType gamma eliminee tyEliminee eliminators result tyResul
       else let decEliminators = (:*:) dmuInfer (SmartElimProj (Raw.ProjSpecNumbered $ i - 1)) : eliminators'
                d = _modality'dom dmuInfer
            in  projSnd gamma eliminee sigmaBinding (idModedModality d) decEliminators result tyResult
+    -- Identity projection: `x ..1`: do nothing
+    (_, dmuInfer :*: SmartElimProj (Raw.ProjSpecTail 1) : eliminators') ->
+      discard gamma eliminee tyEliminee dmuInfer eliminators' result tyResult
     -- Numbered tail projection of a pair: `pair ..i`
     (TypeHS (Sigma sigmaBinding),
      (:*:) dmuInfer (SmartElimProj (Raw.ProjSpecTail i)) : eliminators') ->
-      if i == 1
+      --if i == 1
       -- then do nothing
-      then discard gamma eliminee tyEliminee dmuInfer eliminators' result tyResult
+      --then discard gamma eliminee tyEliminee dmuInfer eliminators' result tyResult
       -- else project out the second component and decrement
-      else let decEliminators = (:*:) dmuInfer (SmartElimProj (Raw.ProjSpecTail $ i - 1)) : eliminators'
+      --else
+           let decEliminators = (:*:) dmuInfer (SmartElimProj (Raw.ProjSpecTail $ i - 1)) : eliminators'
                d = _modality'dom dmuInfer
            in  projSnd gamma eliminee sigmaBinding (idModedModality d) decEliminators result tyResult
     -- Projection of a non-pair: auto-eliminate.
