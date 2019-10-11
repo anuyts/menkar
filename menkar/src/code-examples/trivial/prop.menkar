@@ -1,3 +1,5 @@
+// This file is self-contained
+
 val IsProp {A : UniHS} : UniHS
 	= {a b : A} -> a == b
 val Prop : UniHS
@@ -11,5 +13,30 @@ val pUnit : Prop = Unit , UnitIsProp
 val EmptyIsProp : IsProp Empty = indEmpty (x > {y : Empty} -> x == y)
 val pEmpty : Prop = Empty , EmptyIsProp
 
+val auxSigma {pA : Prop} {pB : {_ : Proof pA} -> Prop}
+	: {a1 a2 : Proof pA} {b1 : Proof (pB a1)} {b2 : Proof (pB a2)} -> (a1 , b1) == .{{a : Proof pA} >< Proof (pB a)} (a2 , b2)
+	= a1 > a2 > ind==
+		(a2' > _ > {b1 : Proof (pB a1)} {b2 : Proof (pB a2')} -> (a1 , b1) == .{{a : Proof pA} >< Proof (pB a)} (a2' , b2))
+		(b1 > b2 > ind==
+			(b2' > _ > (a1 , b1) == .{{a : Proof pA} >< Proof (pB a)} (a1 , b2'))
+			(refl ...)
+			(up (pB a1) b1 b2)
+		)
+		(up pA a1 a2)
 val SigmaIsProp {pA : Prop} {pB : {_ : Proof pA} -> Prop} : IsProp ({a : Proof pA} >< Proof (pB a))
-	= ?goal
+	= ab1 > ab2 > auxSigma pA pB (ab1 .1) (ab2 .1) (ab1 ..2) (ab2 ..2)
+val pSigma {pA : Prop} {pB : {_ : Proof pA} -> Prop} : Prop
+	= _ , SigmaIsProp pA pB
+
+val PiIsProp {A : UniHS} {pB : {_ : A} -> Prop} : IsProp ({a : A} -> Proof (pB a))
+	= f1 > f2 > funext (a > up (pB a) (f1 a) (f2 a))
+val pPi {A : UniHS} {pB : {_ : A} -> Prop} : Prop
+	= _ , PiIsProp A pB
+
+val BoxIsProp {pA : Prop} : IsProp ({@lock} -> Proof pA)
+	= boxa1 > boxa2 > ind==
+		(a2 > _ > boxa1 == ({} > a2))
+		(refl ...)
+		(up pA (boxa1 .{}) (boxa2 .{}))
+val pBox {pA : Prop} : Prop
+	= _ , BoxIsProp pA

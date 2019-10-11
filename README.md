@@ -50,15 +50,11 @@ A **resolution** is essentially a user-defined open ad-hoc function which takes 
 * the resolution-features necessary to implement a relatedness-checker *within* Menkar,
 * perhaps, one day, definitional inequality and subtyping.
 
-## Antifeatures
-* There are enormous performance issues, especially in the RelDTT variant.
-* See the issues page, of course
-
 ## Type systems
 Multimode modal type systems currently supported are:
 
 * the trivial system (1 mode, 1 modality, i.e. basic MLTT),
-* RelDTT a.k.a. [degrees of relatedness][reldtt],
+* RelDTT a.k.a. [degrees of relatedness][reldtt], albeit with enormous performance issues,
 * hence also [ParamDTT][paramdtt], which is essentially the mode 2 (depth 1) fragment of RelDTT,
 
 We also aim to support:
