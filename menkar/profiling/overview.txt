@@ -1,3 +1,8 @@
+No modes on metavariable dependencies (a028175)
+===============================================
+lib & uniDND	4s, 300MB
+paramdtt	25s, ca 6GB
+
 Bindings with FreeSwallow (5163431)
 ===================================
 lib & uniDND	35s, 100MB
