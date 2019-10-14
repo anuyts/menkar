@@ -316,7 +316,7 @@ deriving instance (
 
 {-| Variables are stored in REVERSE order, i.e. in order of De Bruijn index. -}
 newtype Dependencies (sys :: KSys) (v :: *) =
-  Dependencies {getDependencies :: FreeSwallow (Term sys) (Compose [] (Mode sys :*: Term sys)) v}
+  Dependencies {getDependencies :: FreeSwallow (Term sys) (Compose [] (Term sys)) v}
 deriving instance (SysTrav sys) => Functor (Dependencies sys)
 deriving instance (SysTrav sys) => Foldable (Dependencies sys)
 deriving instance (SysTrav sys) => Traversable (Dependencies sys)
@@ -329,7 +329,7 @@ deriving newtype instance (SysSyntax (Term sys) sys) =>
 
 depcies2subst :: forall sys vOrig v . (SysAST sys, DeBruijnLevel vOrig) => Dependencies sys v -> vOrig -> Term sys v
 depcies2subst (Dependencies depcies) vOrig = lowerFS $ hoistFS
-  (\(Compose dts) -> snd1 (atVarRev vOrig dts))
+  (\(Compose dts) -> atVarRev vOrig dts)
   depcies
 
 {-| HS-Types should carry no level information whatsoever:

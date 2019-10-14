@@ -710,7 +710,7 @@ instance SysAnalyzer Reldtt where
       (ChainModtyMeta dom1 cod1 meta1 depcies1, ChainModtyMeta dom2 cod2 meta2 depcies2) ->
         meta1 == meta2
         && length depcyList1 == length depcyList2
-        && and (zip depcyList1 depcyList2 <&> \ (d1 :*: depcy1, d2 :*: depcy2) ->
+        && and (zip depcyList1 depcyList2 <&> \ (depcy1, depcy2) ->
                    quickEq @Reldtt depcy1 depcy2 U1 U1
                )
         where Dependencies (FS (Compose depcyList1)) = depcies1

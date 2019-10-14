@@ -49,7 +49,7 @@ quickEq t t' extraT extraT' =
              (neutrality == neutrality')
              && meta == meta'
              && length depcyList == length depcyList'
-             && and (zip depcyList depcyList' <&> \ (d :*: depcy, d' :*: depcy') ->
+             && and (zip depcyList depcyList' <&> \ (depcy, depcy') ->
                         --quickEq @sys d d' U1 U1 && (follows from the other clause...)
                         quickEq @sys depcy depcy' U1 U1
                     )

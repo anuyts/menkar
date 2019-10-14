@@ -371,7 +371,7 @@ meta2pretty gamma neutrality meta depcies maybeAlg opts =
             ["\x27ea" ++|
               fine2pretty gamma (substitute (depcies2subst depcies) t) opts
             |++ "\x27eb"]
-  where uglySubMeta = (reverse . getCompose . lowerFS . getDependencies $ depcies) <&> \ (d :*: depcy) ->
+  where uglySubMeta = (reverse . getCompose . lowerFS . getDependencies $ depcies) <&> \ depcy ->
           " .{" ++| fine2pretty gamma depcy opts |++ "}"
         metaNoSolution = case maybeAlg of
           Nothing -> uglySubMeta

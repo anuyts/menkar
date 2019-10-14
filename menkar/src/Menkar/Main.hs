@@ -114,7 +114,7 @@ printMetaInfo ref s meta info = do
   let tMeta = Expr2 $ TermMeta
         MetaBlocked
         meta
-        (Dependencies $ liftFS $ Compose $ forallVars $ (unreachable :*:) . Var2)
+        (Dependencies $ liftFS $ Compose $ forallVars $ Var2)
         (Compose Nothing)
   putStr $ jud2string (JudTerm (_metaInfo'context info) tMeta (Type $ Expr2 $ TermWildcard))
            $ _main'fine2prettyOptions mainState

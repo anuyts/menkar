@@ -169,7 +169,7 @@ getSubstAndPartialInv depcies = do
       getVar2 (Var2 v) = Just v
       getVar2 _ = Nothing
   --case sequenceA $ uncoy $ getVar2 . snd1 <$> (_ $ getDependencies $ depcies) of
-  case traverse (getVar2 . snd1) . getCompose . lowerFS . getDependencies $ depcies of
+  case traverse getVar2 . getCompose . lowerFS . getDependencies $ depcies of
     -- Some dependency is not a variable
     Nothing -> Left "Cannot solve meta-variable: it has non-variable dependencies."
     -- All dependencies are variables
@@ -199,8 +199,8 @@ tryToSolveBy :: forall sys tc t v .
   ) ->
   tc (Maybe String)
 tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
-  depcies1 <- depcies1 & (_Wrapped' . cutFSLens . _Wrapped' . traverse $ \ (d :*: depcy) ->
-    fmap ((d :*:) . fst) $ runWriterT $ whnormalize (CtxOpaque $ d) depcy (Type $ Expr2 $ TermWildcard)
+  depcies1 <- depcies1 & (_Wrapped' . cutFSLens . _Wrapped' . traverse $ \ depcy ->
+    fmap fst $ runWriterT $ whnormalize unreachable depcy (Type $ Expr2 $ TermWildcard)
       "Trying to weak-head-normalize meta dependency to a variable"
     )
   let maybeProblem = case neut1 of

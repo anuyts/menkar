@@ -30,8 +30,8 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   String ->
   whn (Term sys v)
 tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
-  let dgamma' = ctx'mode gamma
-  let dgamma = dgamma'
+  --let dgamma' = ctx'mode gamma
+  --let dgamma = dgamma'
   let returnElim = return (Expr2 $ TermElim dmu whnEliminee tyEliminee e) -- <$ tell metasEliminee
   case e of
     ElimDep motive clauses -> case clauses of
@@ -43,7 +43,7 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
               let tmFst = Expr2 $
                     TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmuSigma) whnEliminee tyEliminee Fst
               let tmSnd = Expr2 $
-                    TermElim (idModalityTo $ uncoy dgamma)                                whnEliminee tyEliminee Snd
+                    TermElim (idModalityTo $ _modalityTo'dom dmu)                         whnEliminee tyEliminee Snd
               let subst v = case v of
                     VarWkn (VarWkn w) -> Var2 w
                     VarWkn VarLast -> tmFst
@@ -86,7 +86,7 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   whn (Term sys v)
 -- careful with glue/weld!
 whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
-  let dgamma = ctx'mode gamma
+  --let dgamma = ctx'mode gamma
   -- -- WHNormalize the eliminee
   -- -- The following line SHOULDN'T BE NECESSARY!
   -- (whnEliminee, metasEliminee)

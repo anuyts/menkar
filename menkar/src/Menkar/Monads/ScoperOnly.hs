@@ -52,11 +52,7 @@ instance MonadFail SimpleScoper where
 instance MonadScoper Trivial SimpleScoper where
   newMetaID gamma reason = do
     i <- fresh
-    return (i, Dependencies $ liftFS $ Compose $ forallVarsRev $ \ (v :: v) ->
-        let d :: TrivMode v
-            d = _modalityTo'dom $ _segment'modty $ _leftDivided'content $ uncoy $ lookupVar gamma v
-        in  d :*: Var2 v
-      )
+    return (i, Dependencies $ liftFS $ Compose $ forallVarsRev $ Var2)
   scopeFail msg = SimpleScoper $ lift $ Left msg
 
 ---------------------------
