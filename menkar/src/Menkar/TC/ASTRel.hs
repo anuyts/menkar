@@ -187,7 +187,7 @@ etaExpand useHoles gamma t (Sigma sigmaBinding) = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
   let dmu = _segment'modty $ binding'segment $ sigmaBinding
-  allowsEta (crispCtx gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
+  allowsEta (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
         tmFst <- case useHoles of
           UseHoles -> newMetaTerm
@@ -213,7 +213,7 @@ etaExpand useHoles gamma t (BoxType boxSeg) = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
   let dmu = _segment'modty $ boxSeg
-  allowsEta (crispCtx gamma) (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
+  allowsEta (_modalityTo'mod dmu) "Need to know if eta is allowed." >>= \case
     Just True -> do
       let ty = Type $ Expr2 $ TermCons $ ConsUniHS $ BoxType boxSeg
       tmUnbox <- case useHoles of
@@ -273,7 +273,7 @@ checkEtaTerm ::
   Type sys v ->
   tc Bool
 checkEtaTerm gamma t ty = do
-  (whnTy, metas) <- runWriterT $ whnormalizeType gamma ty "Normalizing type."
+  (whnTy, metas) <- runWriterT $ whnormalizeType ty "Normalizing type."
   case isBlockedOrMeta (unType whnTy) metas of
     False -> do
       parent' <- defConstraint
@@ -358,7 +358,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
   let dgamma' = ctx'mode gamma
   let dgamma = dgamma'
   -- Top-relatedness is always ok.
-  itIsTopDeg <- isTopDeg (crispCtx $ fstCtx gamma) (_degree'deg $ uncoy deg) (uncoy dgamma)
+  itIsTopDeg <- isTopDeg (_degree'deg $ uncoy deg) (uncoy dgamma)
     "Need to know whether required degree of relatedness is Top."
   case itIsTopDeg of
     -- It's certainly about top-relatedness
@@ -367,8 +367,8 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
     Nothing -> tcBlock $ "Need to know whether required degree of relatedness is Top."
     -- It's certainly not about top-relatedness
     Just False -> do
-      (t1, metasT1) <- runWriterT $ whnormalize (fstCtx gamma) nonwhnt1 ty1 "Weak-head-normalizing first term."
-      (t2, metasT2) <- runWriterT $ whnormalize (sndCtx gamma) nonwhnt2 ty2 "Weak-head-normalizing second term."
+      (t1, metasT1) <- runWriterT $ whnormalize nonwhnt1 ty1 "Weak-head-normalizing first term."
+      (t2, metasT2) <- runWriterT $ whnormalize nonwhnt2 ty2 "Weak-head-normalizing second term."
       parent <- defConstraint
             (JudTermRel
               eta
@@ -383,7 +383,7 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
            We only do this for whn-terms, because otherwise you risk solving a meta with itself.
            If we're RELATING a meta to a term, then we cannot necessarily whsolve, because we might be e.g. in the unit type.
         -}
-        itIsEqDeg <- isEqDeg (crispCtx $ fstCtx gamma) (_degree'deg $ uncoy deg) (uncoy dgamma)
+        itIsEqDeg <- isEqDeg (_degree'deg $ uncoy deg) (uncoy dgamma)
           "Need to know if I'm checking equality."
         solved <- case itIsEqDeg of
           Just True -> case (t1, t2, isBlockedOrMeta t1 metasT1, isBlockedOrMeta t2 metasT2) of
@@ -405,8 +405,8 @@ checkTermRel eta deg gamma (Twice1 nonwhnt1 nonwhnt2) maybeTys = do
           if unEta eta
             then do
               -- purposefully shadowing (renaming)
-              (ty1, metasTy1) <- runWriterT $ whnormalizeType (fstCtx gamma) ty1 "Weak-head-normalizing first type."
-              (ty2, metasTy2) <- runWriterT $ whnormalizeType (sndCtx gamma) ty2 "Weak-head-normalizing second type."
+              (ty1, metasTy1) <- runWriterT $ whnormalizeType ty1 "Weak-head-normalizing first type."
+              (ty2, metasTy2) <- runWriterT $ whnormalizeType ty2 "Weak-head-normalizing second type."
               case (ty1, ty2, isBlockedOrMeta (unType ty1) metasTy1, isBlockedOrMeta (unType ty2) metasTy2) of
                 -- Both types are known: attempt eta-expansion
                 (TypeHS hsty1, TypeHS hsty2, False, False) -> etaExpandIfApplicable deg gamma t1 t2 metasT1 metasT2 hsty1 hsty2

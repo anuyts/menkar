@@ -206,19 +206,19 @@ instance SysScoper Trivial where
 ---------------------------------
 
 instance SysWHN Trivial where
-  whnormalizeSysTerm gamma t ty reason = case t of {}
+  whnormalizeSysTerm t ty reason = case t of {}
   --whnormalizeMode gamma TrivMode reason =  return TrivMode
   --whnormalizeModality gamma TrivModality TrivMode TrivMode reason = return TrivModality
   --whnormalizeDegree gamma TrivDegree TrivMode reason = return TrivDegree
-  whnormalizeMultimodeOrSysAST token gamma t extraT classifT reason = case token of
+  whnormalizeMultimodeOrSysAST token t extraT classifT reason = case token of
     Left AnTokenMode -> return TrivMode
     Left AnTokenModality -> return TrivModality
     Left AnTokenDegree -> return TrivDegree
     Right sysToken -> case sysToken of {}
-  leqMod gamma TrivModality TrivModality TrivMode TrivMode reason = return $ Just True
-  leqDeg gamma TrivDegree TrivDegree TrivMode reason = return $ Just True
-  isEqDeg gamma TrivDegree TrivMode reason = return $ Just True
-  isTopDeg gamma TrivDegree TrivMode reason = return $ Just False
+  leqMod TrivModality TrivModality TrivMode TrivMode reason = return $ Just True
+  leqDeg TrivDegree TrivDegree TrivMode reason = return $ Just True
+  isEqDeg TrivDegree TrivMode reason = return $ Just True
+  isTopDeg TrivDegree TrivMode reason = return $ Just False
 
 ---------------------------------
 

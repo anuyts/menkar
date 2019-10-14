@@ -16,7 +16,6 @@ import GHC.Generics
 class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   whnormalizeSysTerm :: forall whn v .
     (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     SysTerm sys v ->
     Type sys v ->
     String ->
@@ -24,7 +23,6 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   whnormalizeMultimodeOrSysAST :: forall whn t v .
     (MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
     MultimodeOrSysAnalyzableToken sys t ->
-    Ctx Type sys v ->
     t v ->
     ClassifExtraInput t v ->
     Classif t v ->
@@ -39,7 +37,6 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   -}
   leqMod :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     Modality sys v -> Modality sys v ->
     Mode sys v -> Mode sys v ->
     String ->
@@ -51,7 +48,6 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
   -}
   leqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     Degree sys v -> 
     Degree sys v -> 
     Mode sys v ->
@@ -60,37 +56,34 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
     
   isEqDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     Degree sys v -> 
     Mode sys v ->
     String ->
     whn (Maybe Bool)
-  isEqDeg gamma deg d reason = leqDeg gamma deg (eqDeg d) d reason
+  isEqDeg deg d reason = leqDeg deg (eqDeg d) d reason
 
   isTopDeg :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     Degree sys v -> 
     Mode sys v ->
     String ->
     whn (Maybe Bool)
-  isTopDeg gamma deg d reason = case maybeTopDeg d of
+  isTopDeg deg d reason = case maybeTopDeg d of
     Nothing -> return $ Just False
-    Just topDeg -> leqDeg gamma topDeg deg d reason
+    Just topDeg -> leqDeg topDeg deg d reason
 
   -- | True if @id <= mu . nu@, where nu is the @approxLeftAdjointProj@.
   -- | Should at least imply that @nu . mu <= id@ as a judgemental inequality.
   allowsEta :: forall whn v .
     (MonadWHN sys whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     ModedModality sys v ->
     --Mode sys v {-^ the codomain -} ->
     String ->
     whn (Maybe Bool)
-  allowsEta gamma dmu@(ModedModality ddom dcod' mu) {-dcod-} reason = do
+  allowsEta dmu@(ModedModality ddom dcod' mu) {-dcod-} reason = do
     let dnu = modedApproxLeftAdjointProj dmu
-    leqMod gamma (idMod dcod') (_modality'mod $ compModedModality dmu dnu) dcod' dcod' reason
-  allowsEta gamma _ reason = unreachable
+    leqMod (idMod dcod') (_modality'mod $ compModedModality dmu dnu) dcod' dcod' reason
+  allowsEta _ reason = unreachable
 
   {- Use the inequality judgement instead!
   -- | True if @nu . mu <= id@, where nu is the @approxLeftAdjointProj@.
@@ -112,28 +105,25 @@ class (SysScoper sys, SysAnalyzer sys) => SysWHN sys where
 
 whnormalizeMode :: forall sys whn v .
     (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     Mode sys v ->
     String ->
     whn (Mode sys v)
-whnormalizeMode gamma d reason =
-  whnormalizeMultimodeOrSysAST (Left AnTokenMode) gamma d U1 U1 reason
+whnormalizeMode d reason =
+  whnormalizeMultimodeOrSysAST (Left AnTokenMode) d U1 U1 reason
 whnormalizeModality :: forall sys whn v .
     (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     Modality sys v ->
     Mode sys v ->
     Mode sys v ->
     String ->
     whn (Modality sys v)
-whnormalizeModality gamma mu dom cod reason =
-  whnormalizeMultimodeOrSysAST (Left AnTokenModality) gamma mu U1 (dom :*: cod) reason
+whnormalizeModality mu dom cod reason =
+  whnormalizeMultimodeOrSysAST (Left AnTokenModality) mu U1 (dom :*: cod) reason
 whnormalizeDegree :: forall sys whn v .
     (SysWHN sys, MonadWHN sys whn, MonadWriter [Int] whn, DeBruijnLevel v) =>
-    Ctx Type sys v ->
     Degree sys v ->
     Mode sys v ->
     String ->
     whn (Degree sys v)
-whnormalizeDegree gamma deg d reason =
-  whnormalizeMultimodeOrSysAST (Left AnTokenDegree) gamma deg U1 d reason
+whnormalizeDegree deg d reason =
+  whnormalizeMultimodeOrSysAST (Left AnTokenDegree) deg U1 d reason

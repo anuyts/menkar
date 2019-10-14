@@ -121,8 +121,8 @@ instance SysTC Reldtt where
       let cod1 = _modality'cod t1
       let dom2 = _modality'dom t2
       let cod2 = _modality'cod t2
-      (t1, metasT1) <- runWriterT $ whnormalizeChainModty (fstCtx gamma) t1 "Weak-head-normalizing 1st modality." 
-      (t2, metasT2) <- runWriterT $ whnormalizeChainModty (sndCtx gamma) t2 "Weak-head-normalizing 2nd modality."
+      (t1, metasT1) <- runWriterT $ whnormalizeChainModty t1 "Weak-head-normalizing 1st modality." 
+      (t2, metasT2) <- runWriterT $ whnormalizeChainModty t2 "Weak-head-normalizing 2nd modality."
       parent <- defConstraint
         (JudRel analyzableToken eta relT gamma (Twice1 t1 t2) extraTs maybeCTs)
         "Weak-head-normalizing both sides."
@@ -147,7 +147,7 @@ instance SysTC Reldtt where
             then return False
             else do
               (cod1, metasCod1) <- runWriterT $ whnormalizeAST @Reldtt @_ @_ @ReldttMode
-                (fstCtx gamma) cod1 U1 U1 "Weak-head-normalize codomain (of 1st modality)"
+                cod1 U1 U1 "Weak-head-normalize codomain (of 1st modality)"
               case (cod1, metasCod1) of
                 (_, _:_) -> tcBlock $ "Need to know codomain: If it's zero, I can apply eta."
                 (ReldttMode (BareMode ModeTermZero), _) -> return True
@@ -160,8 +160,8 @@ instance SysTC Reldtt where
             ([] , _:_, _, _) -> tcBlock $ "Cannot solve relation: right side is blocked."
             (_:_, _:_, _, _) -> tcBlock $ "Cannot solve inequality: both sides are blocked on a meta-variable."
     Left AnTokenDegree -> do
-      (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree (fstCtx gamma) t1 "Weak-head-normalizing 1st degree."
-      (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree (sndCtx gamma) t2 "Weak-head-normalizing 2nd degree."
+      (t1, metasT1) <- runWriterT $ whnormalizeReldttDegree t1 "Weak-head-normalizing 1st degree."
+      (t2, metasT2) <- runWriterT $ whnormalizeReldttDegree t2 "Weak-head-normalizing 2nd degree."
       newParent <- defConstraint
         (JudRel analyzableToken eta relT gamma (Twice1 t1 t2) extraTs maybeCTs)
         "Weak-head-normalizing both sides."
@@ -173,7 +173,7 @@ instance SysTC Reldtt where
     Right AnTokenModtySnout -> unreachable
     Right AnTokenModtyTail -> unreachable
     Right AnTokenKnownModty -> do
-      related <- relKnownModty (getConst $ uncoy relT) gamma t1 t2 "Checking (in)equality of modalities."
+      related <- relKnownModty (getConst $ uncoy relT) t1 t2 "Checking (in)equality of modalities."
       case related of
         Nothing -> -- This may occur when something is ill-typed.
           tcFail "Modalities are presumed to have equal (co)domain."
@@ -240,7 +240,7 @@ instance SysTC Reldtt where
   checkEtaMultimodeOrSys token gamma t extraT ct = case token of
     Left AnTokenModality -> do
       let dom :*: cod = ct
-      (cod, metasCod) <- runWriterT $ whnormalizeMode gamma cod "Want to know if codomain is zero"
+      (cod, metasCod) <- runWriterT $ whnormalizeMode cod "Want to know if codomain is zero"
       case (cod, metasCod) of
         (_, _:_) -> tcBlock $ "Need to know if codomain is zero."
         (ReldttMode (BareMode (ModeTermZero)), _) -> do

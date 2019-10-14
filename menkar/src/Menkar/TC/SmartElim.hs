@@ -612,7 +612,7 @@ checkSmartElim gamma eliminee tyEliminee eliminators result tyResult = do
   let dEliminee = _modality'dom dmuElimTotal
   (whnTyEliminee, metasTyEliminee) <-
     runWriterT $ whnormalizeType
-      (withDom dmuElimTotal :\\ gamma)
+      --(withDom dmuElimTotal :\\ gamma)
       tyEliminee
       "Weak-head-normalizing type of eliminee."
   case metasTyEliminee of

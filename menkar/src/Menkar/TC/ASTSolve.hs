@@ -200,7 +200,7 @@ tryToSolveBy :: forall sys tc t v .
   tc (Maybe String)
 tryToSolveBy gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 procedure = do
   depcies1 <- depcies1 & (_Wrapped' . cutFSLens . _Wrapped' . traverse $ \ depcy ->
-    fmap fst $ runWriterT $ whnormalize unreachable depcy (Type $ Expr2 $ TermWildcard)
+    fmap fst $ runWriterT $ whnormalize depcy (Type $ Expr2 $ TermWildcard)
       "Trying to weak-head-normalize meta dependency to a variable"
     )
   let maybeProblem = case neut1 of
@@ -262,7 +262,7 @@ tryToSolveImmediately gamma neut1 meta1 depcies1 maybeAlg1 t2 ct1 ct2 = have (wi
     let extraCT2 = extraClassif @sys @t (ctx'mode gamma) t2 U1
     cct2 <- newMetaClassif4astNoCheck (sndCtx gamma) ct2 extraCT2 "Inferring a classifier's classifier."
       -- It is assumed that a classifier's classifier needs no metas.
-    (whnct2, _) <- runWriterT $ whnormalizeAST (sndCtx gamma) ct2 extraCT2 cct2 "Weak-head-normalize type of solution."
+    (whnct2, _) <- runWriterT $ whnormalizeAST ct2 extraCT2 cct2 "Weak-head-normalize type of solution."
     --solve
     case sequenceMaybe $ partialInv <$> astAlreadyChecked @sys t2 ct2 of
       Nothing ->

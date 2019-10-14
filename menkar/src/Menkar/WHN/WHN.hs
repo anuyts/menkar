@@ -20,7 +20,6 @@ import Control.Monad.Writer.Class
 import GHC.Generics
 
 tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v ->
   ModalityTo sys v {-^ how eliminee is used -} ->
   Term sys v {-^ eliminee, whnormal -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
@@ -29,7 +28,7 @@ tryDependentEta :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   [Int] {-^ the metas to block on when eta is unavailable. -} ->
   String ->
   whn (Term sys v)
-tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
+tryDependentEta dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
   --let dgamma' = ctx'mode gamma
   --let dgamma = dgamma'
   let returnElim = return (Expr2 $ TermElim dmu whnEliminee tyEliminee e) -- <$ tell metasEliminee
@@ -38,7 +37,7 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
       ElimSigma pairClause -> case tyEliminee of
         Sigma sigmaBinding -> do
           let dmuSigma = _segment'modty $ binding'segment sigmaBinding
-          allowsEta (crispCtx gamma) (_modalityTo'mod dmuSigma) reason >>= \case
+          allowsEta (_modalityTo'mod dmuSigma) reason >>= \case
             Just True -> do
               let tmFst = Expr2 $
                     TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmuSigma) whnEliminee tyEliminee Fst
@@ -48,20 +47,20 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
                     VarWkn (VarWkn w) -> Var2 w
                     VarWkn VarLast -> tmFst
                     VarLast -> tmSnd
-              whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body pairClause)) tyResult reason
+              whnormalize (join $ subst <$> _namedBinding'body (_namedBinding'body pairClause)) tyResult reason
             _ -> returnElim
         _ -> unreachable
       ElimBox boxClause -> case tyEliminee of
         BoxType boxSeg -> do
           let dmuBox = _segment'modty boxSeg
-          allowsEta (crispCtx gamma) (_modalityTo'mod dmuBox) reason >>= \case
+          allowsEta (_modalityTo'mod dmuBox) reason >>= \case
             Just True -> do
               let tmUnbox = Expr2 $
                     TermElim (withDom $ approxLeftAdjointProj $ _modalityTo'mod dmuBox) whnEliminee tyEliminee Unbox
               let subst v = case v of
                     VarWkn w -> Var2 w
                     VarLast -> tmUnbox
-              whnormalize gamma (join $ subst <$> _namedBinding'body boxClause) tyResult reason
+              whnormalize (join $ subst <$> _namedBinding'body boxClause) tyResult reason
             _ -> returnElim
         _ -> unreachable
       ElimEmpty -> returnElim
@@ -75,7 +74,6 @@ tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
    In summary, we don't eta-expand.
 -}
 whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v ->
   ModalityTo sys v {-^ how eliminee is used -} ->
   Term sys v {-^ eliminee -} ->
   UniHSConstructor sys v {-^ eliminee's type -} ->
@@ -85,13 +83,13 @@ whnormalizeElim :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [
   String ->
   whn (Term sys v)
 -- careful with glue/weld!
-whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
+whnormalizeElim dmu whnEliminee tyEliminee e tyResult metasEliminee reason = do
   --let dgamma = ctx'mode gamma
   -- -- WHNormalize the eliminee
   -- -- The following line SHOULDN'T BE NECESSARY!
   -- (whnEliminee, metasEliminee)
   --     <- listen $ whnormalize ((dmu) :\\ gamma) whnEliminee (hs2type tyEliminee) reason
-  let useDependentEta = tryDependentEta gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
+  let useDependentEta = tryDependentEta dmu whnEliminee tyEliminee e tyResult metasEliminee reason
   case metasEliminee of
     -- The eliminee is blocked: Try to rely on eta instead
     _:_ -> useDependentEta
@@ -131,10 +129,10 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
             let subst v = case v of
                   VarWkn w -> Var2 w
                   VarLast -> arg
-            in whnormalize gamma (join $ subst <$> (_val'term $ binding'body binding)) tyResult reason
+            in whnormalize (join $ subst <$> (_val'term $ binding'body binding)) tyResult reason
           -- Function extensionality over a lambda: WHNormalize the body. (The analyzer doesn't do that!)
           (Lam (Binding seg (ValRHS body cod)), Funext) -> do
-            whnBody <- whnormalize (gamma :.. seg) body cod reason
+            whnBody <- whnormalize body cod reason
             case whnBody of
               -- Body is refl: Elimination reduces to refl.
               Expr2 (TermCons (ConsRefl tyAmbient t)) ->
@@ -149,16 +147,16 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
           -- SIGMA-TYPE
           ---------------
           -- Fst of pair.
-          (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize gamma tmFst tyResult reason
+          (Pair sigmaBinding tmFst tmSnd, Fst) -> whnormalize tmFst tyResult reason
           -- Snd of pair.
-          (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize gamma tmSnd tyResult reason
+          (Pair sigmaBinding tmFst tmSnd, Snd) -> whnormalize tmSnd tyResult reason
           -- Correct dependent elimination of pair: Substitute and whnormalize.
           (Pair sigmaBinding tmFst tmSnd, ElimDep motive (ElimSigma clause)) ->
             let subst v = case v of
                   VarWkn (VarWkn w) -> Var2 w
                   VarWkn VarLast -> tmFst
                   VarLast -> tmSnd
-            in whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body clause)) tyResult reason
+            in whnormalize (join $ subst <$> _namedBinding'body (_namedBinding'body clause)) tyResult reason
           -- Other elimination of pair: Bogus.
           (Pair _ _ _, _) -> return termProblem
           ---------------              
@@ -174,20 +172,20 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
           -- BOX TYPE
           ---------------
           -- Unbox box.
-          (ConsBox seg tm, Unbox) -> whnormalize gamma tm tyResult reason
+          (ConsBox seg tm, Unbox) -> whnormalize tm tyResult reason
           -- Correct dependent elimination of box: Substitute and whnormalize.
           (ConsBox seg tm, ElimDep motive (ElimBox clause)) ->
             let subst :: VarExt _ -> Term _ _
                 subst VarLast = tm
                 subst (VarWkn v) = Var2 v
-            in  whnormalize gamma (join $ subst <$> _namedBinding'body clause) tyResult reason
+            in  whnormalize (join $ subst <$> _namedBinding'body clause) tyResult reason
           -- Other dependent elimination of box: Bogus.
           (ConsBox _ _, _) -> return termProblem
           ---------------              
           -- NATURALS
           ---------------
           -- Correct dependent elimination of zero.
-          (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize gamma cz tyResult reason
+          (ConsZero, ElimDep motive (ElimNat cz cs)) -> whnormalize cz tyResult reason
           -- Other elimination of zero: Bogus.
           (ConsZero, _) -> return termProblem
           -- Correct dependent elimination of successor: Substitute and whnormalize.
@@ -196,33 +194,32 @@ whnormalizeElim gamma dmu whnEliminee tyEliminee e tyResult metasEliminee reason
                 subst VarLast = Expr2 $ TermElim dmu t tyEliminee (ElimDep motive (ElimNat cz cs))
                 subst (VarWkn VarLast) = t
                 subst (VarWkn (VarWkn v)) = Var2 v
-            in  whnormalize gamma (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) tyResult reason
+            in  whnormalize (join $ subst <$> _namedBinding'body (_namedBinding'body cs)) tyResult reason
           -- Other elimination of zero: Bogus.
           (ConsSuc _, _) -> return termProblem
           ---------------              
           -- IDENTITY TYPE
           ---------------
           -- Correct dependent elimination of refl.
-          (ConsRefl tyAmbient t, ElimEq motive crefl) -> whnormalize gamma crefl tyResult reason
+          (ConsRefl tyAmbient t, ElimEq motive crefl) -> whnormalize crefl tyResult reason
           -- Other elimination of refl: Bogus.
           (ConsRefl _ _, _) -> return termProblem
       (Expr2 _) -> unreachable
 
 whnormalizeNV :: forall whn sys v .
   (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v ->
   TermNV sys v ->
   Type sys v ->
   [Int] ->
   String ->
   whn (Term sys v)
 -- Constructor: return it
-whnormalizeNV gamma t@(TermCons _) ty metas reason = return $ Expr2 $ t   -- Mind glue and weld!
+whnormalizeNV t@(TermCons _) ty metas reason = return $ Expr2 $ t   -- Mind glue and weld!
 -- Eliminator: call whnormalizeElim
-whnormalizeNV gamma (TermElim dmu t tyEliminee e) ty metas reason =
-  whnormalizeElim gamma dmu t tyEliminee e ty metas reason
+whnormalizeNV (TermElim dmu t tyEliminee e) ty metas reason =
+  whnormalizeElim dmu t tyEliminee e ty metas reason
 -- Meta: return if unsolved, otherwise whnormalize solution.
-whnormalizeNV gamma t@(TermMeta neutrality meta depcies alg) ty metas reason = do
+whnormalizeNV t@(TermMeta neutrality meta depcies alg) ty metas reason = do
   --solution <- fromMaybe (Expr2 t) <$> awaitMeta ty reason meta depcies
   maybeSolution <- awaitMeta reason meta depcies
   case maybeSolution of
@@ -230,27 +227,27 @@ whnormalizeNV gamma t@(TermMeta neutrality meta depcies alg) ty metas reason = d
       MetaBlocked -> Expr2 t <$ tell [meta]
       MetaNeutral -> return $ Expr2 t
         -- neutral metas are considered whnormal, as solving them cannot trigger any computation.
-    Just solution -> whnormalize gamma solution ty reason
+    Just solution -> whnormalize solution ty reason
 {-maybeSolution <- getMeta meta depcies
   case maybeSolution of
     Nothing -> Expr2 t <$ tell [meta]
     Just solution -> whnormalize gamma solution-}
 -- Wildcard: unreachable
-whnormalizeNV gamma TermWildcard ty metas reason = unreachable
+whnormalizeNV TermWildcard ty metas reason = unreachable
 -- QName: Extract the enclosed value, turn the telescope into box-constructors and lambdas, and return.
-whnormalizeNV gamma (TermQName qname (FS leftDividedTelescopedVal)) ty metas reason =
+whnormalizeNV (TermQName qname (FS leftDividedTelescopedVal)) ty metas reason =
     let moduleMode = _leftDivided'originalMode leftDividedTelescopedVal
         telescopedVal = _leftDivided'content leftDividedTelescopedVal
         ModApplied _ quantifiedVal = telescoped2modalQuantified moduleMode telescopedVal
         quantifiedTerm = _val'term quantifiedVal
-    in  whnormalize gamma quantifiedTerm ty reason
-whnormalizeNV gamma (TermAlreadyChecked t ty) ty' metas reason = whnormalize gamma t ty' reason
+    in  whnormalize quantifiedTerm ty reason
+whnormalizeNV (TermAlreadyChecked t ty) ty' metas reason = whnormalize t ty' reason
 -- Results annotated with an algorithm for solving them: whnormalize the result.
-whnormalizeNV gamma (TermAlgorithm alg result) ty metas reason = whnormalize gamma result ty reason
+whnormalizeNV (TermAlgorithm alg result) ty metas reason = whnormalize result ty reason
 -- System specific terms: call whnormalizeSysTerm, a method of SysWHN.
-whnormalizeNV gamma (TermSys t) ty metas reason = whnormalizeSysTerm gamma t ty reason
+whnormalizeNV (TermSys t) ty metas reason = whnormalizeSysTerm t ty reason
 -- Bogus terms: return them.
-whnormalizeNV gamma t@(TermProblem _) ty metas reason = return $ Expr2 t
+whnormalizeNV t@(TermProblem _) ty metas reason = return $ Expr2 t
 
 ---------------------------
 
@@ -260,18 +257,17 @@ whnormalizeAST' :: forall sys whn v t .
    DeBruijnLevel v,
    MonadWriter [Int] whn,
    Analyzable sys t) =>
-  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   Classif t v ->
   String ->
   whn (t v)
-whnormalizeAST' gamma t extraT classifT reason =
-         let attempt = subASTsTyped gamma (Classification t extraT (ClassifWillBe classifT)) $
-               \ wkn gammadelta (Classification s extraS maybeClassifS) addressInfo ->
+whnormalizeAST' t extraT classifT reason =
+         let attempt = subASTsTyped @sys unreachable (Classification t extraT (ClassifWillBe classifT)) $
+               \ wkn _ (Classification s extraS maybeClassifS) addressInfo ->
                  case _addressInfo'focus addressInfo of
                    NoFocus -> return s
-                   otherwise -> whnormalizeAST gammadelta s extraS (fromClassifInfo unreachable maybeClassifS) reason
+                   otherwise -> whnormalizeAST @sys s extraS (fromClassifInfo unreachable maybeClassifS) reason
          -- Whnormalization simply gives up on AnalyzerErrors!
          in fromRight (return t) attempt
 
@@ -281,20 +277,19 @@ whnormalizeAST :: forall sys whn v t .
    DeBruijnLevel v,
    MonadWriter [Int] whn,
    Analyzable sys t) => 
-  Ctx Type sys v ->
   t v ->
   ClassifExtraInput t v ->
   Classif t v ->
   String ->
   whn (t v)
-whnormalizeAST gamma t extraT classifT reason =
+whnormalizeAST t extraT classifT reason =
   case analyzableToken @sys @t of
-    AnTokenTerm -> whnormalize gamma t classifT reason
+    AnTokenTerm -> whnormalize t classifT reason
     AnTokenSys sysToken ->
-      whnormalizeMultimodeOrSysAST (Right sysToken) gamma t extraT classifT reason
+      whnormalizeMultimodeOrSysAST (Right sysToken) t extraT classifT reason
     AnTokenMultimode multimodeToken ->
-      whnormalizeMultimodeOrSysAST (Left multimodeToken) gamma t extraT classifT reason
-    _ -> whnormalizeAST' gamma t extraT classifT reason
+      whnormalizeMultimodeOrSysAST (Left multimodeToken) t extraT classifT reason
+    _ -> whnormalizeAST' t extraT classifT reason
       {-case (anErr, analyzableToken :: AnalyzableToken sys t, t) of
       (AnErrorTermMeta, AnTokenTermNV, TermMeta neutrality meta depcies alg) -> return t
       (AnErrorTermMeta, _, _) -> unreachable
@@ -322,23 +317,21 @@ whnormalizeAST gamma t extraT classifT reason =
      writes the indices of all metavariables that could (each in itself) unblock the situation.
 -}
 whnormalize :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v ->
   Term sys v ->
   Type sys v ->
   String ->
   whn (Term sys v)
 -- Variable: return it
-whnormalize gamma (Var2 v) ty reason = return $ Var2 v
+whnormalize (Var2 v) ty reason = return $ Var2 v
 -- Not a variable
-whnormalize gamma (Expr2 t) ty reason = do
+whnormalize (Expr2 t) ty reason = do
   --perform all necessary recursive calls
-  (prewhnT, metas) <- listen $ whnormalizeAST' gamma t U1 ty reason
+  (prewhnT, metas) <- listen $ whnormalizeAST' t U1 ty reason
   --call whnormalizeNV
-  whnormalizeNV gamma prewhnT ty metas reason
+  whnormalizeNV prewhnT ty metas reason
 
 whnormalizeType :: (SysWHN sys, MonadWHN sys whn, DeBruijnLevel v, MonadWriter [Int] whn) =>
-  Ctx Type sys v ->
   Type sys v ->
   String ->
   whn (Type sys v)
-whnormalizeType gamma ty reason = whnormalizeAST gamma ty U1 U1 reason
+whnormalizeType ty reason = whnormalizeAST ty U1 U1 reason
