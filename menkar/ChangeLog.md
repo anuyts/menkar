@@ -4,6 +4,9 @@ Please add changes in chronological order: newest first.
 ## Unreleased changes
 When releasing, change the changelog and `package.yaml`.
 
+#### v0.300.1: Tweaks
+*  Don't keep modes of metavariable dependencies.
+*  Weak-head-normalization without context.
 *  Fix bug with projection `..1`.
 
 ## v0.300: Degrees of Relatedness
