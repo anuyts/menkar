@@ -57,7 +57,6 @@ ctx2scCtx (gamma :<...> modul) = ctx2scCtx gamma ::<...> modul
 ctx2scCtx (dmu :\\ gamma) = () ::\\ ctx2scCtx gamma
 ctx2scCtx (CtxId   gamma) = ScCtxId   $ ctx2scCtx gamma
 ctx2scCtx (CtxComp gamma) = ScCtxComp $ ctx2scCtx gamma
-ctx2scCtx (CtxOpaque d) = unreachable
 
 scGetName :: ScCtx sys v -> v -> Maybe Raw.Name
 scGetName ScCtxEmpty v = absurd v

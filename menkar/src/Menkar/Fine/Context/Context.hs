@@ -63,10 +63,6 @@ data Ctx (t :: KSys -> * -> *) (sys :: KSys) (v :: *) where
   {-| Pleasing GHC -}
   CtxId :: Ctx t sys v -> Ctx t sys (Identity v)
   CtxComp :: Ctx t sys (f (g v)) -> Ctx t sys (Compose f g v)
-  {-| Opaque context of a given mode. Used only for WHN.
-      Necessary for whnormalizing meta dependencies, which should be enclosed in a LeftDivided.
-  -}
-  CtxOpaque :: DeBruijnLevel v => Mode sys v -> Ctx t sys v
 --type role Ctx representational nominal nominal representational
 instance (SysTrav sys, NFData_ (t sys)) => NFData (Ctx t sys v) where
   rnf (CtxEmpty d) = rnf_ d
@@ -75,7 +71,6 @@ instance (SysTrav sys, NFData_ (t sys)) => NFData (Ctx t sys v) where
   rnf (mu :\\ gamma) = haveDB gamma $ rnf gamma `seq` rnf_ mu
   rnf (CtxId gamma) = haveDB gamma $ rnf gamma
   rnf (CtxComp gamma) = haveDB gamma $ rnf gamma
-  rnf (CtxOpaque d) = rnf_ d
 infixr 3 :\\
 infixl 3 :.., :<...>
 
@@ -86,7 +81,6 @@ ctx'mode (gamma :<...> modul) = VarInModule !<$> ctx'mode gamma
 ctx'mode (dmu :\\ gamma) = coy $ _modalityTo'dom dmu
 ctx'mode (CtxId gamma) = Identity !<$> ctx'mode gamma
 ctx'mode (CtxComp gamma) = Compose !<$> ctx'mode gamma
-ctx'mode (CtxOpaque d) = coy d
 
 haveDB :: Ctx ty sys v -> ((DeBruijnLevel v) => t) -> t
 haveDB (CtxEmpty d) t = t
@@ -95,7 +89,6 @@ haveDB (gamma :<...> modul) t = haveDB gamma t
 haveDB (dmu :\\ gamma) t = haveDB gamma t
 haveDB (CtxId gamma) t = haveDB gamma t
 haveDB (CtxComp gamma) t = haveDB gamma t
-haveDB (CtxOpaque d) t = t
 
 mapSegment :: (
     SysTrav sys,
@@ -123,7 +116,6 @@ mapCtx f (gamma :<...> modul) = mapCtx f gamma :<...> modul
 mapCtx f (dmu :\\ gamma) = dmu :\\ mapCtx f gamma
 mapCtx f (CtxId gamma) = CtxId $ mapCtx f gamma
 mapCtx f (CtxComp gamma) = CtxComp $ mapCtx f gamma
-mapCtx f (CtxOpaque d) = CtxOpaque d
 
 duplicateCtx :: (
     SysTrav sys,

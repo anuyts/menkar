@@ -259,7 +259,6 @@ lookupQName (dmu@(ModalityTo dom mu) :\\ gamma) qname = case uncoy (lookupQName 
       coy $ LookupResultVal $ LeftDivided dOrig (compModedModality nu mu) seg
 lookupQName (CtxId gamma) qname = Identity !<$> lookupQName gamma qname
 lookupQName (CtxComp gamma) qname = Compose !<$> lookupQName gamma qname
-lookupQName (CtxOpaque d) qname = coy $ LookupResultNothing
 
 ------------------------
 
@@ -305,4 +304,3 @@ lookupVar (dmu@(ModalityTo dom mu) :\\ gamma) v = coy $ LeftDivided dOrig (compM
   where LeftDivided dOrig nu seg = uncoy $ lookupVar gamma v
 lookupVar (CtxId gamma) (Identity v) = Identity !<$> lookupVar gamma v
 lookupVar (CtxComp gamma) (Compose v) = Compose !<$> lookupVar gamma v
-lookupVar (CtxOpaque d) v = unreachable

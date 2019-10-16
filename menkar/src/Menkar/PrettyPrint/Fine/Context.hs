@@ -55,7 +55,6 @@ ctx2pretty (dmu :\\ gamma) opts = haveDB gamma $
 --                             /// ribbon ")"
 ctx2pretty (CtxId gamma) opts = haveDB gamma $ ctx2pretty gamma opts
 ctx2pretty (CtxComp gamma) opts = haveDB gamma $ ctx2pretty gamma opts
-ctx2pretty (CtxOpaque d) opts = unreachable
 
 ctx2string :: forall v sys ty .
   (DeBruijnLevel v,
