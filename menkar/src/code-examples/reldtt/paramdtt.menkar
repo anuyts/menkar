@@ -58,27 +58,37 @@ val *forget elimDND
 //Code of Nat (other constant types are analogous)
 val *forget dndNat : UniDND = {@lock} > Nat ...
 
-//Code of equality type
-val *forget (==dnd)
+//Code of equality type (this is the RelDTT-style equality type; not the ParamDTT-style type with parametric reflexivity)
+val *forget (==dnd-aux)
 	{~ *flt dndA : UniDND}
 	{*flt@hoc a1 a2 : ElDND dndA}
 	: UniDND
 	= {@lock} > a1 == .{A = ElDND dndA} a2
 
-val *forget (==dnd-con)
+val *forget (==dnd)
 	{~ *con dndA : UniDND}
 	: ElimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) dndA
-	= elimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) (==dnd) dndA
+	= elimDND con (dndA' > {*flt@hoc a1 a2 : ElDND dndA'} -> UniDND) (==dnd-aux) dndA
 
-val *forget u : Unit = unit
+val *forget reflDND
+	{*par dndA : UniDND}
+	{*hoc a : ElDND dndA} // You would expect con; this is a flaw of ParamDTT wrt RelDTT
+	: ElDND (a ==dnd .{{@lock} > dndA .{}} a)
+	= refl ...
 
-/*
-val *forget (==dnd)
-	{*con dndA : UniDND}
-	{*flt a1 a2 : ElDND dndA}
-	: UniDND
-	= {@lock *flt} > ({@lock} > a1) == .{A = {@lock *par} -> ElDND dndA} ({@lock} > a2)
-*/
+// J rule, parametric
+
+// par-boxed equality type
+// refl constructor, parametric in A
+// J rule, parametric
+
+// sigma type
+// pair constructor, parametric
+// eliminators, parametric
+
+// pi-type, parametric
+// lambda, parametric
+// application, parametric
 
 /*
 //Code of Pi (general, not entirely as it should be...)
