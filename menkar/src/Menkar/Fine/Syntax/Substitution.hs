@@ -19,13 +19,17 @@ import Data.Foldable
 
 -- | @substitute h fv = swallow (h <$> fv)@
 class CanSwallow (f :: * -> *) (g :: * -> *) where
+  substituteCoy :: (w -> Coyoneda f v) -> g w -> g v
+  default substituteCoy :: (Generic1 g, CanSwallow f (Rep1 g)) => (w -> Coyoneda f v) -> g w -> g v
+  substituteCoy h = to1 . substituteCoy h . from1
+  
+  {-# INLINE substitute #-}
   substitute :: (w -> f v) -> g w -> g v
-  default substitute :: (Generic1 g, CanSwallow f (Rep1 g)) => (w -> f v) -> g w -> g v
-  substitute h = to1 . substitute h . from1
+  substitute h = substituteCoy (coy . h)
   
   {-# INLINE swallow #-}
   swallow :: g (f v) -> g v
-  swallow = substitute id
+  swallow = substituteCoy coy
 
 {-# INLINE substLast #-}
 substLast :: forall f g v . (Functor g, Applicative f, CanSwallow f g) => f v -> g (VarExt v) -> g v
@@ -50,8 +54,8 @@ instance (CanSwallow f h, Functor h, Traversable g, Applicative f) => CanSwallow
 -}
 
 instance (CanSwallow f g, Functor h) => CanSwallow f (Compose h g) where
-  substitute h (Compose hgx) = Compose (substitute h <$> hgx)
-  {-# INLINE substitute #-}
+  substituteCoy h (Compose hgx) = Compose (substituteCoy h <$> hgx)
+  {-# INLINE substituteCoy #-}
 
 -------------------------------------------
 
@@ -68,7 +72,10 @@ deriving instance (Show v, Show (e v)) => Show (Expr e v)
 deriving instance (Eq v, Eq (e v)) => Eq (Expr e v)
 deriving instance (NFData_ e) => NFData_ (Expr e)
 
-instance CanSwallow (Expr e) e => CanSwallow (Expr e) (Expr e) where
+instance (CanSwallow (Expr e) e, Functor e) => CanSwallow (Expr e) (Expr e) where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h (Var w) = uncoy $ h w
+  substituteCoy h (Expr ew) = Expr (substituteCoy h ew)
   {-# INLINE substitute #-}
   substitute h (Var w) = h w
   substitute h (Expr ew) = Expr (substitute h ew)
@@ -115,7 +122,10 @@ pattern Expr2 e <- Expr2Cache e _
   where Expr2 e = Expr2Cache e (toList e)
 {-# COMPLETE Var2, Expr2 #-}
 
-instance (Foldable (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr2 e a) where
+instance (Functor (e a), Foldable (e a), CanSwallow (Expr2 e a) (e a)) => CanSwallow (Expr2 e a) (Expr2 e a) where
+  substituteCoy h (Var2 w) = uncoy $ h w
+  substituteCoy h (Expr2Cache ew ws) = Expr2Cache (substituteCoy h ew) (toList . uncoy . h =<< ws)
+  {-# INLINE substituteCoy #-}
   substitute h (Var2 w) = h w
   substitute h (Expr2Cache ew ws) = Expr2Cache (substitute h ew) (toList . h =<< ws)
   {-# INLINE substitute #-}
@@ -179,6 +189,8 @@ substLast3 ev fextv = swallow $ substLast' <$> fextv
 
 -- void
 instance CanSwallow e V1 where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h = absurd1
   {-# INLINE substitute #-}
   substitute h = absurd1
   {-# INLINE swallow #-}
@@ -186,30 +198,41 @@ instance CanSwallow e V1 where
 
 -- unit
 instance CanSwallow e U1 where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h U1 = U1
   {-# INLINE substitute #-}
   substitute h U1 = U1
   {-# INLINE swallow #-}
   swallow U1 = U1
 
-instance CanSwallow e f => CanSwallow e (Rec1 f) where
+deriving newtype instance CanSwallow e f => CanSwallow e (Rec1 f)
+{-instance CanSwallow e f => CanSwallow e (Rec1 f) where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h (Rec1 fx) = Rec1 $ substituteCoy h fx
   {-# INLINE substitute #-}
   substitute h (Rec1 fx) = Rec1 $ substitute h fx
   {-# INLINE swallow #-}
-  swallow (Rec1 fex) = Rec1 $ swallow fex
+  swallow (Rec1 fex) = Rec1 $ swallow fex-}
 
 instance CanSwallow e (K1 i c) where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h (K1 k) = K1 k
   {-# INLINE substitute #-}
   substitute h (K1 k) = K1 k
   {-# INLINE swallow #-}
   swallow (K1 k) = K1 k
 
-instance CanSwallow e f => CanSwallow e (M1 i c f) where
+deriving newtype instance CanSwallow e f => CanSwallow e (M1 i c f)
+{-instance CanSwallow e f => CanSwallow e (M1 i c f) where
   {-# INLINE substitute #-}
   substitute h (M1 fx) = M1 $ substitute h fx
   {-# INLINE swallow #-}
-  swallow (M1 fex) = M1 $ swallow fex
+  swallow (M1 fex) = M1 $ swallow fex-}
 
 instance (CanSwallow e l, CanSwallow e r) => CanSwallow e (l :+: r) where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h (L1 lx) = L1 $ substituteCoy h lx
+  substituteCoy h (R1 rx) = R1 $ substituteCoy h rx
   {-# INLINE substitute #-}
   substitute h (L1 lx) = L1 $ substitute h lx
   substitute h (R1 rx) = R1 $ substitute h rx
@@ -218,16 +241,16 @@ instance (CanSwallow e l, CanSwallow e r) => CanSwallow e (l :+: r) where
   swallow (R1 rex) = R1 (swallow rex)
 
 instance (CanSwallow e f, CanSwallow e g) => CanSwallow e (f :*: g) where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h (fx :*: gx) = substituteCoy h fx :*: substituteCoy h gx
   {-# INLINE substitute #-}
   substitute h (fx :*: gx) = substitute h fx :*: substitute h gx
   {-# INLINE swallow #-}
   swallow (fex :*: gex) = swallow fex :*: swallow gex
 
 instance (CanSwallow e h, Functor h, Traversable g, Applicative e) => CanSwallow e (h :.: g) where
-  {-# INLINE substitute #-}
-  substitute h (Comp1 hgx) = Comp1 $ substitute (uncoy . traverse (coy . h)) hgx
-  {-# INLINE swallow #-}
-  swallow (Comp1 hgex) = Comp1 $ substitute (uncoy . traverse coy) hgex
+  {-# INLINE substituteCoy #-}
+  substituteCoy (h :: x -> Coyoneda e y) (Comp1 hgx) = Comp1 $ substituteCoy (traverse h) hgx
 
 --------------------------------------------
 
@@ -246,6 +269,8 @@ deriving instance Generic1 Syn
 
 {-| Coyoneda fuses fmaps, making stuff more efficient. -}
 instance (Functor h, CanSwallow e h) => CanSwallow e (Coyoneda h) where
+  {-# INLINE substituteCoy #-}
+  substituteCoy h (Coyoneda q hx) = Coyoneda id $ substituteCoy (h . q) hx
   {-# INLINE substitute #-}
   substitute h (Coyoneda q hx) = Coyoneda id $ substitute (h . q) hx
   {-# INLINE swallow #-}
@@ -301,22 +326,27 @@ pattern Coy x <- (lowerCoyoneda -> x)
 
 data FreeSwallow t f v where
   Unsubstituted :: f v -> FreeSwallow t f v
-  Substitute :: (v -> t w) -> FreeSwallow t f v -> FreeSwallow t f w
+  SubstituteCoy :: (v -> Coyoneda t w) -> FreeSwallow t f v -> FreeSwallow t f w
   Rename :: (v -> w) -> FreeSwallow t f v -> FreeSwallow t f w
 
 {-# INLINE liftFS #-}
 liftFS = Unsubstituted
 {-# INLINE lowerFS #-}
-lowerFS :: (CanSwallow t f, Monad t) => FreeSwallow t f v -> f v
+lowerFS :: (CanSwallow t f, CanSwallow t t, Applicative t) => FreeSwallow t f v -> f v
 lowerFS = lowerSubstituteFS pure
 
 {-# INLINE liftSubstituteFS #-}
-liftSubstituteFS = Substitute
+liftSubstituteFS :: (v -> t w) -> f v -> FreeSwallow t f w
+liftSubstituteFS h = SubstituteCoy (coy . h) . Unsubstituted
 {-# INLINE lowerSubstituteFS #-}
-lowerSubstituteFS :: (CanSwallow t f, Monad t) => (v -> t w) -> FreeSwallow t f v -> f w
-lowerSubstituteFS !h (Unsubstituted fv) = substitute h fv
-lowerSubstituteFS !h (Substitute g sfv) = lowerSubstituteFS (g >=> h) sfv
-lowerSubstituteFS !h (Rename g sfv) = lowerSubstituteFS (h . g) sfv
+lowerSubstituteFS :: (Functor t, CanSwallow t f, CanSwallow t t) => (v -> t w) -> FreeSwallow t f v -> f w
+lowerSubstituteFS h = lowerSubstituteFSCoy (coy . h)
+{-# INLINE lowerSubstituteFSCoy #-}
+lowerSubstituteFSCoy :: (Functor t, CanSwallow t f, CanSwallow t t) => (v -> Coyoneda t w) -> FreeSwallow t f v -> f w
+lowerSubstituteFSCoy !(h :: v -> Coyoneda t w) (Unsubstituted fv) = substituteCoy h fv
+lowerSubstituteFSCoy !(h :: v -> Coyoneda t w) (SubstituteCoy (g :: u -> Coyoneda t v) (sfu :: FreeSwallow t f u)) =
+  lowerSubstituteFSCoy (substituteCoy h . g) sfu
+lowerSubstituteFSCoy !(h :: v -> Coyoneda t w) (Rename g sfv) = lowerSubstituteFSCoy (h . g) sfv
 
 instance Functor (FreeSwallow t f) where
   {-# INLINE fmap #-}
@@ -326,14 +356,14 @@ instance Functor (FreeSwallow t f) where
 liftFMapFS :: (x -> y) -> f x -> FreeSwallow t f y
 liftFMapFS h = fmap h . liftFS
 {-# INLINE lowerFMapFS #-}
-lowerFMapFS :: (Functor f, CanSwallow t f, Monad t) => (x -> y) -> FreeSwallow t f x -> f y
+lowerFMapFS :: (Functor f, Functor t, CanSwallow t f, CanSwallow t t) => (x -> y) -> FreeSwallow t f x -> f y
 lowerFMapFS h (Unsubstituted fx) = h <$> fx
-lowerFMapFS h (Substitute g sfx) = lowerSubstituteFS (fmap h . g) sfx
+lowerFMapFS h (SubstituteCoy g sfx) = lowerSubstituteFSCoy (fmap h . g) sfx
 lowerFMapFS h (Rename g sfx) = lowerFMapFS (h . g) sfx
 
 instance CanSwallow t (FreeSwallow t f) where
-  {-# INLINE substitute #-}
-  substitute = Substitute
+  {-# INLINE substituteCoy #-}
+  substituteCoy = SubstituteCoy
 
 {-| This assumes that
     prop> fold (swallow ftv) = fold (fold <$> ftv)
@@ -341,7 +371,7 @@ instance CanSwallow t (FreeSwallow t f) where
 instance (Foldable t, Foldable f) => Foldable (FreeSwallow t f) where
   {-# INLINE foldMap #-}
   foldMap h (Unsubstituted fv) = foldMap h fv
-  foldMap (h :: w -> a) (Substitute (g :: v -> t w) (sfv :: FreeSwallow t f v)) =
+  foldMap (h :: w -> a) (SubstituteCoy (g :: v -> Coyoneda t w) (sfv :: FreeSwallow t f v)) =
     foldMap (foldMap h . g) sfv
   foldMap (h :: w -> a) (Rename (g :: v -> w) (sfv :: FreeSwallow t f v)) =
     foldMap (h . g) sfv
@@ -351,8 +381,12 @@ instance (Traversable t, Traversable f) => Traversable (FreeSwallow t f) where
   traverse (h :: _ -> m _) sfv = uncoy $ aux h sfv
     where aux :: forall u w . (w -> m u) -> FreeSwallow t f w -> Coyoneda m (FreeSwallow t f u)
           aux h (Unsubstituted fw) = Unsubstituted <$> coy (traverse h fw)
-          aux h (Substitute (g :: v -> t w) sfv) = Substitute id <$>
-            (aux (traverse h . g :: v -> m (t u)) :: FreeSwallow t f v -> Coyoneda m (FreeSwallow t f (t u))) sfv
+          aux h (SubstituteCoy (g :: v -> Coyoneda t w) sfv) =
+            SubstituteCoy id <$>
+            (aux
+              (traverse h . g :: v -> m (Coyoneda t u))
+              :: FreeSwallow t f v -> Coyoneda m (FreeSwallow t f (Coyoneda t u))
+            ) sfv
           aux (h :: w -> m u) (Rename (g :: v -> w) sfv) = aux (h . g) sfv
     
 {-# INLINE liftTraverseFS #-}
@@ -360,20 +394,21 @@ liftTraverseFS :: (Applicative m, Traversable f, Traversable t) =>
   (v -> m u) -> f v -> m (FreeSwallow t f u)
 liftTraverseFS h fv = Unsubstituted <$> traverse h fv
 {-# INLINE lowerTraverseFS #-}
-lowerTraverseFS :: (Applicative m, Traversable t, Monad t, Traversable f, CanSwallow t f) =>
+lowerTraverseFS :: (Applicative m, Traversable t, CanSwallow t t, Applicative t, Traversable f, CanSwallow t f) =>
   (v -> m u) -> FreeSwallow t f v -> m (f u)
 lowerTraverseFS h sfv = lowerFS <$> traverse h sfv
 
 {-# INLINE hoistFS #-}
 hoistFS :: (Functor f, Functor g) => (forall x . f x -> g x) -> (FreeSwallow t f a -> FreeSwallow t g a)
 hoistFS h (Unsubstituted fa) = Unsubstituted $ h fa
-hoistFS h (Substitute g sfa) = Substitute g $ hoistFS h sfa
+hoistFS h (SubstituteCoy g sfa) = SubstituteCoy g $ hoistFS h sfa
 hoistFS h (Rename g sfa) = Rename g $ hoistFS h sfa
 {-# INLINE liftHoistFS #-}
 liftHoistFS :: (forall x . f x -> g x) -> (forall x . f x -> FreeSwallow t g x)
 liftHoistFS h = liftFS . h
 {-# INLINE lowerHoistFS #-}
-lowerHoistFS :: (CanSwallow t f, Monad t) => (forall x . f x -> g x) -> (forall x . FreeSwallow t f x -> g x)
+lowerHoistFS :: (CanSwallow t f, CanSwallow t t, Applicative t) =>
+  (forall x . f x -> g x) -> (forall x . FreeSwallow t f x -> g x)
 lowerHoistFS h = h . lowerFS
 
 {-# INLINE hoistFSLens #-}
@@ -384,14 +419,15 @@ hoistFSLens :: forall m t f g a . (Functor m, Functor f, Functor g) =>
 hoistFSLens h = uncoy . aux
   where aux :: forall x . FreeSwallow t f x -> Coyoneda m (FreeSwallow t g x)
         aux (Unsubstituted fa) = Coyoneda Unsubstituted $ h fa
-        aux (Substitute g sfa) = Substitute g <$> aux sfa
+        aux (SubstituteCoy g sfa) = SubstituteCoy g <$> aux sfa
         aux (Rename g sfa) = Rename g <$> aux sfa
 
 {-# INLINE cutFS #-}
-cutFS :: (CanSwallow t f, Monad t) => (forall x . f x -> g x) -> (FreeSwallow t f a -> FreeSwallow t g a)
+cutFS :: (CanSwallow t f, CanSwallow t t, Applicative t) =>
+  (forall x . f x -> g x) -> (FreeSwallow t f a -> FreeSwallow t g a)
 cutFS h = liftFS . h . lowerFS
 {-# INLINE cutFSLens #-}
-cutFSLens :: (Functor m, CanSwallow t f, Monad t) =>
+cutFSLens :: (Functor m, CanSwallow t f, CanSwallow t t, Applicative t) =>
   (f a -> m (g a)) ->
   (FreeSwallow t f a -> m (FreeSwallow t g a))
 cutFSLens h = fmap liftFS . h . lowerFS
@@ -401,14 +437,14 @@ popFS :: forall t g f x . (Functor f, Functor g) => FreeSwallow t (Compose g f) 
 popFS = Compose . uncoy . aux
   where aux :: forall y . FreeSwallow t (Compose g f) y -> Coyoneda g ((FreeSwallow t f) y)
         aux (Unsubstituted (Compose gfx)) = coy $ Unsubstituted <$> gfx
-        aux (Substitute h scgfx) = Substitute h <$> aux scgfx
+        aux (SubstituteCoy h scgfx) = SubstituteCoy h <$> aux scgfx
         aux (Rename h scgfx) = Rename h <$> aux scgfx
 
 {-# INLINE copopFS #-}
 copopFS :: forall t g f x . (Applicative t, Traversable f, Functor g) =>
   FreeSwallow t (g :.: f) x -> ((FreeSwallow t g) :.: f) x  
 copopFS (Unsubstituted (Comp1 gfx)) = Comp1 $ Unsubstituted $ gfx
-copopFS (Substitute h scgfx) = Comp1 $ Substitute (traverse h) $ unComp1 $ copopFS scgfx
+copopFS (SubstituteCoy h scgfx) = Comp1 $ SubstituteCoy (traverse h) $ unComp1 $ copopFS scgfx
 copopFS (Rename h scgfx) = Comp1 $ Rename (fmap h) $ unComp1 $ copopFS scgfx
 
 -- | It is atypical to need this function.
@@ -416,15 +452,15 @@ copopFS (Rename h scgfx) = Comp1 $ Rename (fmap h) $ unComp1 $ copopFS scgfx
 copopFS' :: forall t g f x . (Applicative t, Traversable f, Functor g) =>
   FreeSwallow t (Compose g f) x -> (Compose (FreeSwallow t g) f) x
 copopFS' (Unsubstituted (Compose gfx)) = Compose $ Unsubstituted $ gfx
-copopFS' (Substitute h scgfx) = Compose $ Substitute (traverse h) $ getCompose $ copopFS' scgfx
+copopFS' (SubstituteCoy h scgfx) = Compose $ SubstituteCoy (traverse h) $ getCompose $ copopFS' scgfx
 copopFS' (Rename h scgfx) = Compose $ Rename (fmap h) $ getCompose $ copopFS' scgfx
 
-pattern FS :: forall t f x . (CanSwallow t f, Monad t) => () => f x -> FreeSwallow t f x
+pattern FS :: forall t f x . (CanSwallow t f, CanSwallow t t, Applicative t) => () => f x -> FreeSwallow t f x
 pattern FS x <- (lowerFS -> x)
   where FS x = liftFS x
 {-# COMPLETE FS #-}
 
 instance NFData_ f => NFData_ (FreeSwallow t f) where
   rnf_ (Unsubstituted fa) = rnf_ fa
-  rnf_ (Substitute h sfa) = rwhnf h `seq` rnf_ sfa
+  rnf_ (SubstituteCoy h sfa) = rwhnf h `seq` rnf_ sfa
   rnf_ (Rename h sfa) = rwhnf h `seq` rnf_ sfa
