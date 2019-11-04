@@ -1,6 +1,6 @@
 	Mon Oct 21 12:58 2019 Time and Allocation Profiling Report  (Final)
 
-	   menkar +RTS -N -N -p -RTS reldtt ../src/code-examples/reldtt/paramdtt.menkar (==dnd commented out)
+	   menkar +RTS -N -N -p -RTS reldtt ../src/code-examples/reldtt/paramdtt.menkar (==dnd commented out; not sure if ==dnd-aux was also commented out)
 
 	total time  =        4.15 secs   (16609 ticks @ 1000 us, 4 processors)
 	total alloc = 20,273,874,056 bytes  (excludes profiling overheads)
