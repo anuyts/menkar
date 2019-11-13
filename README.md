@@ -86,6 +86,8 @@ menkar reldtt path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
 Menkar is still in early development. We absolutely do not guarantee any form of backwards compatibility at this stage.
 
 ## More info?
+Submission at types: [abstract][types-abstract] - [slides][types-slides]
+
 Don't hesitate to contact me if this project sparks your interest.
 
 [alphaceti]: https://en.wikipedia.org/wiki/Alpha_Ceti
@@ -99,3 +101,5 @@ Don't hesitate to contact me if this project sparks your interest.
 [time-warps]: https://arxiv.org/abs/1805.11021v1
 [relativity]: https://arxiv.org/abs/1901.00489
 [transpension]: https://people.cs.kuleuven.be/~andreas.nuyts/transpension-types19.pdf
+[types-abstract]: https://people.cs.kuleuven.be/~andreas.nuyts/menkar-types19.pdf
+[types-slides]: https://people.cs.kuleuven.be/~andreas.nuyts/pres-menkar-types19.pdf
