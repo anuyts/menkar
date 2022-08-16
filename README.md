@@ -136,7 +136,7 @@ Menkar is still in early development. We absolutely do not guarantee any form of
 
 Submission at types: [abstract][types-abstract] - [slides][types-slides]
 
-Don't hesitate to contact me if this project sparks your interest.
+Don't hesitate to [contact me](https://anuyts.github.io) if this project sparks your interest.
 
 [alphaceti]: https://en.wikipedia.org/wiki/Alpha_Ceti
 [reldtt]: https://doi.org/10.1145/3209108.3209119
