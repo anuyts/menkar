@@ -4,6 +4,8 @@
 val *m0 UniDND {*m0 d : Mode} {*(forget (dsuc d))} : UniHS (dsuc d) ... = {@lock *(disc0 ...)} -> UniHS d ...
 // Parametric decoding operation
 val *m0 ElDND {~ *m0 d : Mode} {*(forget d)} {*(par ...) dndA : UniDND d ...} : UniHS d ... = dndA .{}
+        // You're not supposed to be able to project from UniDND, since disc0 has no left adjoint.
+        // Instead, this should be accomplished by pattern matching!
 // Discrete encoding operation
 val *m0 dnd {~ *m0 d : Mode} {*(forget (dsuc d))} {*(disc0 ...) A : UniHS d ...} : UniDND d ... = {@lock} > A
 
