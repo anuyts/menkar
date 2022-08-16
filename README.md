@@ -34,7 +34,7 @@ Meanwhile, Team Aarhus is working on [Mitten](https://github.com/logsem/mitten_p
 
 Currently supported features include:
 
-* `menkar trivial`: type-checking of **multimode MLTT** with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
+* type-checking of **multimode MLTT** with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
 * a **command-line interaction mode** that provides the user with a wealth of information, including stack traces for almost everything,
 * smart eliminations, including
    * **implicit arguments** in the sense of Agda,
