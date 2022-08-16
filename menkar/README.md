@@ -1,1 +1,1 @@
-Please see the other readme.
+Please see `../README.md`.

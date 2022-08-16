@@ -1,12 +1,40 @@
 # Menkar - the multimode presheaf proof assistant
+
 Menkar is (will be) a dependently typed programming language with a special focus on supporting modal and even multimode type systems, as well as type systems based on presheaf models.
 
 It is named after the star [Alpha Ceti][alphaceti].
 
+## 2022 Update
+
+The Menkar project has been **on hold/discontinued** since Fall 2019. The direct cause for this were performance issues in `menkar reldtt` (although `menkar trivial` seems to be working fine). Try for example
+
+```
+menkar reldtt src/code-examples/reldtt/paramdtt.menkar
+```
+
+and watch your memory usage go through the roof. The cause of this is very likely the choice to implement renaming/substitution of terms as a functor/monad structure:
+
+* Originally, this meant that every substitution (lazily) causes a full traversal of the syntax tree.
+
+* An attempt to solve this by guarding certain syntax constructors with `Coyoneda` allowed substitutions to be fused, but implied that the substitution had to be computed upon every inspection of the term.
+
+Other aspects (elaboration, equality checking) can be improved using known techniques.
+
+However, the development of Menkar was in general hampered by an insufficiently abstract treatment of the concepts of
+
+* a syntax constructor,
+
+* a syntax tree traversal/elimination.
+
+The Analyzer part of the codebase makes a reasonable (hacky) abstraction to at least disentangle the two concepts a bit. I am currently working on a more principled approach, called [contextual algebraic theories](https://github.com/anuyts/ctx-alg/). Important aspects of the Menkar implementation - the design of the type-checking monad, for instance - may well be reused in a future implementation based on contextual algebraic theories.
+
+Meanwhile, Team Aarhus is working on [Mitten](https://github.com/logsem/mitten_preorder).
+
 ## Features
+
 Currently supported features include:
 
-* type-checking of **multimode MLTT** with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
+* `menkar trivial`: type-checking of **multimode MLTT** with natural numbers, Π- and Σ-types, empty, unit and box types, an identity type and function extensionality,
 * a **command-line interaction mode** that provides the user with a wealth of information, including stack traces for almost everything,
 * smart eliminations, including
    * **implicit arguments** in the sense of Agda,
@@ -21,36 +49,50 @@ Partly implemented (but presently unusable) features include:
 
 * a [definitional relatedness][reldtt] checker (coined by A. Vezzosi), which may allow for the non-consideration of irrelevant subterms during conversion-checking.
 
-Intended features include:
+Considered features include:
 
 * a Hofmann-Streicher-universe of propositions, equipped with logic operators,
+
 * the coproduct type,
+
 * non-recursive HITs via a type former for pushouts along `ΣBφ -> B` (a codependent coproduct),
+
 * non-recursive QITs via a type former for pushouts along `B + B -> B` or via an interval modelled by the unit type,
-* recursive HITs and QITs via a type former for taking the least fixpoint of (a polynomial quotient of?) a pointed indexed polynomial functor (a very fancy W-type),
+
 * smart constructors, perhaps including
+  
    * implicit first components,
    * named first components,
    * implicit boxing,
    * named and numbered injections for coproduct-like types,
+
 * support for context exponentiation (for working with dependably [atomic][nlab-tiny] objects),
+
 * internal presheaf operators, to wit:
-
+  
    * definitional extension types,
+  
    * [transpension types][transpension] (a.k.a. amazing dependent right adjoints) for working with dependably [atomic][nlab-tiny] objects,
+  
    * the final type extension operation **Glue**.
-
-   From these, one can implement:
-
+     
+     From these, one can implement:
+  
    * the **strictness** axiom as used, among others, by [Orton and Pitts][strictness],
+  
    * from strictness, the initial type extension operation **Weld** (and Glue again),
-   * Moulin's [**Ψ-type**][psi], dubbed "relativity" by [Cavallo and Harper][relativity].
+  
+   * Moulin's [**Ψ-type**][psi], dubbed "Gel" by [Cavallo and Harper][relativity].
+
 * instance arguments - a feature analogous to Agda's [instance arguments][bright-side-of-typeclasses] and Haskell's typeclasses.
-A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved,
+  A **resolution** is essentially a user-defined open ad-hoc function which takes the role of Agda's and Haskell's instance resolution. **Instance arguments** are arguments annotated with a resolution; their values need not be actively passed, as they can be resolved,
+
 * the resolution-features necessary to implement a relatedness-checker *within* Menkar,
+
 * perhaps, one day, definitional inequality and subtyping.
 
 ## Type systems
+
 Multimode modal type systems currently supported are:
 
 * the trivial system (1 mode, 1 modality, i.e. basic MLTT),
@@ -68,24 +110,30 @@ Where applicable, the user should ideally have the option to include/exclude/agn
 ## Quick start guide
 
 ### Installation
+
 ```
 git clone <...> menkar
 cd menkar/menkar
 stack install
 ```
+
 Menkar is now installed as `menkar`.
 
 ### Running
+
 Type-check the concatenation of three files:
+
 ```
 menkar trivial path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
 menkar reldtt path/to/file1.menkar path/to/file2.menkar path/to/file3.menkar
 ```
 
 ## Other remarks
+
 Menkar is still in early development. We absolutely do not guarantee any form of backwards compatibility at this stage.
 
 ## More info?
+
 Submission at types: [abstract][types-abstract] - [slides][types-slides]
 
 Don't hesitate to contact me if this project sparks your interest.
